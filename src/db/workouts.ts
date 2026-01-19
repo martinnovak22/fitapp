@@ -13,8 +13,10 @@ export interface Set {
     id: number;
     workout_id: number;
     exercise_id: number;
-    weight: number;
-    reps: number;
+    weight?: number;
+    reps?: number;
+    distance?: number;
+    duration?: number;
     rpe?: number;
 }
 
@@ -41,11 +43,11 @@ export const WorkoutRepository = {
         await db.runAsync('DELETE FROM workouts WHERE id = ?', id);
     },
 
-    async addSet(workoutId: number, exerciseId: number, weight: number, reps: number) {
+    async addSet(workoutId: number, exerciseId: number, data: { weight?: number, reps?: number, distance?: number, duration?: number }) {
         const db = await getDb();
         await db.runAsync(
-            'INSERT INTO sets (workout_id, exercise_id, weight, reps) VALUES (?, ?, ?, ?)',
-            workoutId, exerciseId, weight, reps
+            'INSERT INTO sets (workout_id, exercise_id, weight, reps, distance, duration) VALUES (?, ?, ?, ?, ?, ?)',
+            workoutId, exerciseId, data.weight ?? null, data.reps ?? null, data.distance ?? null, data.duration ?? null
         );
     },
 
@@ -91,5 +93,10 @@ export const WorkoutRepository = {
             WHERE s.workout_id = ?
             ORDER BY s.id ASC
         `, workoutId);
+    },
+
+    async deleteSet(setId: number) {
+        const db = await getDb();
+        await db.runAsync('DELETE FROM sets WHERE id = ?', setId);
     }
 };

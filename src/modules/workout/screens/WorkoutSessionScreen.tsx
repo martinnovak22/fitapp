@@ -18,10 +18,14 @@ export default function WorkoutSessionScreen() {
     const [exercises, setExercises] = useState<Exercise[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
 
-    // Add Set Form
     const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null);
-    const [weight, setWeight] = useState('');
-    const [reps, setReps] = useState('');
+    const [inputValues, setInputValues] = useState({
+        weight: '',
+        reps: '',
+        distance: '',
+        durationMinutes: '',
+        durationSeconds: ''
+    });
 
     const loadData = useCallback(async () => {
         if (!workoutId) return;
@@ -31,23 +35,63 @@ export default function WorkoutSessionScreen() {
         const s = await WorkoutRepository.getSets(workoutId);
         setSets(s);
 
-        // Load exercises for the picker
         const ex = await ExerciseRepository.getAll();
         setExercises(ex);
-    }, [workoutId]);
+
+        if (!selectedExerciseId && ex.length > 0) {
+            const defaultEx = ex.find(e => e.name === 'Bench Press') || ex[0];
+            setSelectedExerciseId(defaultEx.id);
+        }
+    }, [workoutId, selectedExerciseId]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
 
+    const selectedExercise = exercises.find(e => e.id === selectedExerciseId);
+
+    const updateInput = (key: keyof typeof inputValues, value: string) => {
+        setInputValues(prev => ({ ...prev, [key]: value }));
+    };
+
     const handleAddSet = async () => {
-        if (!selectedExerciseId || !weight || !reps) {
-            Alert.alert("Complete all fields", "Please select an exercise and enter weight/reps");
+        if (!selectedExerciseId) {
+            Alert.alert("Select Exercise", "Please select an exercise first.");
             return;
         }
-        await WorkoutRepository.addSet(workoutId, selectedExerciseId, parseFloat(weight), parseInt(reps));
-        setWeight('');
-        setReps('');
+
+        const type = selectedExercise?.type || 'weight';
+        const { weight, reps, distance, durationMinutes, durationSeconds } = inputValues;
+
+        if (type === 'weight' && (!weight || !reps)) {
+            Alert.alert("Invalid Input", "Please enter weight and reps.");
+            return;
+        }
+
+        let finalDuration = undefined;
+        if (type === 'cardio') {
+            if (!distance || (!durationMinutes && !durationSeconds)) {
+                Alert.alert("Invalid Input", "Please enter distance and duration.");
+                return;
+            }
+            const mins = parseFloat(durationMinutes || '0');
+            const secs = parseFloat(durationSeconds || '0');
+            finalDuration = mins + (secs / 60);
+        }
+
+        if (type === 'bodyweight' && !reps) {
+            Alert.alert("Invalid Input", "Please enter reps.");
+            return;
+        }
+
+        await WorkoutRepository.addSet(workoutId, selectedExerciseId, {
+            weight: weight ? parseFloat(weight) : undefined,
+            reps: reps ? parseInt(reps) : undefined,
+            distance: distance ? parseFloat(distance) : undefined,
+            duration: finalDuration,
+        });
+
+        setInputValues({ weight: '', reps: '', distance: '', durationMinutes: '', durationSeconds: '' });
         setModalVisible(false);
         loadData();
     };
@@ -95,6 +139,36 @@ export default function WorkoutSessionScreen() {
 
     const isReadOnly = workout?.status === 'finished';
 
+    const handleDeleteSet = (setId: number) => {
+        Alert.alert(
+            "Delete Set",
+            "Are you sure you want to delete this set?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        await WorkoutRepository.deleteSet(setId);
+                        loadData();
+                    }
+                }
+            ]
+        );
+    };
+
+    const renderSetDetails = (set: WorkoutSet) => {
+        if (set.distance && set.duration) {
+            const mins = Math.floor(set.duration);
+            const secs = Math.round((set.duration - mins) * 60);
+            return `${set.distance}km in ${mins}m ${secs}s`;
+        }
+        if (set.weight) {
+            return `${set.weight}kg x ${set.reps} reps`;
+        }
+        return `${set.reps} reps`;
+    };
+
     return (
         <ScreenLayout>
             <ScreenHeader
@@ -116,9 +190,16 @@ export default function WorkoutSessionScreen() {
                     <View key={exerciseName} style={GlobalStyles.card}>
                         <Text style={[GlobalStyles.subtitle, { color: Theme.tint }]}>{exerciseName}</Text>
                         {exerciseSets.map((set, index) => (
-                            <View key={set.id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: Theme.background }}>
-                                <Text style={GlobalStyles.text}>Set {index + 1}</Text>
-                                <Text style={GlobalStyles.text}>{set.weight}kg x {set.reps}</Text>
+                            <View key={set.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Theme.background }}>
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <Text style={[GlobalStyles.text, { width: 40 }]}>Set {index + 1}</Text>
+                                    <Text style={GlobalStyles.text}>{renderSetDetails(set)}</Text>
+                                </View>
+                                {!isReadOnly && (
+                                    <TouchableOpacity onPress={() => handleDeleteSet(set.id)} style={{ padding: 4 }}>
+                                        <FontAwesome name="trash" size={16} color={Theme.error} />
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         ))}
                     </View>
@@ -147,41 +228,118 @@ export default function WorkoutSessionScreen() {
                         <Text style={GlobalStyles.title}>Log Set</Text>
 
                         <Text style={GlobalStyles.subtitle}>Exercise</Text>
-                        <ScrollView style={{ maxHeight: 150, marginBottom: 12, backgroundColor: Theme.background, borderRadius: 8 }}>
+                        <ScrollView style={{ maxHeight: 150, marginBottom: 18, backgroundColor: Theme.background, borderRadius: 8 }}>
                             {exercises.map(ex => (
                                 <TouchableOpacity
                                     key={ex.id}
                                     style={{ padding: 12, backgroundColor: selectedExerciseId === ex.id ? Theme.tint : 'transparent' }}
-                                    onPress={() => setSelectedExerciseId(ex.id)}
+                                    onPress={() => {
+                                        setSelectedExerciseId(ex.id);
+                                        setInputValues({ weight: '', reps: '', distance: '', durationMinutes: '', durationSeconds: '' });
+                                    }}
                                 >
                                     <Text style={{ color: selectedExerciseId === ex.id ? 'white' : Theme.text }}>{ex.name}</Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
 
-                        <View style={{ flexDirection: 'row', gap: 10 }}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={GlobalStyles.subtitle}>Weight (kg)</Text>
-                                <TextInput
-                                    keyboardType='numeric'
-                                    style={GlobalStyles.input}
-                                    value={weight}
-                                    onChangeText={setWeight}
-                                    placeholder="0"
-                                    placeholderTextColor={Theme.textSecondary}
-                                />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={GlobalStyles.subtitle}>Reps</Text>
-                                <TextInput
-                                    keyboardType='numeric'
-                                    style={GlobalStyles.input}
-                                    value={reps}
-                                    onChangeText={setReps}
-                                    placeholder="0"
-                                    placeholderTextColor={Theme.textSecondary}
-                                />
-                            </View>
+                        <View style={{ flexDirection: 'column', gap: 10 }}>
+                            {/* Weight Exercise Inputs */}
+                            {(selectedExercise?.type === 'weight' || !selectedExercise) && (
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={GlobalStyles.subtitle}>Weight (kg)</Text>
+                                        <TextInput
+                                            keyboardType='numeric'
+                                            style={GlobalStyles.input}
+                                            value={inputValues.weight}
+                                            onChangeText={(t) => updateInput('weight', t)}
+                                            placeholder="0"
+                                            placeholderTextColor={Theme.textSecondary}
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={GlobalStyles.subtitle}>Reps</Text>
+                                        <TextInput
+                                            keyboardType='numeric'
+                                            style={GlobalStyles.input}
+                                            value={inputValues.reps}
+                                            onChangeText={(t) => updateInput('reps', t)}
+                                            placeholder="0"
+                                            placeholderTextColor={Theme.textSecondary}
+                                        />
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Bodyweight Exercise Inputs */}
+                            {selectedExercise?.type === 'bodyweight' && (
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={GlobalStyles.subtitle}>Reps</Text>
+                                        <TextInput
+                                            keyboardType='numeric'
+                                            style={GlobalStyles.input}
+                                            value={inputValues.reps}
+                                            onChangeText={(t) => updateInput('reps', t)}
+                                            placeholder="0"
+                                            placeholderTextColor={Theme.textSecondary}
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[GlobalStyles.subtitle, { color: Theme.textSecondary, fontSize: 10, flex: 1, textAlignVertical: 'center' }]}>Extra Weight (Optional)</Text>
+                                        <TextInput
+                                            keyboardType='numeric'
+                                            style={[GlobalStyles.input, { backgroundColor: '#f0f0f01a' }]}
+                                            value={inputValues.weight}
+                                            onChangeText={(t) => updateInput('weight', t)}
+                                            placeholder="+ kg"
+                                            placeholderTextColor={Theme.textSecondary}
+                                        />
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Cardio Exercise Inputs */}
+                            {selectedExercise?.type === 'cardio' && (
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={GlobalStyles.subtitle}>Distance (km)</Text>
+                                        <TextInput
+                                            keyboardType='numeric'
+                                            style={GlobalStyles.input}
+                                            value={inputValues.distance}
+                                            onChangeText={(t) => updateInput('distance', t)}
+                                            placeholder="0.0"
+                                            placeholderTextColor={Theme.textSecondary}
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1, flexDirection: 'row', gap: 5 }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={GlobalStyles.subtitle}>Min</Text>
+                                            <TextInput
+                                                keyboardType='numeric'
+                                                style={GlobalStyles.input}
+                                                value={inputValues.durationMinutes}
+                                                onChangeText={(t) => updateInput('durationMinutes', t)}
+                                                placeholder="00"
+                                                placeholderTextColor={Theme.textSecondary}
+                                            />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={GlobalStyles.subtitle}>Sec</Text>
+                                            <TextInput
+                                                keyboardType='numeric'
+                                                style={GlobalStyles.input}
+                                                value={inputValues.durationSeconds}
+                                                onChangeText={(t) => updateInput('durationSeconds', t)}
+                                                placeholder="00"
+                                                placeholderTextColor={Theme.textSecondary}
+                                            />
+                                        </View>
+                                    </View>
+                                </View>
+                            )}
                         </View>
 
                         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>

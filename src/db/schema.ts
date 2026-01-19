@@ -36,7 +36,9 @@ export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
         exercise_id INTEGER NOT NULL,
         weight REAL,
         reps INTEGER,
-        rpe INTEGER, -- Rate of Perceived Exertion (optional)
+        distance REAL, 
+        duration REAL,
+        rpe INTEGER, 
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE,
         FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
