@@ -26,9 +26,6 @@ export function useDatabaseInit() {
 
 let _db: SQLite.SQLiteDatabase | null = null;
 
-// Helper to get DB instance (for use in other hooks/functions)
-// Note: In React components, we should probably use a Context to pass the DB instance
-// or use openDatabaseAsync directly which is cached.
 export const getDb = async () => {
     if (!_db) {
         _db = await SQLite.openDatabaseAsync(DATABASE_NAME);

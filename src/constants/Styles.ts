@@ -37,5 +37,21 @@ export const GlobalStyles = StyleSheet.create({
         borderWidth: 1,
         borderColor: Theme.border,
         marginBottom: 12,
+    },
+    fab: {
+        position: 'absolute',
+        right: 20,
+        bottom: 30,
+        backgroundColor: Theme.tint,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.27,
+        shadowRadius: 4.65,
     }
 });

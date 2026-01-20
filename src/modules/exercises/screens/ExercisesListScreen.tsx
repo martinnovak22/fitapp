@@ -2,6 +2,7 @@ import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import { formatExerciseType } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -27,9 +28,11 @@ export default function ExercisesListScreen() {
         <TouchableOpacity onPress={() => router.push(`/(tabs)/exercises/${item.id}`)}>
             <View style={GlobalStyles.card}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <View>
-                        <Text style={[GlobalStyles.text, { fontWeight: 'bold', fontSize: 18 }]}>{item.name}</Text>
-                        <Text style={[GlobalStyles.subtitle, { fontSize: 14 }]}>{item.muscle_group} • {item.type}</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[GlobalStyles.text, { fontWeight: 'bold', fontSize: 18, marginBottom: 4 }]}>{item.name}</Text>
+                        <Text style={[GlobalStyles.subtitle, { fontSize: 13, opacity: 0.8 }]}>
+                            {item.muscle_group ? `${item.muscle_group} • ` : ''}{formatExerciseType(item.type)}
+                        </Text>
                     </View>
                     <FontAwesome name="chevron-right" size={14} color={Theme.textSecondary} />
                 </View>
@@ -47,29 +50,13 @@ export default function ExercisesListScreen() {
             />
 
             <TouchableOpacity
-                style={styles.fab}
+                style={GlobalStyles.fab}
                 onPress={() => router.push('/(tabs)/exercises/add')}
             >
-                <FontAwesome name="plus" size={24} color={'white'} />
+                <FontAwesome name="plus" size={32} color={'white'} />
             </TouchableOpacity>
         </ScreenLayout>
     );
 }
 
-const styles = StyleSheet.create({
-    fab: {
-        position: 'absolute',
-        right: 20,
-        bottom: 20,
-        backgroundColor: Theme.tint,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 6,
-        shadowColor: 'black',
-        shadowOpacity: 0.3,
-        shadowOffset: { width: 0, height: 2 }
-    }
-});
+const styles = StyleSheet.create({});

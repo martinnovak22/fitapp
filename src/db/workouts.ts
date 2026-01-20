@@ -51,6 +51,14 @@ export const WorkoutRepository = {
         );
     },
 
+    async updateSet(setId: number, data: { weight?: number, reps?: number, distance?: number, duration?: number }) {
+        const db = await getDb();
+        await db.runAsync(
+            'UPDATE sets SET weight = ?, reps = ?, distance = ?, duration = ? WHERE id = ?',
+            data.weight ?? null, data.reps ?? null, data.distance ?? null, data.duration ?? null, setId
+        );
+    },
+
     async getWorkoutsForDate(date: string): Promise<Workout[]> {
         const db = await getDb();
         return await db.getAllAsync('SELECT * FROM workouts WHERE date = ?', date);
@@ -83,7 +91,23 @@ export const WorkoutRepository = {
         return await db.getAllAsync('SELECT * FROM workouts WHERE date >= ? AND date <= ? ORDER BY date ASC', startDate, endDate);
     },
 
-    // Get all sets for a specific workout
+    async getExerciseHistory(exerciseId: number): Promise<{ date: string; max_weight: number; max_reps: number; max_distance: number; max_duration: number }[]> {
+        const db = await getDb();
+        return await db.getAllAsync(`
+            SELECT 
+                w.date, 
+                MAX(s.weight) as max_weight,
+                MAX(s.reps) as max_reps,
+                MAX(s.distance) as max_distance,
+                MAX(s.duration) as max_duration
+            FROM sets s 
+            JOIN workouts w ON s.workout_id = w.id 
+            WHERE s.exercise_id = ? AND w.status = 'finished' 
+            GROUP BY w.date 
+            ORDER BY w.date ASC
+        `, exerciseId);
+    },
+
     async getSets(workoutId: number): Promise<(Set & { exercise_name: string })[]> {
         const db = await getDb();
         return await db.getAllAsync(`
