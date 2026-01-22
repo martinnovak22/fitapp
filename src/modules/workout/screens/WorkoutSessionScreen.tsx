@@ -11,12 +11,10 @@ import React, { useCallback, useState } from 'react';
 import {
     Alert,
     FlatList,
-    KeyboardAvoidingView,
-    Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { LogSetModal } from '../components/LogSetModal';
 import { WorkoutSetItem } from '../components/WorkoutSetItem';
@@ -259,37 +257,33 @@ export default function WorkoutSessionScreen() {
                         : 'Workout Session'
                 }
                 onDelete={handleDeleteWorkout}
-                rightAction={!isReadOnly ? { label: 'Finish', onPress: handleFinishWorkout, color: Theme.secondary } : undefined}
+                rightAction={!isReadOnly ? { label: 'Finish', onPress: handleFinishWorkout } : undefined}
             />
 
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.flex}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 80}
-            >
-                <FlatList
-                    data={exerciseNamesOrder}
-                    keyExtractor={name => name}
-                    contentContainerStyle={styles.listContent}
-                    ListEmptyComponent={
-                        <Text style={styles.emptyText}>
-                            {isReadOnly ? 'No sets logged.' : 'Tap + to add your first set.'}
-                        </Text>
-                    }
-                    renderItem={({ item: exerciseName }) => (
-                        <WorkoutExerciseGroup
-                            exerciseName={exerciseName}
-                            sets={groupedSets[exerciseName]}
-                            isReadOnly={isReadOnly}
-                            draggingId={draggingId}
-                            handleOpenEditModal={handleOpenEditModal}
-                            handleDeleteSet={handleDeleteSet}
-                            handleReorderSets={handleReorderSets}
-                            setDraggingId={setDraggingId}
-                        />
-                    )}
-                />
-            </KeyboardAvoidingView>
+
+            <FlatList
+                data={exerciseNamesOrder}
+                keyExtractor={name => name}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={
+                    <Text style={styles.emptyText}>
+                        {isReadOnly ? 'No sets logged.' : 'Tap + to add your first set.'}
+                    </Text>
+                }
+                renderItem={({ item: exerciseName }) => (
+                    <WorkoutExerciseGroup
+                        exerciseName={exerciseName}
+                        sets={groupedSets[exerciseName]}
+                        isReadOnly={isReadOnly}
+                        draggingId={draggingId}
+                        handleOpenEditModal={handleOpenEditModal}
+                        handleDeleteSet={handleDeleteSet}
+                        handleReorderSets={handleReorderSets}
+                        setDraggingId={setDraggingId}
+                    />
+                )}
+            />
+
 
             {!isReadOnly && (
                 <TouchableOpacity style={GlobalStyles.fab} onPress={handleOpenAddModal}>
@@ -308,7 +302,7 @@ export default function WorkoutSessionScreen() {
                 inputValues={inputValues}
                 updateInput={updateInput}
             />
-        </ScreenLayout>
+        </ScreenLayout >
     );
 }
 
@@ -369,9 +363,7 @@ function WorkoutExerciseGroup({
 }
 
 const styles = StyleSheet.create({
-    flex: {
-        flex: 1,
-    },
+
     listContent: {
         paddingBottom: 100,
     },

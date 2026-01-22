@@ -45,7 +45,7 @@ export default function HistoryScreen() {
                     <FontAwesome
                         name={item.status === 'finished' ? "check-circle" : "clock-o"}
                         size={24}
-                        color={item.status === 'finished' ? Theme.secondary : Theme.tint}
+                        color={item.status === 'finished' ? Theme.primary : Theme.secondary}
                     />
                 </View>
             </View>
@@ -59,7 +59,7 @@ export default function HistoryScreen() {
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={{ paddingBottom: 20 }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Theme.tint} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListEmptyComponent={<Text style={{ color: Theme.textSecondary, textAlign: 'center', marginTop: 50 }}>No workouts logged yet.</Text>}
             />
         </ScreenLayout>

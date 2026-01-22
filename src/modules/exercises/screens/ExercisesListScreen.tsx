@@ -80,18 +80,11 @@ export default function ExercisesListScreen() {
                             {formatExerciseType(item.type)}
                         </Text>
                     </View>
-
                     <View style={styles.icons}>
-                        <FontAwesome
-                            name={'bars'}
-                            size={14}
-                            color={Theme.textSecondary}
-                            style={styles.dragIcon}
-                        />
                         <FontAwesome
                             name={'chevron-right'}
                             size={12}
-                            color={Theme.textSecondary}
+                            color={Theme.primary}
                         />
                     </View>
                 </View>
@@ -100,13 +93,14 @@ export default function ExercisesListScreen() {
     );
 
     return (
-        <ScreenLayout>
+        <ScreenLayout style={{ padding: 0 }}>
             <FlatList
                 data={exercises}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={styles.listContent}
                 ItemSeparatorComponent={() => <View style={styles.separator} />}
+                style={{ padding: 16 }}
             />
 
             <TouchableOpacity

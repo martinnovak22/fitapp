@@ -43,8 +43,8 @@ export const GlobalStyles = StyleSheet.create({
     fab: {
         position: 'absolute',
         right: 20,
-        bottom: 30,
-        backgroundColor: Theme.tint,
+        bottom: 20,
+        backgroundColor: Theme.primary,
         width: 64,
         height: 64,
         borderRadius: 32,

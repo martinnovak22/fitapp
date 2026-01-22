@@ -159,9 +159,9 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
                 {graphWidth > 0 && processedData.length > 0 ? (
                     <LineChart
                         data={processedData}
-                        color={Theme.primary}
+                        color={Theme.tint}
                         thickness={3}
-                        dataPointsColor={Theme.primary}
+                        dataPointsColor={Theme.tint}
                         xAxisColor={Theme.border}
                         yAxisColor={Theme.border}
                         yAxisTextStyle={styles.axisText}
@@ -170,8 +170,8 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
                         stepValue={yAxisProps.stepValue}
                         maxValue={yAxisProps.maxValue}
                         areaChart
-                        startFillColor={Theme.primary}
-                        endFillColor={Theme.primary}
+                        startFillColor={Theme.tint}
+                        endFillColor={Theme.tint}
                         startOpacity={0.2}
                         endOpacity={0.01}
                         spacing={70}
@@ -186,25 +186,11 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
                         pointerConfig={{
                             activatePointersOnLongPress: true,
                             pointerStripUptoDataPoint: true,
-                            pointerStripColor: Theme.primary,
+                            pointerStripColor: Theme.tint,
                             pointerStripWidth: 2,
                             strokeDashArray: [2, 5],
-                            pointerColor: Theme.primary,
+                            pointerColor: Theme.tint,
                             radius: 5,
-                            pointerLabelComponent: (items: any) => {
-                                const val = items[0].value;
-                                let display = val.toString();
-                                if (selectedMetric === 'duration') display = formatDuration(val);
-                                else if (selectedMetric === 'distance') display = `${val}m`;
-                                else if (selectedMetric === 'weight') display = `${val}kg`;
-
-                                return (
-                                    <View style={styles.tooltip}>
-                                        <Text style={styles.tooltipText}>{display}</Text>
-                                        <Text style={styles.tooltipDate}>{items[0].label}</Text>
-                                    </View>
-                                );
-                            },
                         }}
                     />
                 ) : (
@@ -289,28 +275,6 @@ const styles = StyleSheet.create({
     axisText: {
         color: Theme.textSecondary,
         fontSize: 10,
-    },
-    tooltip: {
-        backgroundColor: Theme.surface,
-        padding: 8,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: Theme.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 80,
-        // Lift tooltip above point
-        transform: [{ translateY: -40 }, { translateX: -30 }]
-    },
-    tooltipText: {
-        color: Theme.text,
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    tooltipDate: {
-        color: Theme.textSecondary,
-        fontSize: 10,
-        marginTop: 2,
     },
     emptyState: {
         padding: 40,

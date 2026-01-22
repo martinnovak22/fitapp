@@ -25,6 +25,6 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 14,
-    color: Theme.tint,
+    color: Theme.primary,
   },
 });

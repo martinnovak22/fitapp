@@ -117,7 +117,7 @@ export function DraggableItem({
             elevation: isPressed.value ? 8 : 0,
             opacity: withSpring(isPressed.value ? activeOpacity : 1, { damping: 30, stiffness: 300 }),
         };
-    }, [activeScale, activeOpacity, activeIndexVal, translationYVal, index, itemCount, itemHeight, isPressed.value]);
+    }, [activeScale, activeOpacity, activeIndexVal, translationYVal, index, itemCount, itemHeight, isPressed]);
 
     return (
         <GestureDetector gesture={panGesture}>

@@ -10,7 +10,6 @@ interface ScreenHeaderProps {
     rightAction?: {
         label: string;
         onPress: () => void;
-        color?: string;
     };
 }
 
@@ -24,7 +23,7 @@ export const ScreenHeader = ({ title, onDelete, rightAction }: ScreenHeaderProps
             <View style={styles.actions}>
                 {rightAction && (
                     <TouchableOpacity onPress={rightAction.onPress} style={styles.textButton}>
-                        <Text style={[styles.actionText, { color: rightAction.color || Theme.text }]}>
+                        <Text style={[styles.actionText]}>
                             {rightAction.label}
                         </Text>
                     </TouchableOpacity>
@@ -60,10 +59,11 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: 8,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: Theme.primary,
     },
     actionText: {
         fontWeight: 'bold',
         fontSize: 16,
+        color: "#fff",
     }
 });

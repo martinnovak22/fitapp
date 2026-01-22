@@ -14,7 +14,7 @@ export default function TabLayout() {
     return (
         <Tabs
             screenOptions={{
-                tabBarActiveTintColor: Theme.tint,
+                tabBarActiveTintColor: Theme.primary,
                 tabBarStyle: {
                     backgroundColor: Theme.background,
                     borderTopColor: Theme.border,
@@ -45,9 +45,7 @@ export default function TabLayout() {
                 name="history"
                 listeners={({ navigation }) => ({
                     tabPress: (e) => {
-                        // Prevent default action
                         e.preventDefault();
-                        // Navigate to the tab's root route
                         navigation.navigate('history', { screen: 'index' });
                     },
                 })}

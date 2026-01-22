@@ -2,8 +2,8 @@ export const Colors = {
     dark: {
         background: '#121212',
         surface: '#252525',
-        primary: '#BB86FC', // Accessible purple, standard for dark themes
-        secondary: '#03DAC6',
+        primary: '#51a06fff',
+        secondary: '#077121ff',
         error: '#CF6679',
         text: '#E1E1E1',
         textSecondary: '#A0A0A0',

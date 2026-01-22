@@ -86,7 +86,6 @@ export default function WorkoutDashboardScreen() {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        tintColor={Theme.tint}
                     />
                 }
             >
@@ -170,7 +169,7 @@ export default function WorkoutDashboardScreen() {
                                     <FontAwesome
                                         name={workout.status === 'finished' ? "check-circle" : "clock-o"}
                                         size={24}
-                                        color={workout.status === 'finished' ? Theme.secondary : Theme.tint}
+                                        color={workout.status === 'finished' ? Theme.primary : Theme.secondary}
                                     />
                                 </View>
                             </View>
@@ -217,8 +216,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     dayCircleDone: {
-        backgroundColor: Theme.tint,
-        borderColor: Theme.tint,
+        backgroundColor: Theme.primary,
+        borderColor: Theme.primary,
     },
     dayCircleTodo: {
         backgroundColor: Theme.surface,
@@ -233,7 +232,7 @@ const styles = StyleSheet.create({
     },
 
     primaryButton: {
-        backgroundColor: Theme.tint,
+        backgroundColor: Theme.primary,
         padding: 16,
         borderRadius: 8,
         alignItems: 'center',
