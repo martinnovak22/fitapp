@@ -1,8 +1,10 @@
 import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
+import { DraggableItem } from '@/src/modules/core/components/DraggableItem';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
-import { formatExerciseType } from '@/src/utils/formatters';
+import { useSortableList } from '@/src/modules/core/hooks/useSortableList';
+import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -10,10 +12,10 @@ import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 
 export default function ExercisesListScreen() {
     const [exercises, setExercises] = useState<Exercise[]>([]);
+    const [draggingId, setDraggingId] = useState<number | null>(null);
+    const sortable = useSortableList();
 
     const loadExercises = async () => {
-        // Seed defaults first time if empty
-        await ExerciseRepository.seedDefaults();
         const data = await ExerciseRepository.getAll();
         setExercises(data);
     };
@@ -24,20 +26,77 @@ export default function ExercisesListScreen() {
         }, [])
     );
 
-    const renderItem = ({ item }: { item: Exercise }) => (
-        <TouchableOpacity onPress={() => router.push(`/(tabs)/exercises/${item.id}`)}>
-            <View style={GlobalStyles.card}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[GlobalStyles.text, { fontWeight: 'bold', fontSize: 18, marginBottom: 4 }]}>{item.name}</Text>
-                        <Text style={[GlobalStyles.subtitle, { fontSize: 13, opacity: 0.8 }]}>
-                            {item.muscle_group ? `${item.muscle_group} • ` : ''}{formatExerciseType(item.type)}
+    const handleReorder = async (fromIndex: number, translationY: number) => {
+        const ITEM_HEIGHT = 80;
+        const delta = Math.round(translationY / ITEM_HEIGHT);
+        const toIndex = Math.max(0, Math.min(exercises.length - 1, fromIndex + delta));
+
+        if (fromIndex === toIndex) {
+            sortable.activeIndex.value = -1;
+            sortable.translationY.value = 0;
+            return;
+        }
+
+        const newExercises = [...exercises];
+        const [moved] = newExercises.splice(fromIndex, 1);
+        newExercises.splice(toIndex, 0, moved);
+
+        const updated = newExercises.map((ex, idx) => ({ ...ex, position: idx }));
+        setExercises(updated);
+
+        await Promise.all(
+            updated.map(ex => ExerciseRepository.updatePosition(ex.id, ex.position))
+        );
+
+        sortable.activeIndex.value = -1;
+        sortable.translationY.value = 0;
+    };
+
+    const renderItem = ({ item, index }: { item: Exercise; index: number }) => (
+        <DraggableItem
+            index={index}
+            itemCount={exercises.length}
+            itemHeight={80}
+            onDrop={handleReorder}
+            onDragStart={() => setDraggingId(item.id)}
+            onDragEnd={() => setDraggingId(null)}
+            useLayoutAnimation={draggingId !== item.id}
+            style={GlobalStyles.card}
+            activeIndex={sortable.activeIndex}
+            translationY={sortable.translationY}
+        >
+            <TouchableOpacity
+                onPress={() => draggingId === null && router.push(`/(tabs)/exercises/${item.id}`)}
+            >
+                <View style={styles.row}>
+                    <View style={styles.content}>
+                        <Text style={[GlobalStyles.text, styles.title]}>
+                            {item.name}
+                        </Text>
+                        <Text style={styles.subtitle}>
+                            {item.muscle_group
+                                ? `${formatMuscleGroup(item.muscle_group)} • `
+                                : ''}
+                            {formatExerciseType(item.type)}
                         </Text>
                     </View>
-                    <FontAwesome name="chevron-right" size={14} color={Theme.textSecondary} />
+
+                    <View style={styles.icons}>
+                        <FontAwesome
+                            name={'bars'}
+                            size={14}
+                            color={Theme.textSecondary}
+                            style={styles.dragIcon}
+                        />
+                        <FontAwesome
+                            name={'chevron-right'}
+                            size={12}
+                            color={Theme.textSecondary}
+                        />
+                    </View>
                 </View>
-            </View>
-        </TouchableOpacity>
+            </TouchableOpacity>
+        </DraggableItem>
     );
 
     return (
@@ -46,17 +105,48 @@ export default function ExercisesListScreen() {
                 data={exercises}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
-                contentContainerStyle={{ paddingBottom: 80 }}
+                contentContainerStyle={styles.listContent}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
             />
 
             <TouchableOpacity
                 style={GlobalStyles.fab}
                 onPress={() => router.push('/(tabs)/exercises/add')}
             >
-                <FontAwesome name="plus" size={32} color={'white'} />
+                <FontAwesome name={'plus'} size={32} color={'white'} />
             </TouchableOpacity>
         </ScreenLayout>
     );
 }
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+    row: {
+        flexDirection: 'row',
+    },
+    content: {
+        flex: 1,
+    },
+    title: {
+        fontWeight: 'bold',
+        fontSize: 18,
+        marginBottom: 4,
+    },
+    subtitle: {
+        fontSize: 13,
+        color: Theme.textSecondary,
+    },
+    icons: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    dragIcon: {
+        opacity: 0.5,
+    },
+    listContent: {
+        paddingBottom: 80,
+    },
+    separator: {
+        height: 4,
+    },
+});

@@ -43,3 +43,5 @@ yarn-error.*
 
 .yarn
 .vscode
+
+.idea

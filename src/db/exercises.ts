@@ -8,52 +8,109 @@ export interface Exercise {
     type: ExerciseType;
     muscle_group?: string;
     photo_uri?: string;
+    position: number;
 }
 
 export const ExerciseRepository = {
     async getAll(): Promise<Exercise[]> {
         const db = await getDb();
-        return await db.getAllAsync('SELECT * FROM exercises ORDER BY name ASC');
+        return await db.getAllAsync<Exercise>(
+            'SELECT * FROM exercises ORDER BY position ASC, name ASC'
+        );
     },
 
-    async create(name: string, type: ExerciseType, muscleGroup?: string): Promise<number> {
+    async getById(id: number): Promise<Exercise | null> {
         const db = await getDb();
+        const result = await db.getFirstAsync<Exercise>(
+            'SELECT * FROM exercises WHERE id = ?',
+            id
+        );
+        return result ?? null;
+    },
+
+    async create(name: string, type: ExerciseType, muscle_group?: string): Promise<number> {
+        const db = await getDb();
+        const lastEx = await db.getFirstAsync<{ position: number }>(
+            'SELECT position FROM exercises ORDER BY position DESC LIMIT 1'
+        );
+        const nextPosition = lastEx ? lastEx.position + 1 : 0;
+
         const result = await db.runAsync(
-            'INSERT INTO exercises (name, type, muscle_group) VALUES (?, ?, ?)',
+            'INSERT INTO exercises (name, type, muscle_group, position) VALUES (?, ?, ?, ?)',
             name,
-            type,
-            muscleGroup ?? null
+            type.toLowerCase(),
+            muscle_group?.toLowerCase() ?? null,
+            nextPosition
         );
         return result.lastInsertRowId;
     },
 
-    async update(id: number, data: Partial<Exercise>) {
+    async update(id: number, data: Partial<Exercise>): Promise<void> {
         const db = await getDb();
-        const fields = [];
-        const values = [];
+        const fields: string[] = [];
+        const values: any[] = [];
 
-        if (data.name !== undefined) { fields.push('name = ?'); values.push(data.name); }
-        if (data.type !== undefined) { fields.push('type = ?'); values.push(data.type); }
-        if (data.muscle_group !== undefined) { fields.push('muscle_group = ?'); values.push(data.muscle_group); }
+        if (data.name !== undefined) {
+            fields.push('name = ?');
+            values.push(data.name);
+        }
+        if (data.type !== undefined) {
+            fields.push('type = ?');
+            values.push(data.type.toLowerCase());
+        }
+        if (data.muscle_group !== undefined) {
+            fields.push('muscle_group = ?');
+            values.push(data.muscle_group?.toLowerCase() ?? null);
+        }
+        if (data.position !== undefined) {
+            fields.push('position = ?');
+            values.push(data.position);
+        }
 
         if (fields.length === 0) return;
 
         values.push(id);
-        await db.runAsync(`UPDATE exercises SET ${fields.join(', ')} WHERE id = ?`, ...values);
+        await db.runAsync(
+            `UPDATE exercises SET ${fields.join(', ')} WHERE id = ?`,
+            ...values
+        );
     },
 
-    async delete(id: number) {
+    async updatePosition(id: number, position: number): Promise<void> {
+        const db = await getDb();
+        await db.runAsync(
+            'UPDATE exercises SET position = ? WHERE id = ?',
+            position,
+            id
+        );
+    },
+
+    async delete(id: number): Promise<void> {
         const db = await getDb();
         await db.runAsync('DELETE FROM exercises WHERE id = ?', id);
     },
 
-    async seedDefaults() {
+    async seedDefaults(): Promise<void> {
         const db = await getDb();
         const existing = await db.getAllAsync('SELECT id FROM exercises LIMIT 1');
+
         if (existing.length === 0) {
-            await db.runAsync("INSERT INTO exercises (name, type, muscle_group) VALUES ('Bench Press', 'Weight', 'Chest')");
-            await db.runAsync("INSERT INTO exercises (name, type, muscle_group) VALUES ('Pull Up', 'Bodyweight', 'Back')");
-            await db.runAsync("INSERT INTO exercises (name, type, muscle_group) VALUES ('Running', 'Cardio', 'Legs')");
+            const defaults = [
+                { name: 'Bench Press', type: 'weight', muscle_group: 'chest' },
+                { name: 'Pull Up', type: 'bodyweight', muscle_group: 'back' },
+                { name: 'Running', type: 'cardio', muscle_group: 'legs' }
+            ];
+
+            for (let i = 0; i < defaults.length; i++) {
+                const ex = defaults[i];
+                await db.runAsync(
+                    'INSERT INTO exercises (name, type, muscle_group, position) VALUES (?, ?, ?, ?)',
+                    ex.name,
+                    ex.type,
+                    ex.muscle_group,
+                    i
+                );
+            }
         }
     }
 };

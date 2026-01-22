@@ -18,6 +18,26 @@ export interface Set {
     distance?: number;
     duration?: number;
     rpe?: number;
+    position: number;
+}
+
+export interface SetData {
+    weight?: number;
+    reps?: number;
+    distance?: number;
+    duration?: number;
+}
+
+export interface ExerciseHistory {
+    date: string;
+    max_weight: number;
+    max_reps: number;
+    max_distance: number;
+    max_duration: number;
+}
+
+export interface SetWithExerciseName extends Set {
+    exercise_name: string;
 }
 
 export const WorkoutRepository = {
@@ -25,102 +45,153 @@ export const WorkoutRepository = {
         const db = await getDb();
         const result = await db.runAsync(
             'INSERT INTO workouts (date, start_time, status) VALUES (?, ?, ?)',
-            date, new Date().toISOString(), 'in_progress'
+            date,
+            new Date().toISOString(),
+            'in_progress'
         );
         return result.lastInsertRowId;
     },
 
-    async finish(id: number) {
+    async finish(id: number): Promise<void> {
         const db = await getDb();
         await db.runAsync(
             'UPDATE workouts SET end_time = ?, status = ? WHERE id = ?',
-            new Date().toISOString(), 'finished', id
+            new Date().toISOString(),
+            'finished',
+            id
         );
     },
 
-    async delete(id: number) {
+    async delete(id: number): Promise<void> {
         const db = await getDb();
         await db.runAsync('DELETE FROM workouts WHERE id = ?', id);
     },
 
-    async addSet(workoutId: number, exerciseId: number, data: { weight?: number, reps?: number, distance?: number, duration?: number }) {
+    async getById(id: number): Promise<Workout | null> {
         const db = await getDb();
-        await db.runAsync(
-            'INSERT INTO sets (workout_id, exercise_id, weight, reps, distance, duration) VALUES (?, ?, ?, ?, ?, ?)',
-            workoutId, exerciseId, data.weight ?? null, data.reps ?? null, data.distance ?? null, data.duration ?? null
+        const result = await db.getFirstAsync<Workout>(
+            'SELECT * FROM workouts WHERE id = ?',
+            id
         );
+        return result ?? null;
     },
 
-    async updateSet(setId: number, data: { weight?: number, reps?: number, distance?: number, duration?: number }) {
+    async getActiveWorkout(): Promise<Workout | null> {
         const db = await getDb();
-        await db.runAsync(
-            'UPDATE sets SET weight = ?, reps = ?, distance = ?, duration = ? WHERE id = ?',
-            data.weight ?? null, data.reps ?? null, data.distance ?? null, data.duration ?? null, setId
+        const result = await db.getFirstAsync<Workout>(
+            'SELECT * FROM workouts WHERE status = ? LIMIT 1',
+            'in_progress'
+        );
+        return result ?? null;
+    },
+
+    async getAllWorkouts(): Promise<Workout[]> {
+        const db = await getDb();
+        return await db.getAllAsync<Workout>(
+            'SELECT * FROM workouts ORDER BY date DESC, start_time DESC'
         );
     },
 
     async getWorkoutsForDate(date: string): Promise<Workout[]> {
         const db = await getDb();
-        return await db.getAllAsync('SELECT * FROM workouts WHERE date = ?', date);
-    },
-
-    async getActiveWorkout(): Promise<Workout | null> {
-        const db = await getDb();
-        const result = await db.getAllAsync<Workout>('SELECT * FROM workouts WHERE status = ? LIMIT 1', 'in_progress');
-        return result.length > 0 ? result[0] : null;
-    },
-
-    async getAllWorkouts(): Promise<Workout[]> {
-        const db = await getDb();
-        return await db.getAllAsync('SELECT * FROM workouts ORDER BY date DESC, start_time DESC');
-    },
-
-    async getRecentWorkouts(limit: number = 3): Promise<Workout[]> {
-        const db = await getDb();
-        return await db.getAllAsync('SELECT * FROM workouts WHERE status = ? ORDER BY date DESC, start_time DESC LIMIT ?', 'finished', limit);
-    },
-
-    async getById(id: number): Promise<Workout | null> {
-        const db = await getDb();
-        const result = await db.getAllAsync<Workout>('SELECT * FROM workouts WHERE id = ?', id);
-        return result.length > 0 ? result[0] : null;
+        return await db.getAllAsync<Workout>(
+            'SELECT * FROM workouts WHERE date = ?',
+            date
+        );
     },
 
     async getWorkoutsForPeriod(startDate: string, endDate: string): Promise<Workout[]> {
         const db = await getDb();
-        return await db.getAllAsync('SELECT * FROM workouts WHERE date >= ? AND date <= ? ORDER BY date ASC', startDate, endDate);
+        return await db.getAllAsync<Workout>(
+            'SELECT * FROM workouts WHERE date >= ? AND date <= ? ORDER BY date ASC',
+            startDate,
+            endDate
+        );
     },
 
-    async getExerciseHistory(exerciseId: number): Promise<{ date: string; max_weight: number; max_reps: number; max_distance: number; max_duration: number }[]> {
+    async getRecentWorkouts(limit: number = 3): Promise<Workout[]> {
         const db = await getDb();
-        return await db.getAllAsync(`
-            SELECT 
-                w.date, 
+        return await db.getAllAsync<Workout>(
+            'SELECT * FROM workouts WHERE status = ? ORDER BY date DESC, start_time DESC LIMIT ?',
+            'finished',
+            limit
+        );
+    },
+
+    async addSet(workoutId: number, exerciseId: number, data: SetData): Promise<void> {
+        const db = await getDb();
+
+        const lastSet = await db.getFirstAsync<{ position: number }>(
+            'SELECT position FROM sets WHERE workout_id = ? ORDER BY position DESC LIMIT 1',
+            workoutId
+        );
+        const nextPosition = lastSet ? lastSet.position + 1 : 0;
+
+        await db.runAsync(
+            'INSERT INTO sets (workout_id, exercise_id, weight, reps, distance, duration, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            workoutId,
+            exerciseId,
+            data.weight ?? null,
+            data.reps ?? null,
+            data.distance ?? null,
+            data.duration ?? null,
+            nextPosition
+        );
+    },
+
+    async updateSet(setId: number, data: SetData): Promise<void> {
+        const db = await getDb();
+        await db.runAsync(
+            'UPDATE sets SET weight = ?, reps = ?, distance = ?, duration = ? WHERE id = ?',
+            data.weight ?? null,
+            data.reps ?? null,
+            data.distance ?? null,
+            data.duration ?? null,
+            setId
+        );
+    },
+
+    async deleteSet(setId: number): Promise<void> {
+        const db = await getDb();
+        await db.runAsync('DELETE FROM sets WHERE id = ?', setId);
+    },
+
+    async updateSetPosition(setId: number, position: number): Promise<void> {
+        const db = await getDb();
+        await db.runAsync(
+            'UPDATE sets SET position = ? WHERE id = ?',
+            position,
+            setId
+        );
+    },
+
+    async getSets(workoutId: number): Promise<SetWithExerciseName[]> {
+        const db = await getDb();
+        return await db.getAllAsync<SetWithExerciseName>(
+            `SELECT s.*, e.name as exercise_name
+             FROM sets s
+             JOIN exercises e ON s.exercise_id = e.id
+             WHERE s.workout_id = ?
+             ORDER BY s.position ASC, s.id ASC`,
+            workoutId
+        );
+    },
+
+    async getExerciseHistory(exerciseId: number): Promise<ExerciseHistory[]> {
+        const db = await getDb();
+        return await db.getAllAsync<ExerciseHistory>(
+            `SELECT
+                w.date,
                 MAX(s.weight) as max_weight,
                 MAX(s.reps) as max_reps,
                 MAX(s.distance) as max_distance,
                 MAX(s.duration) as max_duration
-            FROM sets s 
-            JOIN workouts w ON s.workout_id = w.id 
-            WHERE s.exercise_id = ? AND w.status = 'finished' 
-            GROUP BY w.date 
-            ORDER BY w.date ASC
-        `, exerciseId);
-    },
-
-    async getSets(workoutId: number): Promise<(Set & { exercise_name: string })[]> {
-        const db = await getDb();
-        return await db.getAllAsync(`
-            SELECT s.*, e.name as exercise_name 
-            FROM sets s 
-            JOIN exercises e ON s.exercise_id = e.id 
-            WHERE s.workout_id = ?
-            ORDER BY s.id ASC
-        `, workoutId);
-    },
-
-    async deleteSet(setId: number) {
-        const db = await getDb();
-        await db.runAsync('DELETE FROM sets WHERE id = ?', setId);
+             FROM sets s
+             JOIN workouts w ON s.workout_id = w.id
+             WHERE s.exercise_id = ? AND w.status = 'finished'
+             GROUP BY w.date
+             ORDER BY w.date ASC`,
+            exerciseId
+        );
     }
 };

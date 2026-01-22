@@ -1,6 +1,7 @@
 import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { ExerciseRepository, ExerciseType } from '@/src/db/exercises';
+import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -14,47 +15,78 @@ export default function AddExerciseScreen() {
     const [name, setName] = useState('');
     const [muscle, setMuscle] = useState('');
     const [type, setType] = useState<ExerciseType>('weight');
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (isEditing) {
-            const load = async () => {
-                const all = await ExerciseRepository.getAll();
-                const found = all.find(e => e.id === Number(id));
-                if (found) {
-                    setName(found.name);
-                    setMuscle(found.muscle_group || '');
-                    setType(found.type);
-                }
-            };
-            load();
+            loadExercise();
         }
     }, [id]);
 
+    const loadExercise = async () => {
+        const exercise = await ExerciseRepository.getById(Number(id));
+        if (exercise) {
+            setName(exercise.name);
+            setMuscle(exercise.muscle_group || '');
+            setType(exercise.type);
+        }
+    };
+
     const handleSave = async () => {
-        if (!name) {
+        if (!name.trim()) {
             Alert.alert('Required', 'Please enter an exercise name.');
             return;
         }
 
+        setIsLoading(true);
         try {
             if (isEditing) {
                 await ExerciseRepository.update(Number(id), {
-                    name,
-                    muscle_group: muscle,
-                    type
+                    name: name.trim(),
+                    muscle_group: muscle.trim().toLowerCase() || undefined,
+                    type: type.toLowerCase() as ExerciseType
                 });
             } else {
-                await ExerciseRepository.create(name, type, muscle);
+                await ExerciseRepository.create(
+                    name.trim(),
+                    type.toLowerCase() as ExerciseType,
+                    muscle.trim().toLowerCase() || undefined
+                );
             }
             router.back();
         } catch (error) {
-            console.error(error);
+            console.error('Failed to save exercise:', error);
             Alert.alert('Error', 'Failed to save exercise.');
+        } finally {
+            setIsLoading(false);
         }
+    };
+
+    const handleDelete = () => {
+        Alert.alert(
+            'Delete Exercise',
+            'Are you sure? This will not delete past workout data but will remove it from the list.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await ExerciseRepository.delete(Number(id));
+                        router.dismissAll();
+                        router.replace('/(tabs)/exercises');
+                    }
+                }
+            ]
+        );
     };
 
     return (
         <ScreenLayout>
+            <ScreenHeader
+                title={isEditing ? 'Edit Exercise' : 'Add Exercise'}
+                onDelete={isEditing ? handleDelete : undefined}
+            />
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
@@ -103,7 +135,7 @@ export default function AddExerciseScreen() {
                                             styles.typeButtonText,
                                             isActive && styles.typeButtonActiveText
                                         ]}>
-                                            {t.label}
+                                            {formatExerciseTypeCapitalized(t.label)}
                                         </Text>
                                     </TouchableOpacity>
                                 );
@@ -148,8 +180,14 @@ export default function AddExerciseScreen() {
                         )}
 
                         <Animated.View layout={LinearTransition.duration(300)}>
-                            <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-                                <Text style={styles.saveButtonText}>{isEditing ? 'Save Changes' : 'Create Exercise'}</Text>
+                            <TouchableOpacity
+                                onPress={handleSave}
+                                style={[styles.saveButton, isLoading && { opacity: 0.7 }]}
+                                disabled={isLoading}
+                            >
+                                <Text style={styles.saveButtonText}>
+                                    {isLoading ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Exercise')}
+                                </Text>
                             </TouchableOpacity>
                         </Animated.View>
                     </Animated.View>
@@ -159,6 +197,8 @@ export default function AddExerciseScreen() {
     );
 }
 
+// Simple helper since we are inside the file and don't want to over-import
+const formatExerciseTypeCapitalized = (val: string) => val;
 
 const styles = StyleSheet.create({
     label: {
@@ -197,7 +237,7 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: Theme.border,
+        borderColor: 'rgba(255,255,255,0.1)',
         alignItems: 'center',
     },
     typeButtonActive: {
@@ -205,42 +245,37 @@ const styles = StyleSheet.create({
         borderColor: Theme.tint,
     },
     typeButtonText: {
-        color: Theme.textSecondary,
-        fontWeight: '600',
         fontSize: 12,
+        color: Theme.textSecondary,
+        fontWeight: '500',
     },
     typeButtonActiveText: {
         color: 'white',
     },
     subToggleContainer: {
         flexDirection: 'row',
-        backgroundColor: Theme.background,
-        borderRadius: 10,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderRadius: 8,
         padding: 4,
-        alignSelf: 'flex-start',
-        width: '100%'
     },
     subToggleButton: {
         flex: 1,
-        paddingVertical: 6,
+        paddingVertical: 5,
         alignItems: 'center',
-        borderRadius: 8,
+        borderRadius: 6,
     },
     subToggleButtonActive: {
-        backgroundColor: Theme.surface,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
-        elevation: 2,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     subToggleText: {
         color: Theme.textSecondary,
-        fontWeight: '600',
         fontSize: 12,
+        fontWeight: '500',
     },
     subToggleTextActive: {
-        color: Theme.tint,
-    }
+        color: Theme.text,
+        fontWeight: 'bold',
+    },
 });
-

@@ -2,6 +2,15 @@ import * as SQLite from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { DATABASE_NAME, migrateDbIfNeeded } from './schema';
 
+let _db: SQLite.SQLiteDatabase | null = null;
+
+export async function getDb(): Promise<SQLite.SQLiteDatabase> {
+    if (!_db) {
+        _db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+    }
+    return _db;
+}
+
 export function useDatabaseInit() {
     const [dbLoaded, setDbLoaded] = useState(false);
     const [error, setError] = useState<Error | null>(null);
@@ -13,8 +22,9 @@ export function useDatabaseInit() {
                 await migrateDbIfNeeded(db);
                 setDbLoaded(true);
             } catch (e) {
-                setError(e as Error);
-                console.error("Database initialization failed:", e);
+                const error = e instanceof Error ? e : new Error(String(e));
+                setError(error);
+                console.error('Database initialization failed:', error);
             }
         }
 
@@ -23,12 +33,3 @@ export function useDatabaseInit() {
 
     return { dbLoaded, error };
 }
-
-let _db: SQLite.SQLiteDatabase | null = null;
-
-export const getDb = async () => {
-    if (!_db) {
-        _db = await SQLite.openDatabaseAsync(DATABASE_NAME);
-    }
-    return _db;
-};

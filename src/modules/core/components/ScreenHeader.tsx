@@ -10,13 +10,11 @@ interface ScreenHeaderProps {
     rightAction?: {
         label: string;
         onPress: () => void;
-        color?: string; // Defaults to Theme.secondary
+        color?: string;
     };
-    /* Optional content to render on the right if rightAction is not enough */
-    rightElement?: React.ReactNode;
 }
 
-export const ScreenHeader = ({ title, onDelete, rightAction, rightElement }: ScreenHeaderProps) => {
+export const ScreenHeader = ({ title, onDelete, rightAction }: ScreenHeaderProps) => {
     return (
         <View style={styles.container}>
             <Text style={[GlobalStyles.title, { flex: 1, marginBottom: 0 }]} numberOfLines={1}>
@@ -24,24 +22,19 @@ export const ScreenHeader = ({ title, onDelete, rightAction, rightElement }: Scr
             </Text>
 
             <View style={styles.actions}>
-                {/* Delete Button (Icon) */}
-                {onDelete && (
-                    <TouchableOpacity onPress={onDelete} style={styles.iconButton}>
-                        <FontAwesome name="trash" size={24} color={Theme.error} />
-                    </TouchableOpacity>
-                )}
-
-                {/* Right Text Action (e.g. Finish) */}
                 {rightAction && (
                     <TouchableOpacity onPress={rightAction.onPress} style={styles.textButton}>
-                        <Text style={[styles.actionText, { color: rightAction.color || Theme.secondary }]}>
+                        <Text style={[styles.actionText, { color: rightAction.color || Theme.text }]}>
                             {rightAction.label}
                         </Text>
                     </TouchableOpacity>
                 )}
 
-                {/* Custom Right Element */}
-                {rightElement}
+                {onDelete && (
+                    <TouchableOpacity onPress={onDelete} style={styles.iconButton}>
+                        <FontAwesome name="trash" size={24} color={Theme.error} />
+                    </TouchableOpacity>
+                )}
             </View>
         </View>
     );

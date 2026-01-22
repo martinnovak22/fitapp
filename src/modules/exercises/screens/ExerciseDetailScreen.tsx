@@ -4,7 +4,7 @@ import { Exercise, ExerciseRepository } from '@/src/db/exercises';
 import { WorkoutRepository } from '@/src/db/workouts';
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
-import { formatExerciseType } from '@/src/utils/formatters';
+import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -83,7 +83,7 @@ export default function ExerciseDetailScreen() {
 
                     <View style={{ marginBottom: 16 }}>
                         <Text style={[GlobalStyles.subtitle, { color: Theme.textSecondary }]}>Muscle Group</Text>
-                        <Text style={GlobalStyles.text}>{exercise.muscle_group || 'Not specified'}</Text>
+                        <Text style={GlobalStyles.text}>{exercise.muscle_group ? formatMuscleGroup(exercise.muscle_group) : 'Not specified'}</Text>
                     </View>
 
                     {historyData.length > 0 ? (
