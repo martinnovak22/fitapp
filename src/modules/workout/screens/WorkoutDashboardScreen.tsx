@@ -89,8 +89,15 @@ export default function WorkoutDashboardScreen() {
                     />
                 }
             >
-                <View style={[GlobalStyles.card, styles.sectionCard]}>
-                    <Text style={styles.sectionTitle}>This Week</Text>
+                <TouchableOpacity
+                    style={[GlobalStyles.card, styles.sectionCard]}
+                    onPress={() => router.push('/workout/calendar')}
+                    activeOpacity={0.7}
+                >
+                    <View style={styles.headerRow}>
+                        <Text style={styles.sectionTitle}>This Week</Text>
+                        <FontAwesome name="chevron-right" size={14} color={Theme.primary} />
+                    </View>
 
                     <View style={styles.weekRow}>
                         {consistency.map(day => (
@@ -110,7 +117,7 @@ export default function WorkoutDashboardScreen() {
                             </View>
                         ))}
                     </View>
-                </View>
+                </TouchableOpacity>
 
                 <View style={GlobalStyles.card}>
                     <Text style={[styles.sectionTitle, { marginBottom: 2 }]}>
@@ -192,6 +199,13 @@ const styles = StyleSheet.create({
     sectionTitle: {
         ...GlobalStyles.subtitle,
         color: Theme.text,
+        marginBottom: 0,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
     },
 
     weekRow: {
