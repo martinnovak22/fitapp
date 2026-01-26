@@ -7,7 +7,7 @@ export interface Exercise {
     name: string;
     type: ExerciseType;
     muscle_group?: string;
-    photo_uri?: string;
+    photo_uri?: string | null;
     position: number;
 }
 
@@ -28,7 +28,7 @@ export const ExerciseRepository = {
         return result ?? null;
     },
 
-    async create(name: string, type: ExerciseType, muscle_group?: string): Promise<number> {
+    async create(name: string, type: ExerciseType, muscle_group?: string, photo_uri?: string): Promise<number> {
         const db = await getDb();
         const lastEx = await db.getFirstAsync<{ position: number }>(
             'SELECT position FROM exercises ORDER BY position DESC LIMIT 1'
@@ -36,10 +36,11 @@ export const ExerciseRepository = {
         const nextPosition = lastEx ? lastEx.position + 1 : 0;
 
         const result = await db.runAsync(
-            'INSERT INTO exercises (name, type, muscle_group, position) VALUES (?, ?, ?, ?)',
+            'INSERT INTO exercises (name, type, muscle_group, photo_uri, position) VALUES (?, ?, ?, ?, ?)',
             name,
             type.toLowerCase(),
             muscle_group?.toLowerCase() ?? null,
+            photo_uri ?? null,
             nextPosition
         );
         return result.lastInsertRowId;
@@ -61,6 +62,10 @@ export const ExerciseRepository = {
         if (data.muscle_group !== undefined) {
             fields.push('muscle_group = ?');
             values.push(data.muscle_group?.toLowerCase() ?? null);
+        }
+        if (data.photo_uri !== undefined) {
+            fields.push('photo_uri = ?');
+            values.push(data.photo_uri ?? null);
         }
         if (data.position !== undefined) {
             fields.push('position = ?');

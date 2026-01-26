@@ -120,7 +120,7 @@ export default function WorkoutDashboardScreen() {
                 </TouchableOpacity>
 
                 <View style={GlobalStyles.card}>
-                    <Text style={[styles.sectionTitle, { marginBottom: 2 }]}>
+                    <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>
                         {activeWorkout ? 'Active Session' : 'Ready to train?'}
                     </Text>
 
@@ -145,44 +145,49 @@ export default function WorkoutDashboardScreen() {
                     )}
                 </View>
 
-                <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Recent Activity</Text>
+                <View style={GlobalStyles.card}>
 
-                {allWorkouts.length === 0 ? (
-                    <Text style={styles.mutedText}>No recent workouts.</Text>
-                ) : (
-                    allWorkouts.map(workout => (
-                        <TouchableOpacity
-                            key={workout.id}
-                            onPress={() => router.push(`/(tabs)/history/${workout.id}`)}
-                        >
-                            <View style={[GlobalStyles.card, styles.recentCard]}>
-                                <View style={styles.recentRow}>
-                                    <View style={styles.recentLeft}>
-                                        <Text style={[GlobalStyles.text, { fontWeight: 'bold' }]}>
-                                            {new Date(workout.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(workout.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
-                                        </Text>
+                    <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Recent Activity</Text>
 
-                                        <Text style={styles.recentMeta}>
-                                            {workout.end_time
-                                                ? `${new Date(workout.start_time).toLocaleTimeString([],
-                                                    { hour: '2-digit', minute: '2-digit' }
-                                                )} - ${new Date(workout.end_time).toLocaleTimeString([],
-                                                    { hour: '2-digit', minute: '2-digit' }
-                                                )}`
-                                                : 'Incomplete'}
-                                        </Text>
+                    {allWorkouts.length === 0 ? (
+                        <View style={styles.noWorkoutContainer}>
+                            <Text style={styles.noWorkoutText}>No workouts recorded</Text>
+                        </View>
+                    ) : (
+                        allWorkouts.map(workout => (
+                            <TouchableOpacity
+                                key={workout.id}
+                                onPress={() => router.push(`/(tabs)/history/${workout.id}`)}
+                            >
+                                <View style={[GlobalStyles.card]}>
+                                    <View style={styles.recentRow}>
+                                        <View style={styles.recentLeft}>
+                                            <Text style={[GlobalStyles.text, { fontWeight: 'bold' }]}>
+                                                {new Date(workout.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(workout.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
+                                            </Text>
+
+                                            <Text style={styles.recentMeta}>
+                                                {workout.end_time
+                                                    ? `${new Date(workout.start_time).toLocaleTimeString([],
+                                                        { hour: '2-digit', minute: '2-digit' }
+                                                    )} - ${new Date(workout.end_time).toLocaleTimeString([],
+                                                        { hour: '2-digit', minute: '2-digit' }
+                                                    )}`
+                                                    : 'Incomplete'}
+                                            </Text>
+                                        </View>
+
+                                        <FontAwesome
+                                            name={workout.status === 'finished' ? "check-circle" : "clock-o"}
+                                            size={24}
+                                            color={workout.status === 'finished' ? Theme.primary : Theme.secondary}
+                                        />
                                     </View>
-
-                                    <FontAwesome
-                                        name={workout.status === 'finished' ? "check-circle" : "clock-o"}
-                                        size={24}
-                                        color={workout.status === 'finished' ? Theme.primary : Theme.secondary}
-                                    />
                                 </View>
-                            </View>
-                        </TouchableOpacity>
-                    ))
-                )}
+                            </TouchableOpacity>
+                        ))
+                    )}
+                </View>
             </ScrollView>
         </ScreenLayout>
     );
@@ -264,9 +269,18 @@ const styles = StyleSheet.create({
         ...GlobalStyles.text,
         color: Theme.textSecondary,
     },
-
-    recentCard: {
-        marginBottom: 8,
+    noWorkoutContainer: {
+        padding: 40,
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.02)',
+        borderRadius: 12,
+        borderStyle: 'dashed',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
+    noWorkoutText: {
+        ...GlobalStyles.text,
+        color: Theme.textSecondary,
     },
     recentRow: {
         flexDirection: 'row',

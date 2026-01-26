@@ -27,7 +27,7 @@ interface MarkedDates {
 export default function CalendarScreen() {
     const [workouts, setWorkouts] = useState<Workout[]>([]);
     const [markedDates, setMarkedDates] = useState<MarkedDates>({});
-    const [selectedDate, setSelectedDate] = useState<string | null>(null);
+    const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
     const [dayWorkouts, setDayWorkouts] = useState<Workout[]>([]);
     const [modalWorkout, setModalWorkout] = useState<Workout | null>(null);
     const [workoutSets, setWorkoutSets] = useState<{ exercise_name: string; count: number }[]>([]);
@@ -230,7 +230,6 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingTop: 20,
         paddingBottom: 40,
     },
     calendarCard: {

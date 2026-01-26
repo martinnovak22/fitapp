@@ -6,9 +6,10 @@ import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useIsFocused } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph';
 
 
@@ -16,22 +17,25 @@ export default function ExerciseDetailScreen() {
     const { id } = useLocalSearchParams();
     const [exercise, setExercise] = useState<Exercise | null>(null);
     const [historyData, setHistoryData] = useState<any[]>([]);
+    const isFocused = useIsFocused();
+
+    const loadData = useCallback(async () => {
+        if (id) {
+            const exercise = await ExerciseRepository.getById(Number(id));
+            setExercise(exercise || null);
+
+            if (exercise) {
+                const data = await WorkoutRepository.getExerciseHistory(exercise.id);
+                setHistoryData(data);
+            }
+        }
+    }, [id]);
 
     useEffect(() => {
-        const load = async () => {
-            if (id) {
-                const all = await ExerciseRepository.getAll();
-                const found = all.find(e => e.id === Number(id));
-                setExercise(found || null);
-
-                if (found) {
-                    const data = await WorkoutRepository.getExerciseHistory(found.id);
-                    setHistoryData(data);
-                }
-            }
-        };
-        load();
-    }, [id]);
+        if (isFocused) {
+            loadData();
+        }
+    }, [isFocused, loadData]);
 
 
 
@@ -81,10 +85,20 @@ export default function ExerciseDetailScreen() {
                         <Text style={GlobalStyles.text}>{formatExerciseType(exercise.type)}</Text>
                     </View>
 
-                    <View style={{ marginBottom: 16 }}>
+                    <View style={{ marginBottom: 20 }}>
                         <Text style={[GlobalStyles.subtitle, { color: Theme.textSecondary }]}>Muscle Group</Text>
                         <Text style={GlobalStyles.text}>{exercise.muscle_group ? formatMuscleGroup(exercise.muscle_group) : 'Not specified'}</Text>
                     </View>
+
+                    {exercise.photo_uri && (
+                        <View style={styles.photoContainer}>
+                            <Image
+                                key={exercise.photo_uri}
+                                source={{ uri: exercise.photo_uri }}
+                                style={styles.photo}
+                            />
+                        </View>
+                    )}
 
                     {historyData.length > 0 ? (
                         <ExerciseHistoryGraph
@@ -104,4 +118,20 @@ export default function ExerciseDetailScreen() {
     );
 }
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+    photoContainer: {
+        width: '100%',
+        height: 200,
+        marginBottom: 24,
+        borderRadius: 12,
+        overflow: 'hidden',
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
+    photo: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+});

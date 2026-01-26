@@ -186,7 +186,6 @@ export const LogSetModal = ({
     }, []);
 
     const animatedStyle = useAnimatedStyle(() => {
-        console.log(keyboardHeight.value)
         return {
             transform: [{ translateY: -keyboardHeight.value / 2 }],
         };

@@ -3,9 +3,12 @@ import { GlobalStyles } from '@/src/constants/Styles';
 import { ExerciseRepository, ExerciseType } from '@/src/db/exercises';
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 export default function AddExerciseScreen() {
@@ -15,6 +18,7 @@ export default function AddExerciseScreen() {
     const [name, setName] = useState('');
     const [muscle, setMuscle] = useState('');
     const [type, setType] = useState<ExerciseType>('weight');
+    const [photoUri, setPhotoUri] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -29,7 +33,54 @@ export default function AddExerciseScreen() {
             setName(exercise.name);
             setMuscle(exercise.muscle_group || '');
             setType(exercise.type);
+            setPhotoUri(exercise.photo_uri || null);
         }
+    };
+
+    const handlePickImage = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission needed', 'Please allow camera access to take a photo.');
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.7,
+        });
+
+        if (!result.canceled) {
+            setPhotoUri(result.assets[0].uri);
+        }
+    };
+
+    const savePhotoPermanently = async (uri: string) => {
+        const docDir = (FileSystem as any).documentDirectory;
+        if (!docDir) return uri;
+
+        if (!uri || uri.startsWith('file:///')) {
+            // Check if it's already in permanent storage
+            if (uri.includes(docDir)) return uri;
+        }
+
+        const filename = `${Date.now()}.jpg`;
+        const dest = `${docDir}exercises/${filename}`;
+
+        // Ensure directory exists
+        const dir = `${docDir}exercises/`;
+        const dirInfo = await FileSystem.getInfoAsync(dir);
+        if (!dirInfo.exists) {
+            await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+        }
+
+        await FileSystem.copyAsync({
+            from: uri,
+            to: dest
+        });
+
+        return dest;
     };
 
     const handleSave = async () => {
@@ -40,17 +91,25 @@ export default function AddExerciseScreen() {
 
         setIsLoading(true);
         try {
+            let finalPhotoUri = photoUri;
+            const docDir = (FileSystem as any).documentDirectory;
+            if (photoUri && docDir && !photoUri.includes(docDir)) {
+                finalPhotoUri = await savePhotoPermanently(photoUri);
+            }
+
             if (isEditing) {
                 await ExerciseRepository.update(Number(id), {
                     name: name.trim(),
                     muscle_group: muscle.trim().toLowerCase() || undefined,
-                    type: type.toLowerCase() as ExerciseType
+                    type: type.toLowerCase() as ExerciseType,
+                    photo_uri: finalPhotoUri
                 });
             } else {
                 await ExerciseRepository.create(
                     name.trim(),
                     type.toLowerCase() as ExerciseType,
-                    muscle.trim().toLowerCase() || undefined
+                    muscle.trim().toLowerCase() || undefined,
+                    finalPhotoUri ?? undefined
                 );
             }
             router.back();
@@ -175,6 +234,26 @@ export default function AddExerciseScreen() {
                         </Animated.View>
                     )}
 
+                    <Text style={[GlobalStyles.subtitle, { marginTop: 24 }]}>Exercise Photo</Text>
+                    <View style={styles.photoSection}>
+                        {photoUri ? (
+                            <View style={styles.photoWrapper}>
+                                <Image source={{ uri: photoUri }} style={styles.photo} />
+                                <TouchableOpacity
+                                    style={styles.removePhotoButton}
+                                    onPress={() => setPhotoUri(null)}
+                                >
+                                    <FontAwesome name="times-circle" size={24} color="#FF6B6B" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity style={styles.addPhotoButton} onPress={handlePickImage}>
+                                <FontAwesome name="camera" size={30} color={Theme.primary} />
+                                <Text style={styles.addPhotoText}>Add Photo</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
                     <Animated.View layout={LinearTransition.duration(300)}>
                         <TouchableOpacity
                             onPress={handleSave}
@@ -219,6 +298,47 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: 'center',
         marginTop: 24,
+    },
+    photoSection: {
+        marginTop: 12,
+        marginBottom: 8,
+        alignItems: 'center',
+    },
+    addPhotoButton: {
+        width: '100%',
+        height: 120,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.05)',
+        borderStyle: 'dashed',
+        backgroundColor: 'rgba(255,255,255,0.02)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+    },
+    addPhotoText: {
+        color: Theme.primary,
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    photoWrapper: {
+        width: '100%',
+        height: 200,
+        borderRadius: 12,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    photo: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    removePhotoButton: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        borderRadius: 12,
     },
     saveButtonText: {
         color: 'white',

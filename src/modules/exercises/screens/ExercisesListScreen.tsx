@@ -8,7 +8,7 @@ import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ExercisesListScreen() {
     const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -69,6 +69,13 @@ export default function ExercisesListScreen() {
                 onPress={() => draggingId === null && router.push(`/(tabs)/exercises/${item.id}`)}
             >
                 <View style={styles.row}>
+                    {item.photo_uri ? (
+                        <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
+                    ) : (
+                        <View style={[styles.thumbnail, styles.placeholderThumbnail]}>
+                            <FontAwesome name="camera" size={20} color="rgba(255,255,255,0.2)" />
+                        </View>
+                    )}
                     <View style={styles.content}>
                         <Text style={[GlobalStyles.text, styles.title]}>
                             {item.name}
@@ -128,6 +135,19 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 13,
         color: Theme.textSecondary,
+    },
+    thumbnail: {
+        width: 50,
+        height: 50,
+        borderRadius: 8,
+        marginRight: 12,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+    },
+    placeholderThumbnail: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)',
     },
     icons: {
         flexDirection: 'row',
