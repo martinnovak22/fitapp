@@ -1,11 +1,13 @@
 import { Theme } from '@/src/constants/Colors';
-import { GlobalStyles } from '@/src/constants/Styles';
 import { Workout, WorkoutRepository } from '@/src/db/workouts';
+import { Card } from '@/src/modules/core/components/Card';
+import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import { Typography } from '@/src/modules/core/components/Typography';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { FlatList, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 export default function HistoryScreen() {
     const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -29,27 +31,29 @@ export default function HistoryScreen() {
     };
 
     const renderItem = ({ item }: { item: Workout }) => (
-        <TouchableOpacity onPress={() => router.push(`/(tabs)/history/${item.id}`)}>
-            <View style={GlobalStyles.card}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <View>
-                        <Text style={[GlobalStyles.text, { fontWeight: 'bold' }]}>
-                            {new Date(item.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(item.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
-                        </Text>
-                        <Text style={{ color: Theme.textSecondary, marginTop: 4 }}>
-                            {item.start_time ? new Date(item.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                            {item.end_time ? ` - ${new Date(item.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' (In Progress)'}
-                        </Text>
-                        {item.note && <Text style={{ color: Theme.textSecondary, fontStyle: 'italic', marginTop: 4 }}>"{item.note}"</Text>}
-                    </View>
-                    <FontAwesome
-                        name={item.status === 'finished' ? "check-circle" : "clock-o"}
-                        size={24}
-                        color={item.status === 'finished' ? Theme.primary : Theme.secondary}
-                    />
+        <Card onPress={() => router.push(`/(tabs)/history/${item.id}`)}>
+            <View style={styles.workoutItem}>
+                <View style={styles.workoutInfo}>
+                    <Typography.Body style={styles.workoutDate}>
+                        {new Date(item.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(item.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
+                    </Typography.Body>
+                    <Typography.Meta style={styles.workoutTime}>
+                        {item.start_time ? new Date(item.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        {item.end_time ? ` - ${new Date(item.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' (In Progress)'}
+                    </Typography.Meta>
+                    {item.note && (
+                        <Typography.Meta style={styles.workoutNote}>
+                            "{item.note}"
+                        </Typography.Meta>
+                    )}
                 </View>
+                <FontAwesome
+                    name={item.status === 'finished' ? "check-circle" : "clock-o"}
+                    size={24}
+                    color={item.status === 'finished' ? Theme.primary : Theme.secondary}
+                />
             </View>
-        </TouchableOpacity>
+        </Card>
     );
 
     return (
@@ -58,10 +62,34 @@ export default function HistoryScreen() {
                 data={workouts}
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
-                contentContainerStyle={{ paddingBottom: 20 }}
+                contentContainerStyle={styles.listPadding}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                ListEmptyComponent={<Text style={{ color: Theme.textSecondary, textAlign: 'center', marginTop: 50 }}>No workouts logged yet.</Text>}
+                ListEmptyComponent={<EmptyState message={"No workouts logged yet."} icon={"calendar-o"} />}
             />
         </ScreenLayout>
     );
 }
+const styles = StyleSheet.create({
+    workoutItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    workoutInfo: {
+        flex: 1,
+        paddingRight: 12,
+    },
+    workoutDate: {
+        fontWeight: 'bold',
+    },
+    workoutTime: {
+        marginTop: 4,
+    },
+    workoutNote: {
+        fontStyle: 'italic',
+        marginTop: 4,
+    },
+    listPadding: {
+        paddingBottom: 20,
+    },
+});

@@ -1,7 +1,11 @@
 import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Workout, WorkoutRepository } from '@/src/db/workouts';
+import { Button } from '@/src/modules/core/components/Button';
+import { Card } from '@/src/modules/core/components/Card';
+import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import { Typography } from '@/src/modules/core/components/Typography';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -9,7 +13,6 @@ import {
     Modal,
     ScrollView,
     StyleSheet,
-    Text,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -91,7 +94,7 @@ export default function CalendarScreen() {
     return (
         <ScreenLayout>
             <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-                <View style={[GlobalStyles.card, styles.calendarCard]}>
+                <Card style={styles.calendarCard}>
                     <Calendar
                         theme={{
                             backgroundColor: 'transparent',
@@ -133,41 +136,39 @@ export default function CalendarScreen() {
                         hideExtraDays={false}
                         showSixWeeks={true}
                     />
-                </View>
+                </Card>
 
                 {selectedDate && (
                     <View>
-                        <Text style={styles.dayHeader}>
+                        <Typography.Subtitle style={styles.dayHeader}>
                             {new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
-                        </Text>
+                        </Typography.Subtitle>
 
                         {dayWorkouts.length > 0 ? (
                             dayWorkouts.map(w => (
-                                <TouchableOpacity
+                                <Card
                                     key={w.id}
                                     style={styles.workoutCard}
                                     onPress={() => handleOpenSummary(w)}
                                 >
                                     <View style={styles.workoutCardRow}>
                                         <View>
-                                            <Text style={styles.workoutTime}>
+                                            <Typography.Body style={styles.workoutTime}>
                                                 {formatTime(w.start_time)} {w.end_time ? `- ${formatTime(w.end_time)}` : '(In Progress)'}
-                                            </Text>
-                                            <Text style={styles.workoutStatus}>
+                                            </Typography.Body>
+                                            <Typography.Meta style={styles.workoutStatus}>
                                                 {w.status === 'finished' ? 'Completed' : 'Active'}
-                                            </Text>
+                                            </Typography.Meta>
                                         </View>
                                         <View style={styles.workoutAction}>
-                                            <Text style={styles.viewSummaryText}>View Summary</Text>
+                                            <Typography.Meta style={styles.viewSummaryText}>View Summary</Typography.Meta>
                                             <FontAwesome name="chevron-right" size={12} color={Theme.primary} />
                                         </View>
                                     </View>
-                                </TouchableOpacity>
+                                </Card>
                             ))
                         ) : (
-                            <View style={styles.noWorkoutContainer}>
-                                <Text style={styles.noWorkoutText}>No workouts recorded</Text>
-                            </View>
+                            <EmptyState message={"No workouts recorded"} icon={"calendar-o"} />
                         )}
                     </View>
                 )}
@@ -185,38 +186,37 @@ export default function CalendarScreen() {
                     onPress={() => setModalWorkout(null)}
                 >
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Workout Summary</Text>
-                        <Text style={styles.modalDate}>
+                        <Typography.Subtitle style={styles.modalTitle}>Workout Summary</Typography.Subtitle>
+                        <Typography.Meta style={styles.modalDate}>
                             {modalWorkout ? new Date(modalWorkout.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''}
-                        </Text>
+                        </Typography.Meta>
 
                         <ScrollView style={styles.summaryScroll} contentContainerStyle={styles.summaryScrollContent}>
                             {workoutSets.length > 0 ? (
                                 workoutSets.map((s, idx) => (
                                     <View key={idx} style={styles.summaryRow}>
-                                        <Text style={styles.summaryText}>{s.exercise_name}</Text>
-                                        <Text style={styles.summaryCount}>{s.count} {s.count === 1 ? 'set' : 'sets'}</Text>
+                                        <Typography.Body style={styles.summaryText}>{s.exercise_name}</Typography.Body>
+                                        <Typography.Body style={styles.summaryCount}>{s.count} {s.count === 1 ? 'set' : 'sets'}</Typography.Body>
                                     </View>
                                 ))
                             ) : (
-                                <Text style={styles.emptySummary}>No exercises logged.</Text>
+                                <Typography.Meta style={styles.emptySummary}>No exercises logged.</Typography.Meta>
                             )}
                         </ScrollView>
 
                         <View style={styles.modalFooter}>
-                            <TouchableOpacity
-                                style={[styles.modalButton, styles.secondaryButton]}
+                            <Button
+                                label={"Close"}
+                                variant={"secondary"}
                                 onPress={() => setModalWorkout(null)}
-                            >
-                                <Text style={styles.secondaryButtonText}>Close</Text>
-                            </TouchableOpacity>
+                                style={{ flex: 1 }}
+                            />
 
-                            <TouchableOpacity
-                                style={[styles.modalButton, styles.primaryButton]}
+                            <Button
+                                label={"Full History"}
                                 onPress={handleViewHistory}
-                            >
-                                <Text style={styles.primaryButtonText}>Full History</Text>
-                            </TouchableOpacity>
+                                style={{ flex: 1 }}
+                            />
                         </View>
                     </View>
                 </TouchableOpacity>
@@ -244,12 +244,8 @@ const styles = StyleSheet.create({
         marginTop: 16,
     },
     workoutCard: {
-        backgroundColor: Theme.surface,
-        borderRadius: 12,
-        padding: 16,
         marginBottom: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
+        padding: 16,
     },
     workoutCardRow: {
         flexDirection: 'row',

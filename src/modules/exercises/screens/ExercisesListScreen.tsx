@@ -2,6 +2,7 @@ import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
 import { DraggableItem } from '@/src/modules/core/components/DraggableItem';
+import { ListSeparator } from '@/src/modules/core/components/ListSeparator';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { useSortableList } from '@/src/modules/core/hooks/useSortableList';
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
@@ -73,7 +74,7 @@ export default function ExercisesListScreen() {
                         <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
                     ) : (
                         <View style={[styles.thumbnail, styles.placeholderThumbnail]}>
-                            <FontAwesome name="camera" size={20} color="rgba(255,255,255,0.2)" />
+                            <FontAwesome name={"camera"} size={20} color={"rgba(255,255,255,0.2)"} />
                         </View>
                     )}
                     <View style={styles.content}>
@@ -106,7 +107,7 @@ export default function ExercisesListScreen() {
                 renderItem={renderItem}
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={styles.listContent}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                ItemSeparatorComponent={ListSeparator}
                 style={{ padding: 16 }}
             />
 
@@ -114,7 +115,7 @@ export default function ExercisesListScreen() {
                 style={GlobalStyles.fab}
                 onPress={() => router.push('/(tabs)/exercises/add')}
             >
-                <FontAwesome name={'plus'} size={32} color={'white'} />
+                <FontAwesome name={"plus"} size={32} color={"white"} />
             </TouchableOpacity>
         </ScreenLayout>
     );
@@ -154,13 +155,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
     },
-    dragIcon: {
-        opacity: 0.5,
-    },
     listContent: {
         paddingBottom: 80,
-    },
-    separator: {
-        height: 4,
     },
 });

@@ -1,14 +1,17 @@
 import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { ExerciseRepository, ExerciseType } from '@/src/db/exercises';
+import { Button } from '@/src/modules/core/components/Button';
+import { Card } from '@/src/modules/core/components/Card';
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import { Typography } from '@/src/modules/core/components/Typography';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 export default function AddExerciseScreen() {
@@ -147,125 +150,125 @@ export default function AddExerciseScreen() {
                 onDelete={isEditing ? handleDelete : undefined}
             />
             <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-                <Animated.View layout={LinearTransition.duration(300)} style={GlobalStyles.card}>
-                    <Text style={GlobalStyles.subtitle}>Exercise Details</Text>
+                <Card style={{ padding: 0, overflow: 'hidden' }}>
+                    <Animated.View layout={LinearTransition.duration(300)} style={{ padding: 16 }}>
+                        <Typography.Subtitle style={{ marginBottom: 16 }}>Exercise Details</Typography.Subtitle>
 
-                    <Text style={styles.label}>Name</Text>
-                    <TextInput
-                        placeholder="e.g. Bench Press"
-                        placeholderTextColor={Theme.textSecondary}
-                        style={GlobalStyles.input}
-                        value={name}
-                        onChangeText={setName}
-                        autoFocus={!isEditing}
-                    />
+                        <Typography.Label>Name</Typography.Label>
+                        <TextInput
+                            placeholder={"e.g. Bench Press"}
+                            placeholderTextColor={Theme.textSecondary}
+                            style={GlobalStyles.input}
+                            value={name}
+                            onChangeText={setName}
+                            autoFocus={!isEditing}
+                        />
 
-                    <Text style={styles.label}>Muscle Group</Text>
-                    <TextInput
-                        placeholder="e.g. Chest"
-                        placeholderTextColor={Theme.textSecondary}
-                        style={GlobalStyles.input}
-                        value={muscle}
-                        onChangeText={setMuscle}
-                    />
+                        <Typography.Label>Muscle Group</Typography.Label>
+                        <TextInput
+                            placeholder={"e.g. Chest"}
+                            placeholderTextColor={Theme.textSecondary}
+                            style={GlobalStyles.input}
+                            value={muscle}
+                            onChangeText={setMuscle}
+                        />
 
-                    <Text style={[GlobalStyles.subtitle, { marginTop: 16 }]}>Exercise Type</Text>
-                    <Animated.View layout={LinearTransition.duration(300)} style={styles.typeContainer}>
-                        {[
-                            { label: 'Weight', value: 'weight' as ExerciseType },
-                            { label: 'Cardio', value: 'cardio' as ExerciseType },
-                            { label: 'Bodyweight', value: 'bodyweight' as ExerciseType },
-                        ].map((t) => {
-                            const isActive = type === t.value || (t.value === 'bodyweight' && type === 'bodyweight_timer');
-                            return (
-                                <TouchableOpacity
-                                    key={t.value}
-                                    style={[
-                                        styles.typeButton,
-                                        isActive && styles.typeButtonActive
-                                    ]}
-                                    onPress={() => setType(t.value)}
-                                >
-                                    <Text style={[
-                                        styles.typeButtonText,
-                                        isActive && styles.typeButtonActiveText
-                                    ]}>
-                                        {formatExerciseTypeCapitalized(t.label)}
-                                    </Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </Animated.View>
-
-                    {(type === 'bodyweight' || type === 'bodyweight_timer') && (
-                        <Animated.View
-                            entering={FadeIn}
-                            exiting={FadeOut}
-                            layout={LinearTransition}
-                            style={{ marginTop: 20 }}
-                        >
-                            <Text style={styles.labelCompact}>Tracking Mode</Text>
-                            <View style={styles.subToggleContainer}>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.subToggleButton,
-                                        type === 'bodyweight' && styles.subToggleButtonActive
-                                    ]}
-                                    onPress={() => setType('bodyweight')}
-                                >
-                                    <Text style={[
-                                        styles.subToggleText,
-                                        type === 'bodyweight' && styles.subToggleTextActive
-                                    ]}>Reps</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.subToggleButton,
-                                        type === 'bodyweight_timer' && styles.subToggleButtonActive
-                                    ]}
-                                    onPress={() => setType('bodyweight_timer')}
-                                >
-                                    <Text style={[
-                                        styles.subToggleText,
-                                        type === 'bodyweight_timer' && styles.subToggleTextActive
-                                    ]}>Timer</Text>
-                                </TouchableOpacity>
-                            </View>
+                        <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>Exercise Type</Typography.Subtitle>
+                        <Animated.View layout={LinearTransition.duration(300)} style={styles.typeContainer}>
+                            {[
+                                { label: 'Weight', value: 'weight' as ExerciseType },
+                                { label: 'Cardio', value: 'cardio' as ExerciseType },
+                                { label: 'Bodyweight', value: 'bodyweight' as ExerciseType },
+                            ].map((t) => {
+                                const isActive = type === t.value || (t.value === 'bodyweight' && type === 'bodyweight_timer');
+                                return (
+                                    <TouchableOpacity
+                                        key={t.value}
+                                        style={[
+                                            styles.typeButton,
+                                            isActive && styles.typeButtonActive
+                                        ]}
+                                        onPress={() => setType(t.value)}
+                                    >
+                                        <Typography.Meta style={[
+                                            styles.typeButtonText,
+                                            isActive && styles.typeButtonActiveText
+                                        ]}>
+                                            {formatExerciseTypeCapitalized(t.label)}
+                                        </Typography.Meta>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </Animated.View>
-                    )}
 
-                    <Text style={[GlobalStyles.subtitle, { marginTop: 24 }]}>Exercise Photo</Text>
-                    <View style={styles.photoSection}>
-                        {photoUri ? (
-                            <View style={styles.photoWrapper}>
-                                <Image source={{ uri: photoUri }} style={styles.photo} />
-                                <TouchableOpacity
-                                    style={styles.removePhotoButton}
-                                    onPress={() => setPhotoUri(null)}
-                                >
-                                    <FontAwesome name="times-circle" size={24} color="#FF6B6B" />
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <TouchableOpacity style={styles.addPhotoButton} onPress={handlePickImage}>
-                                <FontAwesome name="camera" size={30} color={Theme.primary} />
-                                <Text style={styles.addPhotoText}>Add Photo</Text>
-                            </TouchableOpacity>
+                        {/* Tracking Mode Toggle */}
+                        {(type === 'bodyweight' || type === 'bodyweight_timer') && (
+                            <Animated.View
+                                entering={FadeIn}
+                                exiting={FadeOut}
+                                layout={LinearTransition}
+                                style={{ marginTop: 20 }}
+                            >
+                                <Typography.Label style={{ fontSize: 12, marginBottom: 6 }}>Tracking Mode</Typography.Label>
+                                <View style={styles.subToggleContainer}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.subToggleButton,
+                                            type === 'bodyweight' && styles.subToggleButtonActive
+                                        ]}
+                                        onPress={() => setType('bodyweight')}
+                                    >
+                                        <Typography.Meta style={[
+                                            styles.subToggleText,
+                                            type === 'bodyweight' && styles.subToggleTextActive
+                                        ]}>Reps</Typography.Meta>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.subToggleButton,
+                                            type === 'bodyweight_timer' && styles.subToggleButtonActive
+                                        ]}
+                                        onPress={() => setType('bodyweight_timer')}
+                                    >
+                                        <Typography.Meta style={[
+                                            styles.subToggleText,
+                                            type === 'bodyweight_timer' && styles.subToggleTextActive
+                                        ]}>Timer</Typography.Meta>
+                                    </TouchableOpacity>
+                                </View>
+                            </Animated.View>
                         )}
-                    </View>
 
-                    <Animated.View layout={LinearTransition.duration(300)}>
-                        <TouchableOpacity
-                            onPress={handleSave}
-                            style={[styles.saveButton, isLoading && { opacity: 0.7 }]}
-                            disabled={isLoading}
-                        >
-                            <Text style={styles.saveButtonText}>
-                                {isLoading ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Exercise')}
-                            </Text>
-                        </TouchableOpacity>
+                        <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>Exercise Photo</Typography.Subtitle>
+                        <View style={styles.photoSection}>
+                            {photoUri ? (
+                                <View style={styles.photoWrapper}>
+                                    <Image source={{ uri: photoUri }} style={styles.photo} />
+                                    <TouchableOpacity
+                                        style={styles.removePhotoButton}
+                                        onPress={() => setPhotoUri(null)}
+                                    >
+                                        <FontAwesome name={"times-circle"} size={24} color={"#FF6B6B"} />
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <TouchableOpacity style={styles.addPhotoButton} onPress={handlePickImage}>
+                                    <FontAwesome name={"camera"} size={30} color={Theme.primary} />
+                                    <Typography.Meta style={styles.addPhotoText}>Add Photo</Typography.Meta>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        <Animated.View layout={LinearTransition.duration(300)}>
+                            <Button
+                                label={isLoading ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Exercise')}
+                                onPress={handleSave}
+                                isLoading={isLoading}
+                                style={{ marginTop: 24 }}
+                            />
+                        </Animated.View>
                     </Animated.View>
-                </Animated.View>
+                </Card>
             </ScrollView>
         </ScreenLayout>
     );
@@ -275,29 +278,10 @@ export default function AddExerciseScreen() {
 const formatExerciseTypeCapitalized = (val: string) => val;
 
 const styles = StyleSheet.create({
-    label: {
-        color: Theme.textSecondary,
-        marginBottom: 8,
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    labelCompact: {
-        color: Theme.textSecondary,
-        marginBottom: 6,
-        fontSize: 12,
-        fontWeight: '500',
-    },
     typeContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 10,
-    },
-    saveButton: {
-        backgroundColor: Theme.primary,
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginTop: 24,
     },
     photoSection: {
         marginTop: 12,

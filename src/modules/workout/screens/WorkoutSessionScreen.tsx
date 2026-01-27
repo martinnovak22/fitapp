@@ -2,8 +2,11 @@ import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
 import { Workout, WorkoutRepository, Set as WorkoutSet } from '@/src/db/workouts';
+import { Card } from '@/src/modules/core/components/Card';
+import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import { Typography } from '@/src/modules/core/components/Typography';
 import { useSortableList } from '@/src/modules/core/hooks/useSortableList';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -12,7 +15,6 @@ import {
     Alert,
     FlatList,
     StyleSheet,
-    Text,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -266,9 +268,10 @@ export default function WorkoutSessionScreen() {
                 keyExtractor={name => name}
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={
-                    <Text style={styles.emptyText}>
-                        {isReadOnly ? 'No sets logged.' : 'Tap + to add your first set.'}
-                    </Text>
+                    <EmptyState
+                        message={isReadOnly ? 'No sets logged.' : 'Add your first set to start training.'}
+                        icon={"file-text-o"}
+                    />
                 }
                 renderItem={({ item: exerciseName }) => (
                     <WorkoutExerciseGroup
@@ -330,9 +333,9 @@ function WorkoutExerciseGroup({
     const setSortable = useSortableList();
 
     return (
-        <View style={[GlobalStyles.card, styles.groupCard]}>
+        <Card style={styles.groupCard}>
             <View style={styles.groupHeader}>
-                <Text style={styles.exerciseHeader}>{exerciseName}</Text>
+                <Typography.Subtitle>{exerciseName}</Typography.Subtitle>
             </View>
 
             <FlatList
@@ -358,12 +361,11 @@ function WorkoutExerciseGroup({
                     />
                 )}
             />
-        </View>
+        </Card>
     );
 }
 
 const styles = StyleSheet.create({
-
     listContent: {
         paddingBottom: 100,
     },
@@ -382,7 +384,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: 16,
-        paddingBottom: 8,
+        paddingBottom: 0,
     },
     exerciseHeader: {
         ...GlobalStyles.subtitle,
