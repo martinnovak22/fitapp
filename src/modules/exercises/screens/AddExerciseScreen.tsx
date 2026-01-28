@@ -7,12 +7,13 @@ import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenIm
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
+import { showToast } from '@/src/modules/core/utils/toast';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
 export default function AddExerciseScreen() {
@@ -45,7 +46,10 @@ export default function AddExerciseScreen() {
     const handlePickImage = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission needed', 'Please allow camera access to take a photo.');
+            showToast.error({
+                title: 'Permission needed',
+                message: 'Please allow camera access to take a photo.'
+            });
             return;
         }
 
@@ -88,7 +92,10 @@ export default function AddExerciseScreen() {
 
     const handleSave = async () => {
         if (!name.trim()) {
-            Alert.alert('Required', 'Please enter an exercise name.');
+            showToast.error({
+                title: 'Required',
+                message: 'Please enter an exercise name.'
+            });
             return;
         }
 
@@ -116,31 +123,36 @@ export default function AddExerciseScreen() {
                 );
             }
             router.replace('/(tabs)/exercises');
+            showToast.success({
+                title: isEditing ? 'Exercise Updated' : 'Exercise Created',
+                message: isEditing ? `${name} has been updated.` : `${name} is ready for your workouts.`
+            });
         } catch (error) {
             console.error('Failed to save exercise:', error);
-            Alert.alert('Error', 'Failed to save exercise.');
+            showToast.error({
+                title: 'Error',
+                message: 'Failed to save exercise.'
+            });
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleDelete = () => {
-        Alert.alert(
-            'Delete Exercise',
-            'Are you sure? This will not delete past workout data but will remove it from the list.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await ExerciseRepository.delete(Number(id));
-                        router.dismissAll();
-                        router.replace('/(tabs)/exercises');
-                    }
+        showToast.confirm({
+            title: 'Delete Exercise',
+            message: 'Are you sure? This will not delete past workout data but will remove it from the list.',
+            icon: 'trash',
+            action: {
+                label: 'Delete',
+                onPress: async () => {
+                    await ExerciseRepository.delete(Number(id));
+                    router.dismissAll();
+                    router.replace('/(tabs)/exercises');
+                    showToast.success({ title: 'Exercise Deleted' });
                 }
-            ]
-        );
+            }
+        });
     };
 
     return (

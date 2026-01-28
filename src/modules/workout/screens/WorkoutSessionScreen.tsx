@@ -8,11 +8,11 @@ import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useSortableList } from '@/src/modules/core/hooks/useSortableList';
+import { showToast } from '@/src/modules/core/utils/toast';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
-    Alert,
     FlatList,
     StyleSheet,
     TouchableOpacity,
@@ -112,7 +112,10 @@ export default function WorkoutSessionScreen() {
 
     const handleSaveSet = async () => {
         if (!selectedExerciseId) {
-            Alert.alert('Select Exercise', 'Please select an exercise first.');
+            showToast.error({
+                title: 'Select Exercise',
+                message: 'Please select an exercise first.'
+            });
             return;
         }
 
@@ -161,6 +164,10 @@ export default function WorkoutSessionScreen() {
         setModalVisible(false);
         setEditingSetId(null);
         loadData();
+        showToast.success({
+            title: editingSetId ? 'Set Updated' : 'Set Added',
+            message: editingSetId ? 'Your changes have been saved.' : 'New set added to your workout.'
+        });
     };
 
     const handleReorderSets = async (
@@ -206,44 +213,50 @@ export default function WorkoutSessionScreen() {
     };
 
     const handleFinishWorkout = async () => {
-        Alert.alert('Finish Workout', 'Are you sure?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Finish',
+        showToast.confirm({
+            title: 'Finish Workout',
+            message: 'Are you sure you want to finish this session?',
+            action: {
+                label: 'Finish',
                 onPress: async () => {
                     await WorkoutRepository.finish(workoutId);
                     router.replace('/(tabs)/history');
+                    showToast.success({ title: 'Workout Finished', message: 'Great job!' });
                 },
             },
-        ]);
+        });
     };
 
     const handleDeleteWorkout = () => {
-        Alert.alert('Delete Workout', 'Are you sure?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Delete',
-                style: 'destructive',
+        showToast.confirm({
+            title: 'Delete Workout',
+            message: 'Are you sure you want to delete this workout?',
+            icon: 'trash',
+            action: {
+                label: 'Delete',
                 onPress: async () => {
                     await WorkoutRepository.delete(workoutId);
                     router.replace('/(tabs)/workout');
+                    showToast.success({ title: 'Workout Deleted', message: 'Workout removed from data storage.' });
                 },
             },
-        ]);
+        });
     };
 
     const handleDeleteSet = (setId: number) => {
-        Alert.alert('Delete Set', 'Are you sure?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Delete',
-                style: 'destructive',
+        showToast.confirm({
+            title: 'Delete Set',
+            message: 'Are you sure you want to remove this set?',
+            icon: 'trash',
+            action: {
+                label: 'Delete',
                 onPress: async () => {
                     await WorkoutRepository.deleteSet(setId);
                     loadData();
+                    showToast.success({ title: 'Set Deleted', message: 'Set removed from workout.' });
                 },
             },
-        ]);
+        });
     };
 
     const exerciseNamesOrder = [...new Set(sets.map(s => s.exercise_name))];

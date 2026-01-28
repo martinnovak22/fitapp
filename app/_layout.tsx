@@ -5,8 +5,10 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
 import { useDatabaseInit } from '../src/db/client';
 import { ExerciseRepository } from '../src/db/exercises';
+import { toastConfig } from '../src/modules/core/components/ToastConfig';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -67,6 +69,7 @@ function RootLayoutNav() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
+      <Toast config={toastConfig} />
     </ThemeProvider>
   );
 }

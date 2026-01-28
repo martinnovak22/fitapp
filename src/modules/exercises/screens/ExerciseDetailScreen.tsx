@@ -7,11 +7,12 @@ import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenIm
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
+import { showToast } from '@/src/modules/core/utils/toast';
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import { useIsFocused } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph';
 
 
@@ -55,23 +56,21 @@ export default function ExerciseDetailScreen() {
     }
 
     const handleDelete = () => {
-        Alert.alert(
-            "Delete Exercise",
-            "Are you sure? This will delete all history for this exercise.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        if (exercise) {
-                            await ExerciseRepository.delete(exercise.id);
-                            router.replace('/(tabs)/exercises');
-                        }
+        showToast.confirm({
+            title: "Delete Exercise",
+            message: "Are you sure? This will delete all history for this exercise.",
+            icon: 'trash',
+            action: {
+                label: "Delete",
+                onPress: async () => {
+                    if (exercise) {
+                        await ExerciseRepository.delete(exercise.id);
+                        router.replace('/(tabs)/exercises');
+                        showToast.success({ title: 'Exercise Deleted' });
                     }
                 }
-            ]
-        );
+            }
+        });
     };
 
     return (
