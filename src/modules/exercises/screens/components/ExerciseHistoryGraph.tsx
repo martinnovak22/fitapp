@@ -10,25 +10,25 @@ interface ExerciseHistoryGraphProps {
     data: any[];
 }
 
-const USE_MOCK_DATA = true;
+// DEV MOCK DATA
+// const USE_MOCK_DATA = true;
+// if (USE_MOCK_DATA) {
+//     const mock = [];
+//     const now = new Date();
+//     for (let i = 0; i < 20; i++) {
+//         const date = new Date(now);
+//         date.setDate(date.getDate() - (20 - i));
+//         mock.push({
+//             date: date.toISOString(),
+//             max_weight: +(40 + Math.random() * 20).toFixed(2),
+//             max_reps: 8 + Math.floor(Math.random() * 5),
+//             max_duration: 60 + Math.floor(Math.random() * 60),
+//             max_distance: +(1000 + Math.random() * 5000).toFixed(2),
+//         });
+//     }
+//     return mock;
+// } 
 
-/* if (USE_MOCK_DATA) {
-    const mock = [];
-    const now = new Date();
-    for (let i = 0; i < 20; i++) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - (20 - i));
-        mock.push({
-            date: date.toISOString(),
-            max_weight: +(40 + Math.random() * 20).toFixed(2),
-            max_reps: 8 + Math.floor(Math.random() * 5),
-            max_duration: 60 + Math.floor(Math.random() * 60),
-            max_distance: +(1000 + Math.random() * 5000).toFixed(2),
-        });
-    }
-    return mock;
-} 
- */
 type Metric = 'weight' | 'reps' | 'distance' | 'duration';
 
 export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistoryGraphProps) => {
@@ -36,22 +36,7 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
     const [graphWidth, setGraphWidth] = useState(0);
 
     const data = useMemo(() => {
-        if (USE_MOCK_DATA) {
-            const mock = [];
-            const now = new Date();
-            for (let i = 0; i < 20; i++) {
-                const date = new Date(now);
-                date.setDate(date.getDate() - (20 - i));
-                mock.push({
-                    date: date.toISOString(),
-                    max_weight: +(40 + Math.random() * 20).toFixed(2),
-                    max_reps: 8 + Math.floor(Math.random() * 5),
-                    max_duration: 60 + Math.floor(Math.random() * 60),
-                    max_distance: +(1000 + Math.random() * 5000).toFixed(2),
-                });
-            }
-            return mock;
-        }
+
         return rawData;
     }, [rawData]);
 
