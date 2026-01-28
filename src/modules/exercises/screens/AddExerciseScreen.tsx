@@ -115,7 +115,7 @@ export default function AddExerciseScreen() {
                     finalPhotoUri ?? undefined
                 );
             }
-            router.back();
+            router.replace('/(tabs)/exercises');
         } catch (error) {
             console.error('Failed to save exercise:', error);
             Alert.alert('Error', 'Failed to save exercise.');

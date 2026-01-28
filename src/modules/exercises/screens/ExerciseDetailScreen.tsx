@@ -25,6 +25,10 @@ export default function ExerciseDetailScreen() {
     const loadData = useCallback(async () => {
         if (id) {
             const exercise = await ExerciseRepository.getById(Number(id));
+            if (!exercise) {
+                router.replace('/(tabs)/exercises');
+                return;
+            }
             setExercise(exercise || null);
 
             if (exercise) {
@@ -62,7 +66,7 @@ export default function ExerciseDetailScreen() {
                     onPress: async () => {
                         if (exercise) {
                             await ExerciseRepository.delete(exercise.id);
-                            router.back();
+                            router.replace('/(tabs)/exercises');
                         }
                     }
                 }

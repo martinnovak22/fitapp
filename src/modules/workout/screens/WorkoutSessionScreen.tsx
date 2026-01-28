@@ -52,6 +52,11 @@ export default function WorkoutSessionScreen() {
             ExerciseRepository.getAll(),
         ]);
 
+        if (!w) {
+            router.replace('/(tabs)/workout');
+            return;
+        }
+
         setWorkout(w);
         setSets(s as SetWithExercise[]);
         setExercises(ex);
@@ -207,7 +212,7 @@ export default function WorkoutSessionScreen() {
                 text: 'Finish',
                 onPress: async () => {
                     await WorkoutRepository.finish(workoutId);
-                    router.back();
+                    router.replace('/(tabs)/history');
                 },
             },
         ]);
@@ -221,7 +226,7 @@ export default function WorkoutSessionScreen() {
                 style: 'destructive',
                 onPress: async () => {
                     await WorkoutRepository.delete(workoutId);
-                    router.back();
+                    router.replace('/(tabs)/workout');
                 },
             },
         ]);

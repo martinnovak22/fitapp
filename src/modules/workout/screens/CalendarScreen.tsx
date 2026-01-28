@@ -83,7 +83,7 @@ export default function CalendarScreen() {
         if (modalWorkout) {
             const id = modalWorkout.id;
             setModalWorkout(null);
-            router.navigate(`/(tabs)/history/${id}`);
+            router.replace(`/(tabs)/history/${id}`);
         }
     };
 

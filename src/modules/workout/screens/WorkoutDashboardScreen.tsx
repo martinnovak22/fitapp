@@ -121,7 +121,7 @@ export default function WorkoutDashboardScreen() {
                 </Card>
 
                 <Card>
-                    <Typography.Subtitle style={{ marginBottom: 8 }}>
+                    <Typography.Subtitle style={activeWorkout ? { marginBottom: 0 } : { marginBottom: 8 }}>
                         {activeWorkout ? 'Active Session' : 'Ready to train?'}
                     </Typography.Subtitle>
 
