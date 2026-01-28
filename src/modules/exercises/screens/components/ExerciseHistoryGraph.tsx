@@ -7,16 +7,54 @@ import { LineChart } from "react-native-gifted-charts";
 
 interface ExerciseHistoryGraphProps {
     exercise: Exercise;
-    data: any[]; // Raw history data
+    data: any[];
 }
 
+const USE_MOCK_DATA = true;
+
+/* if (USE_MOCK_DATA) {
+    const mock = [];
+    const now = new Date();
+    for (let i = 0; i < 20; i++) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - (20 - i));
+        mock.push({
+            date: date.toISOString(),
+            max_weight: +(40 + Math.random() * 20).toFixed(2),
+            max_reps: 8 + Math.floor(Math.random() * 5),
+            max_duration: 60 + Math.floor(Math.random() * 60),
+            max_distance: +(1000 + Math.random() * 5000).toFixed(2),
+        });
+    }
+    return mock;
+} 
+ */
 type Metric = 'weight' | 'reps' | 'distance' | 'duration';
 
-export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphProps) => {
+export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistoryGraphProps) => {
     const [selectedMetric, setSelectedMetric] = useState<Metric>('weight');
     const [graphWidth, setGraphWidth] = useState(0);
 
-    // Set default metric based on exercise type
+    const data = useMemo(() => {
+        if (USE_MOCK_DATA) {
+            const mock = [];
+            const now = new Date();
+            for (let i = 0; i < 20; i++) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - (20 - i));
+                mock.push({
+                    date: date.toISOString(),
+                    max_weight: +(40 + Math.random() * 20).toFixed(2),
+                    max_reps: 8 + Math.floor(Math.random() * 5),
+                    max_duration: 60 + Math.floor(Math.random() * 60),
+                    max_distance: +(1000 + Math.random() * 5000).toFixed(2),
+                });
+            }
+            return mock;
+        }
+        return rawData;
+    }, [rawData]);
+
     useEffect(() => {
         if (exercise.type === 'bodyweight') {
             setSelectedMetric('reps');
@@ -57,8 +95,8 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
 
             if (selectedMetric === 'duration') {
                 displayVal = formatDuration(val);
-            } else if (selectedMetric === 'distance') {
-                displayVal = Math.round(val).toString();
+            } else if (selectedMetric === 'distance' || selectedMetric === 'weight') {
+                displayVal = val.toFixed(2);
             }
 
             return {
@@ -77,8 +115,8 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
 
         const format = (val: number) => {
             if (selectedMetric === 'duration') return formatDuration(val);
-            if (selectedMetric === 'distance') return `${Math.round(val)}m`;
-            if (selectedMetric === 'weight') return `${val}kg`;
+            if (selectedMetric === 'distance') return `${val.toFixed(2)}m`;
+            if (selectedMetric === 'weight') return `${val.toFixed(2)}kg`;
             return Math.round(val).toString();
         };
 
@@ -92,12 +130,30 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
 
     const yAxisProps = (() => {
         if (maxValue === 0) return { noOfSections: 4, maxValue: 100 };
-        if (maxValue <= 10 && Number.isInteger(maxValue)) {
+
+        if (maxValue <= 10) {
             return { noOfSections: maxValue, maxValue: maxValue, stepValue: 1 };
         }
         const sections = 4;
-        const roundedMax = Math.ceil(maxValue / sections) * sections;
-        return { noOfSections: sections, maxValue: roundedMax };
+        let step = maxValue / sections;
+
+        const magnitudes = [1, 2, 2.5, 5];
+        let power = Math.pow(10, Math.floor(Math.log10(step)));
+        let bestStep = power;
+
+        for (const m of magnitudes) {
+            if (m * power >= step) {
+                bestStep = m * power;
+                break;
+            }
+        }
+        if (bestStep < step) bestStep = 10 * power;
+
+        return {
+            noOfSections: sections,
+            maxValue: bestStep * sections,
+            stepValue: bestStep
+        };
     })();
 
     const renderToggle = (metric: Metric, label: string) => (
@@ -156,44 +212,71 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
                 onLayout={(e) => setGraphWidth(e.nativeEvent.layout.width)}
                 style={styles.graphWrapper}
             >
-                {graphWidth > 0 && processedData.length > 0 ? (
-                    <LineChart
-                        data={processedData}
-                        color={Theme.tint}
-                        thickness={3}
-                        dataPointsColor={Theme.tint}
-                        xAxisColor={Theme.border}
-                        yAxisColor={Theme.border}
-                        yAxisTextStyle={styles.axisText}
-                        xAxisLabelTextStyle={styles.axisText}
-                        noOfSections={yAxisProps.noOfSections}
-                        stepValue={yAxisProps.stepValue}
-                        maxValue={yAxisProps.maxValue}
-                        areaChart
-                        startFillColor={Theme.tint}
-                        endFillColor={Theme.tint}
-                        startOpacity={0.2}
-                        endOpacity={0.01}
-                        spacing={70}
-                        initialSpacing={20}
-                        curved
-                        width={graphWidth - 40}
-                        isAnimated
-                        formatYLabel={(val) => {
-                            if (selectedMetric === 'duration') return formatDuration(parseFloat(val));
-                            return val;
-                        }}
-                        pointerConfig={{
-                            activatePointersOnLongPress: true,
-                            pointerStripUptoDataPoint: true,
-                            pointerStripColor: Theme.tint,
-                            pointerStripWidth: 2,
-                            strokeDashArray: [2, 5],
-                            pointerColor: Theme.tint,
-                            radius: 5,
-                        }}
-                    />
-                ) : (
+                {graphWidth > 0 && processedData.length > 0 ? (() => {
+                    const yAxisLabelWidth = 60;
+                    const availableWidth = graphWidth - yAxisLabelWidth - 16;
+
+                    const minSpacing = 60;
+                    const initialSpacing = 30;
+                    const endSpacing = 30;
+
+                    let spacing = minSpacing;
+                    if (processedData.length > 1) {
+                        const fitSpacing = (availableWidth - initialSpacing - endSpacing) / (processedData.length - 1);
+                        spacing = Math.max(minSpacing, fitSpacing);
+                    }
+
+                    return (
+                        <LineChart
+                            data={processedData}
+                            color={Theme.tint}
+                            thickness={3}
+                            dataPointsColor={Theme.tint}
+                            dataPointsRadius={4}
+                            focusedDataPointColor={Theme.primary}
+                            xAxisColor={Theme.border}
+                            yAxisColor={Theme.border}
+                            yAxisTextStyle={styles.axisText}
+                            xAxisLabelTextStyle={styles.axisText}
+                            noOfSections={yAxisProps.noOfSections}
+                            stepValue={yAxisProps.stepValue}
+                            maxValue={yAxisProps.maxValue}
+                            areaChart
+                            startFillColor={Theme.tint}
+                            endFillColor={Theme.tint}
+                            startOpacity={0.2}
+                            endOpacity={0.01}
+                            spacing={spacing}
+                            initialSpacing={initialSpacing}
+                            endSpacing={endSpacing}
+                            curved
+                            width={availableWidth}
+                            height={220}
+                            hideRules={false}
+                            rulesColor={Theme.border}
+                            rulesType="dashed"
+                            isAnimated
+                            yAxisLabelWidth={yAxisLabelWidth}
+                            yAxisLabelContainerStyle={{ width: yAxisLabelWidth, marginLeft: -10 }}
+                            formatYLabel={(val) => {
+                                const numericVal = parseFloat(val);
+                                if (selectedMetric === 'duration') return formatDuration(numericVal);
+                                if (selectedMetric === 'distance' && numericVal >= 1000) return `${(numericVal / 1000).toFixed(2)}k`;
+                                if (selectedMetric === 'reps') return Math.round(numericVal).toString();
+                                return numericVal.toFixed(2);
+                            }}
+                            pointerConfig={{
+                                activatePointersOnLongPress: true,
+                                pointerStripUptoDataPoint: true,
+                                pointerStripColor: Theme.tint,
+                                pointerStripWidth: 2,
+                                strokeDashArray: [2, 5],
+                                pointerColor: Theme.tint,
+                                radius: 6,
+                            }}
+                        />
+                    );
+                })() : (
                     <View style={styles.emptyState}>
                         <Text style={{ color: Theme.textSecondary }}>No history data available</Text>
                     </View>
@@ -206,11 +289,6 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
 const styles = StyleSheet.create({
     container: {
         marginTop: 24,
-        backgroundColor: Theme.surface,
-        borderRadius: 16,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: Theme.border,
     },
     header: {
         flexDirection: 'row',
@@ -269,12 +347,13 @@ const styles = StyleSheet.create({
     graphWrapper: {
         width: '100%',
         paddingBottom: 10,
-        paddingLeft: 0,
-        overflow: 'hidden',
+        paddingTop: 20,
+        borderTopWidth: 0.5,
+        borderTopColor: 'rgba(255, 255, 255, 0.1)',
     },
     axisText: {
         color: Theme.textSecondary,
-        fontSize: 10,
+        fontSize: 12,
     },
     emptyState: {
         padding: 40,
