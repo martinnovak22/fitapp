@@ -44,8 +44,6 @@ export default function RootLayout() {
           await ExerciseRepository.seedDefaults();
         } catch (e) {
           console.error("Seeding Error: ", e);
-        } finally {
-          SplashScreen.hideAsync();
         }
       }
     }
@@ -68,6 +66,7 @@ function RootLayoutNav() {
     <ThemeProvider value={DarkTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="landing" options={{ headerShown: false, animation: 'fade' }} />
       </Stack>
       <Toast config={toastConfig} />
     </ThemeProvider>
