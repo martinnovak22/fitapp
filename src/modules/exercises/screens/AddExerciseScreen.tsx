@@ -3,6 +3,7 @@ import { GlobalStyles } from '@/src/constants/Styles';
 import { ExerciseRepository, ExerciseType } from '@/src/db/exercises';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
+import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal';
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
@@ -12,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
 export default function AddExerciseScreen() {
     const { id } = useLocalSearchParams();
@@ -23,6 +24,7 @@ export default function AddExerciseScreen() {
     const [type, setType] = useState<ExerciseType>('weight');
     const [photoUri, setPhotoUri] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [showImageFullScreen, setShowImageFullScreen] = useState(false);
 
     useEffect(() => {
         if (isEditing) {
@@ -49,8 +51,6 @@ export default function AddExerciseScreen() {
 
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [4, 3],
             quality: 0.7,
         });
 
@@ -152,7 +152,7 @@ export default function AddExerciseScreen() {
             <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
                 <Card style={{ padding: 0, overflow: 'hidden' }}>
                     <Animated.View layout={LinearTransition.duration(300)} style={{ padding: 16 }}>
-                        <Typography.Subtitle style={{ marginBottom: 16 }}>Exercise Details</Typography.Subtitle>
+                        <Typography.Subtitle style={{ marginBottom: 12 }}>Exercise Details</Typography.Subtitle>
 
                         <Typography.Label>Name</Typography.Label>
                         <TextInput
@@ -205,7 +205,6 @@ export default function AddExerciseScreen() {
                         {(type === 'bodyweight' || type === 'bodyweight_timer') && (
                             <Animated.View
                                 entering={FadeIn}
-                                exiting={FadeOut}
                                 layout={LinearTransition}
                                 style={{ marginTop: 20 }}
                             >
@@ -239,25 +238,26 @@ export default function AddExerciseScreen() {
                             </Animated.View>
                         )}
 
-                        <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>Exercise Photo</Typography.Subtitle>
-                        <View style={styles.photoSection}>
+
+                        <Animated.View entering={FadeIn} layout={LinearTransition} style={styles.photoSection}>
+                            <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>Exercise Photo</Typography.Subtitle>
                             {photoUri ? (
-                                <View style={styles.photoWrapper}>
-                                    <Image source={{ uri: photoUri }} style={styles.photo} />
+                                <TouchableOpacity style={styles.photoWrapper} onPress={() => setShowImageFullScreen(true)}>
+                                    <Image key={photoUri} source={{ uri: photoUri }} style={styles.photo} />
                                     <TouchableOpacity
                                         style={styles.removePhotoButton}
                                         onPress={() => setPhotoUri(null)}
                                     >
-                                        <FontAwesome name={"times-circle"} size={24} color={"#FF6B6B"} />
+                                        <FontAwesome name={"trash"} size={20} color={"#FF6B6B"} />
                                     </TouchableOpacity>
-                                </View>
+                                </TouchableOpacity>
                             ) : (
                                 <TouchableOpacity style={styles.addPhotoButton} onPress={handlePickImage}>
                                     <FontAwesome name={"camera"} size={30} color={Theme.primary} />
                                     <Typography.Meta style={styles.addPhotoText}>Add Photo</Typography.Meta>
                                 </TouchableOpacity>
                             )}
-                        </View>
+                        </Animated.View>
 
                         <Animated.View layout={LinearTransition.duration(300)}>
                             <Button
@@ -268,6 +268,13 @@ export default function AddExerciseScreen() {
                             />
                         </Animated.View>
                     </Animated.View>
+                    {photoUri && (
+                        <FullScreenImageModal
+                            visible={showImageFullScreen}
+                            onClose={() => setShowImageFullScreen(false)}
+                            imageUri={photoUri}
+                        />
+                    )}
                 </Card>
             </ScrollView>
         </ScreenLayout>
@@ -284,9 +291,7 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     photoSection: {
-        marginTop: 12,
         marginBottom: 8,
-        alignItems: 'center',
     },
     addPhotoButton: {
         width: '100%',
@@ -311,6 +316,9 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         overflow: 'hidden',
         position: 'relative',
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     photo: {
         width: '100%',
@@ -321,13 +329,12 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 8,
         right: 8,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        borderRadius: 12,
-    },
-    saveButtonText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 16,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        width: 30,
+        height: 30,
+        borderRadius: 100,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     typeButton: {
         flex: 1,
