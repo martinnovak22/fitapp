@@ -193,5 +193,31 @@ export const WorkoutRepository = {
              ORDER BY w.date ASC`,
             exerciseId
         );
-    }
+    },
+
+
+    async getWorkoutCountForMonth(month: string): Promise<number> {
+        // month: YYYY-MM
+        const db = await getDb();
+        const result = await db.getFirstAsync<{ count: number }>(
+            "SELECT COUNT(*) as count FROM workouts WHERE date LIKE ? AND status = 'finished'",
+            `${month}%`
+        );
+        return result?.count ?? 0;
+    },
+
+
+    async getAvgWorkoutDuration(month: string): Promise<number> {
+        const db = await getDb();
+        const result = await db.getFirstAsync<{ avg_duration: number }>(
+            `SELECT AVG(unix_duration) as avg_duration
+             FROM (
+                SELECT (strftime('%s', end_time) - strftime('%s', start_time)) / 60 as unix_duration
+                FROM workouts
+                WHERE date LIKE ? AND status = 'finished' AND end_time IS NOT NULL
+             )`,
+            `${month}%`
+        );
+        return result?.avg_duration ?? 0;
+    },
 };

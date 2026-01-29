@@ -1,5 +1,4 @@
 import { Theme } from '@/src/constants/Colors';
-import { GlobalStyles } from '@/src/constants/Styles';
 import { Workout, WorkoutRepository } from '@/src/db/workouts';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
@@ -23,6 +22,10 @@ export default function WorkoutDashboardScreen() {
     const [consistency, setConsistency] = useState<
         { date: string; day: string; workedOut: boolean }[]
     >([]);
+    const [stats, setStats] = useState({
+        sessions: 0,
+        avgDuration: 0,
+    });
 
     const loadData = async () => {
         const active = await WorkoutRepository.getActiveWorkout();
@@ -55,6 +58,16 @@ export default function WorkoutDashboardScreen() {
         });
 
         setConsistency(consData);
+
+        // Load stats
+        const thisMonthStr = today.toISOString().slice(0, 7);
+        const sessions = await WorkoutRepository.getWorkoutCountForMonth(thisMonthStr);
+        const avgDuration = await WorkoutRepository.getAvgWorkoutDuration(thisMonthStr);
+
+        setStats({
+            sessions,
+            avgDuration: Math.round(avgDuration),
+        });
     };
 
     useFocusEffect(
@@ -82,69 +95,97 @@ export default function WorkoutDashboardScreen() {
 
     return (
         <ScreenLayout>
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                    />
-                }
+            <ScrollView refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                />
+            }
             >
                 <Card
                     onPress={() => router.push('/workout/calendar')}
-                    style={styles.sectionCard}
+                    style={styles.heroCard}
                 >
+                    <View style={styles.heroStatsRow}>
+                        <View style={styles.heroStatItem}>
+                            <Typography.Meta style={styles.statLabel}>SESSIONS</Typography.Meta>
+                            <Typography.Subtitle style={styles.statValue}>🗓️ {stats.sessions}</Typography.Subtitle>
+                            <Typography.Meta style={styles.statSublabel}>Completed</Typography.Meta>
+                        </View>
+                        <View style={styles.heroStatSeparator} />
+                        <View style={styles.heroStatItem}>
+                            <Typography.Meta style={styles.statLabel}>AVG TIME</Typography.Meta>
+                            <Typography.Subtitle style={styles.statValue}>⏱️ {stats.avgDuration}m</Typography.Subtitle>
+                            <Typography.Meta style={styles.statSublabel}>Per session</Typography.Meta>
+                        </View>
+                    </View>
+
+                    <View style={styles.heroDivider} />
+
                     <View style={styles.headerRow}>
-                        <Typography.Subtitle>This Week</Typography.Subtitle>
-                        <FontAwesome name="chevron-right" size={14} color={Theme.primary} />
+                        <Typography.Subtitle style={styles.sectionTitle}>Weekly Activity</Typography.Subtitle>
+                        <FontAwesome name="chevron-right" size={12} color={Theme.textSecondary} />
                     </View>
 
                     <View style={styles.weekRow}>
                         {consistency.map(day => (
                             <View key={day.date} style={styles.dayCol}>
-                                <Typography.Meta style={styles.dayLabel}>{day.day}</Typography.Meta>
-
                                 <View
                                     style={[
-                                        styles.dayCircle,
-                                        day.workedOut ? styles.dayCircleDone : styles.dayCircleTodo,
+                                        styles.dayBox,
+                                        day.workedOut && styles.dayBoxDone
                                     ]}
                                 >
                                     {day.workedOut && (
-                                        <FontAwesome name={'check'} size={12} color={'white'} />
+                                        <FontAwesome name="check" size={10} color="white" />
                                     )}
                                 </View>
+                                <Typography.Meta style={[styles.dayLabel, day.workedOut && styles.dayLabelDone]}>
+                                    {day.day}
+                                </Typography.Meta>
                             </View>
                         ))}
                     </View>
                 </Card>
 
-                <Card>
-                    <Typography.Subtitle style={activeWorkout ? { marginBottom: 0 } : { marginBottom: 8 }}>
-                        {activeWorkout ? 'Active Session' : 'Ready to train?'}
-                    </Typography.Subtitle>
+                <Card style={styles.activeCard}>
+                    <View style={styles.activeHeader}>
+                        <Typography.Subtitle style={[styles.sectionTitle, { marginBottom: 0 }]}>
+                            {activeWorkout ? 'Active Session' : 'Workout'}
+                        </Typography.Subtitle>
+                        {activeWorkout && (
+                            <View style={styles.liveIndicator}>
+                                <View style={styles.liveDot} />
+                                <Typography.Meta style={styles.liveText}>LIVE</Typography.Meta>
+                            </View>
+                        )}
+                    </View>
 
                     {activeWorkout ? (
-                        <View>
-                            <Typography.Meta style={styles.activeMeta}>
+                        <View style={styles.activeContent}>
+                            <Typography.Body style={styles.activeTime}>
                                 Started at{' '}
                                 {new Date(activeWorkout.start_time).toLocaleTimeString([], {
                                     hour: '2-digit',
                                     minute: '2-digit',
                                 })}
-                            </Typography.Meta>
+                            </Typography.Body>
 
                             <Button
-                                label="Resume Workout"
+                                label="Resume Session"
                                 onPress={handleStartWorkout}
                             />
                         </View>
                     ) : (
-                        <Button
-                            label="Start Workout"
-                            onPress={handleStartWorkout}
-                        />
+                        <View style={styles.activeContent}>
+                            <Typography.Body style={styles.activePromo}>
+                                Ready to crush your goals today?
+                            </Typography.Body>
+                            <Button
+                                label="Start New Workout"
+                                onPress={handleStartWorkout}
+                            />
+                        </View>
                     )}
                 </Card>
 
@@ -196,56 +237,146 @@ export default function WorkoutDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-    scrollContent: {
-        paddingBottom: 40,
+    heroCard: {
+        marginBottom: 20,
+        paddingVertical: 20
     },
-    sectionCard: {
-        marginBottom: 16,
+    heroStatsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        marginBottom: 20,
+    },
+    heroStatItem: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    heroStatSeparator: {
+        width: 1,
+        height: 30,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    heroDivider: {
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        marginBottom: 20,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Theme.text,
+    },
+    statLabel: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: Theme.textSecondary,
+        letterSpacing: 1,
+        marginBottom: 4,
+    },
+    statValue: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 2,
+    },
+    statSublabel: {
+        fontSize: 10,
+        color: Theme.textSecondary,
     },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 16,
     },
     weekRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        paddingHorizontal: 4,
     },
     dayCol: {
         alignItems: 'center',
+        flex: 1,
     },
-    dayLabel: {
-        marginBottom: 4,
-    },
-    dayCircle: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+    dayBox: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        marginBottom: 8,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.08)',
     },
-    dayCircleDone: {
+    dayBoxDone: {
         backgroundColor: Theme.primary,
         borderColor: Theme.primary,
     },
-    dayCircleTodo: {
-        backgroundColor: Theme.surface,
-        borderColor: 'rgba(255,255,255,0.08)',
+    dayLabel: {
+        fontSize: 11,
+        color: Theme.textSecondary,
     },
-    activeMeta: {
+    dayLabelDone: {
+        color: Theme.text,
+        fontWeight: 'bold',
+    },
+    activeCard: {
+        marginBottom: 20,
+        borderLeftWidth: 4,
+        borderLeftColor: Theme.primary,
+        padding: 20,
+    },
+    activeHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: 12,
+    },
+    liveIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(81, 160, 111, 0.15)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+    },
+    liveDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: Theme.primary,
+        marginRight: 6,
+    },
+    liveText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: Theme.primary,
+        letterSpacing: 0.5,
+    },
+    activeContent: {
+        marginTop: 4,
+    },
+    activeTime: {
+        marginBottom: 16,
+        color: Theme.textSecondary,
+    },
+    activePromo: {
+        marginBottom: 16,
+        color: Theme.textSecondary,
+        fontSize: 15,
     },
     recentContainer: {
         rowGap: 12,
     },
     recentCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        padding: 16,
         marginBottom: 0,
     },
     recentTitle: {
-        fontWeight: 'bold',
+        fontWeight: '600',
+        fontSize: 15,
+        color: Theme.text,
     },
     recentRow: {
         flexDirection: 'row',
@@ -257,8 +388,8 @@ const styles = StyleSheet.create({
         paddingRight: 12,
     },
     recentMeta: {
-        ...GlobalStyles.text,
         color: Theme.textSecondary,
         fontSize: 12,
+        marginTop: 4,
     },
 });
