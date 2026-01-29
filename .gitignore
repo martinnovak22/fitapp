@@ -45,3 +45,5 @@ yarn-error.*
 .vscode
 
 .idea
+
+build*
