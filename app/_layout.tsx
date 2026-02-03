@@ -9,6 +9,7 @@ import Toast from 'react-native-toast-message';
 import { useDatabaseInit } from '../src/db/client';
 import { ExerciseRepository } from '../src/db/exercises';
 import { toastConfig } from '../src/modules/core/components/ToastConfig';
+import '../src/modules/core/utils/i18n';
 
 export {
   // Catch any errors thrown by the Layout component.

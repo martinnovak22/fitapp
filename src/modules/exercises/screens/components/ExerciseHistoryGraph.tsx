@@ -2,6 +2,7 @@ import { Theme } from '@/src/constants/Colors';
 import { Exercise } from '@/src/db/exercises';
 import { formatDuration } from '@/src/utils/formatters';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LineChart } from "react-native-gifted-charts";
 
@@ -10,33 +11,14 @@ interface ExerciseHistoryGraphProps {
     data: any[];
 }
 
-// DEV MOCK DATA
-// const USE_MOCK_DATA = true;
-// if (USE_MOCK_DATA) {
-//     const mock = [];
-//     const now = new Date();
-//     for (let i = 0; i < 20; i++) {
-//         const date = new Date(now);
-//         date.setDate(date.getDate() - (20 - i));
-//         mock.push({
-//             date: date.toISOString(),
-//             max_weight: +(40 + Math.random() * 20).toFixed(2),
-//             max_reps: 8 + Math.floor(Math.random() * 5),
-//             max_duration: 60 + Math.floor(Math.random() * 60),
-//             max_distance: +(1000 + Math.random() * 5000).toFixed(2),
-//         });
-//     }
-//     return mock;
-// } 
-
 type Metric = 'weight' | 'reps' | 'distance' | 'duration';
 
 export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistoryGraphProps) => {
+    const { t } = useTranslation();
     const [selectedMetric, setSelectedMetric] = useState<Metric>('weight');
     const [graphWidth, setGraphWidth] = useState(0);
 
     const data = useMemo(() => {
-
         return rawData;
     }, [rawData]);
 
@@ -67,7 +49,6 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
             case 'distance':
                 getValue = (h) => h.max_distance || 0;
                 break;
-
             case 'duration':
                 getValue = (h) => h.max_duration || 0;
                 break;
@@ -159,22 +140,22 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Progress</Text>
+                <Text style={styles.title}>{t('progress')}</Text>
                 <View style={styles.toggleGroup}>
                     {exercise.type === 'cardio' ? (
                         <>
-                            {renderToggle('distance', 'Meters')}
-                            {renderToggle('duration', 'Time')}
+                            {renderToggle('distance', t('meters'))}
+                            {renderToggle('duration', t('time'))}
                         </>
                     ) : (exercise.type === 'bodyweight_timer' ? (
                         <>
-                            {renderToggle('weight', 'Weight')}
-                            {renderToggle('duration', 'Time')}
+                            {renderToggle('weight', t('weight'))}
+                            {renderToggle('duration', t('time'))}
                         </>
                     ) : (
                         <>
-                            {renderToggle('weight', 'Weight')}
-                            {renderToggle('reps', 'Reps')}
+                            {renderToggle('weight', t('weight'))}
+                            {renderToggle('reps', t('reps'))}
                         </>
                     ))}
                 </View>
@@ -183,11 +164,11 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
             {stats && (
                 <View style={styles.statsRow}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Personal Best</Text>
+                        <Text style={styles.statLabel}>{t('personalBest')}</Text>
                         <Text style={styles.statValue}>{stats.max}</Text>
                     </View>
                     <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Average</Text>
+                        <Text style={styles.statLabel}>{t('average')}</Text>
                         <Text style={styles.statValue}>{stats.avg}</Text>
                     </View>
                 </View>
@@ -263,7 +244,7 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
                     );
                 })() : (
                     <View style={styles.emptyState}>
-                        <Text style={{ color: Theme.textSecondary }}>No history data available</Text>
+                        <Text style={{ color: Theme.textSecondary }}>{t('noHistoryData')}</Text>
                     </View>
                 )}
             </View>

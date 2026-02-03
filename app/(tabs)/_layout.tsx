@@ -2,6 +2,7 @@ import { Theme } from '@/src/constants/Colors';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 function TabBarIcon(props: {
     name: React.ComponentProps<typeof FontAwesome>['name'];
@@ -11,6 +12,8 @@ function TabBarIcon(props: {
 }
 
 export default function TabLayout() {
+    const { t } = useTranslation();
+
     return (
         <Tabs
             screenOptions={{
@@ -30,14 +33,14 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="workout"
                 options={{
-                    title: 'Workout',
+                    title: t('workout'),
                     tabBarIcon: ({ color }) => <TabBarIcon name="heartbeat" color={color} />,
                 }}
             />
             <Tabs.Screen
                 name="exercises"
                 options={{
-                    title: 'Exercises',
+                    title: t('exercises'),
                     tabBarIcon: ({ color }) => <TabBarIcon name="list" color={color} />,
                 }}
             />
@@ -50,7 +53,7 @@ export default function TabLayout() {
                     },
                 })}
                 options={{
-                    title: 'History',
+                    title: t('history'),
                     tabBarIcon: ({ color }) => <TabBarIcon name="history" color={color} />,
                 }}
             />

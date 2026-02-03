@@ -13,10 +13,12 @@ import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
 export default function AddExerciseScreen() {
+    const { t } = useTranslation();
     const { id } = useLocalSearchParams();
     const isEditing = !!id;
 
@@ -140,11 +142,11 @@ export default function AddExerciseScreen() {
 
     const handleDelete = () => {
         showToast.confirm({
-            title: 'Delete Exercise',
+            title: t('delete'),
             message: 'Are you sure? This will not delete past workout data but will remove it from the list.',
             icon: 'trash',
             action: {
-                label: 'Delete',
+                label: t('delete'),
                 onPress: async () => {
                     await ExerciseRepository.delete(Number(id));
                     router.dismissAll();
@@ -158,15 +160,15 @@ export default function AddExerciseScreen() {
     return (
         <ScreenLayout>
             <ScreenHeader
-                title={isEditing ? 'Edit Exercise' : 'Add Exercise'}
+                title={isEditing ? t('editExercise') : t('addExercise')}
                 onDelete={isEditing ? handleDelete : undefined}
             />
             <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
                 <Card style={{ padding: 0, overflow: 'hidden' }}>
                     <Animated.View layout={LinearTransition.duration(300)} style={{ padding: 16 }}>
-                        <Typography.Subtitle style={{ marginBottom: 12 }}>Exercise Details</Typography.Subtitle>
+                        <Typography.Subtitle style={{ marginBottom: 12 }}>{t('exerciseDetails')}</Typography.Subtitle>
 
-                        <Typography.Label>Name</Typography.Label>
+                        <Typography.Label>{t('name')}</Typography.Label>
                         <TextInput
                             placeholder={"e.g. Bench Press"}
                             placeholderTextColor={Theme.textSecondary}
@@ -176,7 +178,7 @@ export default function AddExerciseScreen() {
                             autoFocus={!isEditing}
                         />
 
-                        <Typography.Label>Muscle Group</Typography.Label>
+                        <Typography.Label>{t('muscleGroup')}</Typography.Label>
                         <TextInput
                             placeholder={"e.g. Chest"}
                             placeholderTextColor={Theme.textSecondary}
@@ -185,28 +187,28 @@ export default function AddExerciseScreen() {
                             onChangeText={setMuscle}
                         />
 
-                        <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>Exercise Type</Typography.Subtitle>
+                        <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>{t('exerciseType')}</Typography.Subtitle>
                         <Animated.View layout={LinearTransition.duration(300)} style={styles.typeContainer}>
                             {[
                                 { label: 'Weight', value: 'weight' as ExerciseType },
                                 { label: 'Cardio', value: 'cardio' as ExerciseType },
                                 { label: 'Bodyweight', value: 'bodyweight' as ExerciseType },
-                            ].map((t) => {
-                                const isActive = type === t.value || (t.value === 'bodyweight' && type === 'bodyweight_timer');
+                            ].map((t_item) => {
+                                const isActive = type === t_item.value || (t_item.value === 'bodyweight' && type === 'bodyweight_timer');
                                 return (
                                     <TouchableOpacity
-                                        key={t.value}
+                                        key={t_item.value}
                                         style={[
                                             styles.typeButton,
                                             isActive && styles.typeButtonActive
                                         ]}
-                                        onPress={() => setType(t.value)}
+                                        onPress={() => setType(t_item.value)}
                                     >
                                         <Typography.Meta style={[
                                             styles.typeButtonText,
                                             isActive && styles.typeButtonActiveText
                                         ]}>
-                                            {formatExerciseTypeCapitalized(t.label)}
+                                            {t_item.label}
                                         </Typography.Meta>
                                     </TouchableOpacity>
                                 );
@@ -232,7 +234,7 @@ export default function AddExerciseScreen() {
                                         <Typography.Meta style={[
                                             styles.subToggleText,
                                             type === 'bodyweight' && styles.subToggleTextActive
-                                        ]}>Reps</Typography.Meta>
+                                        ]}>{t('reps')}</Typography.Meta>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[
@@ -252,7 +254,7 @@ export default function AddExerciseScreen() {
 
 
                         <Animated.View entering={FadeIn} layout={LinearTransition} style={styles.photoSection}>
-                            <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>Exercise Photo</Typography.Subtitle>
+                            <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>{t('photo')}</Typography.Subtitle>
                             {photoUri ? (
                                 <TouchableOpacity style={styles.photoWrapper} onPress={() => setShowImageFullScreen(true)}>
                                     <Image key={photoUri} source={{ uri: photoUri }} style={styles.photo} />
@@ -266,14 +268,14 @@ export default function AddExerciseScreen() {
                             ) : (
                                 <TouchableOpacity style={styles.addPhotoButton} onPress={handlePickImage}>
                                     <FontAwesome name={"camera"} size={30} color={Theme.primary} />
-                                    <Typography.Meta style={styles.addPhotoText}>Add Photo</Typography.Meta>
+                                    <Typography.Meta style={styles.addPhotoText}>{t('photo')}</Typography.Meta>
                                 </TouchableOpacity>
                             )}
                         </Animated.View>
 
                         <Animated.View layout={LinearTransition.duration(300)}>
                             <Button
-                                label={isLoading ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Exercise')}
+                                label={isLoading ? '...' : (isEditing ? t('saveChanges') : t('createExercise'))}
                                 onPress={handleSave}
                                 isLoading={isLoading}
                                 style={{ marginTop: 24 }}
@@ -292,9 +294,6 @@ export default function AddExerciseScreen() {
         </ScreenLayout>
     );
 }
-
-// Simple helper since we are inside the file and don't want to over-import
-const formatExerciseTypeCapitalized = (val: string) => val;
 
 const styles = StyleSheet.create({
     typeContainer: {

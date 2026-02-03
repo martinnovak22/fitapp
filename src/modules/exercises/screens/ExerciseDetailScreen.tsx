@@ -12,11 +12,13 @@ import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import { useIsFocused } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph';
 
 
 export default function ExerciseDetailScreen() {
+    const { t } = useTranslation();
     const { id } = useLocalSearchParams();
     const [exercise, setExercise] = useState<Exercise | null>(null);
     const [historyData, setHistoryData] = useState<any[]>([]);
@@ -50,18 +52,18 @@ export default function ExerciseDetailScreen() {
     if (!exercise) {
         return (
             <ScreenLayout>
-                <Typography.Body>Loading...</Typography.Body>
+                <Typography.Body>{t('loading')}</Typography.Body>
             </ScreenLayout>
         );
     }
 
     const handleDelete = () => {
         showToast.confirm({
-            title: "Delete Exercise",
-            message: "Are you sure? This will delete all history for this exercise.",
+            title: t('delete'),
+            message: t('deleteExerciseConfirm'),
             icon: 'trash',
             action: {
-                label: "Delete",
+                label: t('delete'),
                 onPress: async () => {
                     if (exercise) {
                         await ExerciseRepository.delete(exercise.id);
@@ -79,7 +81,7 @@ export default function ExerciseDetailScreen() {
                 title={exercise.name}
                 onDelete={handleDelete}
                 rightAction={{
-                    label: "Edit",
+                    label: t('edit'),
                     onPress: () => router.push(`/(tabs)/exercises/add?id=${exercise.id}`)
                 }}
             />
@@ -89,12 +91,12 @@ export default function ExerciseDetailScreen() {
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', height: 120 }}>
                         <View style={{ flexDirection: 'column', gap: 14, justifyContent: "space-between" }}>
                             <View>
-                                <Typography.Label>Type</Typography.Label>
+                                <Typography.Label>{t('type')}</Typography.Label>
                                 <Typography.Body>{formatExerciseType(exercise.type)}</Typography.Body>
                             </View>
                             <View>
-                                <Typography.Label>Muscle Group</Typography.Label>
-                                <Typography.Body>{exercise.muscle_group ? formatMuscleGroup(exercise.muscle_group) : 'Not specified'}</Typography.Body>
+                                <Typography.Label>{t('muscleGroup')}</Typography.Label>
+                                <Typography.Body>{exercise.muscle_group ? formatMuscleGroup(exercise.muscle_group) : t('notSpecified')}</Typography.Body>
                             </View>
                         </View>
 
@@ -119,7 +121,7 @@ export default function ExerciseDetailScreen() {
                         />
                     ) : (
                         <EmptyState
-                            message={"Stats coming soon"}
+                            message={t('statsComingSoon')}
                             icon={"line-chart"}
                             style={{ backgroundColor: Theme.surface }}
                         />
@@ -140,7 +142,6 @@ const styles = StyleSheet.create({
     photoContainer: {
         width: "50%",
         height: 120,
-        marginBottom: 24,
         borderRadius: 12,
         overflow: 'hidden',
         backgroundColor: 'rgba(255,255,255,0.03)',
