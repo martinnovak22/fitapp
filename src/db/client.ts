@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { DATABASE_NAME, migrateDbIfNeeded } from './schema';
+import { DATABASE_NAME, initializeDb } from './schema';
 
 let _db: SQLite.SQLiteDatabase | null = null;
 
@@ -19,7 +19,7 @@ export function useDatabaseInit() {
         async function init() {
             try {
                 const db = await getDb();
-                await migrateDbIfNeeded(db);
+                await initializeDb(db);
                 setDbLoaded(true);
             } catch (e) {
                 const error = e instanceof Error ? e : new Error(String(e));

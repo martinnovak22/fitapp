@@ -7,7 +7,6 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import { useDatabaseInit } from '../src/db/client';
-import { ExerciseRepository } from '../src/db/exercises';
 import { toastConfig } from '../src/modules/core/components/ToastConfig';
 import '../src/modules/core/utils/i18n';
 
@@ -37,19 +36,6 @@ export default function RootLayout() {
     if (fontError) throw fontError;
     if (dbError) console.error("DB Init Error: ", dbError);
   }, [fontError, dbError]);
-
-  useEffect(() => {
-    async function initializeApp() {
-      if (fontsLoaded && dbLoaded) {
-        try {
-          await ExerciseRepository.seedDefaults();
-        } catch (e) {
-          console.error("Seeding Error: ", e);
-        }
-      }
-    }
-    initializeApp();
-  }, [fontsLoaded, dbLoaded]);
 
   if (!fontsLoaded || !dbLoaded) {
     return null;
