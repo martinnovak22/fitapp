@@ -5,26 +5,50 @@ import { DraggableItem } from '@/src/modules/core/components/DraggableItem';
 import { ListSeparator } from '@/src/modules/core/components/ListSeparator';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { useSortableList } from '@/src/modules/core/hooks/useSortableList';
+import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv';
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { router, Stack, useFocusEffect, useNavigation } from 'expo-router';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ExercisesListScreen() {
+    const { t } = useTranslation();
+    const navigation = useNavigation();
     const [exercises, setExercises] = useState<Exercise[]>([]);
     const [draggingId, setDraggingId] = useState<number | null>(null);
     const sortable = useSortableList();
 
-    const loadExercises = async () => {
+    const loadExercises = useCallback(async () => {
         const data = await ExerciseRepository.getAll();
         setExercises(data);
-    };
+    }, []);
+
+    useLayoutEffect(() => {
+        const hasExercises = exercises.length > 0;
+        navigation.getParent()?.setOptions({
+            headerRight: () => (
+                <View style={{ flexDirection: 'row', gap: 16, marginRight: 16 }}>
+                    <TouchableOpacity
+                        onPress={() => exportExercisesToCSV(exercises)}
+                        disabled={!hasExercises}
+                        style={{ opacity: hasExercises ? 1 : 0.3 }}
+                    >
+                        <FontAwesome name="upload" size={20} color={Theme.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => importExercisesFromCSV(loadExercises)}>
+                        <FontAwesome name="download" size={20} color={Theme.primary} />
+                    </TouchableOpacity>
+                </View>
+            ),
+        });
+    }, [navigation, exercises, loadExercises, t]);
 
     useFocusEffect(
         useCallback(() => {
             loadExercises();
-        }, [])
+        }, [loadExercises])
     );
 
     const handleReorder = async (fromIndex: number, translationY: number) => {
@@ -102,6 +126,11 @@ export default function ExercisesListScreen() {
 
     return (
         <ScreenLayout style={{ padding: 0 }}>
+            <Stack.Screen
+                options={{
+                    title: t('exercises'),
+                }}
+            />
             <FlatList
                 data={exercises}
                 renderItem={renderItem}

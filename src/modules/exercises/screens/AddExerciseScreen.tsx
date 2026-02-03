@@ -9,7 +9,7 @@ import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { showToast } from '@/src/modules/core/utils/toast';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -66,7 +66,7 @@ export default function AddExerciseScreen() {
     };
 
     const savePhotoPermanently = async (uri: string) => {
-        const docDir = (FileSystem as any).documentDirectory;
+        const docDir = FileSystem.documentDirectory;
         if (!docDir) return uri;
 
         if (!uri || uri.startsWith('file:///')) {
@@ -104,7 +104,7 @@ export default function AddExerciseScreen() {
         setIsLoading(true);
         try {
             let finalPhotoUri = photoUri;
-            const docDir = (FileSystem as any).documentDirectory;
+            const docDir = FileSystem.documentDirectory;
             if (photoUri && docDir && !photoUri.includes(docDir)) {
                 finalPhotoUri = await savePhotoPermanently(photoUri);
             }
