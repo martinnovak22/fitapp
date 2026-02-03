@@ -6,16 +6,19 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router, useFocusEffect } from 'expo-router';
+import { router, Stack, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     RefreshControl,
     ScrollView,
     StyleSheet,
+    TouchableOpacity,
     View,
 } from 'react-native';
 
 export default function WorkoutDashboardScreen() {
+    const { t, i18n } = useTranslation();
     const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
     const [allWorkouts, setAllWorkouts] = useState<Workout[]>([]);
     const [refreshing, setRefreshing] = useState(false);
@@ -52,7 +55,7 @@ export default function WorkoutDashboardScreen() {
             const d = new Date(dateStr);
             return {
                 date: dateStr,
-                day: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
+                day: d.toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'narrow' }),
                 workedOut: periodMap.has(dateStr),
             };
         });
@@ -73,7 +76,7 @@ export default function WorkoutDashboardScreen() {
     useFocusEffect(
         useCallback(() => {
             loadData();
-        }, [])
+        }, [i18n.language])
     );
 
     const onRefresh = async () => {
@@ -93,8 +96,29 @@ export default function WorkoutDashboardScreen() {
         router.push(`/(tabs)/workout/${id}`);
     };
 
+    const toggleLanguage = () => {
+        const newLang = i18n.language === 'en' ? 'cs' : 'en';
+        i18n.changeLanguage(newLang);
+    };
+
     return (
         <ScreenLayout>
+            <Stack.Screen
+                options={{
+                    title: t('workout'),
+                    headerRight: () => (
+                        <TouchableOpacity
+                            onPress={toggleLanguage}
+                            style={{ marginRight: 16, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                        >
+                            <FontAwesome name="globe" size={18} color={Theme.primary} />
+                            <Typography.Meta style={{ color: Theme.primary, fontWeight: 'bold' }}>
+                                {i18n.language.toUpperCase()}
+                            </Typography.Meta>
+                        </TouchableOpacity>
+                    )
+                }}
+            />
             <ScrollView refreshControl={
                 <RefreshControl
                     refreshing={refreshing}
@@ -108,22 +132,22 @@ export default function WorkoutDashboardScreen() {
                 >
                     <View style={styles.heroStatsRow}>
                         <View style={styles.heroStatItem}>
-                            <Typography.Meta style={styles.statLabel}>SESSIONS</Typography.Meta>
+                            <Typography.Meta style={styles.statLabel}>{t('sessions').toUpperCase()}</Typography.Meta>
                             <Typography.Subtitle style={styles.statValue}>🗓️ {stats.sessions}</Typography.Subtitle>
-                            <Typography.Meta style={styles.statSublabel}>Completed</Typography.Meta>
+                            <Typography.Meta style={styles.statSublabel}>{t('completed')}</Typography.Meta>
                         </View>
                         <View style={styles.heroStatSeparator} />
                         <View style={styles.heroStatItem}>
-                            <Typography.Meta style={styles.statLabel}>AVG TIME</Typography.Meta>
+                            <Typography.Meta style={styles.statLabel}>{t('avgTime').toUpperCase()}</Typography.Meta>
                             <Typography.Subtitle style={styles.statValue}>⏱️ {stats.avgDuration}m</Typography.Subtitle>
-                            <Typography.Meta style={styles.statSublabel}>Per session</Typography.Meta>
+                            <Typography.Meta style={styles.statSublabel}>{t('perSession')}</Typography.Meta>
                         </View>
                     </View>
 
                     <View style={styles.heroDivider} />
 
                     <View style={styles.headerRow}>
-                        <Typography.Subtitle style={styles.sectionTitle}>Weekly Activity</Typography.Subtitle>
+                        <Typography.Subtitle style={styles.sectionTitle}>{t('weeklyActivity')}</Typography.Subtitle>
                         <FontAwesome name="chevron-right" size={12} color={Theme.textSecondary} />
                     </View>
 
@@ -151,7 +175,7 @@ export default function WorkoutDashboardScreen() {
                 <Card style={styles.activeCard}>
                     <View style={styles.activeHeader}>
                         <Typography.Subtitle style={[styles.sectionTitle, { marginBottom: 0 }]}>
-                            {activeWorkout ? 'Active Session' : 'Workout'}
+                            {activeWorkout ? t('activeSession') : t('workout')}
                         </Typography.Subtitle>
                         {activeWorkout && (
                             <View style={styles.liveIndicator}>
@@ -164,7 +188,7 @@ export default function WorkoutDashboardScreen() {
                     {activeWorkout ? (
                         <View style={styles.activeContent}>
                             <Typography.Body style={styles.activeTime}>
-                                Started at{' '}
+                                {t('startedAt')}{' '}
                                 {new Date(activeWorkout.start_time).toLocaleTimeString([], {
                                     hour: '2-digit',
                                     minute: '2-digit',
@@ -172,17 +196,17 @@ export default function WorkoutDashboardScreen() {
                             </Typography.Body>
 
                             <Button
-                                label="Resume Session"
+                                label={t('resumeSession')}
                                 onPress={handleStartWorkout}
                             />
                         </View>
                     ) : (
                         <View style={styles.activeContent}>
                             <Typography.Body style={styles.activePromo}>
-                                Ready to crush your goals today?
+                                {t('readyToCrush')}
                             </Typography.Body>
                             <Button
-                                label="Start New Workout"
+                                label={t('startNewWorkout')}
                                 onPress={handleStartWorkout}
                             />
                         </View>
@@ -190,12 +214,12 @@ export default function WorkoutDashboardScreen() {
                 </Card>
 
                 <Card>
-                    <Typography.Subtitle style={{ marginBottom: 12 }}>Recent Activity</Typography.Subtitle>
+                    <Typography.Subtitle style={{ marginBottom: 12 }}>{t('history')}</Typography.Subtitle>
                     <View style={styles.recentContainer}>
                         {allWorkouts.length === 0 ? (
-                            <EmptyState message={"No workouts recorded"} icon={"history"} />
+                            <EmptyState message={t('noWorkoutsRecorded')} icon={"history"} />
                         ) : (
-                            allWorkouts.map(workout => (
+                            allWorkouts.slice(0, 3).map(workout => (
 
                                 <Card
                                     key={workout.id}
@@ -205,7 +229,7 @@ export default function WorkoutDashboardScreen() {
                                     <View style={styles.recentRow}>
                                         <View style={styles.recentLeft}>
                                             <Typography.Body style={styles.recentTitle}>
-                                                {new Date(workout.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(workout.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
+                                                {new Date(workout.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(workout.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
                                             </Typography.Body>
 
                                             <Typography.Meta style={styles.recentMeta}>
@@ -215,7 +239,7 @@ export default function WorkoutDashboardScreen() {
                                                     )} - ${new Date(workout.end_time).toLocaleTimeString([],
                                                         { hour: '2-digit', minute: '2-digit' }
                                                     )}`
-                                                    : 'Incomplete'}
+                                                    : t('incomplete')}
                                             </Typography.Meta>
                                         </View>
 
@@ -320,6 +344,7 @@ const styles = StyleSheet.create({
     dayLabelDone: {
         color: Theme.text,
         fontWeight: 'bold',
+        fontSize: 11,
     },
     activeCard: {
         marginBottom: 20,

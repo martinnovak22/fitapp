@@ -39,6 +39,7 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
         duration REAL,
         rpe INTEGER,
         position INTEGER DEFAULT 0,
+        sub_sets TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE,
         FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE

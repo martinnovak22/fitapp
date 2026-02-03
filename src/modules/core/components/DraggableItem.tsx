@@ -42,7 +42,6 @@ export function DraggableItem({
     activeScale = 1.03,
     activeOpacity = 0.9,
     longPressDuration = 300,
-    useLayoutAnimation = true,
     activeIndex,
     translationY,
 }: Props) {
