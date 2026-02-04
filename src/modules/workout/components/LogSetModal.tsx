@@ -274,7 +274,7 @@ const ExercisePicker = ({ exercises, selectedExerciseId, setSelectedExerciseId, 
                     >
                         <Text style={[styles.exerciseItemText, { color: theme.text }, selectedExerciseId === ex.id && styles.exerciseItemActiveText]}>{ex.name}</Text>
                         <Text style={[styles.exerciseItemSubtext, { color: theme.textSecondary }, selectedExerciseId === ex.id && styles.exerciseItemActiveSubtext]}>
-                            {formatExerciseType(ex.type)}
+                            {t(formatExerciseType(ex.type))}
                         </Text>
                     </TouchableOpacity>
                 ))}

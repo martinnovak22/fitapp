@@ -175,7 +175,7 @@ export default function WorkoutDashboardScreen() {
                         {activeWorkout && (
                             <View style={[layoutStyles.liveIndicator, { backgroundColor: theme.primary + '20' }]}>
                                 <View style={[layoutStyles.liveDot, { backgroundColor: theme.primary }]} />
-                                <Typography.Meta style={{ fontSize: 10, fontWeight: 'bold', color: theme.primary, letterSpacing: 0.5 }}>LIVE</Typography.Meta>
+                                <Typography.Meta style={{ fontSize: 10, fontWeight: 'bold', color: theme.primary, letterSpacing: 0.5 }}>{t('live')}</Typography.Meta>
                             </View>
                         )}
 

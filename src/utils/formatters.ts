@@ -8,11 +8,11 @@ export const formatExerciseType = (type?: string): string => {
     if (!type) return '';
     const normalized = type.toLowerCase();
     switch (normalized) {
-        case 'weight': return 'Weight';
-        case 'cardio': return 'Cardio';
-        case 'bodyweight': return 'Bodyweight';
-        case 'bodyweight_timer': return 'Bodyweight (Timer)';
-        default: return type.charAt(0).toUpperCase() + type.slice(1);
+        case 'weight': return 'typeWeight';
+        case 'cardio': return 'typeCardio';
+        case 'bodyweight': return 'typeBodyweight';
+        case 'bodyweight_timer': return 'typeBodyweightTimer';
+        default: return type;
     }
 };
 

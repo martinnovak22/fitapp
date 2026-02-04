@@ -71,7 +71,7 @@ export default function ExerciseDetailScreen() {
                     if (exercise) {
                         await ExerciseRepository.delete(exercise.id);
                         router.replace('/(tabs)/exercises');
-                        showToast.success({ title: 'Exercise Deleted' });
+                        showToast.success({ title: t('exerciseDeleted') });
                     }
                 }
             }
@@ -95,7 +95,7 @@ export default function ExerciseDetailScreen() {
                         <View style={{ flexDirection: 'column', gap: 14, justifyContent: "space-between" }}>
                             <View>
                                 <Typography.Label>{t('type')}</Typography.Label>
-                                <Typography.Body>{formatExerciseType(exercise.type)}</Typography.Body>
+                                <Typography.Body>{t(formatExerciseType(exercise.type))}</Typography.Body>
                             </View>
                             <View>
                                 <Typography.Label>{t('muscleGroup')}</Typography.Label>

@@ -6,9 +6,11 @@ import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
+import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Modal,
     ScrollView,
@@ -28,6 +30,8 @@ interface MarkedDates {
 }
 
 export default function CalendarScreen() {
+    const { t, i18n } = useTranslation();
+    const { theme, isDark } = useTheme();
     const [workouts, setWorkouts] = useState<Workout[]>([]);
     const [markedDates, setMarkedDates] = useState<MarkedDates>({});
     const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
@@ -43,7 +47,7 @@ export default function CalendarScreen() {
         all.forEach(w => {
             marked[w.date] = {
                 marked: true,
-                dotColor: Theme.primary,
+                dotColor: theme.primary,
             };
         });
         setMarkedDates(marked);
@@ -99,18 +103,18 @@ export default function CalendarScreen() {
                         theme={{
                             backgroundColor: 'transparent',
                             calendarBackground: 'transparent',
-                            textSectionTitleColor: Theme.textSecondary,
-                            selectedDayBackgroundColor: Theme.primary,
+                            textSectionTitleColor: theme.textSecondary,
+                            selectedDayBackgroundColor: theme.primary,
                             selectedDayTextColor: '#ffffff',
-                            todayTextColor: Theme.primary,
-                            dayTextColor: Theme.text,
-                            textDisabledColor: 'rgba(255, 255, 255, 0.1)',
-                            dotColor: Theme.primary,
+                            todayTextColor: theme.primary,
+                            dayTextColor: theme.text,
+                            textDisabledColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                            dotColor: theme.primary,
                             selectedDotColor: '#ffffff',
-                            arrowColor: Theme.primary,
+                            arrowColor: theme.primary,
                             disabledArrowColor: '#d9e1e8',
-                            monthTextColor: Theme.text,
-                            indicatorColor: Theme.primary,
+                            monthTextColor: theme.text,
+                            indicatorColor: theme.primary,
                             textDayFontFamily: 'System',
                             textMonthFontFamily: 'System',
                             textDayHeaderFontFamily: 'System',
@@ -120,7 +124,6 @@ export default function CalendarScreen() {
                             textDayFontSize: 16,
                             textMonthFontSize: 18,
                             textDayHeaderFontSize: 14
-
                         }}
                         markedDates={{
                             ...markedDates,
@@ -128,7 +131,7 @@ export default function CalendarScreen() {
                                 [selectedDate]: {
                                     ...markedDates[selectedDate],
                                     selected: true,
-                                    selectedColor: 'rgba(81, 160, 111, 0.3)'
+                                    selectedColor: theme.primary + '40'
                                 }
                             } : {})
                         }}
@@ -140,8 +143,8 @@ export default function CalendarScreen() {
 
                 {selectedDate && (
                     <View>
-                        <Typography.Subtitle style={styles.dayHeader}>
-                            {new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
+                        <Typography.Subtitle style={[styles.dayHeader, { color: theme.text }]}>
+                            {new Date(selectedDate).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(selectedDate).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
                         </Typography.Subtitle>
 
                         {dayWorkouts.length > 0 ? (
@@ -153,22 +156,22 @@ export default function CalendarScreen() {
                                 >
                                     <View style={styles.workoutCardRow}>
                                         <View>
-                                            <Typography.Body style={styles.workoutTime}>
-                                                {formatTime(w.start_time)} {w.end_time ? `- ${formatTime(w.end_time)}` : '(In Progress)'}
+                                            <Typography.Body style={[styles.workoutTime, { color: theme.text }]}>
+                                                {formatTime(w.start_time)} {w.end_time ? `- ${formatTime(w.end_time)}` : `(${t('inProgress')})`}
                                             </Typography.Body>
-                                            <Typography.Meta style={styles.workoutStatus}>
-                                                {w.status === 'finished' ? 'Completed' : 'Active'}
+                                            <Typography.Meta style={[styles.workoutStatus, { color: theme.textSecondary }]}>
+                                                {w.status === 'finished' ? t('completed') : t('activeSession')}
                                             </Typography.Meta>
                                         </View>
                                         <View style={styles.workoutAction}>
-                                            <Typography.Meta style={styles.viewSummaryText}>View Summary</Typography.Meta>
-                                            <FontAwesome name="chevron-right" size={12} color={Theme.primary} />
+                                            <Typography.Meta style={[styles.viewSummaryText, { color: theme.primary }]}>{t('viewSummary')}</Typography.Meta>
+                                            <FontAwesome name="chevron-right" size={12} color={theme.primary} />
                                         </View>
                                     </View>
                                 </Card>
                             ))
                         ) : (
-                            <EmptyState message={"No workouts recorded"} icon={"calendar-o"} />
+                            <EmptyState message={t('noWorkoutsRecorded')} icon={"calendar-o"} />
                         )}
                     </View>
                 )}
@@ -185,35 +188,35 @@ export default function CalendarScreen() {
                     activeOpacity={1}
                     onPress={() => setModalWorkout(null)}
                 >
-                    <View style={styles.modalContent}>
-                        <Typography.Subtitle style={styles.modalTitle}>Workout Summary</Typography.Subtitle>
-                        <Typography.Meta style={styles.modalDate}>
-                            {modalWorkout ? new Date(modalWorkout.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''}
+                    <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+                        <Typography.Subtitle style={[styles.modalTitle, { color: theme.text }]}>{t('workoutSummary')}</Typography.Subtitle>
+                        <Typography.Meta style={[styles.modalDate, { color: theme.textSecondary }]}>
+                            {modalWorkout ? new Date(modalWorkout.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''}
                         </Typography.Meta>
 
                         <ScrollView style={styles.summaryScroll} contentContainerStyle={styles.summaryScrollContent}>
                             {workoutSets.length > 0 ? (
                                 workoutSets.map((s, idx) => (
                                     <View key={idx} style={styles.summaryRow}>
-                                        <Typography.Body style={styles.summaryText}>{s.exercise_name}</Typography.Body>
-                                        <Typography.Body style={styles.summaryCount}>{s.count} {s.count === 1 ? 'set' : 'sets'}</Typography.Body>
+                                        <Typography.Body style={[styles.summaryText, { color: theme.text }]}>{s.exercise_name}</Typography.Body>
+                                        <Typography.Body style={[styles.summaryCount, { color: theme.primary }]}>{s.count} {t(s.count === 1 ? 'set_one' : 'set_other')}</Typography.Body>
                                     </View>
                                 ))
                             ) : (
-                                <Typography.Meta style={styles.emptySummary}>No exercises logged.</Typography.Meta>
+                                <Typography.Meta style={[styles.emptySummary, { color: theme.textSecondary }]}>{t('noHistoryData')}</Typography.Meta>
                             )}
                         </ScrollView>
 
                         <View style={styles.modalFooter}>
                             <Button
-                                label={"Close"}
+                                label={t('close')}
                                 variant={"secondary"}
                                 onPress={() => setModalWorkout(null)}
                                 style={{ flex: 1 }}
                             />
 
                             <Button
-                                label={"Full History"}
+                                label={t('history')}
                                 onPress={handleViewHistory}
                                 style={{ flex: 1 }}
                             />

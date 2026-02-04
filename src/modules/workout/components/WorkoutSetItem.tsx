@@ -3,6 +3,7 @@ import { Set as WorkoutSet } from '@/src/db/workouts';
 import { formatDuration } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../core/hooks/useTheme';
 
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -41,18 +42,19 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
     activeIndex,
     translationY,
 }: Props<T>) {
+    const { t } = useTranslation();
     const { theme } = useTheme();
     const totalHeight = calculateSetHeight(set.sub_sets);
 
 
     const renderSetDetails = (s: WorkoutSet) => {
         const parts = [];
-        if (s.weight != null) parts.push(`${s.weight}kg`);
-        if (s.reps != null) parts.push(`${s.reps} reps`);
+        if (s.weight != null) parts.push(`${s.weight}${t('kg')}`);
+        if (s.reps != null) parts.push(`${s.reps} ${t('repsShort')}`);
         if (s.distance != null) parts.push(`${s.distance}m`);
         if (s.duration != null) parts.push(formatDuration(s.duration));
 
-        return parts.join(' × ') || 'No data';
+        return parts.join(' × ') || t('noData');
     };
 
     return (
@@ -80,7 +82,6 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                     <Text style={[GlobalStyles.text, styles.detailsText, { color: theme.text }]}>
                         {renderSetDetails(set)}
                     </Text>
-
                     <View style={styles.actions}>
                         {!isReadOnly && !isDragging && (
                             <TouchableOpacity onPress={() => onDelete(set.id)} style={styles.deleteButton}>
@@ -88,22 +89,20 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                             </TouchableOpacity>
                         )}
                         <FontAwesome name={"reorder"} size={12} color={theme.textSecondary} style={{ marginLeft: 8 }} />
-
                     </View>
-
                 </View>
 
                 {set.sub_sets && JSON.parse(set.sub_sets).map((ss: any, idx: number) => (
                     <View key={idx} style={styles.subSetRow}>
                         <View style={[styles.indentLine, { backgroundColor: theme.primary }]} />
                         <Text style={[styles.subSetText, { color: theme.textSecondary }]}>
-                            Drop {idx + 1}: {ss.weight}kg × {ss.reps} reps
+                            {t('drop')} {idx + 1}: {ss.weight}{t('kg')} × {ss.reps} {t('repsShort')}
                         </Text>
                     </View>
                 ))}
 
             </TouchableOpacity>
-        </DraggableItem>
+        </DraggableItem >
 
     );
 }

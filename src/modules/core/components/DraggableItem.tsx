@@ -111,7 +111,7 @@ export function DraggableItem({
             }
         }
 
-        const translation = withSpring(offset, { damping: 50, stiffness: 600, mass: 0.8 });
+        const translation = withSpring(offset, { damping: 80, stiffness: 400, mass: 0.8 });
 
         const activeBg = isDark ? '#2A2A2A' : '#F5F5F5';
         const activeBorder = isDark ? '#4A4A4A' : '#CCCCCC';
@@ -126,11 +126,11 @@ export function DraggableItem({
             ],
             zIndex: active ? 1000 : 1,
             backgroundColor: withSpring(targetBg, { damping: 30, stiffness: 300 }),
-            borderColor: withSpring(targetBorder, { damping: 30, stiffness: 300 }),
+            borderColor: targetBorder,
             shadowOpacity: withSpring(isPressed.value ? 0.3 : 0, { damping: 30, stiffness: 300 }),
             shadowRadius: 15,
             shadowOffset: { width: 0, height: 5 },
-            elevation: isPressed.value ? 8 : 0,
+            elevation: isPressed.value ? 2 : 0,
             opacity: withSpring(isPressed.value ? activeOpacity : 1, { damping: 30, stiffness: 300 }),
         };
     }, [theme, isDark, activeScale, activeOpacity, index, itemCount, itemHeight, isPressed, activeIndexVal, translationYVal]);

@@ -117,7 +117,7 @@ export default function ExercisesListScreen() {
                             {item.muscle_group
                                 ? `${formatMuscleGroup(item.muscle_group)} • `
                                 : ''}
-                            {formatExerciseType(item.type)}
+                            {t(formatExerciseType(item.type))}
                         </Text>
 
                     </View>

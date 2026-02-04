@@ -132,7 +132,7 @@ export default function WorkoutSessionScreen() {
         if (!selectedExerciseId) {
             showToast.error({
                 title: t('selectExercise'),
-                message: 'Please select an exercise first.'
+                message: t('selectExerciseFirst')
             });
             return;
         }
@@ -195,13 +195,13 @@ export default function WorkoutSessionScreen() {
             await loadData();
             showToast.success({
                 title: editingSetId ? t('update') : t('addSet'),
-                message: editingSetId ? 'Your changes have been saved.' : 'New set added to your workout.'
+                message: editingSetId ? t('changesSaved') : t('newSetAdded')
             });
         } catch (e) {
             console.error("Failed to save set:", e);
             showToast.error({
-                title: 'Error',
-                message: 'Failed to save set. Please try again.'
+                title: t('error'),
+                message: t('failedToSaveSet')
             });
         }
     };
@@ -269,14 +269,14 @@ export default function WorkoutSessionScreen() {
 
     const handleFinishWorkout = async () => {
         showToast.confirm({
-            title: 'Finish Workout',
-            message: 'Are you sure you want to finish this session?',
+            title: t('finishWorkout'),
+            message: t('finishSessionConfirm'),
             action: {
-                label: 'Finish',
+                label: t('finish'),
                 onPress: async () => {
                     await WorkoutRepository.finish(workoutId);
                     router.replace('/(tabs)/history');
-                    showToast.success({ title: 'Workout Finished', message: 'Great job!' });
+                    showToast.success({ title: t('workoutFinished'), message: t('greatJob') });
                 },
             },
         });
@@ -285,14 +285,14 @@ export default function WorkoutSessionScreen() {
     const handleDeleteWorkout = () => {
         showToast.confirm({
             title: t('delete'),
-            message: 'Are you sure you want to delete this workout?',
+            message: t('deleteWorkoutConfirm'),
             icon: 'trash',
             action: {
                 label: t('delete'),
                 onPress: async () => {
                     await WorkoutRepository.delete(workoutId);
                     router.replace('/(tabs)/workout');
-                    showToast.success({ title: 'Workout Deleted', message: 'Workout removed from data storage.' });
+                    showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') });
                 },
             },
         });
@@ -301,14 +301,14 @@ export default function WorkoutSessionScreen() {
     const handleDeleteSet = (setId: number) => {
         showToast.confirm({
             title: t('delete'),
-            message: 'Are you sure you want to remove this set?',
+            message: t('removeSetConfirm'),
             icon: 'trash',
             action: {
                 label: t('delete'),
                 onPress: async () => {
                     await WorkoutRepository.deleteSet(setId);
                     loadData();
-                    showToast.success({ title: 'Set Deleted', message: 'Set removed from workout.' });
+                    showToast.success({ title: t('setDeleted'), message: t('setRemoved') });
                 },
             },
         });
@@ -332,7 +332,7 @@ export default function WorkoutSessionScreen() {
                         : t('activeSession')
                 }
                 onDelete={handleDeleteWorkout}
-                rightAction={!isReadOnly ? { label: 'Finish', onPress: handleFinishWorkout } : undefined}
+                rightAction={!isReadOnly ? { label: t('finish'), onPress: handleFinishWorkout } : undefined}
             />
 
 
