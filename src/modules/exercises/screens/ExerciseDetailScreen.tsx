@@ -1,4 +1,3 @@
-import { Theme } from '@/src/constants/Colors';
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
 import { WorkoutRepository } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
@@ -7,6 +6,7 @@ import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenIm
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
+import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { showToast } from '@/src/modules/core/utils/toast';
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import { useIsFocused } from '@react-navigation/native';
@@ -17,6 +17,7 @@ import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph';
 
 
+
 export default function ExerciseDetailScreen() {
     const { t } = useTranslation();
     const { id } = useLocalSearchParams();
@@ -24,6 +25,8 @@ export default function ExerciseDetailScreen() {
     const [historyData, setHistoryData] = useState<any[]>([]);
     const [showImageFullScreen, setShowImageFullScreen] = useState(false);
     const isFocused = useIsFocused();
+    const { theme } = useTheme();
+
 
     const loadData = useCallback(async () => {
         if (id) {
@@ -102,10 +105,11 @@ export default function ExerciseDetailScreen() {
 
                         {exercise.photo_uri && (
                             <TouchableOpacity
-                                style={styles.photoContainer}
+                                style={[styles.photoContainer, { backgroundColor: theme.surface === '#FFFFFF' ? '#F0F0F0' : 'rgba(255,255,255,0.03)', borderColor: theme.border }]}
                                 onPress={() => setShowImageFullScreen(true)}
                                 activeOpacity={0.9}
                             >
+
                                 <Image
                                     key={exercise.photo_uri}
                                     source={{ uri: exercise.photo_uri }}
@@ -123,8 +127,9 @@ export default function ExerciseDetailScreen() {
                         <EmptyState
                             message={t('statsComingSoon')}
                             icon={"line-chart"}
-                            style={{ backgroundColor: Theme.surface }}
+                            style={{ backgroundColor: theme.surface }}
                         />
+
                     )}
                 </Card>
                 <View style={{ height: 40 }} />
@@ -144,10 +149,9 @@ const styles = StyleSheet.create({
         height: 120,
         borderRadius: 12,
         overflow: 'hidden',
-        backgroundColor: 'rgba(255,255,255,0.03)',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
     },
+
     photo: {
         width: '100%',
         height: '100%',

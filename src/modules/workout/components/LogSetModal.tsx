@@ -1,13 +1,16 @@
-import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
+import { Typography } from '@/src/modules/core/components/Typography';
+
 import { Exercise } from '@/src/db/exercises';
 import { SubSet } from '@/src/db/workouts';
+import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { formatExerciseType } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dimensions, Keyboard, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window');
 
@@ -45,8 +48,10 @@ export const LogSetModal = ({
     updateInput
 }: Props) => {
     const { t } = useTranslation();
+    const { theme } = useTheme();
     const selectedExercise = exercises.find(e => e.id === selectedExerciseId);
     const [isExpanded, setIsExpanded] = React.useState(false);
+
 
     const keyboardHeight = useSharedValue(0);
     const modalOpacity = useSharedValue(0);
@@ -112,8 +117,9 @@ export const LogSetModal = ({
         <Modal animationType="none" transparent visible={visible} onRequestClose={onClose}>
             <View style={styles.centeredView}>
                 <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
-                <Animated.View style={[styles.modalView, animatedStyle]}>
-                    <Text style={GlobalStyles.title}>{editingSetId ? t('editSet') : t('inputSet')}</Text>
+                <Animated.View style={[styles.modalView, { backgroundColor: theme.surface }, animatedStyle]}>
+                    <Text style={[GlobalStyles.title, { color: theme.text }]}>{editingSetId ? t('editSet') : t('inputSet')}</Text>
+
 
                     <View style={styles.contentContainer}>
                         {!editingSetId && (
@@ -141,69 +147,78 @@ export const LogSetModal = ({
                                                 style={styles.pyramidTitleContainer}
                                                 activeOpacity={0.7}
                                             >
-                                                <Text style={styles.pyramidTitle}>
+                                                <Text style={[styles.pyramidTitle, { color: theme.textSecondary }]}>
                                                     {t('pyramidSet')} {subSets.length > 0 ? `(${subSets.length})` : ''}
                                                 </Text>
                                                 <FontAwesome
                                                     name={isExpanded ? "chevron-up" : "chevron-down"}
                                                     size={10}
-                                                    color={Theme.textSecondary}
+                                                    color={theme.textSecondary}
                                                     style={{ marginLeft: 6, opacity: 0.5 }}
                                                 />
                                             </TouchableOpacity>
 
-                                            <TouchableOpacity style={styles.addDropButton} onPress={addSubSet}>
-                                                <FontAwesome name="plus" size={10} color="white" />
+                                            <TouchableOpacity style={[styles.addDropButton, { backgroundColor: theme.primary }]} onPress={addSubSet}>
+                                                <FontAwesome name={"plus"} size={10} color={"white"} />
                                             </TouchableOpacity>
+
+
                                         </View>
 
                                         {isExpanded && (
                                             <Animated.View entering={FadeIn.duration(200)} layout={LinearTransition} style={styles.pyramidScrollContainer}>
                                                 <ScrollView
-                                                    style={styles.pyramidScroll}
+                                                    style={[styles.pyramidScroll, { backgroundColor: theme.background }]}
                                                     contentContainerStyle={subSets.length === 0 ? { flex: 1, justifyContent: 'center', alignItems: 'center' } : {}}
                                                     showsVerticalScrollIndicator
                                                     keyboardShouldPersistTaps="handled"
                                                 >
+
                                                     {subSets.length === 0 ? (
                                                         <View style={styles.emptySubsets}>
-                                                            <FontAwesome name="list" size={20} color={Theme.textSecondary} style={{ opacity: 0.2, marginBottom: 8 }} />
-                                                            <Text style={styles.emptySubsetsText}>{t('noDropSets')}</Text>
+                                                            <FontAwesome name={"list"} size={20} color={theme.textSecondary} style={{ opacity: 0.2, marginBottom: 8 }} />
+                                                            <Text style={[styles.emptySubsetsText, { color: theme.textSecondary }]}>{t('noDropSets')}</Text>
                                                         </View>
+
+
                                                     ) : (
                                                         subSets.map((ss, idx) => (
-                                                            <Animated.View key={idx} entering={FadeIn} layout={LinearTransition} style={styles.subSetRow}>
+                                                            <Animated.View key={idx} entering={FadeIn} layout={LinearTransition} style={[styles.subSetRow, { borderBottomColor: theme.border + '20' }]}>
                                                                 <View style={styles.subSetIndexContainer}>
-                                                                    <Text style={styles.subSetIndex}>#{idx + 1}</Text>
+                                                                    <Text style={[styles.subSetIndex, { color: theme.textSecondary }]}>#{idx + 1}</Text>
                                                                 </View>
+
                                                                 <View style={styles.subSetInputGroup}>
                                                                     <TextInput
-                                                                        style={styles.subSetInput}
+                                                                        style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.surface === '#FFFFFF' ? '#F8F9FA' : 'rgba(255,255,255,0.03)' }]}
                                                                         keyboardType="numeric"
                                                                         multiline={false}
                                                                         numberOfLines={1}
                                                                         placeholder={t('weight').toLowerCase()}
-                                                                        placeholderTextColor={Theme.textSecondary}
+                                                                        placeholderTextColor={theme.textSecondary}
                                                                         defaultValue={ss.weight && ss.weight > 0 ? ss.weight.toString() : ""}
                                                                         onChangeText={(v) => updateSubSet(idx, 'weight', v)}
                                                                         underlineColorAndroid="transparent"
                                                                     />
-                                                                    <Text style={styles.subSetX}>×</Text>
+                                                                    <Text style={[styles.subSetX, { color: theme.textSecondary }]}>×</Text>
                                                                     <TextInput
-                                                                        style={styles.subSetInput}
+                                                                        style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.surface === '#FFFFFF' ? '#F8F9FA' : 'rgba(255,255,255,0.03)' }]}
                                                                         keyboardType="numeric"
                                                                         multiline={false}
                                                                         numberOfLines={1}
                                                                         placeholder={t('reps').toLowerCase()}
-                                                                        placeholderTextColor={Theme.textSecondary}
+                                                                        placeholderTextColor={theme.textSecondary}
                                                                         defaultValue={ss.reps && ss.reps > 0 ? ss.reps.toString() : ""}
                                                                         onChangeText={(v) => updateSubSet(idx, 'reps', v)}
                                                                         underlineColorAndroid="transparent"
                                                                     />
+
                                                                 </View>
                                                                 <TouchableOpacity onPress={() => removeSubSet(idx)} style={styles.removeSubSet}>
-                                                                    <FontAwesome name="minus-circle" size={18} color={Theme.error} />
+                                                                    <FontAwesome name={"minus-circle"} size={18} color={theme.error} />
                                                                 </TouchableOpacity>
+
+
                                                             </Animated.View>
                                                         ))
                                                     )}
@@ -218,15 +233,17 @@ export const LogSetModal = ({
 
                     <View style={styles.footer}>
                         <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
-                            <Text style={styles.cancelText}>{t('cancel')}</Text>
+                            <Text style={[styles.cancelText, { color: theme.error }]}>{t('cancel')}</Text>
                         </TouchableOpacity>
+
                         <TouchableOpacity
                             onPress={onSave}
-                            style={[styles.saveButton, !selectedExerciseId && styles.saveButtonDisabled]}
+                            style={[styles.saveButton, { backgroundColor: theme.primary }, !selectedExerciseId && styles.saveButtonDisabled]}
                             disabled={!selectedExerciseId}
                         >
                             <Text style={styles.saveText}>{editingSetId ? t('update') : t('addSet')}</Text>
                         </TouchableOpacity>
+
                     </View>
                 </Animated.View>
             </View>
@@ -237,21 +254,26 @@ export const LogSetModal = ({
 // Helper Components
 const ExercisePicker = ({ exercises, selectedExerciseId, setSelectedExerciseId, updateInput }: Pick<Props, 'exercises' | 'selectedExerciseId' | 'setSelectedExerciseId' | 'updateInput'>) => {
     const { t } = useTranslation();
+    const { theme } = useTheme();
     return (
         <Animated.View layout={LinearTransition}>
-            <Text style={GlobalStyles.subtitle}>{t('exerciseTitle')}</Text>
-            <ScrollView style={styles.exerciseList} showsVerticalScrollIndicator>
+            <Typography.Subtitle>{t('exerciseTitle')}</Typography.Subtitle>
+            <ScrollView style={[styles.exerciseList, { backgroundColor: theme.background }]} showsVerticalScrollIndicator>
                 {exercises.map(ex => (
                     <TouchableOpacity
                         key={ex.id}
-                        style={[styles.exerciseItem, selectedExerciseId === ex.id && styles.exerciseItemActive]}
+                        style={[
+                            styles.exerciseItem,
+                            { borderBottomColor: theme.border + '20' },
+                            selectedExerciseId === ex.id && [styles.exerciseItemActive, { backgroundColor: theme.primary }]
+                        ]}
                         onPress={() => {
                             setSelectedExerciseId(ex.id);
                             ['weight', 'reps', 'distance', 'durationMinutes', 'durationSeconds'].forEach(key => updateInput(key, ''));
                         }}
                     >
-                        <Text style={[styles.exerciseItemText, selectedExerciseId === ex.id && styles.exerciseItemActiveText]}>{ex.name}</Text>
-                        <Text style={[styles.exerciseItemSubtext, selectedExerciseId === ex.id && styles.exerciseItemActiveSubtext]}>
+                        <Text style={[styles.exerciseItemText, { color: theme.text }, selectedExerciseId === ex.id && styles.exerciseItemActiveText]}>{ex.name}</Text>
+                        <Text style={[styles.exerciseItemSubtext, { color: theme.textSecondary }, selectedExerciseId === ex.id && styles.exerciseItemActiveSubtext]}>
                             {formatExerciseType(ex.type)}
                         </Text>
                     </TouchableOpacity>
@@ -261,24 +283,26 @@ const ExercisePicker = ({ exercises, selectedExerciseId, setSelectedExerciseId, 
     );
 };
 
+
 const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { selectedExercise?: Exercise; inputValues: Props['inputValues']; updateInput: Props['updateInput'] }) => {
     const { t } = useTranslation();
+    const { theme } = useTheme();
     const type = selectedExercise?.type?.toLowerCase();
 
     return (
         <Animated.View layout={LinearTransition} style={[styles.dynamicFields, { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }]}>
             {type !== 'cardio' && (
                 <View style={{ flex: 1, minWidth: type === 'bodyweight_timer' ? '100%' : '45%' }}>
-                    <Text style={GlobalStyles.subtitle}>{t('weightKg')}</Text>
+                    <Typography.Subtitle>{t('weightKg')}</Typography.Subtitle>
                     <TextInput
                         keyboardType='numeric'
                         multiline={false}
                         numberOfLines={1}
-                        style={GlobalStyles.input}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
                         value={inputValues.weight}
                         onChangeText={(t) => updateInput('weight', t)}
                         placeholder="0"
-                        placeholderTextColor={Theme.textSecondary}
+                        placeholderTextColor={theme.textSecondary}
                         underlineColorAndroid="transparent"
                     />
                 </View>
@@ -286,16 +310,16 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
 
             {(type === 'weight' || type === 'bodyweight') && (
                 <View style={{ flex: 1, minWidth: '45%' }}>
-                    <Text style={GlobalStyles.subtitle}>{t('reps')}</Text>
+                    <Typography.Subtitle>{t('reps')}</Typography.Subtitle>
                     <TextInput
                         keyboardType='numeric'
                         multiline={false}
                         numberOfLines={1}
-                        style={GlobalStyles.input}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
                         value={inputValues.reps}
                         onChangeText={(t) => updateInput('reps', t)}
                         placeholder="0"
-                        placeholderTextColor={Theme.textSecondary}
+                        placeholderTextColor={theme.textSecondary}
                         underlineColorAndroid="transparent"
                     />
                 </View>
@@ -303,16 +327,16 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
 
             {type === 'cardio' && (
                 <View style={{ flex: 1, minWidth: '100%' }}>
-                    <Text style={GlobalStyles.subtitle}>{t('distM')}</Text>
+                    <Typography.Subtitle>{t('distM')}</Typography.Subtitle>
                     <TextInput
                         keyboardType='numeric'
                         multiline={false}
                         numberOfLines={1}
-                        style={GlobalStyles.input}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
                         value={inputValues.distance}
                         onChangeText={(t) => updateInput('distance', t)}
                         placeholder="0"
-                        placeholderTextColor={Theme.textSecondary}
+                        placeholderTextColor={theme.textSecondary}
                         underlineColorAndroid="transparent"
                     />
                 </View>
@@ -321,30 +345,30 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
             {(type === 'cardio' || type === 'bodyweight_timer') && (
                 <Animated.View layout={LinearTransition} entering={FadeIn} style={{ flex: 2, flexDirection: 'row', gap: 10, minWidth: type === 'cardio' ? '65%' : '100%' }}>
                     <View style={{ flex: 1 }}>
-                        <Text style={GlobalStyles.subtitle}>{t('minutes')}</Text>
+                        <Typography.Subtitle>{t('minutes')}</Typography.Subtitle>
                         <TextInput
                             keyboardType='numeric'
                             multiline={false}
                             numberOfLines={1}
-                            style={GlobalStyles.input}
+                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
                             value={inputValues.durationMinutes}
                             onChangeText={(t) => updateInput('durationMinutes', t)}
                             placeholder="00"
-                            placeholderTextColor={Theme.textSecondary}
+                            placeholderTextColor={theme.textSecondary}
                             underlineColorAndroid="transparent"
                         />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={GlobalStyles.subtitle}>{t('seconds')}</Text>
+                        <Typography.Subtitle>{t('seconds')}</Typography.Subtitle>
                         <TextInput
                             keyboardType='numeric'
                             multiline={false}
                             numberOfLines={1}
-                            style={GlobalStyles.input}
+                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
                             value={inputValues.durationSeconds}
                             onChangeText={(t) => updateInput('durationSeconds', t)}
                             placeholder="00"
-                            placeholderTextColor={Theme.textSecondary}
+                            placeholderTextColor={theme.textSecondary}
                             underlineColorAndroid="transparent"
                         />
                     </View>
@@ -353,6 +377,7 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
         </Animated.View>
     );
 };
+
 
 const styles = StyleSheet.create({
     centeredView: {
@@ -364,7 +389,6 @@ const styles = StyleSheet.create({
     modalView: {
         width: '90%',
         maxHeight: DEVICE_HEIGHT * 0.85,
-        backgroundColor: Theme.surface,
         borderRadius: 20,
         padding: 24,
         elevation: 5,
@@ -373,35 +397,36 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.5,
         shadowRadius: 20,
     },
+
     contentContainer: {
         marginTop: 10,
     },
     exerciseList: {
         height: 120,
         marginBottom: 16,
-        backgroundColor: Theme.background,
         borderRadius: 8,
     },
+
     exerciseItem: {
         padding: 12,
         borderBottomWidth: 1,
-        borderBottomColor: Theme.border + '20',
     },
+
     exerciseItemActive: {
-        backgroundColor: Theme.primary,
     },
+
     exerciseItemText: {
-        color: Theme.text,
         fontWeight: '600',
     },
+
     exerciseItemActiveText: {
         color: 'white',
     },
     exerciseItemSubtext: {
-        color: Theme.textSecondary,
         fontSize: 8,
         marginTop: 2,
     },
+
     exerciseItemActiveSubtext: {
         color: 'rgba(255,255,255,0.7)',
     },
@@ -431,37 +456,37 @@ const styles = StyleSheet.create({
     pyramidTitle: {
         fontSize: 12,
         fontWeight: '800',
-        color: Theme.textSecondary,
         textTransform: 'uppercase',
     },
+
     addDropButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: Theme.primary,
         paddingHorizontal: 10,
         paddingVertical: 6,
         borderRadius: 6,
     },
+
     pyramidScrollContainer: {
         overflow: 'hidden',
     },
     pyramidScroll: {
         height: 120,
-        backgroundColor: Theme.background,
         borderRadius: 8,
     },
+
     emptySubsets: {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 20,
     },
     emptySubsetsText: {
-        color: Theme.textSecondary,
         fontSize: 10,
         fontWeight: '600',
         opacity: 0.5,
     },
+
     subSetRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -477,9 +502,9 @@ const styles = StyleSheet.create({
     subSetIndex: {
         fontSize: 10,
         fontWeight: 'bold',
-        color: Theme.textSecondary,
         opacity: 0.6,
     },
+
     subSetInputGroup: {
         flex: 1,
         flexDirection: 'row',
@@ -488,25 +513,24 @@ const styles = StyleSheet.create({
     },
     subSetInput: {
         flex: 1,
-        color: Theme.text,
         height: 32,
         borderRadius: 4,
         textAlign: 'center',
         fontSize: 13,
         fontWeight: '600',
-        backgroundColor: 'rgba(255,255,255,0.03)',
         paddingVertical: 0,
         includeFontPadding: false,
     },
+
     subSetX: {
         fontSize: 12,
-        color: Theme.textSecondary,
         opacity: 0.4,
     },
+
     removeSubSet: {
         padding: 4,
-        opacity: 0.8,
     },
+
     footer: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
@@ -518,14 +542,14 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     cancelText: {
-        color: Theme.error,
     },
+
     saveButton: {
         paddingVertical: 10,
         paddingHorizontal: 20,
-        backgroundColor: Theme.primary,
         borderRadius: 8,
     },
+
     saveButtonDisabled: {
         opacity: 0.5,
     },

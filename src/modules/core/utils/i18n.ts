@@ -68,6 +68,11 @@ const resources = {
             personalBest: 'Personal Best',
             average: 'Average',
             noHistoryData: 'No history data available',
+            appearance: 'Appearance',
+            lightMode: 'Light Mode',
+            darkMode: 'Dark Mode',
+            systemDefault: 'System Default',
+            settings: 'Settings',
         }
     },
     cs: {
@@ -134,6 +139,11 @@ const resources = {
             personalBest: 'Osobní rekord',
             average: 'Průměr',
             noHistoryData: 'Nejsou k dispozici žádná data historie',
+            appearance: 'Vzhled',
+            lightMode: 'Světlý režim',
+            darkMode: 'Tmavý režim',
+            systemDefault: 'Systém',
+            settings: 'Nastavení',
         }
     }
 };

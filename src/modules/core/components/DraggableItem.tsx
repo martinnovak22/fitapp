@@ -1,5 +1,6 @@
-import { Theme } from '@/src/constants/Colors';
 import React, { ReactNode } from 'react';
+import { useTheme } from '../hooks/useTheme';
+
 import { StyleProp, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -7,9 +8,11 @@ import Animated, {
     runOnJS,
     SharedValue,
     useAnimatedStyle,
+    useDerivedValue,
     useSharedValue,
     withSpring
 } from 'react-native-reanimated';
+
 
 interface Props {
     children: ReactNode;
@@ -45,7 +48,10 @@ export function DraggableItem({
     activeIndex,
     translationY,
 }: Props) {
+    const { theme, isDark } = useTheme();
     const isPressed = useSharedValue(false);
+
+
     const localActiveIndex = useSharedValue(-1);
     const localTranslationY = useSharedValue(0);
     const dragTranslationY = useSharedValue(0);
@@ -53,7 +59,12 @@ export function DraggableItem({
     const activeIndexVal = activeIndex ?? localActiveIndex;
     const translationYVal = translationY ?? localTranslationY;
 
+    const isActive = useDerivedValue(() => {
+        return isPressed.value || (activeIndexVal.value === index && activeIndexVal.value !== -1);
+    });
+
     const panGesture = Gesture.Pan()
+
         .activateAfterLongPress(longPressDuration)
         .onStart(() => {
             isPressed.value = true;
@@ -68,7 +79,6 @@ export function DraggableItem({
             const finalY = event.translationY;
             isPressed.value = false;
 
-            // Snap to grid visually before state update
             if (itemHeight) {
                 const delta = Math.round(finalY / itemHeight);
                 dragTranslationY.value = withSpring(delta * itemHeight, { damping: 50, stiffness: 600 });
@@ -86,11 +96,11 @@ export function DraggableItem({
 
     const animatedStyle = useAnimatedStyle(() => {
         let offset = 0;
-        if (isPressed.value || (activeIndexVal.value === index && activeIndexVal.value !== -1)) {
-            // This is the item being dragged (or recently dropped)
+        const active = isActive.value;
+
+        if (active) {
             offset = dragTranslationY.value;
         } else if (activeIndexVal.value !== -1 && itemCount !== undefined && itemHeight !== undefined) {
-            // This is another item shifting out of the way
             const delta = Math.round(translationYVal.value / itemHeight);
             const targetIndex = Math.max(0, Math.min(itemCount - 1, activeIndexVal.value + delta));
 
@@ -103,20 +113,28 @@ export function DraggableItem({
 
         const translation = withSpring(offset, { damping: 50, stiffness: 600, mass: 0.8 });
 
+        const activeBg = isDark ? '#2A2A2A' : '#F5F5F5';
+        const activeBorder = isDark ? '#4A4A4A' : '#CCCCCC';
+
+        const targetBg = active ? activeBg : theme.card;
+        const targetBorder = active ? activeBorder : theme.border;
+
         return {
             transform: [
                 { translateY: translation },
                 { scale: withSpring(isPressed.value ? activeScale : 1, { damping: 20, stiffness: 300 }) }
             ],
-            zIndex: isPressed.value ? 1000 : 1,
-            backgroundColor: withSpring(isPressed.value ? '#333333' : Theme.surface, { damping: 30, stiffness: 300 }),
+            zIndex: active ? 1000 : 1,
+            backgroundColor: withSpring(targetBg, { damping: 30, stiffness: 300 }),
+            borderColor: withSpring(targetBorder, { damping: 30, stiffness: 300 }),
             shadowOpacity: withSpring(isPressed.value ? 0.3 : 0, { damping: 30, stiffness: 300 }),
             shadowRadius: 15,
             shadowOffset: { width: 0, height: 5 },
             elevation: isPressed.value ? 8 : 0,
             opacity: withSpring(isPressed.value ? activeOpacity : 1, { damping: 30, stiffness: 300 }),
         };
-    }, [activeScale, activeOpacity, activeIndexVal, translationYVal, index, itemCount, itemHeight, isPressed]);
+    }, [theme, isDark, activeScale, activeOpacity, index, itemCount, itemHeight, isPressed, activeIndexVal, translationYVal]);
+
 
     return (
         <GestureDetector gesture={panGesture}>

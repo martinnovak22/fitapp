@@ -1,5 +1,5 @@
-import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
+
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
 import { SubSet, Workout, WorkoutRepository, Set as WorkoutSet } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
@@ -8,6 +8,7 @@ import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useSortableList } from '@/src/modules/core/hooks/useSortableList';
+import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { showToast } from '@/src/modules/core/utils/toast';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -20,6 +21,7 @@ import {
     View
 } from 'react-native';
 import { LogSetModal } from '../components/LogSetModal';
+
 import { WorkoutSetItem } from '../components/WorkoutSetItem';
 
 import { calculateSetHeight } from '../workoutUtils';
@@ -340,10 +342,11 @@ export default function WorkoutSessionScreen() {
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={
                     <EmptyState
-                        message={isReadOnly ? 'No sets logged.' : 'Add your first set to start training.'}
+                        message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')}
                         icon={"file-text-o"}
                     />
                 }
+
                 renderItem={({ item: exerciseName }) => (
                     <WorkoutExerciseGroup
                         exerciseName={exerciseName}
@@ -361,7 +364,7 @@ export default function WorkoutSessionScreen() {
 
             {!isReadOnly && (
                 <TouchableOpacity style={GlobalStyles.fab} onPress={handleOpenAddModal}>
-                    <FontAwesome name={'plus'} size={32} color={'white'} />
+                    <FontAwesome name={"plus"} size={32} color={"white"} />
                 </TouchableOpacity>
             )}
 
@@ -403,13 +406,16 @@ function WorkoutExerciseGroup({
     handleReorderSets,
     setDraggingId,
 }: GroupProps) {
+    const { theme } = useTheme();
     const setSortable = useSortableList();
 
+
     return (
-        <Card style={styles.groupCard}>
-            <View style={styles.groupHeader}>
+        <Card style={[styles.groupCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.groupHeader, { borderBottomColor: theme.border }]}>
                 <Typography.Subtitle>{exerciseName}</Typography.Subtitle>
             </View>
+
 
             <FlatList
                 data={sets}
@@ -444,22 +450,19 @@ const styles = StyleSheet.create({
         paddingBottom: 100,
     },
     emptyText: {
-        color: Theme.textSecondary,
         textAlign: 'center',
         marginTop: 40,
     },
+
     groupCard: {
         padding: 0,
         overflow: 'hidden',
         marginBottom: 16,
-        backgroundColor: 'rgba(255,255,255,0.02)',
-        borderColor: 'rgba(255,255,255,0.06)',
+        borderWidth: 1,
     },
     groupHeader: {
         padding: 16,
         paddingBottom: 12,
-        backgroundColor: 'rgba(255,255,255,0.03)',
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.04)',
     },
 });

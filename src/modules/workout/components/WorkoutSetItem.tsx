@@ -1,9 +1,10 @@
-import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Set as WorkoutSet } from '@/src/db/workouts';
 import { formatDuration } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
+import { useTheme } from '../../core/hooks/useTheme';
+
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { DraggableItem } from '@/src/modules/core/components/DraggableItem';
@@ -40,7 +41,9 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
     activeIndex,
     translationY,
 }: Props<T>) {
+    const { theme } = useTheme();
     const totalHeight = calculateSetHeight(set.sub_sets);
+
 
     const renderSetDetails = (s: WorkoutSet) => {
         const parts = [];
@@ -62,7 +65,7 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             useLayoutAnimation={!isDragging}
-            style={styles.draggable}
+            style={[styles.draggable, { borderBottomColor: theme.border + '15' }]}
             activeIndex={activeIndex}
             translationY={translationY}
         >
@@ -73,30 +76,35 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                 activeOpacity={0.7}
             >
                 <View style={[styles.mainRow, { height: SET_BASE_HEIGHT }]}>
-                    <Text style={styles.index}>#{index + 1}</Text>
-                    <Text style={[GlobalStyles.text, styles.detailsText]}>
+                    <Text style={[styles.index, { color: theme.textSecondary }]}>#{index + 1}</Text>
+                    <Text style={[GlobalStyles.text, styles.detailsText, { color: theme.text }]}>
                         {renderSetDetails(set)}
                     </Text>
+
                     <View style={styles.actions}>
                         {!isReadOnly && !isDragging && (
                             <TouchableOpacity onPress={() => onDelete(set.id)} style={styles.deleteButton}>
-                                <FontAwesome name={'trash'} size={14} color={Theme.error} />
+                                <FontAwesome name={"trash"} size={14} color={theme.error} />
                             </TouchableOpacity>
                         )}
-                        <FontAwesome name="reorder" size={12} color={Theme.textSecondary} style={{ opacity: 0.3, marginLeft: 8 }} />
+                        <FontAwesome name={"reorder"} size={12} color={theme.textSecondary} style={{ marginLeft: 8 }} />
+
                     </View>
+
                 </View>
 
                 {set.sub_sets && JSON.parse(set.sub_sets).map((ss: any, idx: number) => (
                     <View key={idx} style={styles.subSetRow}>
-                        <View style={styles.indentLine} />
-                        <Text style={styles.subSetText}>
+                        <View style={[styles.indentLine, { backgroundColor: theme.primary }]} />
+                        <Text style={[styles.subSetText, { color: theme.textSecondary }]}>
                             Drop {idx + 1}: {ss.weight}kg × {ss.reps} reps
                         </Text>
                     </View>
                 ))}
+
             </TouchableOpacity>
         </DraggableItem>
+
     );
 }
 
@@ -104,8 +112,9 @@ const styles = StyleSheet.create({
     draggable: {
         backgroundColor: 'transparent',
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.03)',
     },
+
+
     content: {
         width: '100%',
         paddingHorizontal: 16,
@@ -115,18 +124,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     index: {
-        color: Theme.textSecondary,
         width: 28,
         fontSize: 10,
         fontWeight: '700',
-        opacity: 0.5,
     },
+
+
     detailsText: {
         flex: 1,
         fontSize: 14,
         fontWeight: '700',
-        color: Theme.text,
     },
+
     actions: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -139,20 +148,22 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingLeft: 28,
-        opacity: 0.7,
         paddingBottom: 16,
     },
+
     indentLine: {
         width: 2,
         height: '60%',
-        backgroundColor: Theme.primary,
         borderRadius: 1,
         marginRight: 10,
-        opacity: 0.5,
+        opacity: 0.8,
     },
+
+
     subSetText: {
-        fontSize: 12,
-        color: Theme.textSecondary,
+        fontSize: 13,
         fontWeight: '600',
     }
+
+
 });

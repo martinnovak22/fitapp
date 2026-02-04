@@ -1,6 +1,7 @@
 import { GlobalStyles } from '@/src/constants/Styles';
 import React from 'react';
 import { StyleProp, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 
 interface CardProps {
     children: React.ReactNode;
@@ -10,10 +11,21 @@ interface CardProps {
 }
 
 export const Card: React.FC<CardProps> = ({ children, style, onPress, activeOpacity = 0.7 }) => {
+    const { theme } = useTheme();
+
+    const cardStyle = [
+        GlobalStyles.card,
+        {
+            backgroundColor: theme.card,
+            borderColor: theme.border
+        },
+        style
+    ];
+
     if (onPress) {
         return (
             <TouchableOpacity
-                style={[GlobalStyles.card, style]}
+                style={cardStyle}
                 onPress={onPress}
                 activeOpacity={activeOpacity}
             >
@@ -23,7 +35,7 @@ export const Card: React.FC<CardProps> = ({ children, style, onPress, activeOpac
     }
 
     return (
-        <View style={[GlobalStyles.card, style]}>
+        <View style={cardStyle}>
             {children}
         </View>
     );

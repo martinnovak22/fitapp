@@ -7,11 +7,23 @@ export const Colors = {
         error: '#CF6679',
         text: '#E1E1E1',
         textSecondary: '#A0A0A0',
-        border: '#5c5c5c',
-        tint: '#BB86FC',
-        tabIconDefault: '#A0A0A0',
-        tabIconSelected: '#BB86FC',
+        border: '#404040',
+        card: '#1E1E1E',
+        tabBar: '#121212',
+    },
+    light: {
+        background: '#F8F9FA',
+        surface: '#FFFFFF',
+        primary: '#51a06f',
+        secondary: '#077121',
+        error: '#B00020',
+        text: '#121212',
+        textSecondary: '#666666',
+        border: '#E0E0E0',
+        card: '#FFFFFF',
+        tabBar: '#FFFFFF',
     },
 };
 
+export type ThemeType = typeof Colors.dark;
 export const Theme = Colors.dark;
