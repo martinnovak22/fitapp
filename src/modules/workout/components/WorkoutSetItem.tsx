@@ -9,8 +9,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { DraggableItem } from '@/src/modules/core/components/DraggableItem';
 import { SharedValue } from 'react-native-reanimated';
 
-const BASE_HEIGHT = 56;
-const SUBSET_HEIGHT = 32;
+import { SET_BASE_HEIGHT, SUBSET_HEIGHT, calculateSetHeight } from '../workoutUtils';
 
 interface Props<T extends WorkoutSet = WorkoutSet> {
     set: T;
@@ -20,7 +19,7 @@ interface Props<T extends WorkoutSet = WorkoutSet> {
     isDragging?: boolean;
     onEdit: (set: T) => void;
     onDelete: (setId: number) => void;
-    onDrop: (fromIndex: number, translationY: number) => void;
+    onDrop: (fromIndex: number, translationY: number, itemHeight: number) => void;
     onDragStart?: () => void;
     onDragEnd?: () => void;
     activeIndex: SharedValue<number>;
@@ -41,16 +40,7 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
     activeIndex,
     translationY,
 }: Props<T>) {
-    const subSetsParsed: any[] = React.useMemo(() => {
-        if (!set.sub_sets) return [];
-        try {
-            return JSON.parse(set.sub_sets) || [];
-        } catch (e) {
-            return [];
-        }
-    }, [set.sub_sets]);
-
-    const totalHeight = BASE_HEIGHT + (subSetsParsed.length * SUBSET_HEIGHT);
+    const totalHeight = calculateSetHeight(set.sub_sets);
 
     const renderSetDetails = (s: WorkoutSet) => {
         const parts = [];
@@ -68,7 +58,7 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
             itemCount={itemCount}
             itemHeight={totalHeight}
             enabled={!isReadOnly}
-            onDrop={onDrop}
+            onDrop={(idx, ty) => onDrop(idx, ty, totalHeight)}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             useLayoutAnimation={!isDragging}
@@ -82,7 +72,7 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                 disabled={isReadOnly || isDragging}
                 activeOpacity={0.7}
             >
-                <View style={[styles.mainRow, { height: BASE_HEIGHT }]}>
+                <View style={[styles.mainRow, { height: SET_BASE_HEIGHT }]}>
                     <Text style={styles.index}>#{index + 1}</Text>
                     <Text style={[GlobalStyles.text, styles.detailsText]}>
                         {renderSetDetails(set)}
@@ -97,7 +87,7 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                     </View>
                 </View>
 
-                {subSetsParsed.map((ss, idx) => (
+                {set.sub_sets && JSON.parse(set.sub_sets).map((ss: any, idx: number) => (
                     <View key={idx} style={styles.subSetRow}>
                         <View style={styles.indentLine} />
                         <Text style={styles.subSetText}>

@@ -22,6 +22,8 @@ import {
 import { LogSetModal } from '../components/LogSetModal';
 import { WorkoutSetItem } from '../components/WorkoutSetItem';
 
+import { calculateSetHeight } from '../workoutUtils';
+
 type SetWithExercise = WorkoutSet & { exercise_name: string };
 
 export default function WorkoutSessionScreen() {
@@ -206,12 +208,31 @@ export default function WorkoutSessionScreen() {
         exerciseName: string,
         fromIndex: number,
         translationY: number,
+        itemHeight: number,
         setSortable: any
     ) => {
-        const ITEM_HEIGHT = 56;
-        const delta = Math.round(translationY / ITEM_HEIGHT);
         const exerciseSets = sets.filter(s => s.exercise_name === exerciseName);
-        const toIndex = Math.max(0, Math.min(exerciseSets.length - 1, fromIndex + delta));
+        const heights = exerciseSets.map(s => calculateSetHeight(s.sub_sets));
+
+        // Find current center Y of the dragged item
+        let originalY = 0;
+        for (let i = 0; i < fromIndex; i++) {
+            originalY += heights[i];
+        }
+        const draggedCenterY = originalY + heights[fromIndex] / 2 + translationY;
+
+        // Determine destination index by finding which height slot contains the dragged center
+        let currentYBound = 0;
+        let toIndex = 0;
+        for (let i = 0; i < exerciseSets.length; i++) {
+            const h = heights[i];
+            if (draggedCenterY < currentYBound + h) {
+                toIndex = i;
+                break;
+            }
+            currentYBound += h;
+            if (i === exerciseSets.length - 1) toIndex = i;
+        }
 
         if (fromIndex === toIndex) {
             setSortable.activeIndex.value = -1;
@@ -368,7 +389,7 @@ interface GroupProps {
     draggingId: number | null;
     handleOpenEditModal: (s: WorkoutSet) => void;
     handleDeleteSet: (id: number) => void;
-    handleReorderSets: (name: string, idx: number, ty: number, sortable: any) => void;
+    handleReorderSets: (name: string, idx: number, ty: number, height: number, sortable: any) => void;
     setDraggingId: (id: number | null) => void;
 }
 
@@ -403,8 +424,8 @@ function WorkoutExerciseGroup({
                         isDragging={set.id === draggingId}
                         onEdit={handleOpenEditModal}
                         onDelete={handleDeleteSet}
-                        onDrop={(idx, ty) => {
-                            handleReorderSets(exerciseName, idx, ty, setSortable);
+                        onDrop={(idx, ty, height) => {
+                            handleReorderSets(exerciseName, idx, ty, height, setSortable);
                         }}
                         onDragStart={() => setDraggingId(set.id)}
                         onDragEnd={() => setDraggingId(null)}
