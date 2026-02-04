@@ -1,9 +1,11 @@
 import { Theme } from '@/src/constants/Colors';
+import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React, { ComponentProps } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Toast, { ToastConfig, ToastConfigParams } from 'react-native-toast-message';
 import { Typography } from './Typography';
+
 
 export type ToastIcon = ComponentProps<typeof FontAwesome>['name'];
 
@@ -27,37 +29,40 @@ interface CustomToastProps {
 }
 
 const CustomToast = ({ text1, text2, icon, iconColor, action, cancelAction }: CustomToastProps) => {
+    const { theme } = useTheme();
     return (
-        <View style={styles.toastContainer}>
+        <View style={[styles.toastContainer, { backgroundColor: theme.surface, borderColor: theme.border + '20' }]}>
             <View style={styles.contentRow}>
-                <View style={[styles.iconBadge, { backgroundColor: `${iconColor || Theme.primary}15` }]}>
-                    <FontAwesome name={icon} size={20} color={iconColor || Theme.primary} />
+                <View style={[styles.iconBadge, { backgroundColor: `${iconColor || theme.primary}15` }]}>
+                    <FontAwesome name={icon} size={20} color={iconColor || theme.primary} />
                 </View>
                 <View style={styles.textContainer}>
-                    {text1 && <Typography.Subtitle style={styles.title}>{text1}</Typography.Subtitle>}
-                    {text2 && <Typography.Body style={styles.message}>{text2}</Typography.Body>}
+                    {text1 && <Typography.Subtitle style={[styles.title, { color: theme.text }]}>{text1}</Typography.Subtitle>}
+                    {text2 && <Typography.Body style={[styles.message, { color: theme.textSecondary }]}>{text2}</Typography.Body>}
                 </View>
             </View>
 
+
             {(action || cancelAction) && (
-                <View style={styles.actionRow}>
+                <View style={[styles.actionRow, { borderTopColor: theme.border + '15' }]}>
                     <View style={styles.buttonContainer}>
                         {cancelAction && (
                             <TouchableOpacity
-                                style={[styles.actionButton, styles.cancelButton]}
+                                style={[styles.actionButton, styles.cancelButton, { backgroundColor: 'transparent' }]}
                                 onPress={cancelAction.onPress}
                             >
-                                <Typography.Meta style={styles.cancelText}>{cancelAction.label}</Typography.Meta>
+                                <Typography.Meta style={[styles.cancelText, { color: theme.textSecondary }]}>{cancelAction.label}</Typography.Meta>
                             </TouchableOpacity>
                         )}
                         {action && (
-                            <TouchableOpacity style={styles.actionButton} onPress={action.onPress}>
-                                <Typography.Meta style={styles.actionText}>{action.label}</Typography.Meta>
+                            <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.primary + '20' }]} onPress={action.onPress}>
+                                <Typography.Meta style={[styles.actionText, { color: theme.primary }]}>{action.label}</Typography.Meta>
                             </TouchableOpacity>
                         )}
                     </View>
                 </View>
             )}
+
         </View>
     );
 };
@@ -84,15 +89,17 @@ export const toastConfig: ToastConfig = {
             text1={text1}
             text2={text2}
             icon={props?.icon || "info-circle"}
-            iconColor={Theme.tint}
+            iconColor={Theme.primary}
         />
     ),
+
     confirm: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => (
         <CustomToast
             text1={text1}
             text2={text2}
             icon={props?.icon || "info-circle"}
-            iconColor={Theme.tint}
+            iconColor={Theme.primary}
+
             action={props?.action}
             cancelAction={{
                 label: 'Cancel',
@@ -104,7 +111,6 @@ export const toastConfig: ToastConfig = {
 
 const styles = StyleSheet.create({
     toastContainer: {
-        backgroundColor: Theme.surface,
         borderRadius: 16,
         padding: 12,
         width: '92%',
@@ -114,9 +120,9 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 10,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
         marginTop: 8,
     },
+
     contentRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
@@ -137,22 +143,22 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 15,
         fontWeight: '700',
-        color: Theme.text,
         marginBottom: 1,
     },
+
     message: {
         fontSize: 13,
-        color: Theme.textSecondary,
         lineHeight: 18,
     },
+
     actionRow: {
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: 10,
         paddingTop: 10,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.05)',
     },
+
     buttonContainer: {
         flex: 1,
         flexDirection: 'row',
@@ -162,22 +168,22 @@ const styles = StyleSheet.create({
     actionButton: {
         paddingVertical: 8,
         paddingHorizontal: 16,
-        backgroundColor: 'rgba(255,255,255,0.1)',
         borderRadius: 8,
         marginLeft: 8,
     },
+
     cancelButton: {
         backgroundColor: 'transparent',
         paddingHorizontal: 8,
     },
     actionText: {
-        color: Theme.text,
         fontWeight: '700',
         fontSize: 13,
     },
+
     cancelText: {
-        color: Theme.textSecondary,
         fontWeight: '600',
         fontSize: 13,
     },
+
 });

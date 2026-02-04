@@ -1,15 +1,17 @@
-import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Set as WorkoutSet } from '@/src/db/workouts';
 import { formatDuration } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { useTheme } from '../../core/hooks/useTheme';
+
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { DraggableItem } from '@/src/modules/core/components/DraggableItem';
 import { SharedValue } from 'react-native-reanimated';
 
-const ITEM_HEIGHT = 48;
+import { SET_BASE_HEIGHT, SUBSET_HEIGHT, calculateSetHeight } from '../workoutUtils';
 
 interface Props<T extends WorkoutSet = WorkoutSet> {
     set: T;
@@ -19,7 +21,7 @@ interface Props<T extends WorkoutSet = WorkoutSet> {
     isDragging?: boolean;
     onEdit: (set: T) => void;
     onDelete: (setId: number) => void;
-    onDrop: (fromIndex: number, translationY: number) => void;
+    onDrop: (fromIndex: number, translationY: number, itemHeight: number) => void;
     onDragStart?: () => void;
     onDragEnd?: () => void;
     activeIndex: SharedValue<number>;
@@ -40,86 +42,127 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
     activeIndex,
     translationY,
 }: Props<T>) {
+    const { t } = useTranslation();
+    const { theme } = useTheme();
+    const totalHeight = calculateSetHeight(set.sub_sets);
+
+
     const renderSetDetails = (s: WorkoutSet) => {
         const parts = [];
-        if (s.weight != null) parts.push(`${s.weight}kg`);
-        if (s.reps != null) parts.push(`${s.reps} reps`);
+        if (s.weight != null) parts.push(`${s.weight}${t('kg')}`);
+        if (s.reps != null) parts.push(`${s.reps} ${t('repsShort')}`);
         if (s.distance != null) parts.push(`${s.distance}m`);
         if (s.duration != null) parts.push(formatDuration(s.duration));
-        return parts.join(' x ') || 'No data';
+
+        return parts.join(' × ') || t('noData');
     };
 
     return (
         <DraggableItem
             index={index}
             itemCount={itemCount}
-            itemHeight={ITEM_HEIGHT}
+            itemHeight={totalHeight}
             enabled={!isReadOnly}
-            onDrop={onDrop}
+            onDrop={(idx, ty) => onDrop(idx, ty, totalHeight)}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             useLayoutAnimation={!isDragging}
-            style={styles.container}
+            style={[styles.draggable, { borderBottomColor: theme.border + '15' }]}
             activeIndex={activeIndex}
             translationY={translationY}
         >
             <TouchableOpacity
                 onPress={() => !isReadOnly && onEdit(set)}
-                style={styles.detailsContainer}
+                style={[styles.content, { height: totalHeight }]}
                 disabled={isReadOnly || isDragging}
+                activeOpacity={0.7}
             >
-                <Text style={styles.index}>#{index + 1}</Text>
-
-                <Text style={[GlobalStyles.text, styles.detailsText]}>
-                    {renderSetDetails(set)}
-                </Text>
-
-                <View style={styles.actions}>
-                    {!isReadOnly && !isDragging && (
-                        <TouchableOpacity onPress={() => onDelete(set.id)} style={styles.deleteButton}>
-                            <FontAwesome name={'trash'} size={16} color={Theme.error} />
-                        </TouchableOpacity>
-                    )}
+                <View style={[styles.mainRow, { height: SET_BASE_HEIGHT }]}>
+                    <Text style={[styles.index, { color: theme.textSecondary }]}>#{index + 1}</Text>
+                    <Text style={[GlobalStyles.text, styles.detailsText, { color: theme.text }]}>
+                        {renderSetDetails(set)}
+                    </Text>
+                    <View style={styles.actions}>
+                        {!isReadOnly && !isDragging && (
+                            <TouchableOpacity onPress={() => onDelete(set.id)} style={styles.deleteButton}>
+                                <FontAwesome name={"trash"} size={14} color={theme.error} />
+                            </TouchableOpacity>
+                        )}
+                        <FontAwesome name={"reorder"} size={12} color={theme.textSecondary} style={{ marginLeft: 8 }} />
+                    </View>
                 </View>
+
+                {set.sub_sets && JSON.parse(set.sub_sets).map((ss: any, idx: number) => (
+                    <View key={idx} style={styles.subSetRow}>
+                        <View style={[styles.indentLine, { backgroundColor: theme.primary }]} />
+                        <Text style={[styles.subSetText, { color: theme.textSecondary }]}>
+                            {t('drop')} {idx + 1}: {ss.weight}{t('kg')} × {ss.reps} {t('repsShort')}
+                        </Text>
+                    </View>
+                ))}
+
             </TouchableOpacity>
-        </DraggableItem>
+        </DraggableItem >
+
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        height: ITEM_HEIGHT,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: Theme.surface,
+    draggable: {
+        backgroundColor: 'transparent',
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.05)',
+    },
+
+
+    content: {
+        width: '100%',
         paddingHorizontal: 16,
     },
-    detailsContainer: {
-        flex: 1,
+    mainRow: {
         flexDirection: 'row',
-        gap: 12,
         alignItems: 'center',
-        height: '100%',
     },
     index: {
-        ...GlobalStyles.text,
-        width: 32,
-        opacity: 0.5,
-        fontSize: 13,
+        width: 28,
+        fontSize: 10,
+        fontWeight: '700',
     },
+
+
     detailsText: {
         flex: 1,
+        fontSize: 14,
+        fontWeight: '700',
     },
+
     actions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
     },
     deleteButton: {
         padding: 8,
-        marginRight: -8,
     },
+    subSetRow: {
+        height: SUBSET_HEIGHT,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingLeft: 28,
+        paddingBottom: 16,
+    },
+
+    indentLine: {
+        width: 2,
+        height: '60%',
+        borderRadius: 1,
+        marginRight: 10,
+        opacity: 0.8,
+    },
+
+
+    subSetText: {
+        fontSize: 13,
+        fontWeight: '600',
+    }
+
+
 });

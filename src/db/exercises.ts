@@ -93,29 +93,5 @@ export const ExerciseRepository = {
     async delete(id: number): Promise<void> {
         const db = await getDb();
         await db.runAsync('DELETE FROM exercises WHERE id = ?', id);
-    },
-
-    async seedDefaults(): Promise<void> {
-        const db = await getDb();
-        const existing = await db.getAllAsync('SELECT id FROM exercises LIMIT 1');
-
-        if (existing.length === 0) {
-            const defaults = [
-                { name: 'Bench Press', type: 'weight', muscle_group: 'chest' },
-                { name: 'Pull Up', type: 'bodyweight', muscle_group: 'back' },
-                { name: 'Running', type: 'cardio', muscle_group: 'legs' }
-            ];
-
-            for (let i = 0; i < defaults.length; i++) {
-                const ex = defaults[i];
-                await db.runAsync(
-                    'INSERT INTO exercises (name, type, muscle_group, position) VALUES (?, ?, ?, ?)',
-                    ex.name,
-                    ex.type,
-                    ex.muscle_group,
-                    i
-                );
-            }
-        }
     }
 };

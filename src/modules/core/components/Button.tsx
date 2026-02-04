@@ -1,7 +1,6 @@
-import { Theme } from '@/src/constants/Colors';
-import { GlobalStyles } from '@/src/constants/Styles';
 import React from 'react';
 import { ActivityIndicator, StyleProp, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 
 interface ButtonProps {
     label: string;
@@ -22,25 +21,27 @@ export const Button: React.FC<ButtonProps> = ({
     style,
     labelStyle,
 }) => {
+    const { theme, isDark } = useTheme();
+
     const getButtonStyle = () => {
         switch (variant) {
             case 'secondary':
-                return styles.secondaryButton;
+                return [styles.secondaryButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }];
             case 'outline':
-                return styles.outlineButton;
+                return [styles.outlineButton, { borderColor: theme.primary }];
             case 'danger':
                 return styles.dangerButton;
             default:
-                return styles.primaryButton;
+                return [styles.primaryButton, { backgroundColor: theme.primary }];
         }
     };
 
     const getLabelStyle = () => {
         switch (variant) {
             case 'outline':
-                return styles.outlineButtonText;
+                return [styles.outlineButtonText, { color: theme.primary }];
             case 'secondary':
-                return styles.secondaryButtonText;
+                return [styles.secondaryButtonText, { color: theme.text }];
             default:
                 return styles.primaryButtonText;
         }
@@ -72,35 +73,27 @@ const styles = StyleSheet.create({
         borderColor: 'transparent',
     },
     primaryButton: {
-        backgroundColor: Theme.primary,
         borderColor: 'rgba(255,255,255,0.08)',
     },
     secondaryButton: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
         borderColor: 'rgba(255,255,255,0.1)',
     },
     outlineButton: {
         backgroundColor: 'transparent',
-        borderColor: Theme.primary,
     },
     dangerButton: {
         backgroundColor: '#FF6B6B',
         borderColor: 'rgba(255,255,255,0.08)',
     },
     primaryButtonText: {
-        ...GlobalStyles.text,
         color: 'white',
         fontWeight: 'bold',
         fontSize: 16,
     },
     secondaryButtonText: {
-        ...GlobalStyles.text,
-        color: Theme.text,
         fontWeight: '600',
     },
     outlineButtonText: {
-        ...GlobalStyles.text,
-        color: Theme.primary,
         fontWeight: 'bold',
     },
     disabled: {

@@ -1,17 +1,19 @@
-import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
+
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
-import { Workout, WorkoutRepository, Set as WorkoutSet } from '@/src/db/workouts';
+import { SubSet, Workout, WorkoutRepository, Set as WorkoutSet } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useSortableList } from '@/src/modules/core/hooks/useSortableList';
+import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { showToast } from '@/src/modules/core/utils/toast';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     FlatList,
     StyleSheet,
@@ -19,11 +21,15 @@ import {
     View
 } from 'react-native';
 import { LogSetModal } from '../components/LogSetModal';
+
 import { WorkoutSetItem } from '../components/WorkoutSetItem';
+
+import { calculateSetHeight } from '../workoutUtils';
 
 type SetWithExercise = WorkoutSet & { exercise_name: string };
 
 export default function WorkoutSessionScreen() {
+    const { t } = useTranslation();
     const { id } = useLocalSearchParams();
     const workoutId = Number(id);
 
@@ -35,6 +41,7 @@ export default function WorkoutSessionScreen() {
 
     const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null);
     const [draggingId, setDraggingId] = useState<number | null>(null);
+    const [subSets, setSubSets] = useState<SubSet[]>([]);
     const [inputValues, setInputValues] = useState({
         weight: '',
         reps: '',
@@ -79,6 +86,7 @@ export default function WorkoutSessionScreen() {
 
     const handleOpenAddModal = () => {
         setEditingSetId(null);
+        setSubSets([]);
         setInputValues({
             weight: '',
             reps: '',
@@ -100,6 +108,16 @@ export default function WorkoutSessionScreen() {
             secs = Math.round((s.duration - Math.floor(s.duration)) * 60).toString();
         }
 
+        let parsedSubSets: SubSet[] = [];
+        if (s.sub_sets) {
+            try {
+                parsedSubSets = JSON.parse(s.sub_sets);
+            } catch (e) {
+                console.error("Failed to parse sub_sets", e);
+            }
+        }
+        setSubSets(parsedSubSets);
+
         setInputValues({
             weight: s.weight?.toString() || '',
             reps: s.reps?.toString() || '',
@@ -113,8 +131,8 @@ export default function WorkoutSessionScreen() {
     const handleSaveSet = async () => {
         if (!selectedExerciseId) {
             showToast.error({
-                title: 'Select Exercise',
-                message: 'Please select an exercise first.'
+                title: t('selectExercise'),
+                message: t('selectExerciseFirst')
             });
             return;
         }
@@ -125,15 +143,14 @@ export default function WorkoutSessionScreen() {
         const type = selectedExercise.type?.toLowerCase();
         const { weight, reps, distance, durationMinutes, durationSeconds } = inputValues;
 
-        let finalDurationValue: number | undefined = undefined;
+        let finalDurationValue: number | null = null;
         const needsDuration = type === 'cardio' || type === 'bodyweight_timer';
 
         if (needsDuration) {
             const mins = parseFloat(durationMinutes || '0');
             const secs = parseFloat(durationSeconds || '0');
             if (!isNaN(mins) || !isNaN(secs)) {
-                finalDurationValue =
-                    (isNaN(mins) ? 0 : mins) + (isNaN(secs) ? 0 : secs) / 60;
+                finalDurationValue = (isNaN(mins) ? 0 : mins) + (isNaN(secs) ? 0 : secs) / 60;
             }
         }
 
@@ -141,45 +158,83 @@ export default function WorkoutSessionScreen() {
 
         if (type !== 'cardio') {
             data.weight = weight ? parseFloat(weight) : null;
+            if (weight && isNaN(data.weight)) data.weight = null;
         }
 
         if (type === 'weight' || type === 'bodyweight') {
             data.reps = reps ? parseInt(reps, 10) : null;
+            if (reps && isNaN(data.reps)) data.reps = null;
         }
 
         if (type === 'cardio') {
             data.distance = distance ? parseFloat(distance) : null;
+            if (distance && isNaN(data.distance)) data.distance = null;
         }
 
         if (needsDuration) {
-            data.duration = finalDurationValue ?? null;
+            data.duration = finalDurationValue;
         }
 
-        if (editingSetId) {
-            await WorkoutRepository.updateSet(editingSetId, data);
+        // Add sub_sets (pyramid sets)
+        if (subSets.length > 0) {
+            data.sub_sets = JSON.stringify(subSets);
         } else {
-            await WorkoutRepository.addSet(workoutId, selectedExerciseId, data);
+            data.sub_sets = null;
         }
 
-        setModalVisible(false);
-        setEditingSetId(null);
-        loadData();
-        showToast.success({
-            title: editingSetId ? 'Set Updated' : 'Set Added',
-            message: editingSetId ? 'Your changes have been saved.' : 'New set added to your workout.'
-        });
+        try {
+            if (editingSetId) {
+                await WorkoutRepository.updateSet(editingSetId, data);
+            } else {
+                await WorkoutRepository.addSet(workoutId, selectedExerciseId, data);
+            }
+
+            setModalVisible(false);
+            setEditingSetId(null);
+            setSubSets([]);
+            await loadData();
+            showToast.success({
+                title: editingSetId ? t('update') : t('addSet'),
+                message: editingSetId ? t('changesSaved') : t('newSetAdded')
+            });
+        } catch (e) {
+            console.error("Failed to save set:", e);
+            showToast.error({
+                title: t('error'),
+                message: t('failedToSaveSet')
+            });
+        }
     };
 
     const handleReorderSets = async (
         exerciseName: string,
         fromIndex: number,
         translationY: number,
+        itemHeight: number,
         setSortable: any
     ) => {
-        const ITEM_HEIGHT = 48;
-        const delta = Math.round(translationY / ITEM_HEIGHT);
         const exerciseSets = sets.filter(s => s.exercise_name === exerciseName);
-        const toIndex = Math.max(0, Math.min(exerciseSets.length - 1, fromIndex + delta));
+        const heights = exerciseSets.map(s => calculateSetHeight(s.sub_sets));
+
+        // Find current center Y of the dragged item
+        let originalY = 0;
+        for (let i = 0; i < fromIndex; i++) {
+            originalY += heights[i];
+        }
+        const draggedCenterY = originalY + heights[fromIndex] / 2 + translationY;
+
+        // Determine destination index by finding which height slot contains the dragged center
+        let currentYBound = 0;
+        let toIndex = 0;
+        for (let i = 0; i < exerciseSets.length; i++) {
+            const h = heights[i];
+            if (draggedCenterY < currentYBound + h) {
+                toIndex = i;
+                break;
+            }
+            currentYBound += h;
+            if (i === exerciseSets.length - 1) toIndex = i;
+        }
 
         if (fromIndex === toIndex) {
             setSortable.activeIndex.value = -1;
@@ -214,14 +269,14 @@ export default function WorkoutSessionScreen() {
 
     const handleFinishWorkout = async () => {
         showToast.confirm({
-            title: 'Finish Workout',
-            message: 'Are you sure you want to finish this session?',
+            title: t('finishWorkout'),
+            message: t('finishSessionConfirm'),
             action: {
-                label: 'Finish',
+                label: t('finish'),
                 onPress: async () => {
                     await WorkoutRepository.finish(workoutId);
                     router.replace('/(tabs)/history');
-                    showToast.success({ title: 'Workout Finished', message: 'Great job!' });
+                    showToast.success({ title: t('workoutFinished'), message: t('greatJob') });
                 },
             },
         });
@@ -229,15 +284,15 @@ export default function WorkoutSessionScreen() {
 
     const handleDeleteWorkout = () => {
         showToast.confirm({
-            title: 'Delete Workout',
-            message: 'Are you sure you want to delete this workout?',
+            title: t('delete'),
+            message: t('deleteWorkoutConfirm'),
             icon: 'trash',
             action: {
-                label: 'Delete',
+                label: t('delete'),
                 onPress: async () => {
                     await WorkoutRepository.delete(workoutId);
                     router.replace('/(tabs)/workout');
-                    showToast.success({ title: 'Workout Deleted', message: 'Workout removed from data storage.' });
+                    showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') });
                 },
             },
         });
@@ -245,15 +300,15 @@ export default function WorkoutSessionScreen() {
 
     const handleDeleteSet = (setId: number) => {
         showToast.confirm({
-            title: 'Delete Set',
-            message: 'Are you sure you want to remove this set?',
+            title: t('delete'),
+            message: t('removeSetConfirm'),
             icon: 'trash',
             action: {
-                label: 'Delete',
+                label: t('delete'),
                 onPress: async () => {
                     await WorkoutRepository.deleteSet(setId);
                     loadData();
-                    showToast.success({ title: 'Set Deleted', message: 'Set removed from workout.' });
+                    showToast.success({ title: t('setDeleted'), message: t('setRemoved') });
                 },
             },
         });
@@ -273,11 +328,11 @@ export default function WorkoutSessionScreen() {
             <ScreenHeader
                 title={
                     isReadOnly
-                        ? `Workout ${new Date(workout?.date || '').toLocaleDateString()}`
-                        : 'Workout Session'
+                        ? `${t('workout')} ${new Date(workout?.date || '').toLocaleDateString()}`
+                        : t('activeSession')
                 }
                 onDelete={handleDeleteWorkout}
-                rightAction={!isReadOnly ? { label: 'Finish', onPress: handleFinishWorkout } : undefined}
+                rightAction={!isReadOnly ? { label: t('finish'), onPress: handleFinishWorkout } : undefined}
             />
 
 
@@ -287,10 +342,11 @@ export default function WorkoutSessionScreen() {
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={
                     <EmptyState
-                        message={isReadOnly ? 'No sets logged.' : 'Add your first set to start training.'}
+                        message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')}
                         icon={"file-text-o"}
                     />
                 }
+
                 renderItem={({ item: exerciseName }) => (
                     <WorkoutExerciseGroup
                         exerciseName={exerciseName}
@@ -308,7 +364,7 @@ export default function WorkoutSessionScreen() {
 
             {!isReadOnly && (
                 <TouchableOpacity style={GlobalStyles.fab} onPress={handleOpenAddModal}>
-                    <FontAwesome name={'plus'} size={32} color={'white'} />
+                    <FontAwesome name={"plus"} size={32} color={"white"} />
                 </TouchableOpacity>
             )}
 
@@ -320,6 +376,8 @@ export default function WorkoutSessionScreen() {
                 exercises={exercises}
                 selectedExerciseId={selectedExerciseId}
                 setSelectedExerciseId={setSelectedExerciseId}
+                subSets={subSets}
+                setSubSets={setSubSets}
                 inputValues={inputValues}
                 updateInput={updateInput}
             />
@@ -334,7 +392,7 @@ interface GroupProps {
     draggingId: number | null;
     handleOpenEditModal: (s: WorkoutSet) => void;
     handleDeleteSet: (id: number) => void;
-    handleReorderSets: (name: string, idx: number, ty: number, sortable: any) => void;
+    handleReorderSets: (name: string, idx: number, ty: number, height: number, sortable: any) => void;
     setDraggingId: (id: number | null) => void;
 }
 
@@ -348,13 +406,16 @@ function WorkoutExerciseGroup({
     handleReorderSets,
     setDraggingId,
 }: GroupProps) {
+    const { theme } = useTheme();
     const setSortable = useSortableList();
 
+
     return (
-        <Card style={styles.groupCard}>
-            <View style={styles.groupHeader}>
+        <Card style={[styles.groupCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.groupHeader, { borderBottomColor: theme.border }]}>
                 <Typography.Subtitle>{exerciseName}</Typography.Subtitle>
             </View>
+
 
             <FlatList
                 data={sets}
@@ -369,8 +430,8 @@ function WorkoutExerciseGroup({
                         isDragging={set.id === draggingId}
                         onEdit={handleOpenEditModal}
                         onDelete={handleDeleteSet}
-                        onDrop={(idx, ty) => {
-                            handleReorderSets(exerciseName, idx, ty, setSortable);
+                        onDrop={(idx, ty, height) => {
+                            handleReorderSets(exerciseName, idx, ty, height, setSortable);
                         }}
                         onDragStart={() => setDraggingId(set.id)}
                         onDragEnd={() => setDraggingId(null)}
@@ -385,27 +446,23 @@ function WorkoutExerciseGroup({
 
 const styles = StyleSheet.create({
     listContent: {
+        paddingTop: 12,
         paddingBottom: 100,
     },
     emptyText: {
-        color: Theme.textSecondary,
         textAlign: 'center',
         marginTop: 40,
     },
+
     groupCard: {
         padding: 0,
         overflow: 'hidden',
         marginBottom: 16,
+        borderWidth: 1,
     },
     groupHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
         padding: 16,
-        paddingBottom: 0,
-    },
-    exerciseHeader: {
-        ...GlobalStyles.subtitle,
-        color: Theme.text,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
     },
 });

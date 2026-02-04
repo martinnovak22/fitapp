@@ -9,6 +9,13 @@ export interface Workout {
     note?: string;
 }
 
+export interface SubSet {
+    weight?: number;
+    reps?: number;
+    distance?: number;
+    duration?: number;
+}
+
 export interface Set {
     id: number;
     workout_id: number;
@@ -19,6 +26,7 @@ export interface Set {
     duration?: number;
     rpe?: number;
     position: number;
+    sub_sets?: string; // JSON string
 }
 
 export interface SetData {
@@ -26,6 +34,7 @@ export interface SetData {
     reps?: number;
     distance?: number;
     duration?: number;
+    sub_sets?: string; // JSON string
 }
 
 export interface ExerciseHistory {
@@ -128,25 +137,27 @@ export const WorkoutRepository = {
         const nextPosition = lastSet ? lastSet.position + 1 : 0;
 
         await db.runAsync(
-            'INSERT INTO sets (workout_id, exercise_id, weight, reps, distance, duration, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO sets (workout_id, exercise_id, weight, reps, distance, duration, position, sub_sets) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             workoutId,
             exerciseId,
             data.weight ?? null,
             data.reps ?? null,
             data.distance ?? null,
             data.duration ?? null,
-            nextPosition
+            nextPosition,
+            data.sub_sets ?? null
         );
     },
 
     async updateSet(setId: number, data: SetData): Promise<void> {
         const db = await getDb();
         await db.runAsync(
-            'UPDATE sets SET weight = ?, reps = ?, distance = ?, duration = ? WHERE id = ?',
+            'UPDATE sets SET weight = ?, reps = ?, distance = ?, duration = ?, sub_sets = ? WHERE id = ?',
             data.weight ?? null,
             data.reps ?? null,
             data.distance ?? null,
             data.duration ?? null,
+            data.sub_sets ?? null,
             setId
         );
     },

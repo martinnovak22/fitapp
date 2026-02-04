@@ -1,42 +1,29 @@
-import { Theme } from '@/src/constants/Colors';
 import { Exercise } from '@/src/db/exercises';
+import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { formatDuration } from '@/src/utils/formatters';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LineChart } from "react-native-gifted-charts";
+
+
 
 interface ExerciseHistoryGraphProps {
     exercise: Exercise;
     data: any[];
 }
 
-// DEV MOCK DATA
-// const USE_MOCK_DATA = true;
-// if (USE_MOCK_DATA) {
-//     const mock = [];
-//     const now = new Date();
-//     for (let i = 0; i < 20; i++) {
-//         const date = new Date(now);
-//         date.setDate(date.getDate() - (20 - i));
-//         mock.push({
-//             date: date.toISOString(),
-//             max_weight: +(40 + Math.random() * 20).toFixed(2),
-//             max_reps: 8 + Math.floor(Math.random() * 5),
-//             max_duration: 60 + Math.floor(Math.random() * 60),
-//             max_distance: +(1000 + Math.random() * 5000).toFixed(2),
-//         });
-//     }
-//     return mock;
-// } 
-
 type Metric = 'weight' | 'reps' | 'distance' | 'duration';
 
 export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistoryGraphProps) => {
+    const { t } = useTranslation();
+    const { theme } = useTheme();
     const [selectedMetric, setSelectedMetric] = useState<Metric>('weight');
+
     const [graphWidth, setGraphWidth] = useState(0);
 
-    const data = useMemo(() => {
 
+    const data = useMemo(() => {
         return rawData;
     }, [rawData]);
 
@@ -67,7 +54,6 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
             case 'distance':
                 getValue = (h) => h.max_distance || 0;
                 break;
-
             case 'duration':
                 getValue = (h) => h.max_duration || 0;
                 break;
@@ -146,35 +132,38 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
             onPress={() => setSelectedMetric(metric)}
             style={[
                 styles.toggleButton,
-                selectedMetric === metric && styles.toggleButtonActive
+                selectedMetric === metric && [styles.toggleButtonActive, { backgroundColor: theme.primary }]
             ]}
         >
             <Text style={[
                 styles.toggleText,
+                { color: theme.textSecondary },
                 selectedMetric === metric && styles.toggleTextActive
             ]}>{label}</Text>
         </TouchableOpacity>
+
     );
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Progress</Text>
-                <View style={styles.toggleGroup}>
+                <Text style={[styles.title, { color: theme.text }]}>{t('progress')}</Text>
+                <View style={[styles.toggleGroup, { backgroundColor: theme.background }]}>
+
                     {exercise.type === 'cardio' ? (
                         <>
-                            {renderToggle('distance', 'Meters')}
-                            {renderToggle('duration', 'Time')}
+                            {renderToggle('distance', t('meters'))}
+                            {renderToggle('duration', t('time'))}
                         </>
                     ) : (exercise.type === 'bodyweight_timer' ? (
                         <>
-                            {renderToggle('weight', 'Weight')}
-                            {renderToggle('duration', 'Time')}
+                            {renderToggle('weight', t('weight'))}
+                            {renderToggle('duration', t('time'))}
                         </>
                     ) : (
                         <>
-                            {renderToggle('weight', 'Weight')}
-                            {renderToggle('reps', 'Reps')}
+                            {renderToggle('weight', t('weight'))}
+                            {renderToggle('reps', t('reps'))}
                         </>
                     ))}
                 </View>
@@ -182,21 +171,23 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
 
             {stats && (
                 <View style={styles.statsRow}>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Personal Best</Text>
-                        <Text style={styles.statValue}>{stats.max}</Text>
+                    <View style={[styles.statItem, { backgroundColor: theme.background }]}>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('personalBest')}</Text>
+                        <Text style={[styles.statValue, { color: theme.text }]}>{stats.max}</Text>
                     </View>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Average</Text>
-                        <Text style={styles.statValue}>{stats.avg}</Text>
+                    <View style={[styles.statItem, { backgroundColor: theme.background }]}>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('average')}</Text>
+                        <Text style={[styles.statValue, { color: theme.text }]}>{stats.avg}</Text>
                     </View>
                 </View>
+
             )}
 
             <View
                 onLayout={(e) => setGraphWidth(e.nativeEvent.layout.width)}
-                style={styles.graphWrapper}
+                style={[styles.graphWrapper, { borderTopColor: theme.border + '40' }]}
             >
+
                 {graphWidth > 0 && processedData.length > 0 ? (() => {
                     const yAxisLabelWidth = 60;
                     const availableWidth = graphWidth - yAxisLabelWidth - 16;
@@ -214,31 +205,32 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
                     return (
                         <LineChart
                             data={processedData}
-                            color={Theme.tint}
+                            color={theme.primary}
                             thickness={3}
-                            dataPointsColor={Theme.tint}
+                            dataPointsColor={theme.primary}
                             dataPointsRadius={4}
-                            focusedDataPointColor={Theme.primary}
-                            xAxisColor={Theme.border}
-                            yAxisColor={Theme.border}
-                            yAxisTextStyle={styles.axisText}
-                            xAxisLabelTextStyle={styles.axisText}
+                            focusedDataPointColor={theme.primary}
+                            xAxisColor={theme.border}
+                            yAxisColor={theme.border}
+                            yAxisTextStyle={[styles.axisText, { color: theme.textSecondary }]}
+                            xAxisLabelTextStyle={[styles.axisText, { color: theme.textSecondary }]}
                             noOfSections={yAxisProps.noOfSections}
                             stepValue={yAxisProps.stepValue}
                             maxValue={yAxisProps.maxValue}
                             areaChart
-                            startFillColor={Theme.tint}
-                            endFillColor={Theme.tint}
+                            startFillColor={theme.primary}
+                            endFillColor={theme.primary}
                             startOpacity={0.2}
                             endOpacity={0.01}
                             spacing={spacing}
                             initialSpacing={initialSpacing}
                             endSpacing={endSpacing}
+
                             curved
                             width={availableWidth}
                             height={220}
                             hideRules={false}
-                            rulesColor={Theme.border}
+                            rulesColor={theme.border}
                             rulesType="dashed"
                             isAnimated
                             yAxisLabelWidth={yAxisLabelWidth}
@@ -253,18 +245,20 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
                             pointerConfig={{
                                 activatePointersOnLongPress: true,
                                 pointerStripUptoDataPoint: true,
-                                pointerStripColor: Theme.tint,
+                                pointerStripColor: theme.primary,
                                 pointerStripWidth: 2,
                                 strokeDashArray: [2, 5],
-                                pointerColor: Theme.tint,
+                                pointerColor: theme.primary,
                                 radius: 6,
                             }}
                         />
+
                     );
                 })() : (
                     <View style={styles.emptyState}>
-                        <Text style={{ color: Theme.textSecondary }}>No history data available</Text>
+                        <Text style={{ color: theme.textSecondary }}>{t('noHistoryData')}</Text>
                     </View>
+
                 )}
             </View>
         </View>
@@ -284,27 +278,26 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 18,
         fontWeight: '700',
-        color: Theme.text,
     },
+
     toggleGroup: {
         flexDirection: 'row',
-        backgroundColor: Theme.background,
         borderRadius: 10,
         padding: 2,
     },
+
     toggleButton: {
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 8,
     },
     toggleButtonActive: {
-        backgroundColor: Theme.primary,
     },
     toggleText: {
         fontSize: 12,
         fontWeight: '600',
-        color: Theme.textSecondary,
     },
+
     toggleTextActive: {
         color: '#FFF',
     },
@@ -315,33 +308,31 @@ const styles = StyleSheet.create({
     },
     statItem: {
         flex: 1,
-        backgroundColor: Theme.background,
         padding: 12,
         borderRadius: 12,
     },
     statLabel: {
         fontSize: 12,
-        color: Theme.textSecondary,
         marginBottom: 4,
     },
+
     statValue: {
         fontSize: 16,
         fontWeight: '700',
-        color: Theme.text,
     },
     graphWrapper: {
         width: '100%',
         paddingBottom: 10,
         paddingTop: 20,
         borderTopWidth: 0.5,
-        borderTopColor: 'rgba(255, 255, 255, 0.1)',
     },
+
     axisText: {
-        color: Theme.textSecondary,
         fontSize: 12,
     },
     emptyState: {
         padding: 40,
         alignItems: 'center',
     }
+
 });

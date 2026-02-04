@@ -7,9 +7,11 @@ import { Typography } from '@/src/modules/core/components/Typography';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 export default function HistoryScreen() {
+    const { t, i18n } = useTranslation();
     const [workouts, setWorkouts] = useState<Workout[]>([]);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -35,11 +37,11 @@ export default function HistoryScreen() {
             <View style={styles.workoutItem}>
                 <View style={styles.workoutInfo}>
                     <Typography.Body style={styles.workoutDate}>
-                        {new Date(item.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(item.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
+                        {new Date(item.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(item.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
                     </Typography.Body>
                     <Typography.Meta style={styles.workoutTime}>
                         {item.start_time ? new Date(item.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                        {item.end_time ? ` - ${new Date(item.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' (In Progress)'}
+                        {item.end_time ? ` - ${new Date(item.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ` (${t('inProgress')})`}
                     </Typography.Meta>
                     {item.note && (
                         <Typography.Meta style={styles.workoutNote}>
@@ -64,7 +66,7 @@ export default function HistoryScreen() {
                 keyExtractor={item => item.id.toString()}
                 contentContainerStyle={styles.listPadding}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                ListEmptyComponent={<EmptyState message={"No workouts logged yet."} icon={"calendar-o"} />}
+                ListEmptyComponent={<EmptyState message={t('noWorkoutsYet')} icon={"calendar-o"} />}
             />
         </ScreenLayout>
     );

@@ -1,56 +1,50 @@
 import * as SQLite from 'expo-sqlite';
 
 export const DATABASE_NAME = 'fitapp.db';
-const DATABASE_VERSION = 1;
+/**
+ * Initializes the database by creating tables if they don't exist.
+ * This ensures the app maintains data across restarts without complex migrations.
+ * @param db The SQLite database instance.
+ */
+export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
+  await db.execAsync(`
+    PRAGMA journal_mode = WAL;
+    PRAGMA foreign_keys = ON;
 
-export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase): Promise<void> {
-  const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-  const currentVersion = result?.user_version ?? 0;
+    CREATE TABLE IF NOT EXISTS exercises (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'weight',
+        muscle_group TEXT,
+        photo_uri TEXT,
+        position INTEGER DEFAULT 0
+    );
 
-  if (currentVersion >= DATABASE_VERSION) {
-    return;
-  }
+    CREATE TABLE IF NOT EXISTS workouts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        start_time TEXT,
+        end_time TEXT,
+        status TEXT DEFAULT 'finished',
+        note TEXT
+    );
 
-  // Initial schema creation (Final Version)
-  if (currentVersion < 1) {
-    await db.execAsync(`
-      PRAGMA journal_mode = WAL;
-
-      CREATE TABLE IF NOT EXISTS exercises (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          type TEXT NOT NULL DEFAULT 'weight',
-          muscle_group TEXT,
-          photo_uri TEXT,
-          position INTEGER DEFAULT 0
-      );
-
-      CREATE TABLE IF NOT EXISTS workouts (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          date TEXT NOT NULL,
-          start_time TEXT,
-          end_time TEXT,
-          status TEXT DEFAULT 'finished',
-          note TEXT
-      );
-
-      CREATE TABLE IF NOT EXISTS sets (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          workout_id INTEGER NOT NULL,
-          exercise_id INTEGER NOT NULL,
-          weight REAL,
-          reps INTEGER,
-          distance REAL,
-          duration REAL,
-          rpe INTEGER,
-          position INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE,
-          FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
-      );
-    `);
-  }
-
-  // Update database version
-  await db.runAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+    CREATE TABLE IF NOT EXISTS sets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        workout_id INTEGER NOT NULL,
+        exercise_id INTEGER NOT NULL,
+        weight REAL,
+        reps INTEGER,
+        distance REAL,
+        duration REAL,
+        rpe INTEGER,
+        position INTEGER DEFAULT 0,
+        sub_sets TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE,
+        FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+    );
+  `);
 }
+
+

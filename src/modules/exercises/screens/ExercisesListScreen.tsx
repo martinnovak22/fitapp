@@ -1,30 +1,60 @@
-import { Theme } from '@/src/constants/Colors';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
 import { DraggableItem } from '@/src/modules/core/components/DraggableItem';
 import { ListSeparator } from '@/src/modules/core/components/ListSeparator';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { useSortableList } from '@/src/modules/core/hooks/useSortableList';
+import { useTheme } from '@/src/modules/core/hooks/useTheme';
+import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv';
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { router, Stack, useFocusEffect, useNavigation } from 'expo-router';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+
 export default function ExercisesListScreen() {
+    const { t } = useTranslation();
+    const navigation = useNavigation();
     const [exercises, setExercises] = useState<Exercise[]>([]);
     const [draggingId, setDraggingId] = useState<number | null>(null);
     const sortable = useSortableList();
+    const { theme } = useTheme();
 
-    const loadExercises = async () => {
+
+
+    const loadExercises = useCallback(async () => {
         const data = await ExerciseRepository.getAll();
         setExercises(data);
-    };
+    }, []);
+
+    useLayoutEffect(() => {
+        const hasExercises = exercises.length > 0;
+        navigation.getParent()?.setOptions({
+            headerRight: () => (
+                <View style={{ flexDirection: 'row', gap: 16, marginRight: 16 }}>
+                    <TouchableOpacity
+                        onPress={() => exportExercisesToCSV(exercises)}
+                        disabled={!hasExercises}
+                        style={{ opacity: hasExercises ? 1 : 0.3 }}
+                    >
+                        <FontAwesome name={"upload"} size={20} color={theme.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => importExercisesFromCSV(loadExercises)}>
+                        <FontAwesome name={"download"} size={20} color={theme.primary} />
+                    </TouchableOpacity>
+
+
+                </View>
+            ),
+        });
+    }, [navigation, exercises, loadExercises, t]);
 
     useFocusEffect(
         useCallback(() => {
             loadExercises();
-        }, [])
+        }, [loadExercises])
     );
 
     const handleReorder = async (fromIndex: number, translationY: number) => {
@@ -54,6 +84,7 @@ export default function ExercisesListScreen() {
     };
 
     const renderItem = ({ item, index }: { item: Exercise; index: number }) => (
+
         <DraggableItem
             index={index}
             itemCount={exercises.length}
@@ -62,7 +93,7 @@ export default function ExercisesListScreen() {
             onDragStart={() => setDraggingId(item.id)}
             onDragEnd={() => setDraggingId(null)}
             useLayoutAnimation={draggingId !== item.id}
-            style={GlobalStyles.card}
+            style={[GlobalStyles.card]}
             activeIndex={sortable.activeIndex}
             translationY={sortable.translationY}
         >
@@ -73,28 +104,31 @@ export default function ExercisesListScreen() {
                     {item.photo_uri ? (
                         <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
                     ) : (
-                        <View style={[styles.thumbnail, styles.placeholderThumbnail]}>
-                            <FontAwesome name={"camera"} size={20} color={"rgba(255,255,255,0.2)"} />
+                        <View style={[styles.thumbnail, styles.placeholderThumbnail, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                            <FontAwesome name={"camera"} size={20} color={theme.textSecondary + '40'} />
                         </View>
+
                     )}
                     <View style={styles.content}>
-                        <Text style={[GlobalStyles.text, styles.title]}>
+                        <Text style={[GlobalStyles.text, styles.title, { color: theme.text }]}>
                             {item.name}
                         </Text>
-                        <Text style={styles.subtitle}>
+                        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
                             {item.muscle_group
                                 ? `${formatMuscleGroup(item.muscle_group)} • `
                                 : ''}
-                            {formatExerciseType(item.type)}
+                            {t(formatExerciseType(item.type))}
                         </Text>
+
                     </View>
                     <View style={styles.icons}>
                         <FontAwesome
-                            name={'chevron-right'}
+                            name={"chevron-right"}
                             size={12}
-                            color={Theme.primary}
+                            color={theme.primary}
                         />
                     </View>
+
                 </View>
             </TouchableOpacity>
         </DraggableItem>
@@ -102,6 +136,11 @@ export default function ExercisesListScreen() {
 
     return (
         <ScreenLayout style={{ padding: 0 }}>
+            <Stack.Screen
+                options={{
+                    title: t('exercises'),
+                }}
+            />
             <FlatList
                 data={exercises}
                 renderItem={renderItem}
@@ -135,21 +174,19 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         fontSize: 13,
-        color: Theme.textSecondary,
     },
     thumbnail: {
         width: 50,
         height: 50,
         borderRadius: 8,
         marginRight: 12,
-        backgroundColor: 'rgba(255,255,255,0.05)',
     },
     placeholderThumbnail: {
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
     },
+
     icons: {
         flexDirection: 'row',
         alignItems: 'center',
