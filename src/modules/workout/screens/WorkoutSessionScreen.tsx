@@ -1,46 +1,47 @@
 import { GlobalStyles } from '@/src/constants/Styles';
-
-import { Exercise, ExerciseRepository } from '@/src/db/exercises';
-import { SubSet, Workout, WorkoutRepository, Set as WorkoutSet } from '@/src/db/workouts';
+import { SubSet, Set as WorkoutSet } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
-import { useSortableList } from '@/src/modules/core/hooks/useSortableList';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { showToast } from '@/src/modules/core/utils/toast';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    FlatList,
     StyleSheet,
     TouchableOpacity,
     View
 } from 'react-native';
+import { Gesture } from 'react-native-gesture-handler';
+import { NestedReorderableList, ScrollViewContainer, reorderItems } from 'react-native-reorderable-list';
 import { LogSetModal } from '../components/LogSetModal';
-
 import { WorkoutSetItem } from '../components/WorkoutSetItem';
-
-import { calculateSetHeight } from '../workoutUtils';
+import { useWorkoutSession } from '../hooks/useWorkoutSession';
 
 type SetWithExercise = WorkoutSet & { exercise_name: string };
 
 export default function WorkoutSessionScreen() {
     const { t } = useTranslation();
-    const { id } = useLocalSearchParams();
-    const workoutId = Number(id);
+    const {
+        workout,
+        exercises,
+        exerciseNamesOrder,
+        groupedSets,
+        finishWorkout,
+        deleteWorkout,
+        deleteSet,
+        reorderSets,
+        addSet,
+        updateSet
+    } = useWorkoutSession();
 
-    const [workout, setWorkout] = useState<Workout | null>(null);
-    const [sets, setSets] = useState<SetWithExercise[]>([]);
-    const [exercises, setExercises] = useState<Exercise[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingSetId, setEditingSetId] = useState<number | null>(null);
 
     const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null);
-    const [draggingId, setDraggingId] = useState<number | null>(null);
     const [subSets, setSubSets] = useState<SubSet[]>([]);
     const [inputValues, setInputValues] = useState({
         weight: '',
@@ -50,35 +51,13 @@ export default function WorkoutSessionScreen() {
         durationSeconds: '',
     });
 
-    const loadData = useCallback(async () => {
-        if (!workoutId) return;
-
-        const [w, s, ex] = await Promise.all([
-            WorkoutRepository.getById(workoutId),
-            WorkoutRepository.getSets(workoutId),
-            ExerciseRepository.getAll(),
-        ]);
-
-        if (!w) {
-            router.replace('/(tabs)/workout');
-            return;
-        }
-
-        setWorkout(w);
-        setSets(s as SetWithExercise[]);
-        setExercises(ex);
-
-        if (!selectedExerciseId && ex.length > 0) {
-            const defaultEx = ex.find(e => e.name === 'Bench Press') || ex[0];
+    // We can allow default selection once exercises are loaded
+    useEffect(() => {
+        if (!selectedExerciseId && exercises.length > 0) {
+            const defaultEx = exercises.find(e => e.name === 'Bench Press') || exercises[0];
             setSelectedExerciseId(defaultEx.id);
         }
-    }, [workoutId, selectedExerciseId]);
-
-    useFocusEffect(
-        useCallback(() => {
-            loadData();
-        }, [loadData])
-    );
+    }, [exercises, selectedExerciseId]);
 
     const updateInput = (key: string, value: string) => {
         setInputValues(prev => ({ ...prev, [key]: value }));
@@ -130,10 +109,7 @@ export default function WorkoutSessionScreen() {
 
     const handleSaveSet = async () => {
         if (!selectedExerciseId) {
-            showToast.error({
-                title: t('selectExercise'),
-                message: t('selectExerciseFirst')
-            });
+            showToast.error({ title: t('selectExercise'), message: t('selectExerciseFirst') });
             return;
         }
 
@@ -155,171 +131,35 @@ export default function WorkoutSessionScreen() {
         }
 
         const data: any = {};
-
         if (type !== 'cardio') {
             data.weight = weight ? parseFloat(weight) : null;
             if (weight && isNaN(data.weight)) data.weight = null;
         }
-
         if (type === 'weight' || type === 'bodyweight') {
-            data.reps = reps ? parseInt(reps, 10) : null;
+            data.reps = parseInt(reps || '0');
             if (reps && isNaN(data.reps)) data.reps = null;
         }
-
         if (type === 'cardio') {
             data.distance = distance ? parseFloat(distance) : null;
             if (distance && isNaN(data.distance)) data.distance = null;
         }
+        if (needsDuration) data.duration = finalDurationValue;
 
-        if (needsDuration) {
-            data.duration = finalDurationValue;
-        }
+        data.sub_sets = subSets.length > 0 ? JSON.stringify(subSets) : null;
 
-        // Add sub_sets (pyramid sets)
-        if (subSets.length > 0) {
-            data.sub_sets = JSON.stringify(subSets);
+        let success = false;
+        if (editingSetId) {
+            success = await updateSet(editingSetId, data);
         } else {
-            data.sub_sets = null;
+            success = await addSet(selectedExerciseId, data);
         }
 
-        try {
-            if (editingSetId) {
-                await WorkoutRepository.updateSet(editingSetId, data);
-            } else {
-                await WorkoutRepository.addSet(workoutId, selectedExerciseId, data);
-            }
-
+        if (success) {
             setModalVisible(false);
             setEditingSetId(null);
             setSubSets([]);
-            await loadData();
-            showToast.success({
-                title: editingSetId ? t('update') : t('addSet'),
-                message: editingSetId ? t('changesSaved') : t('newSetAdded')
-            });
-        } catch (e) {
-            console.error("Failed to save set:", e);
-            showToast.error({
-                title: t('error'),
-                message: t('failedToSaveSet')
-            });
         }
     };
-
-    const handleReorderSets = async (
-        exerciseName: string,
-        fromIndex: number,
-        translationY: number,
-        itemHeight: number,
-        setSortable: any
-    ) => {
-        const exerciseSets = sets.filter(s => s.exercise_name === exerciseName);
-        const heights = exerciseSets.map(s => calculateSetHeight(s.sub_sets));
-
-        // Find current center Y of the dragged item
-        let originalY = 0;
-        for (let i = 0; i < fromIndex; i++) {
-            originalY += heights[i];
-        }
-        const draggedCenterY = originalY + heights[fromIndex] / 2 + translationY;
-
-        // Determine destination index by finding which height slot contains the dragged center
-        let currentYBound = 0;
-        let toIndex = 0;
-        for (let i = 0; i < exerciseSets.length; i++) {
-            const h = heights[i];
-            if (draggedCenterY < currentYBound + h) {
-                toIndex = i;
-                break;
-            }
-            currentYBound += h;
-            if (i === exerciseSets.length - 1) toIndex = i;
-        }
-
-        if (fromIndex === toIndex) {
-            setSortable.activeIndex.value = -1;
-            setSortable.translationY.value = 0;
-            return;
-        }
-
-        const newExerciseSets = [...exerciseSets];
-        const [movedSet] = newExerciseSets.splice(fromIndex, 1);
-        newExerciseSets.splice(toIndex, 0, movedSet);
-
-        const exerciseOrder = [...new Set(sets.map(s => s.exercise_name))];
-        const allNewSets: SetWithExercise[] = [];
-        let currentPos = 0;
-
-        exerciseOrder.forEach(name => {
-            const groupSets =
-                name === exerciseName ? newExerciseSets : sets.filter(s => s.exercise_name === name);
-
-            groupSets.forEach(s => {
-                allNewSets.push({ ...s, position: currentPos++ });
-            });
-        });
-
-        setSets(allNewSets);
-
-        await Promise.all(allNewSets.map(s => WorkoutRepository.updateSetPosition(s.id, s.position)));
-
-        setSortable.activeIndex.value = -1;
-        setSortable.translationY.value = 0;
-    };
-
-    const handleFinishWorkout = async () => {
-        showToast.confirm({
-            title: t('finishWorkout'),
-            message: t('finishSessionConfirm'),
-            action: {
-                label: t('finish'),
-                onPress: async () => {
-                    await WorkoutRepository.finish(workoutId);
-                    router.replace('/(tabs)/history');
-                    showToast.success({ title: t('workoutFinished'), message: t('greatJob') });
-                },
-            },
-        });
-    };
-
-    const handleDeleteWorkout = () => {
-        showToast.confirm({
-            title: t('delete'),
-            message: t('deleteWorkoutConfirm'),
-            icon: 'trash',
-            action: {
-                label: t('delete'),
-                onPress: async () => {
-                    await WorkoutRepository.delete(workoutId);
-                    router.replace('/(tabs)/workout');
-                    showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') });
-                },
-            },
-        });
-    };
-
-    const handleDeleteSet = (setId: number) => {
-        showToast.confirm({
-            title: t('delete'),
-            message: t('removeSetConfirm'),
-            icon: 'trash',
-            action: {
-                label: t('delete'),
-                onPress: async () => {
-                    await WorkoutRepository.deleteSet(setId);
-                    loadData();
-                    showToast.success({ title: t('setDeleted'), message: t('setRemoved') });
-                },
-            },
-        });
-    };
-
-    const exerciseNamesOrder = [...new Set(sets.map(s => s.exercise_name))];
-    const groupedSets = sets.reduce((acc, set) => {
-        if (!acc[set.exercise_name]) acc[set.exercise_name] = [];
-        acc[set.exercise_name].push(set);
-        return acc;
-    }, {} as Record<string, SetWithExercise[]>);
 
     const isReadOnly = workout?.status === 'finished';
 
@@ -331,36 +171,35 @@ export default function WorkoutSessionScreen() {
                         ? `${t('workout')} ${new Date(workout?.date || '').toLocaleDateString()}`
                         : t('activeSession')
                 }
-                onDelete={handleDeleteWorkout}
-                rightAction={!isReadOnly ? { label: t('finish'), onPress: handleFinishWorkout } : undefined}
+                onDelete={deleteWorkout}
+                rightAction={!isReadOnly ? { label: t('finish'), onPress: finishWorkout } : undefined}
             />
 
-
-            <FlatList
-                data={exerciseNamesOrder}
-                keyExtractor={name => name}
+            <ScrollViewContainer
+                style={{ flex: 1 }}
                 contentContainerStyle={styles.listContent}
-                ListEmptyComponent={
+                keyboardShouldPersistTaps={"handled"}
+                showsVerticalScrollIndicator={false}
+            >
+                {exerciseNamesOrder.length === 0 ? (
                     <EmptyState
                         message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')}
                         icon={"file-text-o"}
                     />
-                }
-
-                renderItem={({ item: exerciseName }) => (
-                    <WorkoutExerciseGroup
-                        exerciseName={exerciseName}
-                        sets={groupedSets[exerciseName]}
-                        isReadOnly={isReadOnly}
-                        draggingId={draggingId}
-                        handleOpenEditModal={handleOpenEditModal}
-                        handleDeleteSet={handleDeleteSet}
-                        handleReorderSets={handleReorderSets}
-                        setDraggingId={setDraggingId}
-                    />
+                ) : (
+                    exerciseNamesOrder.map((exerciseName) => (
+                        <WorkoutExerciseGroup
+                            key={exerciseName}
+                            exerciseName={exerciseName}
+                            sets={groupedSets[exerciseName]}
+                            isReadOnly={isReadOnly}
+                            handleOpenEditModal={handleOpenEditModal}
+                            handleDeleteSet={deleteSet}
+                            handleReorderSets={reorderSets}
+                        />
+                    ))
                 )}
-            />
-
+            </ScrollViewContainer>
 
             {!isReadOnly && (
                 <TouchableOpacity style={GlobalStyles.fab} onPress={handleOpenAddModal}>
@@ -381,7 +220,7 @@ export default function WorkoutSessionScreen() {
                 inputValues={inputValues}
                 updateInput={updateInput}
             />
-        </ScreenLayout >
+        </ScreenLayout>
     );
 }
 
@@ -389,26 +228,32 @@ interface GroupProps {
     exerciseName: string;
     sets: SetWithExercise[];
     isReadOnly: boolean;
-    draggingId: number | null;
     handleOpenEditModal: (s: WorkoutSet) => void;
     handleDeleteSet: (id: number) => void;
-    handleReorderSets: (name: string, idx: number, ty: number, height: number, sortable: any) => void;
-    setDraggingId: (id: number | null) => void;
+    handleReorderSets: (exerciseName: string, newSets: SetWithExercise[]) => void;
 }
 
 function WorkoutExerciseGroup({
     exerciseName,
     sets,
     isReadOnly,
-    draggingId,
     handleOpenEditModal,
     handleDeleteSet,
     handleReorderSets,
-    setDraggingId,
 }: GroupProps) {
     const { theme } = useTheme();
-    const setSortable = useSortableList();
 
+    const renderItem = useCallback(({ item, index }: any) => {
+        return (
+            <WorkoutSetItem
+                set={item}
+                index={index}
+                isReadOnly={isReadOnly}
+                onEdit={handleOpenEditModal}
+                onDelete={handleDeleteSet}
+            />
+        );
+    }, [isReadOnly, handleOpenEditModal, handleDeleteSet]);
 
     return (
         <Card style={[styles.groupCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -416,29 +261,17 @@ function WorkoutExerciseGroup({
                 <Typography.Subtitle>{exerciseName}</Typography.Subtitle>
             </View>
 
-
-            <FlatList
+            <NestedReorderableList
                 data={sets}
-                keyExtractor={set => set.id.toString()}
+                onReorder={({ from, to }) => {
+                    const newData = reorderItems(sets, from, to);
+                    handleReorderSets(exerciseName, newData);
+                }}
+                keyExtractor={(item) => item.id.toString()}
                 scrollEnabled={false}
-                renderItem={({ item: set, index }) => (
-                    <WorkoutSetItem
-                        set={set}
-                        index={index}
-                        itemCount={sets.length}
-                        isReadOnly={isReadOnly}
-                        isDragging={set.id === draggingId}
-                        onEdit={handleOpenEditModal}
-                        onDelete={handleDeleteSet}
-                        onDrop={(idx, ty, height) => {
-                            handleReorderSets(exerciseName, idx, ty, height, setSortable);
-                        }}
-                        onDragStart={() => setDraggingId(set.id)}
-                        onDragEnd={() => setDraggingId(null)}
-                        activeIndex={setSortable.activeIndex}
-                        translationY={setSortable.translationY}
-                    />
-                )}
+                renderItem={renderItem}
+                shouldUpdateActiveItem
+                panGesture={Gesture.Pan().activateAfterLongPress(250)}
             />
         </Card>
     );
@@ -449,16 +282,9 @@ const styles = StyleSheet.create({
         paddingTop: 12,
         paddingBottom: 100,
     },
-    emptyText: {
-        textAlign: 'center',
-        marginTop: 40,
-    },
-
     groupCard: {
         padding: 0,
-        overflow: 'hidden',
         marginBottom: 16,
-        borderWidth: 1,
     },
     groupHeader: {
         padding: 16,

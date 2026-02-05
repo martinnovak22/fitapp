@@ -1,33 +1,71 @@
 import { GlobalStyles } from '@/src/constants/Styles';
-import { Exercise, ExerciseRepository } from '@/src/db/exercises';
-import { DraggableItem } from '@/src/modules/core/components/DraggableItem';
-import { ListSeparator } from '@/src/modules/core/components/ListSeparator';
+import { Exercise } from '@/src/db/exercises';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
-import { useSortableList } from '@/src/modules/core/hooks/useSortableList';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv';
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router, Stack, useFocusEffect, useNavigation } from 'expo-router';
-import React, { useCallback, useLayoutEffect, useState } from 'react';
+import { router, useNavigation } from 'expo-router';
+import React, { useCallback, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list';
+import { ListSeparator } from '../../core/components/ListSeparator';
+import { useExercises } from '../hooks/useExercises';
 
+const ExerciseListItem = React.memo(({ item, theme, t }: { item: Exercise, theme: any, t: any }) => {
+    const drag = useReorderableDrag();
+    const isDragged = useIsActive();
+
+    return (
+        <View
+            style={[
+                GlobalStyles.card,
+                styles.cardInner,
+                {
+                    backgroundColor: isDragged ? theme.surface : theme.card,
+                    borderColor: theme.border,
+                    transform: [{ scale: isDragged ? 0.95 : 1 }]
+                }
+            ]}
+        >
+            <TouchableOpacity
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                onPress={() => router.push(`/(tabs)/exercises/${item.id}`)}
+                disabled={isDragged}
+            >
+                {item.photo_uri ? (
+                    <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
+                ) : (
+                    <View style={[styles.thumbnail, styles.placeholderThumbnail, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                        <FontAwesome name={"camera"} size={20} color={theme.textSecondary + '40'} />
+                    </View>
+                )}
+                <View style={styles.content}>
+                    <Text style={[GlobalStyles.text, styles.title, { color: theme.text }]}>
+                        {item.name}
+                    </Text>
+                    <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                        {item.muscle_group
+                            ? `${formatMuscleGroup(item.muscle_group)} • `
+                            : ''}
+                        {t(formatExerciseType(item.type))}
+                    </Text>
+                </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPressIn={drag} style={styles.dragHandle}>
+                <FontAwesome name={"bars"} size={20} color={theme.textSecondary} />
+            </TouchableOpacity>
+        </View>
+    );
+});
 
 export default function ExercisesListScreen() {
     const { t } = useTranslation();
     const navigation = useNavigation();
-    const [exercises, setExercises] = useState<Exercise[]>([]);
-    const [draggingId, setDraggingId] = useState<number | null>(null);
-    const sortable = useSortableList();
+    const { exercises, loadExercises, handleReorder } = useExercises();
     const { theme } = useTheme();
-
-
-
-    const loadExercises = useCallback(async () => {
-        const data = await ExerciseRepository.getAll();
-        setExercises(data);
-    }, []);
 
     useLayoutEffect(() => {
         const hasExercises = exercises.length > 0;
@@ -44,112 +82,29 @@ export default function ExercisesListScreen() {
                     <TouchableOpacity onPress={() => importExercisesFromCSV(loadExercises)}>
                         <FontAwesome name={"download"} size={20} color={theme.primary} />
                     </TouchableOpacity>
-
-
                 </View>
             ),
         });
-    }, [navigation, exercises, loadExercises, t]);
+    }, [navigation, exercises, loadExercises, theme.primary]);
 
-    useFocusEffect(
-        useCallback(() => {
-            loadExercises();
-        }, [loadExercises])
-    );
-
-    const handleReorder = async (fromIndex: number, translationY: number) => {
-        const ITEM_HEIGHT = 80;
-        const delta = Math.round(translationY / ITEM_HEIGHT);
-        const toIndex = Math.max(0, Math.min(exercises.length - 1, fromIndex + delta));
-
-        if (fromIndex === toIndex) {
-            sortable.activeIndex.value = -1;
-            sortable.translationY.value = 0;
-            return;
-        }
-
-        const newExercises = [...exercises];
-        const [moved] = newExercises.splice(fromIndex, 1);
-        newExercises.splice(toIndex, 0, moved);
-
-        const updated = newExercises.map((ex, idx) => ({ ...ex, position: idx }));
-        setExercises(updated);
-
-        await Promise.all(
-            updated.map(ex => ExerciseRepository.updatePosition(ex.id, ex.position))
-        );
-
-        sortable.activeIndex.value = -1;
-        sortable.translationY.value = 0;
-    };
-
-    const renderItem = ({ item, index }: { item: Exercise; index: number }) => (
-
-        <DraggableItem
-            index={index}
-            itemCount={exercises.length}
-            itemHeight={80}
-            onDrop={handleReorder}
-            onDragStart={() => setDraggingId(item.id)}
-            onDragEnd={() => setDraggingId(null)}
-            useLayoutAnimation={draggingId !== item.id}
-            style={[GlobalStyles.card]}
-            activeIndex={sortable.activeIndex}
-            translationY={sortable.translationY}
-        >
-            <TouchableOpacity
-                onPress={() => draggingId === null && router.push(`/(tabs)/exercises/${item.id}`)}
-            >
-                <View style={styles.row}>
-                    {item.photo_uri ? (
-                        <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
-                    ) : (
-                        <View style={[styles.thumbnail, styles.placeholderThumbnail, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                            <FontAwesome name={"camera"} size={20} color={theme.textSecondary + '40'} />
-                        </View>
-
-                    )}
-                    <View style={styles.content}>
-                        <Text style={[GlobalStyles.text, styles.title, { color: theme.text }]}>
-                            {item.name}
-                        </Text>
-                        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                            {item.muscle_group
-                                ? `${formatMuscleGroup(item.muscle_group)} • `
-                                : ''}
-                            {t(formatExerciseType(item.type))}
-                        </Text>
-
-                    </View>
-                    <View style={styles.icons}>
-                        <FontAwesome
-                            name={"chevron-right"}
-                            size={12}
-                            color={theme.primary}
-                        />
-                    </View>
-
-                </View>
-            </TouchableOpacity>
-        </DraggableItem>
-    );
+    const renderItem = useCallback(({ item }: { item: Exercise }) => {
+        return <ExerciseListItem item={item} theme={theme} t={t} />;
+    }, [theme, t]);
 
     return (
-        <ScreenLayout style={{ padding: 0 }}>
-            <Stack.Screen
-                options={{
-                    title: t('exercises'),
-                }}
-            />
-            <FlatList
+        <ScreenLayout>
+            <ReorderableList
                 data={exercises}
+                onReorder={({ from, to }) => {
+                    const newData = reorderItems(exercises, from, to);
+                    handleReorder(newData);
+                }}
+                keyExtractor={(item) => item.id.toString()}
                 renderItem={renderItem}
-                keyExtractor={item => item.id.toString()}
-                contentContainerStyle={styles.listContent}
                 ItemSeparatorComponent={ListSeparator}
-                style={{ padding: 16 }}
+                shouldUpdateActiveItem
+                showsVerticalScrollIndicator={false}
             />
-
             <TouchableOpacity
                 style={GlobalStyles.fab}
                 onPress={() => router.push('/(tabs)/exercises/add')}
@@ -161,8 +116,11 @@ export default function ExercisesListScreen() {
 }
 
 const styles = StyleSheet.create({
-    row: {
+    cardInner: {
         flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        borderRadius: 12,
     },
     content: {
         flex: 1,
@@ -186,13 +144,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
     },
-
-    icons: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    listContent: {
-        paddingBottom: 80,
+    dragHandle: {
+        padding: 8,
+        marginLeft: 8,
     },
 });

@@ -81,13 +81,17 @@ export const ExerciseRepository = {
         );
     },
 
-    async updatePosition(id: number, position: number): Promise<void> {
+    async updatePositions(updates: { id: number; position: number }[]): Promise<void> {
         const db = await getDb();
-        await db.runAsync(
-            'UPDATE exercises SET position = ? WHERE id = ?',
-            position,
-            id
-        );
+        await db.withTransactionAsync(async () => {
+            for (const update of updates) {
+                await db.runAsync(
+                    'UPDATE exercises SET position = ? WHERE id = ?',
+                    update.position,
+                    update.id
+                );
+            }
+        });
     },
 
     async delete(id: number): Promise<void> {
