@@ -109,7 +109,7 @@ export default function WorkoutSessionScreen() {
 
     const handleSaveSet = async () => {
         if (!selectedExerciseId) {
-            showToast.error({ title: t('selectExercise'), message: t('selectExerciseFirst') });
+            showToast.danger({ title: t('selectExercise'), message: t('selectExerciseFirst') });
             return;
         }
 
@@ -145,7 +145,27 @@ export default function WorkoutSessionScreen() {
         }
         if (needsDuration) data.duration = finalDurationValue;
 
-        data.sub_sets = subSets.length > 0 ? JSON.stringify(subSets) : null;
+        // Filter out empty sub-sets (0/0)
+        const filteredSubSets = subSets.filter(ss => (ss.weight || 0) > 0 || (ss.reps || 0) > 0);
+
+        data.sub_sets = filteredSubSets.length > 0 ? JSON.stringify(filteredSubSets) : null;
+
+        // Final validation: check if the overall set has ANY non-zero/non-null data
+        const hasMainData = (data.weight && data.weight > 0) ||
+            (data.reps && data.reps > 0) ||
+            (data.distance && data.distance > 0) ||
+            (data.duration && data.duration > 0);
+
+        const hasSubSets = filteredSubSets.length > 0;
+
+        if (!hasMainData && !hasSubSets) {
+            showToast.success({
+                title: t('emptySetIgnored'),
+                message: t('emptySetIgnoredMessage')
+            });
+            setModalVisible(false);
+            return;
+        }
 
         let success = false;
         if (editingSetId) {

@@ -71,7 +71,11 @@ export default function ExerciseDetailScreen() {
                     if (exercise) {
                         await ExerciseRepository.delete(exercise.id);
                         router.replace('/(tabs)/exercises');
-                        showToast.success({ title: t('exerciseDeleted') });
+                        showToast.success({
+                            title: t('exerciseDeleted'),
+                            message: t('exerciseRemoved')
+                        });
+
                     }
                 }
             }

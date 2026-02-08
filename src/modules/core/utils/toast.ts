@@ -2,8 +2,8 @@ import Toast from 'react-native-toast-message';
 import { ToastAction, ToastIcon } from '../components/ToastConfig';
 
 export type ToastOptions = {
-    title?: string;
-    message?: string;
+    title: string;
+    message: string;
     icon?: ToastIcon;
 }
 
@@ -20,9 +20,9 @@ export const showToast = {
             props: { icon: options.icon }
         });
     },
-    error: (options: ToastOptions) => {
+    danger: (options: ToastOptions) => {
         Toast.show({
-            type: 'error',
+            type: 'danger',
             text1: options.title,
             text2: options.message,
             props: { icon: options.icon }

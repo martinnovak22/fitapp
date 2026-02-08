@@ -57,7 +57,7 @@ export function useWorkoutSession() {
             return true;
         } catch (e) {
             console.error("Failed to add set:", e);
-            showToast.error({ title: t('error'), message: t('failedToSaveSet') });
+            showToast.danger({ title: t('error'), message: t('failedToSaveSet') });
             return false;
         }
     };
@@ -70,7 +70,7 @@ export function useWorkoutSession() {
             return true;
         } catch (e) {
             console.error("Failed to update set:", e);
-            showToast.error({ title: t('error'), message: t('failedToSaveSet') });
+            showToast.danger({ title: t('error'), message: t('failedToSaveSet') });
             return false;
         }
     };

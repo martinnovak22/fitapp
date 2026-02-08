@@ -10,6 +10,7 @@ export const Colors = {
         border: '#404040',
         card: '#1E1E1E',
         tabBar: '#121212',
+        info: '#2196F3',
     },
     light: {
         background: '#F8F9FA',
@@ -22,6 +23,7 @@ export const Colors = {
         border: '#E0E0E0',
         card: '#FFFFFF',
         tabBar: '#FFFFFF',
+        info: '#2196F3',
     },
 };
 
