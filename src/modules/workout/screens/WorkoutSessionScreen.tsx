@@ -159,7 +159,7 @@ export default function WorkoutSessionScreen() {
         const hasSubSets = filteredSubSets.length > 0;
 
         if (!hasMainData && !hasSubSets) {
-            showToast.success({
+            showToast.info({
                 title: t('emptySetIgnored'),
                 message: t('emptySetIgnoredMessage')
             });

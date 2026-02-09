@@ -130,7 +130,7 @@ export default function WorkoutDashboardScreen() {
 
                         <View style={[layoutStyles.heroStatItem]}>
                             <Typography.Meta style={{ fontSize: 10, fontWeight: '800', color: theme.textSecondary, letterSpacing: 1, marginBottom: 4 }}>{t('avgTime').toUpperCase()}</Typography.Meta>
-                            <Typography.Subtitle style={layoutStyles.statValue}>⏱️ {stats.avgDuration}m</Typography.Subtitle>
+                            <Typography.Subtitle style={layoutStyles.statValue}>⏱️ {stats.avgDuration}{t('min')}</Typography.Subtitle>
                             <Typography.Meta style={{ fontSize: 10, color: theme.textSecondary }}>{t('perSession')}</Typography.Meta>
                         </View>
                     </View>

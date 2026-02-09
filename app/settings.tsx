@@ -1,4 +1,3 @@
-import { Theme } from '@/src/constants/Colors';
 import { Card } from '@/src/modules/core/components/Card';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
@@ -28,7 +27,7 @@ export default function SettingsScreen() {
         <ScreenLayout>
             <ScrollView contentContainerStyle={{ flex: 1 }}>
                 <Animated.View entering={FadeInDown.delay(100).duration(500)}>
-                    <Typography.Subtitle style={styles.sectionTitle}>{t('language')}</Typography.Subtitle>
+                    <Typography.Subtitle style={[styles.sectionTitle, { color: theme.primary }]}>{t('language')}</Typography.Subtitle>
                     <Card style={styles.card}>
                         {languages.map((lang, index) => (
                             <React.Fragment key={lang.code}>
@@ -51,7 +50,7 @@ export default function SettingsScreen() {
                 </Animated.View>
 
                 <Animated.View entering={FadeInDown.delay(200).duration(500)}>
-                    <Typography.Subtitle style={[styles.sectionTitle, { marginTop: 24 }]}>{t('appearance') || 'Appearance'}</Typography.Subtitle>
+                    <Typography.Subtitle style={[styles.sectionTitle, { marginTop: 24, color: theme.primary }]}>{t('appearance') || 'Appearance'}</Typography.Subtitle>
                     <Card style={styles.card}>
                         {themes.map((tMode, index) => (
                             <React.Fragment key={tMode.mode}>
@@ -76,7 +75,7 @@ export default function SettingsScreen() {
                 </Animated.View>
 
                 <Animated.View entering={FadeInDown.delay(300).duration(500)} style={{ alignItems: 'center', marginTop: "auto", padding: 16 }}>
-                    <Typography.Meta style={{ color: theme.textSecondary }}>FitApp - 0.1.1</Typography.Meta>
+                    <Typography.Meta style={{ color: theme.textSecondary }}>FitApp - 0.1.2</Typography.Meta>
                 </Animated.View>
             </ScrollView>
         </ScreenLayout>
@@ -87,7 +86,6 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 14,
         fontWeight: '800',
-        color: Theme.primary,
         letterSpacing: 1.5,
         marginBottom: 12,
         marginLeft: 4,

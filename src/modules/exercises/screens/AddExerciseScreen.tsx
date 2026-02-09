@@ -306,7 +306,7 @@ export default function AddExerciseScreen() {
 
                         <Animated.View layout={LinearTransition.duration(300)}>
                             <Button
-                                label={isLoading ? '...' : (isEditing ? t('saveChanges') : t('createExercise'))}
+                                label={isLoading ? t('loading') : (isEditing ? t('saveChanges') : t('createExercise'))}
                                 onPress={handleSave}
                                 isLoading={isLoading}
                                 style={{ marginTop: 24 }}
