@@ -1,9 +1,10 @@
 import { Exercise, ExerciseRepository, ExerciseType } from '@/src/db/exercises';
+import i18n from '@/src/modules/core/utils/i18n';
+import { showToast } from '@/src/modules/core/utils/toast';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
-import Toast from 'react-native-toast-message';
 
 export const exportExercisesToCSV = async (exercises: Exercise[]) => {
     try {
@@ -25,10 +26,9 @@ export const exportExercisesToCSV = async (exercises: Exercise[]) => {
                         'text/csv'
                     );
                     await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
-                    Toast.show({
-                        type: 'success',
-                        text1: 'Success',
-                        text2: 'CSV saved successfully'
+                    showToast.success({
+                        title: i18n.t('success'),
+                        message: i18n.t('csvSaved')
                     });
                     return;
                 } catch (e) {
@@ -49,18 +49,16 @@ export const exportExercisesToCSV = async (exercises: Exercise[]) => {
                 UTI: 'public.comma-separated-values-text'
             });
         } else {
-            Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: 'Sharing is not available on this device'
+            showToast.danger({
+                title: i18n.t('error'),
+                message: i18n.t('sharingUnavailable')
             });
         }
     } catch (error) {
         console.error('Export failed', error);
-        Toast.show({
-            type: 'error',
-            text1: 'Error',
-            text2: 'Failed to export exercises'
+        showToast.danger({
+            title: i18n.t('error'),
+            message: i18n.t('exportFailed')
         });
     }
 };
@@ -94,18 +92,16 @@ export const importExercisesFromCSV = async (onComplete: () => void) => {
             importedCount++;
         }
 
-        Toast.show({
-            type: 'success',
-            text1: 'Success',
-            text2: `Imported ${importedCount} exercises`
+        showToast.info({
+            title: i18n.t('success'),
+            message: i18n.t('importSuccess', { count: importedCount })
         });
         onComplete();
     } catch (error) {
         console.error('Import failed', error);
-        Toast.show({
-            type: 'error',
-            text1: 'Error',
-            text2: 'Failed to import exercises. Make sure the CSV format is correct.'
+        showToast.danger({
+            title: i18n.t('error'),
+            message: i18n.t('importFailed')
         });
     }
 };

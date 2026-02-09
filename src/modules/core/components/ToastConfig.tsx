@@ -1,4 +1,3 @@
-import { Theme } from '@/src/constants/Colors';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React, { ComponentProps } from 'react';
@@ -68,45 +67,57 @@ const CustomToast = ({ text1, text2, icon, iconColor, action, cancelAction }: Cu
 };
 
 export const toastConfig: ToastConfig = {
-    success: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => (
-        <CustomToast
-            text1={text1}
-            text2={text2}
-            icon={props?.icon || "check-circle"}
-            iconColor={Theme.primary}
-        />
-    ),
-    error: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => (
-        <CustomToast
-            text1={text1}
-            text2={text2}
-            icon={props?.icon || "exclamation-circle"}
-            iconColor={Theme.error}
-        />
-    ),
-    info: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => (
-        <CustomToast
-            text1={text1}
-            text2={text2}
-            icon={props?.icon || "info-circle"}
-            iconColor={Theme.primary}
-        />
-    ),
+    success: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
+        const { theme } = useTheme();
+        return (
+            <CustomToast
+                text1={text1}
+                text2={text2}
+                icon={props?.icon || "check-circle"}
+                iconColor={theme.primary}
+            />
+        );
+    },
+    danger: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
+        const { theme } = useTheme();
+        return (
+            <CustomToast
+                text1={text1}
+                text2={text2}
+                icon={props?.icon || "exclamation-circle"}
+                iconColor={theme.error}
+            />
+        );
+    },
+    info: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
+        const { theme } = useTheme();
+        return (
+            <CustomToast
+                text1={text1}
+                text2={text2}
+                icon={props?.icon || "info-circle"}
+                iconColor={theme.info}
+            />
+        );
+    },
 
-    confirm: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => (
-        <CustomToast
-            text1={text1}
-            text2={text2}
-            icon={props?.icon || "info-circle"}
-            iconColor={Theme.primary}
+    confirm: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
+        const { theme } = useTheme();
+        return (
+            <CustomToast
+                text1={text1}
+                text2={text2}
+                icon={props?.icon || "info-circle"}
+                iconColor={theme.primary}
 
-            action={props?.action}
-            cancelAction={{
-                label: 'Cancel',
-                onPress: () => Toast.hide()
-            }}
-        />
-    )
+                action={props?.action}
+                cancelAction={{
+                    label: 'Cancel',
+                    onPress: () => Toast.hide()
+                }}
+            />
+        );
+    }
 };
 
 const styles = StyleSheet.create({

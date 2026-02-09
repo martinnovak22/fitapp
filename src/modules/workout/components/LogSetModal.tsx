@@ -48,7 +48,8 @@ export const LogSetModal = ({
     updateInput
 }: Props) => {
     const { t } = useTranslation();
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
+
     const selectedExercise = exercises.find(e => e.id === selectedExerciseId);
     const [isExpanded, setIsExpanded] = React.useState(false);
 
@@ -140,7 +141,8 @@ export const LogSetModal = ({
                                 />
 
                                 {selectedExercise.type === 'weight' && (
-                                    <Animated.View layout={LinearTransition} style={styles.pyramidSection}>
+                                    <Animated.View layout={LinearTransition} style={[styles.pyramidSection, { borderTopColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+
                                         <View style={styles.pyramidHeader}>
                                             <TouchableOpacity
                                                 onPress={() => setIsExpanded(!isExpanded)}
@@ -183,14 +185,14 @@ export const LogSetModal = ({
 
                                                     ) : (
                                                         subSets.map((ss, idx) => (
-                                                            <Animated.View key={idx} entering={FadeIn} layout={LinearTransition} style={[styles.subSetRow, { borderBottomColor: theme.border + '20' }]}>
+                                                            <Animated.View key={idx} entering={FadeIn} layout={LinearTransition} style={[styles.subSetRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
                                                                 <View style={styles.subSetIndexContainer}>
                                                                     <Text style={[styles.subSetIndex, { color: theme.textSecondary }]}>#{idx + 1}</Text>
                                                                 </View>
 
                                                                 <View style={styles.subSetInputGroup}>
                                                                     <TextInput
-                                                                        style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.surface === '#FFFFFF' ? '#F8F9FA' : 'rgba(255,255,255,0.03)' }]}
+                                                                        style={[styles.subSetInput, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}
                                                                         keyboardType="numeric"
                                                                         multiline={false}
                                                                         numberOfLines={1}
@@ -199,10 +201,12 @@ export const LogSetModal = ({
                                                                         defaultValue={ss.weight && ss.weight > 0 ? ss.weight.toString() : ""}
                                                                         onChangeText={(v) => updateSubSet(idx, 'weight', v)}
                                                                         underlineColorAndroid="transparent"
+                                                                        selectionColor={theme.primary}
+                                                                        scrollEnabled={false}
                                                                     />
                                                                     <Text style={[styles.subSetX, { color: theme.textSecondary }]}>×</Text>
                                                                     <TextInput
-                                                                        style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.surface === '#FFFFFF' ? '#F8F9FA' : 'rgba(255,255,255,0.03)' }]}
+                                                                        style={[styles.subSetInput, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}
                                                                         keyboardType="numeric"
                                                                         multiline={false}
                                                                         numberOfLines={1}
@@ -211,6 +215,8 @@ export const LogSetModal = ({
                                                                         defaultValue={ss.reps && ss.reps > 0 ? ss.reps.toString() : ""}
                                                                         onChangeText={(v) => updateSubSet(idx, 'reps', v)}
                                                                         underlineColorAndroid="transparent"
+                                                                        selectionColor={theme.primary}
+                                                                        scrollEnabled={false}
                                                                     />
 
                                                                 </View>
@@ -286,7 +292,7 @@ const ExercisePicker = ({ exercises, selectedExerciseId, setSelectedExerciseId, 
 
 const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { selectedExercise?: Exercise; inputValues: Props['inputValues']; updateInput: Props['updateInput'] }) => {
     const { t } = useTranslation();
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
     const type = selectedExercise?.type?.toLowerCase();
 
     return (
@@ -298,12 +304,14 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         keyboardType='numeric'
                         multiline={false}
                         numberOfLines={1}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
                         value={inputValues.weight}
                         onChangeText={(t) => updateInput('weight', t)}
                         placeholder="0"
                         placeholderTextColor={theme.textSecondary}
                         underlineColorAndroid="transparent"
+                        selectionColor={theme.primary}
+                        scrollEnabled={false}
                     />
                 </View>
             )}
@@ -315,12 +323,14 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         keyboardType='numeric'
                         multiline={false}
                         numberOfLines={1}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
                         value={inputValues.reps}
                         onChangeText={(t) => updateInput('reps', t)}
                         placeholder="0"
                         placeholderTextColor={theme.textSecondary}
                         underlineColorAndroid="transparent"
+                        selectionColor={theme.primary}
+                        scrollEnabled={false}
                     />
                 </View>
             )}
@@ -332,12 +342,14 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         keyboardType='numeric'
                         multiline={false}
                         numberOfLines={1}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
                         value={inputValues.distance}
                         onChangeText={(t) => updateInput('distance', t)}
                         placeholder="0"
                         placeholderTextColor={theme.textSecondary}
                         underlineColorAndroid="transparent"
+                        selectionColor={theme.primary}
+                        scrollEnabled={false}
                     />
                 </View>
             )}
@@ -350,12 +362,14 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                             keyboardType='numeric'
                             multiline={false}
                             numberOfLines={1}
-                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
                             value={inputValues.durationMinutes}
                             onChangeText={(t) => updateInput('durationMinutes', t)}
                             placeholder="00"
                             placeholderTextColor={theme.textSecondary}
                             underlineColorAndroid="transparent"
+                            selectionColor={theme.primary}
+                            scrollEnabled={false}
                         />
                     </View>
                     <View style={{ flex: 1 }}>
@@ -364,12 +378,14 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                             keyboardType='numeric'
                             multiline={false}
                             numberOfLines={1}
-                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
                             value={inputValues.durationSeconds}
                             onChangeText={(t) => updateInput('durationSeconds', t)}
                             placeholder="00"
                             placeholderTextColor={theme.textSecondary}
                             underlineColorAndroid="transparent"
+                            selectionColor={theme.primary}
+                            scrollEnabled={false}
                         />
                     </View>
                 </Animated.View>
@@ -440,7 +456,6 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.05)',
     },
     pyramidHeader: {
         flexDirection: 'row',
@@ -493,7 +508,6 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         paddingHorizontal: 12,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.05)',
         gap: 12,
     },
     subSetIndexContainer: {
