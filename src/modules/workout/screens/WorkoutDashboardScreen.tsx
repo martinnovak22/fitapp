@@ -2,16 +2,15 @@ import { Workout, WorkoutRepository } from '@/src/db/workouts';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router, Stack, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     RefreshControl,
-    ScrollView,
     StyleSheet,
     View
 } from 'react-native';
@@ -102,160 +101,154 @@ export default function WorkoutDashboardScreen() {
 
 
     return (
-        <ScreenLayout>
-            <Stack.Screen
-                options={{
-                    title: t('workout'),
-                }}
-            />
-            <ScrollView refreshControl={
+        <ScrollScreenLayout
+            refreshControl={
                 <RefreshControl
                     refreshing={refreshing}
                     onRefresh={onRefresh}
                     tintColor={theme.primary}
                 />
             }
+        >
+            <Card
+                onPress={() => router.push('/workout/calendar')}
+                style={layoutStyles.heroCard}
             >
-                <Card
-                    onPress={() => router.push('/workout/calendar')}
-                    style={layoutStyles.heroCard}
-                >
-                    <View style={layoutStyles.heroStatsRow}>
-                        <View style={layoutStyles.heroStatItem}>
-                            <Typography.Meta style={{ fontSize: 10, fontWeight: '800', color: theme.textSecondary, letterSpacing: 1, marginBottom: 4 }}>{t('sessions').toUpperCase()}</Typography.Meta>
-                            <Typography.Subtitle style={layoutStyles.statValue}>🗓️ {stats.sessions}</Typography.Subtitle>
-                            <Typography.Meta style={{ fontSize: 10, color: theme.textSecondary }}>{t('completed')}</Typography.Meta>
-                        </View>
-                        <View style={[layoutStyles.heroStatSeparator, { backgroundColor: theme.border + '20' }]} />
-
-                        <View style={[layoutStyles.heroStatItem]}>
-                            <Typography.Meta style={{ fontSize: 10, fontWeight: '800', color: theme.textSecondary, letterSpacing: 1, marginBottom: 4 }}>{t('avgTime').toUpperCase()}</Typography.Meta>
-                            <Typography.Subtitle style={layoutStyles.statValue}>⏱️ {stats.avgDuration}{t('min')}</Typography.Subtitle>
-                            <Typography.Meta style={{ fontSize: 10, color: theme.textSecondary }}>{t('perSession')}</Typography.Meta>
-                        </View>
+                <View style={layoutStyles.heroStatsRow}>
+                    <View style={layoutStyles.heroStatItem}>
+                        <Typography.Meta style={{ fontSize: 10, fontWeight: '800', color: theme.textSecondary, letterSpacing: 1, marginBottom: 4 }}>{t('sessions').toUpperCase()}</Typography.Meta>
+                        <Typography.Subtitle style={layoutStyles.statValue}>🗓️ {stats.sessions}</Typography.Subtitle>
+                        <Typography.Meta style={{ fontSize: 10, color: theme.textSecondary }}>{t('completed')}</Typography.Meta>
                     </View>
+                    <View style={[layoutStyles.heroStatSeparator, { backgroundColor: theme.border + '20' }]} />
 
-                    <View style={[layoutStyles.heroDivider, { backgroundColor: theme.border + '15' }]} />
-
-
-                    <View style={layoutStyles.headerRow}>
-                        <Typography.Subtitle style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>{t('weeklyActivity')}</Typography.Subtitle>
-                        <FontAwesome name="chevron-right" size={12} color={theme.textSecondary} />
+                    <View style={[layoutStyles.heroStatItem]}>
+                        <Typography.Meta style={{ fontSize: 10, fontWeight: '800', color: theme.textSecondary, letterSpacing: 1, marginBottom: 4 }}>{t('avgTime').toUpperCase()}</Typography.Meta>
+                        <Typography.Subtitle style={layoutStyles.statValue}>⏱️ {stats.avgDuration}{t('min')}</Typography.Subtitle>
+                        <Typography.Meta style={{ fontSize: 10, color: theme.textSecondary }}>{t('perSession')}</Typography.Meta>
                     </View>
+                </View>
 
-                    <View style={layoutStyles.weekRow}>
-                        {consistency.map(day => (
-                            <View key={day.date} style={layoutStyles.dayCol}>
-                                <View
-                                    style={[
-                                        layoutStyles.dayBox,
-                                        { backgroundColor: theme.surface === '#FFFFFF' ? '#F0F0F0' : 'rgba(255,255,255,0.05)', borderColor: theme.border + '20' },
-                                        day.workedOut && { backgroundColor: theme.primary, borderColor: theme.primary }
-                                    ]}
-                                >
+                <View style={[layoutStyles.heroDivider, { backgroundColor: theme.border + '15' }]} />
 
-                                    {day.workedOut && (
-                                        <FontAwesome name="check" size={10} color="white" />
-                                    )}
-                                </View>
-                                <Typography.Meta style={[{ fontSize: 11, color: theme.textSecondary }, day.workedOut && { color: theme.text, fontWeight: 'bold' }]}>
-                                    {day.day}
-                                </Typography.Meta>
+
+                <View style={layoutStyles.headerRow}>
+                    <Typography.Subtitle style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>{t('weeklyActivity')}</Typography.Subtitle>
+                    <FontAwesome name="chevron-right" size={12} color={theme.textSecondary} />
+                </View>
+
+                <View style={layoutStyles.weekRow}>
+                    {consistency.map(day => (
+                        <View key={day.date} style={layoutStyles.dayCol}>
+                            <View
+                                style={[
+                                    layoutStyles.dayBox,
+                                    { backgroundColor: theme.surface === '#FFFFFF' ? '#F0F0F0' : 'rgba(255,255,255,0.05)', borderColor: theme.border + '20' },
+                                    day.workedOut && { backgroundColor: theme.primary, borderColor: theme.primary }
+                                ]}
+                            >
+
+                                {day.workedOut && (
+                                    <FontAwesome name="check" size={10} color="white" />
+                                )}
                             </View>
-                        ))}
-                    </View>
-                </Card>
-
-
-                <Card style={[layoutStyles.activeCard, { borderLeftColor: theme.primary }]}>
-                    <View style={layoutStyles.activeHeader}>
-                        <Typography.Subtitle style={{ fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: 0 }}>
-                            {activeWorkout ? t('activeSession') : t('workout')}
-                        </Typography.Subtitle>
-                        {activeWorkout && (
-                            <View style={[layoutStyles.liveIndicator, { backgroundColor: theme.primary + '20' }]}>
-                                <View style={[layoutStyles.liveDot, { backgroundColor: theme.primary }]} />
-                                <Typography.Meta style={{ fontSize: 10, fontWeight: 'bold', color: theme.primary, letterSpacing: 0.5 }}>{t('live')}</Typography.Meta>
-                            </View>
-                        )}
-
-                    </View>
-
-                    {activeWorkout ? (
-                        <View style={layoutStyles.activeContent}>
-                            <Typography.Body style={[layoutStyles.activeTime, { color: theme.textSecondary }]}>
-                                {t('startedAt')}{' '}
-                                {new Date(activeWorkout.start_time).toLocaleTimeString([], {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                })}
-                            </Typography.Body>
-
-                            <Button
-                                label={t('resumeSession')}
-                                onPress={handleStartWorkout}
-                            />
+                            <Typography.Meta style={[{ fontSize: 11, color: theme.textSecondary }, day.workedOut && { color: theme.text, fontWeight: 'bold' }]}>
+                                {day.day}
+                            </Typography.Meta>
                         </View>
-                    ) : (
-                        <View style={layoutStyles.activeContent}>
-                            <Typography.Body style={[layoutStyles.activePromo, { color: theme.textSecondary }]}>
-                                {t('readyToCrush')}
-                            </Typography.Body>
-                            <Button
-                                label={t('startNewWorkout')}
-                                onPress={handleStartWorkout}
-                            />
+                    ))}
+                </View>
+            </Card>
+
+
+            <Card style={[layoutStyles.activeCard, { borderLeftColor: theme.primary }]}>
+                <View style={layoutStyles.activeHeader}>
+                    <Typography.Subtitle style={{ fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: 0 }}>
+                        {activeWorkout ? t('activeSession') : t('workout')}
+                    </Typography.Subtitle>
+                    {activeWorkout && (
+                        <View style={[layoutStyles.liveIndicator, { backgroundColor: theme.primary + '20' }]}>
+                            <View style={[layoutStyles.liveDot, { backgroundColor: theme.primary }]} />
+                            <Typography.Meta style={{ fontSize: 10, fontWeight: 'bold', color: theme.primary, letterSpacing: 0.5 }}>{t('live')}</Typography.Meta>
                         </View>
                     )}
-                </Card>
 
+                </View>
 
-                <Card>
-                    <Typography.Subtitle style={{ marginBottom: 12 }}>{t('history')}</Typography.Subtitle>
-                    <View style={layoutStyles.recentContainer}>
+                {activeWorkout ? (
+                    <View style={layoutStyles.activeContent}>
+                        <Typography.Body style={[layoutStyles.activeTime, { color: theme.textSecondary }]}>
+                            {t('startedAt')}{' '}
+                            {new Date(activeWorkout.start_time).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                            })}
+                        </Typography.Body>
 
-                        {allWorkouts.length === 0 ? (
-                            <EmptyState message={t('noWorkoutsRecorded')} icon={"history"} />
-                        ) : (
-                            allWorkouts.slice(0, 3).map(workout => (
-
-                                <Card
-                                    key={workout.id}
-                                    onPress={() => router.push(`/(tabs)/history/${workout.id}`)}
-                                    style={layoutStyles.recentCard}
-                                >
-                                    <View style={layoutStyles.recentRow}>
-                                        <View style={layoutStyles.recentLeft}>
-                                            <Typography.Body style={[layoutStyles.recentTitle, { color: theme.text }]}>
-                                                {new Date(workout.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(workout.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
-                                            </Typography.Body>
-
-                                            <Typography.Meta style={[layoutStyles.recentMeta, { color: theme.textSecondary }]}>
-                                                {workout.end_time
-                                                    ? `${new Date(workout.start_time).toLocaleTimeString([],
-                                                        { hour: '2-digit', minute: '2-digit' }
-                                                    )} - ${new Date(workout.end_time).toLocaleTimeString([],
-                                                        { hour: '2-digit', minute: '2-digit' }
-                                                    )}`
-                                                    : t('incomplete')}
-                                            </Typography.Meta>
-                                        </View>
-
-                                        <FontAwesome
-                                            name={workout.status === 'finished' ? "check-circle" : "clock-o"}
-                                            size={24}
-                                            color={workout.status === 'finished' ? theme.primary : theme.secondary}
-                                        />
-                                    </View>
-                                </Card>
-
-
-                            ))
-                        )}
+                        <Button
+                            label={t('resumeSession')}
+                            onPress={handleStartWorkout}
+                        />
                     </View>
-                </Card>
-            </ScrollView>
-        </ScreenLayout>
+                ) : (
+                    <View style={layoutStyles.activeContent}>
+                        <Typography.Body style={[layoutStyles.activePromo, { color: theme.textSecondary }]}>
+                            {t('readyToCrush')}
+                        </Typography.Body>
+                        <Button
+                            label={t('startNewWorkout')}
+                            onPress={handleStartWorkout}
+                        />
+                    </View>
+                )}
+            </Card>
+
+
+            <Card>
+                <Typography.Subtitle style={{ marginBottom: 12 }}>{t('history')}</Typography.Subtitle>
+                <View style={layoutStyles.recentContainer}>
+
+                    {allWorkouts.length === 0 ? (
+                        <EmptyState message={t('noWorkoutsRecorded')} icon={"history"} />
+                    ) : (
+                        allWorkouts.slice(0, 3).map(workout => (
+
+                            <Card
+                                key={workout.id}
+                                onPress={() => router.push(`/(tabs)/history/${workout.id}`)}
+                                style={layoutStyles.recentCard}
+                            >
+                                <View style={layoutStyles.recentRow}>
+                                    <View style={layoutStyles.recentLeft}>
+                                        <Typography.Body style={[layoutStyles.recentTitle, { color: theme.text }]}>
+                                            {new Date(workout.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(workout.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
+                                        </Typography.Body>
+
+                                        <Typography.Meta style={[layoutStyles.recentMeta, { color: theme.textSecondary }]}>
+                                            {workout.end_time
+                                                ? `${new Date(workout.start_time).toLocaleTimeString([],
+                                                    { hour: '2-digit', minute: '2-digit' }
+                                                )} - ${new Date(workout.end_time).toLocaleTimeString([],
+                                                    { hour: '2-digit', minute: '2-digit' }
+                                                )}`
+                                                : t('incomplete')}
+                                        </Typography.Meta>
+                                    </View>
+
+                                    <FontAwesome
+                                        name={workout.status === 'finished' ? "check-circle" : "clock-o"}
+                                        size={24}
+                                        color={workout.status === 'finished' ? theme.primary : theme.secondary}
+                                    />
+                                </View>
+                            </Card>
+
+
+                        ))
+                    )}
+                </View>
+            </Card>
+        </ScrollScreenLayout>
     );
 }
 

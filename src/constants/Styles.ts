@@ -4,7 +4,7 @@ import { Theme } from './Colors';
 export const GlobalStyles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 16,
+        paddingHorizontal: 16,
     },
     title: {
         fontSize: 24,

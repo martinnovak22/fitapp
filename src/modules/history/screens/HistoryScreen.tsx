@@ -92,6 +92,7 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     listPadding: {
+        paddingTop: 16,
         paddingBottom: 20,
     },
 });

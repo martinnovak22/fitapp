@@ -3,7 +3,7 @@ import { SubSet, Set as WorkoutSet } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { showToast } from '@/src/modules/core/utils/toast';
@@ -184,63 +184,64 @@ export default function WorkoutSessionScreen() {
     const isReadOnly = workout?.status === 'finished';
 
     return (
-        <ScreenLayout>
-            <ScreenHeader
-                title={
-                    isReadOnly
-                        ? `${t('workout')} ${new Date(workout?.date || '').toLocaleDateString()}`
-                        : t('activeSession')
-                }
-                onDelete={deleteWorkout}
-                rightAction={!isReadOnly ? { label: t('finish'), onPress: finishWorkout } : undefined}
-            />
+        <ScrollScreenLayout
+            ScrollComponent={ScrollViewContainer}
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+            fixedHeader={
+                <ScreenHeader
+                    title={
+                        isReadOnly
+                            ? `${t('workout')} ${new Date(workout?.date || '').toLocaleDateString()}`
+                            : t('activeSession')
+                    }
+                    onDelete={deleteWorkout}
+                    rightAction={!isReadOnly ? { label: t('finish'), onPress: finishWorkout } : undefined}
+                />
+            }
+            floatingElements={
+                <>
+                    {!isReadOnly && (
+                        <TouchableOpacity style={GlobalStyles.fab} onPress={handleOpenAddModal}>
+                            <FontAwesome name={"plus"} size={32} color={"white"} />
+                        </TouchableOpacity>
+                    )}
 
-            <ScrollViewContainer
-                style={{ flex: 1 }}
-                contentContainerStyle={styles.listContent}
-                keyboardShouldPersistTaps={"handled"}
-                showsVerticalScrollIndicator={false}
-            >
-                {exerciseNamesOrder.length === 0 ? (
-                    <EmptyState
-                        message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')}
-                        icon={"file-text-o"}
+                    <LogSetModal
+                        visible={modalVisible}
+                        onClose={() => setModalVisible(false)}
+                        onSave={handleSaveSet}
+                        editingSetId={editingSetId}
+                        exercises={exercises}
+                        selectedExerciseId={selectedExerciseId}
+                        setSelectedExerciseId={setSelectedExerciseId}
+                        subSets={subSets}
+                        setSubSets={setSubSets}
+                        inputValues={inputValues}
+                        updateInput={updateInput}
                     />
-                ) : (
-                    exerciseNamesOrder.map((exerciseName) => (
-                        <WorkoutExerciseGroup
-                            key={exerciseName}
-                            exerciseName={exerciseName}
-                            sets={groupedSets[exerciseName]}
-                            isReadOnly={isReadOnly}
-                            handleOpenEditModal={handleOpenEditModal}
-                            handleDeleteSet={deleteSet}
-                            handleReorderSets={reorderSets}
-                        />
-                    ))
-                )}
-            </ScrollViewContainer>
-
-            {!isReadOnly && (
-                <TouchableOpacity style={GlobalStyles.fab} onPress={handleOpenAddModal}>
-                    <FontAwesome name={"plus"} size={32} color={"white"} />
-                </TouchableOpacity>
+                </>
+            }
+        >
+            {exerciseNamesOrder.length === 0 ? (
+                <EmptyState
+                    message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')}
+                    icon={"file-text-o"}
+                />
+            ) : (
+                exerciseNamesOrder.map((exerciseName) => (
+                    <WorkoutExerciseGroup
+                        key={exerciseName}
+                        exerciseName={exerciseName}
+                        sets={groupedSets[exerciseName]}
+                        isReadOnly={isReadOnly}
+                        handleOpenEditModal={handleOpenEditModal}
+                        handleDeleteSet={deleteSet}
+                        handleReorderSets={reorderSets}
+                    />
+                ))
             )}
-
-            <LogSetModal
-                visible={modalVisible}
-                onClose={() => setModalVisible(false)}
-                onSave={handleSaveSet}
-                editingSetId={editingSetId}
-                exercises={exercises}
-                selectedExerciseId={selectedExerciseId}
-                setSelectedExerciseId={setSelectedExerciseId}
-                subSets={subSets}
-                setSubSets={setSubSets}
-                inputValues={inputValues}
-                updateInput={updateInput}
-            />
-        </ScreenLayout>
+        </ScrollScreenLayout>
     );
 }
 

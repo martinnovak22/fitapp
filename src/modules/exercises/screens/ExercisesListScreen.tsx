@@ -92,7 +92,7 @@ export default function ExercisesListScreen() {
     }, [theme, t]);
 
     return (
-        <ScreenLayout>
+        <ScreenLayout style={{ paddingVertical: 0 }}>
             <ReorderableList
                 data={exercises}
                 onReorder={({ from, to }) => {
@@ -104,6 +104,7 @@ export default function ExercisesListScreen() {
                 ItemSeparatorComponent={ListSeparator}
                 shouldUpdateActiveItem
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingTop: 16, paddingBottom: 80 }}
             />
             <TouchableOpacity
                 style={GlobalStyles.fab}

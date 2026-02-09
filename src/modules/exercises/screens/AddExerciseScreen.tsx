@@ -4,7 +4,6 @@ import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal';
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { showToast } from '@/src/modules/core/utils/toast';
@@ -14,8 +13,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
+import { ScrollScreenLayout } from '../../core/components/ScreenLayout';
 
 export default function AddExerciseScreen() {
     const { t } = useTranslation();
@@ -163,166 +163,166 @@ export default function AddExerciseScreen() {
     };
 
     return (
-        <ScreenLayout>
+        <ScrollScreenLayout fixedHeader={
             <ScreenHeader
                 title={isEditing ? t('editExercise') : t('addExercise')}
                 onDelete={isEditing ? handleDelete : undefined}
             />
-            <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-                <Card style={{ padding: 0, overflow: 'hidden' }}>
-                    <Animated.View layout={LinearTransition.duration(300)} style={{ padding: 16 }}>
-                        <Typography.Subtitle style={{ marginBottom: 12 }}>{t('exerciseDetails')}</Typography.Subtitle>
+        }>
 
-                        <Typography.Label>{t('name')}</Typography.Label>
-                        <TextInput
-                            placeholder={t('placeholderName')}
-                            placeholderTextColor={theme.textSecondary}
-                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
-                            value={name}
-                            onChangeText={setName}
-                            autoFocus={!isEditing}
-                            selectionColor={theme.primary}
-                        />
+            <Card style={{ padding: 0, overflow: 'hidden' }}>
+                <Animated.View layout={LinearTransition.duration(300)} style={{ padding: 16 }}>
+                    <Typography.Subtitle style={{ marginBottom: 12 }}>{t('exerciseDetails')}</Typography.Subtitle>
 
-                        <Typography.Label>{t('muscleGroup')}</Typography.Label>
-                        <TextInput
-                            placeholder={t('placeholderMuscle')}
-                            placeholderTextColor={theme.textSecondary}
-                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
-                            value={muscle}
-                            onChangeText={setMuscle}
-                            selectionColor={theme.primary}
-                        />
+                    <Typography.Label>{t('name')}</Typography.Label>
+                    <TextInput
+                        placeholder={t('placeholderName')}
+                        placeholderTextColor={theme.textSecondary}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
+                        value={name}
+                        onChangeText={setName}
+                        autoFocus={!isEditing}
+                        selectionColor={theme.primary}
+                    />
 
-                        <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>{t('exerciseType')}</Typography.Subtitle>
-                        <Animated.View layout={LinearTransition.duration(300)} style={styles.typeContainer}>
-                            {[
-                                { label: t('typeWeight'), value: 'weight' as ExerciseType },
-                                { label: t('typeCardio'), value: 'cardio' as ExerciseType },
-                                { label: t('typeBodyweight'), value: 'bodyweight' as ExerciseType },
-                            ].map((t_item) => {
-                                const isActive = type === t_item.value || (t_item.value === 'bodyweight' && type === 'bodyweight_timer');
-                                return (
-                                    <TouchableOpacity
-                                        key={t_item.value}
-                                        style={[
-                                            styles.typeButton,
-                                            { borderColor: theme.border },
-                                            isActive && { backgroundColor: theme.primary, borderColor: theme.primary }
-                                        ]}
-                                        onPress={() => setType(t_item.value)}
-                                    >
-                                        <Typography.Meta style={[
-                                            styles.typeButtonText,
-                                            { color: theme.textSecondary },
-                                            isActive && { color: 'white' }
-                                        ]}>
-                                            {t_item.label}
-                                        </Typography.Meta>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </Animated.View>
+                    <Typography.Label>{t('muscleGroup')}</Typography.Label>
+                    <TextInput
+                        placeholder={t('placeholderMuscle')}
+                        placeholderTextColor={theme.textSecondary}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
+                        value={muscle}
+                        onChangeText={setMuscle}
+                        selectionColor={theme.primary}
+                    />
 
-                        {/* Tracking Mode Toggle */}
-                        {(type === 'bodyweight' || type === 'bodyweight_timer') && (
-                            <Animated.View
-                                entering={FadeIn}
-                                layout={LinearTransition}
-                                style={{ marginTop: 20 }}
-                            >
-                                <Typography.Label style={{ fontSize: 12, marginBottom: 6 }}>{t('trackingMode')}</Typography.Label>
-                                <View style={[styles.subToggleContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.subToggleButton,
-                                            { backgroundColor: 'transparent' },
-                                            type === 'bodyweight' && [styles.subToggleButtonActive, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]
-                                        ]}
-                                        onPress={() => setType('bodyweight')}
-                                    >
-                                        <Typography.Meta style={[
-                                            styles.subToggleText,
-                                            { color: theme.textSecondary },
-                                            type === 'bodyweight' && [styles.subToggleTextActive, { color: theme.text }]
-                                        ]}>{t('reps')}</Typography.Meta>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.subToggleButton,
-                                            { backgroundColor: 'transparent' },
-                                            type === 'bodyweight_timer' && [styles.subToggleButtonActive, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]
-                                        ]}
-                                        onPress={() => setType('bodyweight_timer')}
-                                    >
-                                        <Typography.Meta style={[
-                                            styles.subToggleText,
-                                            { color: theme.textSecondary },
-                                            type === 'bodyweight_timer' && [styles.subToggleTextActive, { color: theme.text }]
-                                        ]}>{t('timer')}</Typography.Meta>
-                                    </TouchableOpacity>
-                                </View>
-                            </Animated.View>
-                        )}
-
-
-                        <Animated.View entering={FadeIn} layout={LinearTransition} style={styles.photoSection}>
-                            <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>{t('photo')}</Typography.Subtitle>
-                            {photoUri ? (
+                    <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>{t('exerciseType')}</Typography.Subtitle>
+                    <Animated.View layout={LinearTransition.duration(300)} style={styles.typeContainer}>
+                        {[
+                            { label: t('typeWeight'), value: 'weight' as ExerciseType },
+                            { label: t('typeCardio'), value: 'cardio' as ExerciseType },
+                            { label: t('typeBodyweight'), value: 'bodyweight' as ExerciseType },
+                        ].map((t_item) => {
+                            const isActive = type === t_item.value || (t_item.value === 'bodyweight' && type === 'bodyweight_timer');
+                            return (
                                 <TouchableOpacity
+                                    key={t_item.value}
                                     style={[
-                                        styles.photoWrapper,
-                                        {
-                                            backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                                            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
-                                        }
+                                        styles.typeButton,
+                                        { borderColor: theme.border },
+                                        isActive && { backgroundColor: theme.primary, borderColor: theme.primary }
                                     ]}
-                                    onPress={() => setShowImageFullScreen(true)}
+                                    onPress={() => setType(t_item.value)}
                                 >
-                                    <Image key={photoUri} source={{ uri: photoUri }} style={styles.photo} />
-                                    <TouchableOpacity
-                                        style={styles.removePhotoButton}
-                                        onPress={() => setPhotoUri(null)}
-                                    >
-                                        <FontAwesome name={"trash"} size={20} color={"#FF6B6B"} />
-                                    </TouchableOpacity>
+                                    <Typography.Meta style={[
+                                        styles.typeButtonText,
+                                        { color: theme.textSecondary },
+                                        isActive && { color: 'white' }
+                                    ]}>
+                                        {t_item.label}
+                                    </Typography.Meta>
                                 </TouchableOpacity>
-                            ) : (
-                                <TouchableOpacity
-                                    style={[
-                                        styles.addPhotoButton,
-                                        {
-                                            backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-                                            borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
-                                        }
-                                    ]}
-                                    onPress={handlePickImage}
-                                >
-                                    <FontAwesome name={"camera"} size={30} color={theme.primary} />
-                                    <Typography.Meta style={[styles.addPhotoText, { color: theme.primary }]}>{t('photo')}</Typography.Meta>
-                                </TouchableOpacity>
-                            )}
-                        </Animated.View>
-
-                        <Animated.View layout={LinearTransition.duration(300)}>
-                            <Button
-                                label={isLoading ? t('loading') : (isEditing ? t('saveChanges') : t('createExercise'))}
-                                onPress={handleSave}
-                                isLoading={isLoading}
-                                style={{ marginTop: 24 }}
-                            />
-                        </Animated.View>
+                            );
+                        })}
                     </Animated.View>
-                    {photoUri && (
-                        <FullScreenImageModal
-                            visible={showImageFullScreen}
-                            onClose={() => setShowImageFullScreen(false)}
-                            imageUri={photoUri}
-                        />
+
+                    {/* Tracking Mode Toggle */}
+                    {(type === 'bodyweight' || type === 'bodyweight_timer') && (
+                        <Animated.View
+                            entering={FadeIn}
+                            layout={LinearTransition}
+                            style={{ marginTop: 20 }}
+                        >
+                            <Typography.Label style={{ fontSize: 12, marginBottom: 6 }}>{t('trackingMode')}</Typography.Label>
+                            <View style={[styles.subToggleContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.subToggleButton,
+                                        { backgroundColor: 'transparent' },
+                                        type === 'bodyweight' && [styles.subToggleButtonActive, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]
+                                    ]}
+                                    onPress={() => setType('bodyweight')}
+                                >
+                                    <Typography.Meta style={[
+                                        styles.subToggleText,
+                                        { color: theme.textSecondary },
+                                        type === 'bodyweight' && [styles.subToggleTextActive, { color: theme.text }]
+                                    ]}>{t('reps')}</Typography.Meta>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.subToggleButton,
+                                        { backgroundColor: 'transparent' },
+                                        type === 'bodyweight_timer' && [styles.subToggleButtonActive, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]
+                                    ]}
+                                    onPress={() => setType('bodyweight_timer')}
+                                >
+                                    <Typography.Meta style={[
+                                        styles.subToggleText,
+                                        { color: theme.textSecondary },
+                                        type === 'bodyweight_timer' && [styles.subToggleTextActive, { color: theme.text }]
+                                    ]}>{t('timer')}</Typography.Meta>
+                                </TouchableOpacity>
+                            </View>
+                        </Animated.View>
                     )}
-                </Card>
-            </ScrollView>
-        </ScreenLayout>
+
+
+                    <Animated.View entering={FadeIn} layout={LinearTransition} style={styles.photoSection}>
+                        <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>{t('photo')}</Typography.Subtitle>
+                        {photoUri ? (
+                            <TouchableOpacity
+                                style={[
+                                    styles.photoWrapper,
+                                    {
+                                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                                    }
+                                ]}
+                                onPress={() => setShowImageFullScreen(true)}
+                            >
+                                <Image key={photoUri} source={{ uri: photoUri }} style={styles.photo} />
+                                <TouchableOpacity
+                                    style={styles.removePhotoButton}
+                                    onPress={() => setPhotoUri(null)}
+                                >
+                                    <FontAwesome name={"trash"} size={20} color={"#FF6B6B"} />
+                                </TouchableOpacity>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity
+                                style={[
+                                    styles.addPhotoButton,
+                                    {
+                                        backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                                        borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
+                                    }
+                                ]}
+                                onPress={handlePickImage}
+                            >
+                                <FontAwesome name={"camera"} size={30} color={theme.primary} />
+                                <Typography.Meta style={[styles.addPhotoText, { color: theme.primary }]}>{t('photo')}</Typography.Meta>
+                            </TouchableOpacity>
+                        )}
+                    </Animated.View>
+
+                    <Animated.View layout={LinearTransition.duration(300)}>
+                        <Button
+                            label={isLoading ? t('loading') : (isEditing ? t('saveChanges') : t('createExercise'))}
+                            onPress={handleSave}
+                            isLoading={isLoading}
+                            style={{ marginTop: 24 }}
+                        />
+                    </Animated.View>
+                </Animated.View>
+                {photoUri && (
+                    <FullScreenImageModal
+                        visible={showImageFullScreen}
+                        onClose={() => setShowImageFullScreen(false)}
+                        imageUri={photoUri}
+                    />
+                )}
+            </Card>
+        </ScrollScreenLayout>
     );
 }
 
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     },
     addPhotoButton: {
         width: '100%',
-        height: 120,
+        height: 160,
         borderRadius: 12,
         borderWidth: 2,
         borderStyle: 'dashed',
@@ -351,15 +351,15 @@ const styles = StyleSheet.create({
     },
     photoWrapper: {
         width: '100%',
-        height: 200,
+        height: 160,
         borderRadius: 12,
         overflow: 'hidden',
         position: 'relative',
         borderWidth: 1,
     },
     photo: {
+        height: 160,
         width: '100%',
-        height: '100%',
         resizeMode: 'cover',
     },
     removePhotoButton: {
@@ -382,9 +382,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.1)',
         alignItems: 'center',
-    },
-    typeButtonActive: {
-        // backgroundColor: theme.primary, // This will be handled in style array if we want absolute dynamicism, but for now we leave it as is or fix it
     },
     typeButtonText: {
         fontSize: 12,
