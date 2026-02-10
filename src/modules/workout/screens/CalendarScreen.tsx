@@ -1,4 +1,5 @@
 import { Theme } from '@/src/constants/Colors';
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Workout, WorkoutRepository } from '@/src/db/workouts';
 import { Button } from '@/src/modules/core/components/Button';
@@ -250,19 +251,19 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
     },
     calendarCard: {
-        padding: 10,
-        marginBottom: 20,
+        padding: Spacing.sm,
+        marginBottom: Spacing.lg,
         height: 380,
     },
     dayHeader: {
         ...GlobalStyles.subtitle,
         color: Theme.text,
-        marginBottom: 12,
-        marginTop: 16,
+        marginBottom: Spacing.md,
+        marginTop: Spacing.md,
     },
     workoutCard: {
-        marginBottom: 12,
-        padding: 16,
+        marginBottom: Spacing.md,
+        padding: Spacing.md,
     },
     workoutCardRow: {
         flexDirection: 'row',
@@ -284,7 +285,7 @@ const styles = StyleSheet.create({
     workoutAction: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: Spacing.sm,
     },
     viewSummaryText: {
         ...GlobalStyles.text,
@@ -293,10 +294,10 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     noWorkoutContainer: {
-        padding: 40,
+        padding: Spacing.xl,
         alignItems: 'center',
         backgroundColor: 'rgba(255,255,255,0.02)',
-        borderRadius: 12,
+        borderRadius: Spacing.md,
         borderStyle: 'dashed',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.1)',
@@ -315,8 +316,8 @@ const styles = StyleSheet.create({
         width: '85%',
         maxHeight: '70%',
         backgroundColor: Theme.surface,
-        borderRadius: 16,
-        padding: 24,
+        borderRadius: Spacing.md,
+        padding: Spacing.lg,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.1)',
         elevation: 5,
@@ -328,26 +329,26 @@ const styles = StyleSheet.create({
     modalTitle: {
         ...GlobalStyles.subtitle,
         color: Theme.text,
-        marginBottom: 4,
+        marginBottom: Spacing.xs,
     },
     modalDate: {
         ...GlobalStyles.text,
         color: Theme.textSecondary,
         fontSize: 14,
-        marginBottom: 20,
+        marginBottom: Spacing.lg,
     },
     summaryScroll: {
-        marginBottom: 24,
+        marginBottom: Spacing.lg,
         maxHeight: 300,
     },
     summaryScrollContent: {
-        paddingVertical: 4,
+        paddingVertical: Spacing.xs,
     },
     summaryRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 8,
+        paddingVertical: Spacing.sm,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(255,255,255,0.05)',
     },
@@ -360,24 +361,24 @@ const styles = StyleSheet.create({
         ...GlobalStyles.text,
         color: Theme.primary,
         fontWeight: 'bold',
-        marginLeft: 12,
+        marginLeft: Spacing.md,
     },
     emptySummary: {
         ...GlobalStyles.text,
         color: Theme.textSecondary,
         fontStyle: 'italic',
         textAlign: 'center',
-        marginTop: 20,
+        marginTop: Spacing.lg,
     },
     modalFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        gap: 12,
+        gap: Spacing.md,
     },
     modalButton: {
         flex: 1,
-        paddingVertical: 12,
-        borderRadius: 8,
+        paddingVertical: Spacing.md,
+        borderRadius: Spacing.sm,
         alignItems: 'center',
     },
     primaryButton: {

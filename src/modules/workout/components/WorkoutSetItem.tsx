@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Set as WorkoutSet } from '@/src/db/workouts';
 import { formatDuration } from '@/src/utils/formatters';
@@ -80,7 +81,7 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                     ))}
                 </TouchableOpacity>
 
-                <View style={[styles.actions, { gap: 8, height: SET_BASE_HEIGHT }]}>
+                <View style={[styles.actions, { gap: Spacing.sm, height: SET_BASE_HEIGHT }]}>
                     {!isReadOnly && !isActive && (
                         <TouchableOpacity
                             onPress={() => onDelete(set.id)}
@@ -113,11 +114,12 @@ const styles = StyleSheet.create({
     },
     innerContent: {
         width: '100%',
-        paddingHorizontal: 16,
+        paddingLeft: Spacing.md,
+        paddingRight: Spacing.xs,
     },
     dragHandle: {
-        padding: 16,
-        marginLeft: 4,
+        padding: Spacing.md,
+        marginLeft: Spacing.xs,
     },
     mainRow: {
         flexDirection: 'row',
@@ -138,20 +140,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     deleteButton: {
-        padding: 8,
+        padding: Spacing.sm,
     },
     subSetRow: {
         height: SUBSET_HEIGHT,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingLeft: 28,
-        paddingBottom: 16,
+        paddingLeft: 28, // Keep alignment with index
+        paddingBottom: Spacing.md,
     },
     indentLine: {
         width: 2,
         height: '60%',
         borderRadius: 1,
-        marginRight: 10,
+        marginRight: Spacing.sm,
         opacity: 0.8,
     },
     subSetText: {

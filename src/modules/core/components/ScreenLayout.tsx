@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { ComponentType, ReactElement, ReactNode } from 'react';
 import { RefreshControlProps, ScrollView, ScrollViewProps, View, ViewStyle } from 'react-native';
@@ -31,11 +32,11 @@ export const ScrollScreenLayout = ({ children, style, refreshControl, contentCon
     const { theme } = useTheme();
     return (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
-            <View style={{ paddingHorizontal: 16 }}>{fixedHeader}</View>
+            <View style={{ paddingHorizontal: Spacing.md }}>{fixedHeader}</View>
             <ScrollComponent
                 style={{ flex: 1 }}
                 contentContainerStyle={[
-                    { paddingHorizontal: 16, paddingTop: 16 },
+                    { paddingHorizontal: Spacing.md, paddingTop: Spacing.md },
                     contentContainerStyle
                 ]}
                 showsVerticalScrollIndicator={false}

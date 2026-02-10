@@ -1,4 +1,5 @@
 import { Theme } from '@/src/constants/Colors';
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
@@ -48,21 +49,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 16,
-        gap: 16,
+        paddingVertical: Spacing.md,
+        gap: Spacing.md,
     },
     actions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 16,
+        gap: Spacing.md,
     },
     iconButton: {
-        padding: 4,
+        padding: Spacing.xs,
     },
     textButton: {
         paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 8,
+        paddingHorizontal: Spacing.md,
+        borderRadius: Spacing.sm,
         backgroundColor: Theme.primary,
     },
     actionText: {

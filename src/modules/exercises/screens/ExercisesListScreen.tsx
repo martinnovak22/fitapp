@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Exercise } from '@/src/db/exercises';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
@@ -13,20 +14,31 @@ import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from '
 import { ListSeparator } from '../../core/components/ListSeparator';
 import { useExercises } from '../hooks/useExercises';
 
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+
 const ExerciseListItem = React.memo(({ item, theme, t }: { item: Exercise, theme: any, t: any }) => {
     const drag = useReorderableDrag();
     const isDragged = useIsActive();
+    const scale = useSharedValue(1);
+
+    React.useEffect(() => {
+        scale.value = withTiming(isDragged ? 0.9 : 1, { duration: 100 });
+    }, [isDragged]);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+    }));
 
     return (
-        <View
+        <Animated.View
             style={[
                 GlobalStyles.card,
                 styles.cardInner,
                 {
                     backgroundColor: isDragged ? theme.surface : theme.card,
                     borderColor: theme.border,
-                    transform: [{ scale: isDragged ? 0.95 : 1 }]
-                }
+                },
+                animatedStyle
             ]}
         >
             <TouchableOpacity
@@ -57,7 +69,7 @@ const ExerciseListItem = React.memo(({ item, theme, t }: { item: Exercise, theme
             <TouchableOpacity onPressIn={drag} style={styles.dragHandle}>
                 <FontAwesome name={"bars"} size={20} color={theme.textSecondary} />
             </TouchableOpacity>
-        </View>
+        </Animated.View>
     );
 });
 
@@ -71,7 +83,7 @@ export default function ExercisesListScreen() {
         const hasExercises = exercises.length > 0;
         navigation.getParent()?.setOptions({
             headerRight: () => (
-                <View style={{ flexDirection: 'row', gap: 16, marginRight: 16 }}>
+                <View style={{ flexDirection: 'row', gap: Spacing.md, marginRight: Spacing.md }}>
                     <TouchableOpacity
                         onPress={() => exportExercisesToCSV(exercises)}
                         disabled={!hasExercises}
@@ -92,7 +104,7 @@ export default function ExercisesListScreen() {
     }, [theme, t]);
 
     return (
-        <ScreenLayout style={{ paddingVertical: 0 }}>
+        <ScreenLayout>
             <ReorderableList
                 data={exercises}
                 onReorder={({ from, to }) => {
@@ -104,7 +116,7 @@ export default function ExercisesListScreen() {
                 ItemSeparatorComponent={ListSeparator}
                 shouldUpdateActiveItem
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingTop: 16, paddingBottom: 80 }}
+                contentContainerStyle={{ paddingTop: Spacing.md, paddingBottom: 80 }}
             />
             <TouchableOpacity
                 style={GlobalStyles.fab}
@@ -120,7 +132,7 @@ const styles = StyleSheet.create({
     cardInner: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
+        padding: Spacing.md,
         borderRadius: 12,
     },
     content: {
@@ -129,7 +141,7 @@ const styles = StyleSheet.create({
     title: {
         fontWeight: 'bold',
         fontSize: 18,
-        marginBottom: 4,
+        marginBottom: Spacing.xs,
     },
     subtitle: {
         fontSize: 13,
@@ -138,7 +150,7 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 8,
-        marginRight: 12,
+        marginRight: Spacing.md,
     },
     placeholderThumbnail: {
         justifyContent: 'center',
@@ -146,7 +158,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     dragHandle: {
-        padding: 8,
-        marginLeft: 8,
+        padding: Spacing.sm,
+        marginLeft: Spacing.sm,
     },
 });

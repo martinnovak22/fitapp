@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { Workout, WorkoutRepository } from '@/src/db/workouts';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
@@ -254,14 +255,14 @@ export default function WorkoutDashboardScreen() {
 
 const layoutStyles = StyleSheet.create({
     heroCard: {
-        marginBottom: 20,
-        paddingVertical: 20
+        marginBottom: Spacing.lg,
+        paddingVertical: Spacing.lg
     },
     heroStatsRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-around',
-        marginBottom: 20,
+        marginBottom: Spacing.lg,
     },
     heroStatItem: {
         alignItems: 'center',
@@ -280,19 +281,19 @@ const layoutStyles = StyleSheet.create({
     statValue: {
         fontSize: 20,
         fontWeight: 'bold',
-        marginBottom: 2,
+        marginBottom: Spacing.xs,
     },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: Spacing.md,
     },
     weekRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-end',
-        paddingHorizontal: 4,
+        paddingHorizontal: Spacing.xs,
     },
     dayCol: {
         alignItems: 'center',
@@ -302,28 +303,28 @@ const layoutStyles = StyleSheet.create({
         width: 28,
         height: 28,
         borderRadius: 8,
-        marginBottom: 8,
+        marginBottom: Spacing.sm,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
     },
 
     activeCard: {
-        marginBottom: 20,
+        marginBottom: Spacing.lg,
         borderLeftWidth: 4,
-        padding: 20,
+        padding: Spacing.lg,
     },
     activeHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: Spacing.md,
     },
     liveIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: Spacing.xs,
         borderRadius: 12,
     },
 
@@ -331,23 +332,23 @@ const layoutStyles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        marginRight: 6,
+        marginRight: Spacing.sm,
     },
     activeContent: {
-        marginTop: 4,
+        marginTop: Spacing.xs,
     },
     activeTime: {
-        marginBottom: 16,
+        marginBottom: Spacing.md,
     },
     activePromo: {
-        marginBottom: 16,
+        marginBottom: Spacing.md,
         fontSize: 15,
     },
     recentContainer: {
-        rowGap: 12,
+        rowGap: Spacing.md,
     },
     recentCard: {
-        padding: 16,
+        padding: Spacing.md,
         marginBottom: 0,
     },
     recentRow: {
@@ -357,7 +358,7 @@ const layoutStyles = StyleSheet.create({
     },
     recentLeft: {
         flex: 1,
-        paddingRight: 12,
+        paddingRight: Spacing.md,
     },
     recentTitle: {
         fontWeight: '600',
@@ -365,6 +366,6 @@ const layoutStyles = StyleSheet.create({
     },
     recentMeta: {
         fontSize: 12,
-        marginTop: 4,
+        marginTop: Spacing.xs,
     },
 });

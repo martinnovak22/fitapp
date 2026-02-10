@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { ExerciseRepository, ExerciseType } from '@/src/db/exercises';
 import { Button } from '@/src/modules/core/components/Button';
@@ -171,8 +172,8 @@ export default function AddExerciseScreen() {
         }>
 
             <Card style={{ padding: 0, overflow: 'hidden' }}>
-                <Animated.View layout={LinearTransition.duration(300)} style={{ padding: 16 }}>
-                    <Typography.Subtitle style={{ marginBottom: 12 }}>{t('exerciseDetails')}</Typography.Subtitle>
+                <Animated.View layout={LinearTransition.duration(300)} style={{ padding: Spacing.md }}>
+                    <Typography.Subtitle style={{ marginBottom: Spacing.md }}>{t('exerciseDetails')}</Typography.Subtitle>
 
                     <Typography.Label>{t('name')}</Typography.Label>
                     <TextInput
@@ -310,7 +311,7 @@ export default function AddExerciseScreen() {
                             label={isLoading ? t('loading') : (isEditing ? t('saveChanges') : t('createExercise'))}
                             onPress={handleSave}
                             isLoading={isLoading}
-                            style={{ marginTop: 24 }}
+                            style={{ marginTop: Spacing.lg }}
                         />
                     </Animated.View>
                 </Animated.View>
@@ -330,10 +331,10 @@ const styles = StyleSheet.create({
     typeContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        gap: Spacing.sm,
     },
     photoSection: {
-        marginBottom: 8,
+        marginBottom: Spacing.sm,
     },
     addPhotoButton: {
         width: '100%',
@@ -343,7 +344,7 @@ const styles = StyleSheet.create({
         borderStyle: 'dashed',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 8,
+        gap: Spacing.sm,
     },
     addPhotoText: {
         fontSize: 14,
@@ -376,8 +377,8 @@ const styles = StyleSheet.create({
     typeButton: {
         flex: 1,
         minWidth: '30%',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
         borderRadius: 8,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.1)',

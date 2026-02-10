@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
 import { WorkoutRepository } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
@@ -92,9 +93,9 @@ export default function ExerciseDetailScreen() {
                     onPress: () => router.push(`/(tabs)/exercises/add?id=${exercise.id}`)
                 }}
             />
-            <Card style={{ marginTop: 16 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', height: 120, marginBottom: 16 }}>
-                    <View style={{ flexDirection: 'column', gap: 14, justifyContent: "space-between" }}>
+            <Card style={{ marginTop: Spacing.md }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', height: 120, marginBottom: Spacing.md }}>
+                    <View style={{ flexDirection: 'column', gap: Spacing.md, justifyContent: "space-between" }}>
                         <View>
                             <Typography.Label>{t('type')}</Typography.Label>
                             <Typography.Body>{t(formatExerciseType(exercise.type))}</Typography.Body>

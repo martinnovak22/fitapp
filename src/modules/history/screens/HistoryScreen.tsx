@@ -1,4 +1,5 @@
 import { Theme } from '@/src/constants/Colors';
+import { Spacing } from '@/src/constants/Spacing';
 import { Workout, WorkoutRepository } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
@@ -79,20 +80,20 @@ const styles = StyleSheet.create({
     },
     workoutInfo: {
         flex: 1,
-        paddingRight: 12,
+        paddingRight: Spacing.md,
     },
     workoutDate: {
         fontWeight: 'bold',
     },
     workoutTime: {
-        marginTop: 4,
+        marginTop: Spacing.xs,
     },
     workoutNote: {
         fontStyle: 'italic',
-        marginTop: 4,
+        marginTop: Spacing.xs,
     },
     listPadding: {
-        paddingTop: 16,
-        paddingBottom: 20,
+        paddingTop: Spacing.md,
+        paddingBottom: Spacing.lg,
     },
 });

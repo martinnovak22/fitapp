@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import React from 'react';
 import { ActivityIndicator, StyleProp, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
@@ -65,8 +66,8 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
     baseButton: {
-        padding: 16,
-        borderRadius: 8,
+        padding: Spacing.md,
+        borderRadius: Spacing.sm,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,

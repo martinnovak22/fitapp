@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { SubSet, Set as WorkoutSet } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
@@ -308,8 +309,8 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     groupHeader: {
-        padding: 16,
-        paddingBottom: 12,
+        padding: Spacing.md,
+        paddingBottom: Spacing.md,
         borderBottomWidth: 1,
     },
 });

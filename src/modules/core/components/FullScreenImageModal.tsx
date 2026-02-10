@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
 import { Image, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -28,8 +29,8 @@ export const FullScreenImageModal: React.FC<FullScreenImageModalProps> = ({ visi
                     style={[
                         styles.closeButton,
                         {
-                            top: insets.top + 8,
-                            right: 8,
+                            top: insets.top + Spacing.sm,
+                            right: Spacing.sm,
                         }
                     ]}
                 >

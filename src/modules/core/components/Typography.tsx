@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import React from 'react';
 import { StyleProp, Text, TextStyle } from 'react-native';
@@ -33,7 +34,7 @@ export const Typography = {
                 style={[
                     {
                         color: theme.textSecondary,
-                        marginBottom: 8,
+                        marginBottom: Spacing.sm,
                         fontSize: 14,
                         fontWeight: '500'
                     },

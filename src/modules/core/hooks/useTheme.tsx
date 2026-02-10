@@ -1,4 +1,5 @@
 import { Colors, ThemeType } from '@/src/constants/Colors';
+import { Spacing } from '@/src/constants/Spacing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
@@ -9,6 +10,7 @@ interface ThemeContextType {
     mode: ThemeMode;
     setMode: (mode: ThemeMode) => void;
     theme: ThemeType;
+    spacing: typeof Spacing;
     isDark: boolean;
 }
 
@@ -39,7 +41,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const theme = isDark ? Colors.dark : Colors.light;
 
     return (
-        <ThemeContext.Provider value={{ mode, setMode: handleSetMode, theme, isDark }}>
+        <ThemeContext.Provider value={{ mode, setMode: handleSetMode, theme, spacing: Spacing, isDark }}>
             {children}
         </ThemeContext.Provider>
     );

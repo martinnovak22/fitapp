@@ -1,4 +1,5 @@
 import { Theme } from '@/src/constants/Colors';
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
@@ -35,7 +36,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        padding: 40,
+        padding: Spacing.xl,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(255,255,255,0.02)',
@@ -45,7 +46,7 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255,255,255,0.1)',
     },
     icon: {
-        marginBottom: 16,
+        marginBottom: Spacing.md,
     },
     message: {
         ...GlobalStyles.text,
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
         color: Theme.textSecondary,
         fontSize: 12,
         textAlign: 'center',
-        marginTop: 4,
+        marginTop: Spacing.xs,
         opacity: 0.7,
     },
 });

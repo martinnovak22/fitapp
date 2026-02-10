@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Typography } from '@/src/modules/core/components/Typography';
 
@@ -395,6 +396,7 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
 };
 
 
+/* Styles */
 const styles = StyleSheet.create({
     centeredView: {
         flex: 1,
@@ -406,7 +408,7 @@ const styles = StyleSheet.create({
         width: '90%',
         maxHeight: DEVICE_HEIGHT * 0.85,
         borderRadius: 20,
-        padding: 24,
+        padding: Spacing.lg,
         elevation: 5,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 10 },
@@ -415,16 +417,16 @@ const styles = StyleSheet.create({
     },
 
     contentContainer: {
-        marginTop: 10,
+        marginTop: Spacing.sm,
     },
     exerciseList: {
         height: 120,
-        marginBottom: 16,
+        marginBottom: Spacing.md,
         borderRadius: 8,
     },
 
     exerciseItem: {
-        padding: 12,
+        padding: Spacing.md,
         borderBottomWidth: 1,
     },
 
@@ -440,33 +442,33 @@ const styles = StyleSheet.create({
     },
     exerciseItemSubtext: {
         fontSize: 8,
-        marginTop: 2,
+        marginTop: Spacing.xs,
     },
 
     exerciseItemActiveSubtext: {
         color: 'rgba(255,255,255,0.7)',
     },
     inputsSection: {
-        marginTop: 16,
+        marginTop: Spacing.md,
     },
     dynamicFields: {
         flexDirection: 'column',
     },
     pyramidSection: {
-        marginTop: 16,
-        paddingTop: 16,
+        marginTop: Spacing.md,
+        paddingTop: Spacing.md,
         borderTopWidth: 1,
     },
     pyramidHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: Spacing.md,
     },
     pyramidTitleContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 4,
+        paddingVertical: Spacing.xs,
     },
     pyramidTitle: {
         fontSize: 12,
@@ -477,9 +479,9 @@ const styles = StyleSheet.create({
     addDropButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        gap: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: Spacing.xs,
         borderRadius: 6,
     },
 
@@ -494,7 +496,7 @@ const styles = StyleSheet.create({
     emptySubsets: {
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
+        padding: Spacing.lg,
     },
     emptySubsetsText: {
         fontSize: 10,
@@ -505,10 +507,10 @@ const styles = StyleSheet.create({
     subSetRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.md,
         borderBottomWidth: 1,
-        gap: 12,
+        gap: Spacing.md,
     },
     subSetIndexContainer: {
         width: 24,
@@ -523,7 +525,7 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: Spacing.sm,
     },
     subSetInput: {
         flex: 1,
@@ -542,25 +544,25 @@ const styles = StyleSheet.create({
     },
 
     removeSubSet: {
-        padding: 4,
+        padding: Spacing.xs,
     },
 
     footer: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        marginTop: 16,
-        gap: 10,
+        marginTop: Spacing.md,
+        gap: Spacing.sm,
     },
     cancelButton: {
-        padding: 10,
-        marginRight: 10,
+        padding: Spacing.sm,
+        marginRight: Spacing.sm,
     },
     cancelText: {
     },
 
     saveButton: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.lg,
         borderRadius: 8,
     },
 

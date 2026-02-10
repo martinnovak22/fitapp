@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React, { ComponentProps } from 'react';
@@ -122,8 +123,8 @@ export const toastConfig: ToastConfig = {
 
 const styles = StyleSheet.create({
     toastContainer: {
-        borderRadius: 16,
-        padding: 12,
+        borderRadius: Spacing.md,
+        padding: Spacing.md,
         width: '92%',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
@@ -131,7 +132,7 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 10,
         borderWidth: 1,
-        marginTop: 8,
+        marginTop: Spacing.sm,
     },
 
     contentRow: {
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: Spacing.md,
         overflow: 'hidden',
     },
     textContainer: {
@@ -165,8 +166,8 @@ const styles = StyleSheet.create({
     actionRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 10,
-        paddingTop: 10,
+        marginTop: Spacing.sm,
+        paddingTop: Spacing.sm,
         borderTopWidth: 1,
     },
 
@@ -177,15 +178,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     actionButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.md,
         borderRadius: 8,
-        marginLeft: 8,
+        marginLeft: Spacing.sm,
     },
 
     cancelButton: {
         backgroundColor: 'transparent',
-        paddingHorizontal: 8,
+        paddingHorizontal: Spacing.sm,
     },
     actionText: {
         fontWeight: '700',
