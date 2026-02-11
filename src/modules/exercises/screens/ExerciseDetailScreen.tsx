@@ -63,9 +63,10 @@ export default function ExerciseDetailScreen() {
 
     const handleDelete = () => {
         showToast.confirm({
-            title: t('delete'),
+            title: t('deleteExerciseTitle'),
             message: t('deleteExerciseConfirm'),
             icon: 'trash',
+            tone: 'danger',
             action: {
                 label: t('delete'),
                 onPress: async () => {

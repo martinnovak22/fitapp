@@ -78,9 +78,10 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
 
     const deleteSet = (setId: number) => {
         showToast.confirm({
-            title: t('delete'),
+            title: t('deleteSetTitle'),
             message: t('removeSetConfirm'),
             icon: 'trash',
+            tone: 'danger',
             action: {
                 label: t('delete'),
                 onPress: async () => {
@@ -109,9 +110,10 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
 
     const deleteWorkout = () => {
         showToast.confirm({
-            title: t('delete'),
+            title: t('deleteWorkoutTitle'),
             message: t('deleteWorkoutConfirm'),
             icon: 'trash',
+            tone: 'danger',
             action: {
                 label: t('delete'),
                 onPress: async () => {

@@ -124,7 +124,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
     const handleSaveSet = async () => {
         if (!selectedExerciseId) {
-            showToast.danger({ title: t('selectExercise'), message: t('selectExerciseFirst') });
+            showToast.info({ title: t('selectExercise'), message: t('selectExerciseFirst') });
             return;
         }
 

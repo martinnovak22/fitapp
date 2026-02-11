@@ -57,7 +57,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     const handlePickImage = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            showToast.danger({
+            showToast.info({
                 title: t('permissionNeeded'),
                 message: t('allowCamera')
             });
@@ -103,7 +103,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
 
     const handleSave = async () => {
         if (!name.trim()) {
-            showToast.danger({
+            showToast.info({
                 title: t('required'),
                 message: t('enterName')
             });
@@ -152,9 +152,10 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
 
     const handleDelete = () => {
         showToast.confirm({
-            title: t('delete'),
+            title: t('deleteExerciseTitle'),
             message: t('deleteExerciseWarning'),
             icon: 'trash',
+            tone: 'danger',
             action: {
                 label: t('delete'),
                 onPress: async () => {
