@@ -1,5 +1,6 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
-import { WorkoutRepository } from '@/src/db/workouts';
+import { ExerciseHistory, WorkoutRepository } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal';
@@ -13,7 +14,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph';
 
 
@@ -22,7 +23,7 @@ export default function ExerciseDetailScreen() {
     const { t } = useTranslation();
     const { id } = useLocalSearchParams();
     const [exercise, setExercise] = useState<Exercise | null>(null);
-    const [historyData, setHistoryData] = useState<any[]>([]);
+    const [historyData, setHistoryData] = useState<ExerciseHistory[]>([]);
     const [showImageFullScreen, setShowImageFullScreen] = useState(false);
     const isFocused = useIsFocused();
     const { theme } = useTheme();
@@ -62,9 +63,10 @@ export default function ExerciseDetailScreen() {
 
     const handleDelete = () => {
         showToast.confirm({
-            title: t('delete'),
+            title: t('deleteExerciseTitle'),
             message: t('deleteExerciseConfirm'),
             icon: 'trash',
+            tone: 'danger',
             action: {
                 label: t('delete'),
                 onPress: async () => {
@@ -83,66 +85,62 @@ export default function ExerciseDetailScreen() {
     };
 
     return (
-        <ScreenLayout>
+        <ScreenLayout style={{ paddingTop: 0 }}>
             <ScreenHeader
                 title={exercise.name}
                 onDelete={handleDelete}
                 rightAction={{
                     label: t('edit'),
-                    onPress: () => router.push(`/(tabs)/exercises/add?id=${exercise.id}`)
+                    onPress: () => router.push(`/(tabs)/exercises/edit/${exercise.id}`)
                 }}
             />
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-                <Card>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', height: 120 }}>
-                        <View style={{ flexDirection: 'column', gap: 14, justifyContent: "space-between" }}>
-                            <View>
-                                <Typography.Label>{t('type')}</Typography.Label>
-                                <Typography.Body>{t(formatExerciseType(exercise.type))}</Typography.Body>
-                            </View>
-                            <View>
-                                <Typography.Label>{t('muscleGroup')}</Typography.Label>
-                                <Typography.Body>{exercise.muscle_group ? formatMuscleGroup(exercise.muscle_group) : t('notSpecified')}</Typography.Body>
-                            </View>
+            <Card style={{ marginTop: Spacing.md }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', height: 120, marginBottom: Spacing.md }}>
+                    <View style={{ flexDirection: 'column', gap: Spacing.md, justifyContent: "space-between" }}>
+                        <View>
+                            <Typography.Label>{t('type')}</Typography.Label>
+                            <Typography.Body>{t(formatExerciseType(exercise.type))}</Typography.Body>
                         </View>
-
-                        {exercise.photo_uri && (
-                            <TouchableOpacity
-                                style={[styles.photoContainer, { backgroundColor: theme.surface === '#FFFFFF' ? '#F0F0F0' : 'rgba(255,255,255,0.03)', borderColor: theme.border }]}
-                                onPress={() => setShowImageFullScreen(true)}
-                                activeOpacity={0.9}
-                            >
-
-                                <Image
-                                    key={exercise.photo_uri}
-                                    source={{ uri: exercise.photo_uri }}
-                                    style={styles.photo}
-                                />
-                            </TouchableOpacity>
-                        )}
+                        <View>
+                            <Typography.Label>{t('muscleGroup')}</Typography.Label>
+                            <Typography.Body>{exercise.muscle_group ? formatMuscleGroup(exercise.muscle_group) : t('notSpecified')}</Typography.Body>
+                        </View>
                     </View>
-                    {historyData.length > 0 ? (
-                        <ExerciseHistoryGraph
-                            exercise={exercise}
-                            data={historyData}
-                        />
-                    ) : (
-                        <EmptyState
-                            message={t('statsComingSoon')}
-                            icon={"line-chart"}
-                            style={{ backgroundColor: theme.surface }}
-                        />
 
+                    {exercise.photo_uri && (
+                        <TouchableOpacity
+                            style={[styles.photoContainer, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
+                            onPress={() => setShowImageFullScreen(true)}
+                            activeOpacity={0.9}
+                        >
+
+                            <Image
+                                key={exercise.photo_uri}
+                                source={{ uri: exercise.photo_uri }}
+                                style={styles.photo}
+                            />
+                        </TouchableOpacity>
                     )}
-                </Card>
-                <View style={{ height: 40 }} />
-                <FullScreenImageModal
-                    visible={showImageFullScreen}
-                    onClose={() => setShowImageFullScreen(false)}
-                    imageUri={exercise.photo_uri || null}
-                />
-            </ScrollView>
+                </View>
+                {historyData.length > 0 ? (
+                    <ExerciseHistoryGraph
+                        exercise={exercise}
+                        data={historyData}
+                    />
+                ) : (
+                    <EmptyState
+                        message={t('statsComingSoon')}
+                        icon={"line-chart"}
+                        style={{ backgroundColor: theme.surface }}
+                    />
+
+                )}
+            </Card>
+            <FullScreenImageModal
+                visible={showImageFullScreen}
+                onClose={() => setShowImageFullScreen(false)}
+                imageUri={exercise.photo_uri || null}
+            />
         </ScreenLayout>
     );
 }

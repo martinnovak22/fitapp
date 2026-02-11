@@ -1,12 +1,13 @@
-import { Theme } from '@/src/constants/Colors';
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Workout, WorkoutRepository } from '@/src/db/workouts';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
+import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -19,6 +20,7 @@ import {
     View
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 interface MarkedDates {
     [date: string]: {
@@ -31,7 +33,7 @@ interface MarkedDates {
 
 export default function CalendarScreen() {
     const { t, i18n } = useTranslation();
-    const { theme, isDark } = useTheme();
+    const { theme } = useTheme();
     const [workouts, setWorkouts] = useState<Workout[]>([]);
     const [markedDates, setMarkedDates] = useState<MarkedDates>({});
     const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
@@ -91,13 +93,12 @@ export default function CalendarScreen() {
         }
     };
 
-    const formatTime = (isoString: string) => {
-        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
-
     return (
-        <ScreenLayout>
-            <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <ScrollScreenLayout
+            contentContainerStyle={styles.scrollContent}
+            style={styles.container}
+        >
+            <Animated.View entering={FadeInDown.delay(70).duration(360)}>
                 <Card style={styles.calendarCard}>
                     <Calendar
                         theme={{
@@ -105,14 +106,14 @@ export default function CalendarScreen() {
                             calendarBackground: 'transparent',
                             textSectionTitleColor: theme.textSecondary,
                             selectedDayBackgroundColor: theme.primary,
-                            selectedDayTextColor: '#ffffff',
+                            selectedDayTextColor: theme.onPrimary,
                             todayTextColor: theme.primary,
                             dayTextColor: theme.text,
-                            textDisabledColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                            textDisabledColor: theme.inputBackgroundActive,
                             dotColor: theme.primary,
-                            selectedDotColor: '#ffffff',
+                            selectedDotColor: theme.onPrimary,
                             arrowColor: theme.primary,
-                            disabledArrowColor: '#d9e1e8',
+                            disabledArrowColor: theme.border,
                             monthTextColor: theme.text,
                             indicatorColor: theme.primary,
                             textDayFontFamily: 'System',
@@ -140,24 +141,25 @@ export default function CalendarScreen() {
                         showSixWeeks={true}
                     />
                 </Card>
+            </Animated.View>
 
-                {selectedDate && (
-                    <View>
+            {selectedDate && (
+                dayWorkouts.length > 0 ? (
+                    <Animated.View entering={FadeInDown.delay(140).duration(360)}>
                         <Typography.Subtitle style={[styles.dayHeader, { color: theme.text }]}>
-                            {new Date(selectedDate).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(selectedDate).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
+                            {formatLocalizedDate(selectedDate, i18n.language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }, true)}
                         </Typography.Subtitle>
 
-                        {dayWorkouts.length > 0 ? (
-                            dayWorkouts.map(w => (
+                        {dayWorkouts.map((w, index) => (
+                            <Animated.View key={w.id} entering={FadeInDown.delay(170 + Math.min(index, 8) * 45).duration(320)}>
                                 <Card
-                                    key={w.id}
                                     style={styles.workoutCard}
                                     onPress={() => handleOpenSummary(w)}
                                 >
                                     <View style={styles.workoutCardRow}>
                                         <View>
                                             <Typography.Body style={[styles.workoutTime, { color: theme.text }]}>
-                                                {formatTime(w.start_time)} {w.end_time ? `- ${formatTime(w.end_time)}` : `(${t('inProgress')})`}
+                                                {formatHourMinute(w.start_time)} {w.end_time ? `- ${formatHourMinute(w.end_time)}` : `(${t('inProgress')})`}
                                             </Typography.Body>
                                             <Typography.Meta style={[styles.workoutStatus, { color: theme.textSecondary }]}>
                                                 {w.status === 'finished' ? t('completed') : t('activeSession')}
@@ -169,54 +171,71 @@ export default function CalendarScreen() {
                                         </View>
                                     </View>
                                 </Card>
-                            ))
-                        ) : (
-                            <EmptyState message={t('noWorkoutsRecorded')} icon={"calendar-o"} />
-                        )}
+                            </Animated.View>
+                        ))}
+                    </Animated.View>
+                ) : (
+                    <View>
+                        <Typography.Subtitle style={[styles.dayHeader, { color: theme.text }]}>
+                            {formatLocalizedDate(selectedDate, i18n.language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }, true)}
+                        </Typography.Subtitle>
+                        <EmptyState message={t('noWorkoutsRecorded')} icon={"calendar-o"} />
                     </View>
-                )}
-            </ScrollView>
+                )
+            )}
 
             <Modal
-                visible={!!modalWorkout}
-                transparent={true}
                 animationType="fade"
+                transparent={true}
+                visible={!!modalWorkout}
                 onRequestClose={() => setModalWorkout(null)}
             >
                 <TouchableOpacity
-                    style={styles.modalOverlay}
+                    style={[styles.modalOverlay, { backgroundColor: theme.overlayScrim }]}
                     activeOpacity={1}
                     onPress={() => setModalWorkout(null)}
                 >
-                    <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
-                        <Typography.Subtitle style={[styles.modalTitle, { color: theme.text }]}>{t('workoutSummary')}</Typography.Subtitle>
-                        <Typography.Meta style={[styles.modalDate, { color: theme.textSecondary }]}>
-                            {modalWorkout ? new Date(modalWorkout.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''}
-                        </Typography.Meta>
+                    <View style={[styles.modalContent, { backgroundColor: theme.surface, borderColor: theme.inputBackgroundActive }]}>
+                        <Typography.Title style={[styles.modalTitle, { color: theme.text }]}>
+                            {t('workoutSummary')}
+                        </Typography.Title>
+                        {modalWorkout && (
+                            <Typography.Meta style={[styles.modalDate, { color: theme.textSecondary }]}>
+                                {formatLocalizedDate(modalWorkout.date, i18n.language, { year: 'numeric', month: 'long', day: 'numeric' })}
+                                {' - '}
+                                {formatHourMinute(modalWorkout.start_time)}
+                                {modalWorkout.end_time ? ` - ${formatHourMinute(modalWorkout.end_time)}` : ` (${t('inProgress')})`}
+                            </Typography.Meta>
+                        )}
 
                         <ScrollView style={styles.summaryScroll} contentContainerStyle={styles.summaryScrollContent}>
                             {workoutSets.length > 0 ? (
-                                workoutSets.map((s, idx) => (
-                                    <View key={idx} style={styles.summaryRow}>
-                                        <Typography.Body style={[styles.summaryText, { color: theme.text }]}>{s.exercise_name}</Typography.Body>
-                                        <Typography.Body style={[styles.summaryCount, { color: theme.primary }]}>{s.count} {t(s.count === 1 ? 'set_one' : 'set_other')}</Typography.Body>
+                                workoutSets.map((item, index) => (
+                                    <View key={index} style={[styles.summaryRow, { borderBottomColor: theme.inputBackground }]}>
+                                        <Typography.Body style={[styles.summaryText, { color: theme.text }]}>
+                                            {item.exercise_name}
+                                        </Typography.Body>
+                                        <Typography.Body style={[styles.summaryCount, { color: theme.primary }]}>
+                                            {item.count} {t('sets')}
+                                        </Typography.Body>
                                     </View>
                                 ))
                             ) : (
-                                <Typography.Meta style={[styles.emptySummary, { color: theme.textSecondary }]}>{t('noHistoryData')}</Typography.Meta>
+                                <Typography.Body style={[styles.emptySummary, { color: theme.textSecondary }]}>
+                                    {t('noSetsRecorded')}
+                                </Typography.Body>
                             )}
                         </ScrollView>
 
                         <View style={styles.modalFooter}>
                             <Button
                                 label={t('close')}
-                                variant={"secondary"}
                                 onPress={() => setModalWorkout(null)}
+                                variant="secondary"
                                 style={{ flex: 1 }}
                             />
-
                             <Button
-                                label={t('history')}
+                                label={t('viewHistory')}
                                 onPress={handleViewHistory}
                                 style={{ flex: 1 }}
                             />
@@ -224,7 +243,8 @@ export default function CalendarScreen() {
                     </View>
                 </TouchableOpacity>
             </Modal>
-        </ScreenLayout>
+        </ScrollScreenLayout>
+
     );
 }
 
@@ -233,22 +253,21 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 40,
+        paddingBottom: Spacing.xl2,
     },
     calendarCard: {
-        padding: 10,
-        marginBottom: 20,
+        padding: Spacing.sm,
+        marginBottom: Spacing.lg,
         height: 380,
     },
     dayHeader: {
         ...GlobalStyles.subtitle,
-        color: Theme.text,
-        marginBottom: 12,
-        marginTop: 16,
+        marginBottom: Spacing.md,
+        marginTop: Spacing.md,
     },
     workoutCard: {
-        marginBottom: 12,
-        padding: 16,
+        marginBottom: Spacing.md,
+        padding: Spacing.md,
     },
     workoutCardRow: {
         flexDirection: 'row',
@@ -257,54 +276,35 @@ const styles = StyleSheet.create({
     },
     workoutTime: {
         ...GlobalStyles.text,
-        color: Theme.text,
         fontWeight: 'bold',
         fontSize: 14,
     },
     workoutStatus: {
         ...GlobalStyles.text,
-        color: Theme.textSecondary,
         fontSize: 12,
         marginTop: 2,
     },
     workoutAction: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: Spacing.sm,
     },
     viewSummaryText: {
         ...GlobalStyles.text,
-        color: Theme.primary,
         fontSize: 12,
         fontWeight: '600',
     },
-    noWorkoutContainer: {
-        padding: 40,
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.02)',
-        borderRadius: 12,
-        borderStyle: 'dashed',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    noWorkoutText: {
-        ...GlobalStyles.text,
-        color: Theme.textSecondary,
-    },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     modalContent: {
         width: '85%',
         maxHeight: '70%',
-        backgroundColor: Theme.surface,
-        borderRadius: 16,
-        padding: 24,
+        borderRadius: Spacing.md,
+        padding: Spacing.lg,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
         elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -313,74 +313,45 @@ const styles = StyleSheet.create({
     },
     modalTitle: {
         ...GlobalStyles.subtitle,
-        color: Theme.text,
-        marginBottom: 4,
+        marginBottom: Spacing.xs,
     },
     modalDate: {
         ...GlobalStyles.text,
-        color: Theme.textSecondary,
         fontSize: 14,
-        marginBottom: 20,
+        marginBottom: Spacing.lg,
     },
     summaryScroll: {
-        marginBottom: 24,
+        marginBottom: Spacing.lg,
         maxHeight: 300,
     },
     summaryScrollContent: {
-        paddingVertical: 4,
+        paddingVertical: Spacing.xs,
     },
     summaryRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 8,
+        paddingVertical: Spacing.sm,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.05)',
     },
     summaryText: {
         ...GlobalStyles.text,
-        color: Theme.text,
         flex: 1,
     },
     summaryCount: {
         ...GlobalStyles.text,
-        color: Theme.primary,
         fontWeight: 'bold',
-        marginLeft: 12,
+        marginLeft: Spacing.md,
     },
     emptySummary: {
         ...GlobalStyles.text,
-        color: Theme.textSecondary,
         fontStyle: 'italic',
         textAlign: 'center',
-        marginTop: 20,
+        marginTop: Spacing.lg,
     },
     modalFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        gap: 12,
-    },
-    modalButton: {
-        flex: 1,
-        paddingVertical: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-    },
-    primaryButton: {
-        backgroundColor: Theme.primary,
-    },
-    primaryButtonText: {
-        ...GlobalStyles.text,
-        color: 'white',
-        fontWeight: 'bold',
-    },
-    secondaryButton: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    secondaryButtonText: {
-        ...GlobalStyles.text,
-        color: Theme.text,
+        gap: Spacing.md,
     },
 });

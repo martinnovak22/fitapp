@@ -1,40 +1,41 @@
 import { StyleSheet } from 'react-native';
 import { Theme } from './Colors';
+import { Spacing } from './Spacing';
 
 export const GlobalStyles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 16,
+        paddingHorizontal: Spacing.md,
     },
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        marginBottom: 16,
+        marginBottom: Spacing.md,
     },
     subtitle: {
         fontSize: 18,
         fontWeight: '600',
-        marginBottom: 8,
+        marginBottom: Spacing.sm,
     },
     card: {
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 12,
+        padding: Spacing.md,
+        borderRadius: Spacing.md,
+        marginBottom: Spacing.md,
         borderWidth: 1,
     },
     text: {
         fontSize: 16,
     },
     input: {
-        padding: 12,
+        padding: Spacing.md,
         borderRadius: 8,
         borderWidth: 1,
-        marginBottom: 12,
+        marginBottom: Spacing.md,
     },
     fab: {
         position: 'absolute',
-        right: 20,
-        bottom: 20,
+        right: Spacing.lg,
+        bottom: Spacing.lg,
         backgroundColor: Theme.primary,
         width: 64,
         height: 64,

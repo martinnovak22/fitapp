@@ -9,6 +9,7 @@ export type ToastOptions = {
 
 export type ConfirmToastOptions = ToastOptions & {
     action: ToastAction;
+    tone?: 'info' | 'danger';
 }
 
 export const showToast = {
@@ -43,6 +44,7 @@ export const showToast = {
             text2: options.message,
             props: {
                 icon: options.icon,
+                tone: options.tone,
                 action: {
                     label: options.action.label,
                     onPress: () => {

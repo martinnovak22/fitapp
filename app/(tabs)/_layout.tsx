@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router, Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -11,7 +11,6 @@ function TabBarIcon(props: {
 }
 
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { TouchableOpacity } from 'react-native';
 
 export default function TabLayout() {
     const { t } = useTranslation();
@@ -41,14 +40,6 @@ export default function TabLayout() {
                 options={{
                     title: t('workout'),
                     tabBarIcon: ({ color }) => <TabBarIcon name="heartbeat" color={color} />,
-                    headerRight: () => (
-                        <TouchableOpacity
-                            onPress={() => router.push('/settings')}
-                            style={{ marginRight: 16 }}
-                        >
-                            <FontAwesome name="cog" size={24} color={theme.textSecondary} />
-                        </TouchableOpacity>
-                    )
                 }}
             />
             <Tabs.Screen
@@ -69,6 +60,13 @@ export default function TabLayout() {
                 options={{
                     title: t('history'),
                     tabBarIcon: ({ color }) => <TabBarIcon name="history" color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="settings"
+                options={{
+                    title: t('settings'),
+                    tabBarIcon: ({ color }) => <TabBarIcon name="cog" color={color} />,
                 }}
             />
         </Tabs>

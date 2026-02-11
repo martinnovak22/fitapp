@@ -92,7 +92,7 @@ export const importExercisesFromCSV = async (onComplete: () => void) => {
             importedCount++;
         }
 
-        showToast.info({
+        showToast.success({
             title: i18n.t('success'),
             message: i18n.t('importSuccess', { count: importedCount })
         });
@@ -105,4 +105,3 @@ export const importExercisesFromCSV = async (onComplete: () => void) => {
         });
     }
 };
-

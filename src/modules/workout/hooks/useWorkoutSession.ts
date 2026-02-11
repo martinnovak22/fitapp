@@ -1,13 +1,14 @@
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
-import { Workout, WorkoutRepository, Set as WorkoutSet } from '@/src/db/workouts';
+import { SetData, Workout, WorkoutRepository, Set as WorkoutSet } from '@/src/db/workouts';
 import { showToast } from '@/src/modules/core/utils/toast';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type SetWithExercise = WorkoutSet & { exercise_name: string };
+type SessionOrigin = 'workout' | 'history';
 
-export function useWorkoutSession() {
+export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const { t } = useTranslation();
     const { id } = useLocalSearchParams();
     const workoutId = Number(id);
@@ -49,7 +50,7 @@ export function useWorkoutSession() {
         }, [loadData])
     );
 
-    const addSet = async (exerciseId: number, data: any) => {
+    const addSet = async (exerciseId: number, data: SetData) => {
         try {
             await WorkoutRepository.addSet(workoutId, exerciseId, data);
             await loadData();
@@ -62,7 +63,7 @@ export function useWorkoutSession() {
         }
     };
 
-    const updateSet = async (setId: number, data: any) => {
+    const updateSet = async (setId: number, data: SetData) => {
         try {
             await WorkoutRepository.updateSet(setId, data);
             await loadData();
@@ -77,9 +78,10 @@ export function useWorkoutSession() {
 
     const deleteSet = (setId: number) => {
         showToast.confirm({
-            title: t('delete'),
+            title: t('deleteSetTitle'),
             message: t('removeSetConfirm'),
             icon: 'trash',
+            tone: 'danger',
             action: {
                 label: t('delete'),
                 onPress: async () => {
@@ -108,14 +110,15 @@ export function useWorkoutSession() {
 
     const deleteWorkout = () => {
         showToast.confirm({
-            title: t('delete'),
+            title: t('deleteWorkoutTitle'),
             message: t('deleteWorkoutConfirm'),
             icon: 'trash',
+            tone: 'danger',
             action: {
                 label: t('delete'),
                 onPress: async () => {
                     await WorkoutRepository.delete(workoutId);
-                    router.replace('/(tabs)/workout');
+                    router.replace(origin === 'history' ? '/(tabs)/history' : '/(tabs)/workout');
                     showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') });
                 },
             },
@@ -130,7 +133,7 @@ export function useWorkoutSession() {
     }, {} as Record<string, SetWithExercise[]>);
 
     const reorderSets = useCallback(async (exerciseName: string, newGroupSets: SetWithExercise[]) => {
-        setSets(prevSets => {
+        setSets(() => {
             const currentGrouped = { ...groupedSets };
             currentGrouped[exerciseName] = newGroupSets;
 

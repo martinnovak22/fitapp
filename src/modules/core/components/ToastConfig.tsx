@@ -1,4 +1,6 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
+import i18n from '@/src/modules/core/utils/i18n';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React, { ComponentProps } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -16,6 +18,7 @@ export interface ToastAction {
 export interface CustomToastExtraProps {
     icon?: ToastIcon;
     action?: ToastAction;
+    tone?: 'info' | 'danger';
 }
 
 interface CustomToastProps {
@@ -23,12 +26,14 @@ interface CustomToastProps {
     text2?: string;
     icon: ToastIcon;
     iconColor?: string;
+    actionColor?: string;
     action?: ToastAction;
     cancelAction?: ToastAction;
 }
 
-const CustomToast = ({ text1, text2, icon, iconColor, action, cancelAction }: CustomToastProps) => {
+const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action, cancelAction }: CustomToastProps) => {
     const { theme } = useTheme();
+    const primaryActionColor = actionColor || theme.primary;
     return (
         <View style={[styles.toastContainer, { backgroundColor: theme.surface, borderColor: theme.border + '20' }]}>
             <View style={styles.contentRow}>
@@ -54,8 +59,8 @@ const CustomToast = ({ text1, text2, icon, iconColor, action, cancelAction }: Cu
                             </TouchableOpacity>
                         )}
                         {action && (
-                            <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.primary + '20' }]} onPress={action.onPress}>
-                                <Typography.Meta style={[styles.actionText, { color: theme.primary }]}>{action.label}</Typography.Meta>
+                            <TouchableOpacity style={[styles.actionButton, { backgroundColor: primaryActionColor + '20' }]} onPress={action.onPress}>
+                                <Typography.Meta style={[styles.actionText, { color: primaryActionColor }]}>{action.label}</Typography.Meta>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -84,7 +89,7 @@ export const toastConfig: ToastConfig = {
             <CustomToast
                 text1={text1}
                 text2={text2}
-                icon={props?.icon || "exclamation-circle"}
+                icon={props?.icon || "info-circle"}
                 iconColor={theme.error}
             />
         );
@@ -103,16 +108,19 @@ export const toastConfig: ToastConfig = {
 
     confirm: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
         const { theme } = useTheme();
+        const isDanger = props?.tone === 'danger';
+        const toneColor = isDanger ? theme.error : theme.info;
         return (
             <CustomToast
                 text1={text1}
                 text2={text2}
-                icon={props?.icon || "info-circle"}
-                iconColor={theme.primary}
+                icon={props?.icon || (isDanger ? "trash" : "info-circle")}
+                iconColor={toneColor}
+                actionColor={toneColor}
 
                 action={props?.action}
                 cancelAction={{
-                    label: 'Cancel',
+                    label: i18n.t('cancel'),
                     onPress: () => Toast.hide()
                 }}
             />
@@ -122,8 +130,8 @@ export const toastConfig: ToastConfig = {
 
 const styles = StyleSheet.create({
     toastContainer: {
-        borderRadius: 16,
-        padding: 12,
+        borderRadius: Spacing.md,
+        padding: Spacing.md,
         width: '92%',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
@@ -131,7 +139,7 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 10,
         borderWidth: 1,
-        marginTop: 8,
+        marginTop: Spacing.sm,
     },
 
     contentRow: {
@@ -144,7 +152,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: Spacing.md,
         overflow: 'hidden',
     },
     textContainer: {
@@ -165,8 +173,8 @@ const styles = StyleSheet.create({
     actionRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 10,
-        paddingTop: 10,
+        marginTop: Spacing.sm,
+        paddingTop: Spacing.sm,
         borderTopWidth: 1,
     },
 
@@ -177,15 +185,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     actionButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.md,
         borderRadius: 8,
-        marginLeft: 8,
+        marginLeft: Spacing.sm,
     },
 
     cancelButton: {
         backgroundColor: 'transparent',
-        paddingHorizontal: 8,
+        paddingHorizontal: Spacing.sm,
     },
     actionText: {
         fontWeight: '700',

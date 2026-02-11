@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import React from 'react';
 import { ActivityIndicator, StyleProp, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
@@ -21,16 +22,16 @@ export const Button: React.FC<ButtonProps> = ({
     style,
     labelStyle,
 }) => {
-    const { theme, isDark } = useTheme();
+    const { theme } = useTheme();
 
     const getButtonStyle = () => {
         switch (variant) {
             case 'secondary':
-                return [styles.secondaryButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }];
+                return [styles.secondaryButton, { backgroundColor: theme.inputBackground, borderColor: theme.border }];
             case 'outline':
                 return [styles.outlineButton, { borderColor: theme.primary }];
             case 'danger':
-                return styles.dangerButton;
+                return [styles.dangerButton, { backgroundColor: theme.error, borderColor: theme.border }];
             default:
                 return [styles.primaryButton, { backgroundColor: theme.primary }];
         }
@@ -43,7 +44,7 @@ export const Button: React.FC<ButtonProps> = ({
             case 'secondary':
                 return [styles.secondaryButtonText, { color: theme.text }];
             default:
-                return styles.primaryButtonText;
+                return [styles.primaryButtonText, { color: theme.onPrimary }];
         }
     };
 
@@ -55,7 +56,7 @@ export const Button: React.FC<ButtonProps> = ({
             activeOpacity={0.7}
         >
             {isLoading ? (
-                <ActivityIndicator color={"white"} />
+                <ActivityIndicator color={theme.onPrimary} />
             ) : (
                 <Text style={[getLabelStyle(), labelStyle]}>{label}</Text>
             )}
@@ -65,8 +66,8 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
     baseButton: {
-        padding: 16,
-        borderRadius: 8,
+        padding: Spacing.md,
+        borderRadius: Spacing.sm,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
@@ -82,11 +83,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
     },
     dangerButton: {
-        backgroundColor: '#FF6B6B',
-        borderColor: 'rgba(255,255,255,0.08)',
     },
     primaryButtonText: {
-        color: 'white',
         fontWeight: 'bold',
         fontSize: 16,
     },

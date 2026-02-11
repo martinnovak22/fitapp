@@ -4,9 +4,10 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { StyleSheet } from 'react-native';
+import { PortalHost, PortalProvider } from 'react-native-teleport';
 import Toast from 'react-native-toast-message';
 import { useDatabaseInit } from '../src/db/client';
 import { toastConfig } from '../src/modules/core/components/ToastConfig';
@@ -47,16 +48,18 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <CustomThemeProvider>
-        <RootLayoutNav />
-      </CustomThemeProvider>
+      <PortalProvider>
+        <CustomThemeProvider>
+          <RootLayoutNav />
+        </CustomThemeProvider>
+        <PortalHost style={StyleSheet.absoluteFillObject} name="overlay" />
+      </PortalProvider>
     </GestureHandlerRootView>
   );
 }
 
 function RootLayoutNav() {
   const { theme, isDark } = useTheme();
-  const { t } = useTranslation();
 
   return (
     <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
@@ -76,7 +79,6 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="landing" options={{ headerShown: false, animation: 'fade' }} />
-        <Stack.Screen name="settings" options={{ title: t('settings'), presentation: 'modal' }} />
       </Stack>
       <Toast config={toastConfig} />
     </ThemeProvider>

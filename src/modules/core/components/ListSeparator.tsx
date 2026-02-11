@@ -1,6 +1,6 @@
-import React from 'react';
+import { Spacing } from '@/src/constants/Spacing';
 import { View } from 'react-native';
 
 export const ListSeparator = () => (
-    <View style={{ height: 4 }} />
+    <View style={{ height: Spacing.xs }} />
 );

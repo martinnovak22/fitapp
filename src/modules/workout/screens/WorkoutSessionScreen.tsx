@@ -1,12 +1,14 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
-import { SubSet, Set as WorkoutSet } from '@/src/db/workouts';
+import { SetData, SubSet, Set as WorkoutSet } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { showToast } from '@/src/modules/core/utils/toast';
+import { formatLocalizedDate } from '@/src/utils/dateTime';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,14 +19,19 @@ import {
 } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
 import { NestedReorderableList, ScrollViewContainer, reorderItems } from 'react-native-reorderable-list';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LogSetModal } from '../components/LogSetModal';
 import { WorkoutSetItem } from '../components/WorkoutSetItem';
 import { useWorkoutSession } from '../hooks/useWorkoutSession';
 
 type SetWithExercise = WorkoutSet & { exercise_name: string };
+type WorkoutSessionScreenProps = {
+    origin?: 'workout' | 'history';
+};
 
-export default function WorkoutSessionScreen() {
-    const { t } = useTranslation();
+export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSessionScreenProps) {
+    const { t, i18n } = useTranslation();
+    const { theme } = useTheme();
     const {
         workout,
         exercises,
@@ -36,14 +43,22 @@ export default function WorkoutSessionScreen() {
         reorderSets,
         addSet,
         updateSet
-    } = useWorkoutSession();
+    } = useWorkoutSession(origin);
 
     const [modalVisible, setModalVisible] = useState(false);
     const [editingSetId, setEditingSetId] = useState<number | null>(null);
 
     const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null);
     const [subSets, setSubSets] = useState<SubSet[]>([]);
-    const [inputValues, setInputValues] = useState({
+    type InputValues = {
+        weight: string;
+        reps: string;
+        distance: string;
+        durationMinutes: string;
+        durationSeconds: string;
+    };
+
+    const [inputValues, setInputValues] = useState<InputValues>({
         weight: '',
         reps: '',
         distance: '',
@@ -60,7 +75,7 @@ export default function WorkoutSessionScreen() {
     }, [exercises, selectedExerciseId]);
 
     const updateInput = (key: string, value: string) => {
-        setInputValues(prev => ({ ...prev, [key]: value }));
+        setInputValues(prev => ({ ...prev, [key as keyof InputValues]: value }));
     };
 
     const handleOpenAddModal = () => {
@@ -109,7 +124,7 @@ export default function WorkoutSessionScreen() {
 
     const handleSaveSet = async () => {
         if (!selectedExerciseId) {
-            showToast.danger({ title: t('selectExercise'), message: t('selectExerciseFirst') });
+            showToast.info({ title: t('selectExercise'), message: t('selectExerciseFirst') });
             return;
         }
 
@@ -119,7 +134,7 @@ export default function WorkoutSessionScreen() {
         const type = selectedExercise.type?.toLowerCase();
         const { weight, reps, distance, durationMinutes, durationSeconds } = inputValues;
 
-        let finalDurationValue: number | null = null;
+        let finalDurationValue: number | undefined;
         const needsDuration = type === 'cardio' || type === 'bodyweight_timer';
 
         if (needsDuration) {
@@ -130,25 +145,25 @@ export default function WorkoutSessionScreen() {
             }
         }
 
-        const data: any = {};
+        const data: SetData = {};
         if (type !== 'cardio') {
-            data.weight = weight ? parseFloat(weight) : null;
-            if (weight && isNaN(data.weight)) data.weight = null;
+            const parsedWeight = weight ? parseFloat(weight) : undefined;
+            data.weight = parsedWeight !== undefined && !isNaN(parsedWeight) ? parsedWeight : undefined;
         }
         if (type === 'weight' || type === 'bodyweight') {
-            data.reps = parseInt(reps || '0');
-            if (reps && isNaN(data.reps)) data.reps = null;
+            const parsedReps = reps ? parseInt(reps, 10) : undefined;
+            data.reps = parsedReps !== undefined && !isNaN(parsedReps) ? parsedReps : undefined;
         }
         if (type === 'cardio') {
-            data.distance = distance ? parseFloat(distance) : null;
-            if (distance && isNaN(data.distance)) data.distance = null;
+            const parsedDistance = distance ? parseFloat(distance) : undefined;
+            data.distance = parsedDistance !== undefined && !isNaN(parsedDistance) ? parsedDistance : undefined;
         }
         if (needsDuration) data.duration = finalDurationValue;
 
         // Filter out empty sub-sets (0/0)
         const filteredSubSets = subSets.filter(ss => (ss.weight || 0) > 0 || (ss.reps || 0) > 0);
 
-        data.sub_sets = filteredSubSets.length > 0 ? JSON.stringify(filteredSubSets) : null;
+        data.sub_sets = filteredSubSets.length > 0 ? JSON.stringify(filteredSubSets) : undefined;
 
         // Final validation: check if the overall set has ANY non-zero/non-null data
         const hasMainData = (data.weight && data.weight > 0) ||
@@ -184,30 +199,53 @@ export default function WorkoutSessionScreen() {
     const isReadOnly = workout?.status === 'finished';
 
     return (
-        <ScreenLayout>
-            <ScreenHeader
-                title={
-                    isReadOnly
-                        ? `${t('workout')} ${new Date(workout?.date || '').toLocaleDateString()}`
-                        : t('activeSession')
-                }
-                onDelete={deleteWorkout}
-                rightAction={!isReadOnly ? { label: t('finish'), onPress: finishWorkout } : undefined}
-            />
+        <ScrollScreenLayout
+            ScrollComponent={ScrollViewContainer}
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+            fixedHeader={
+                <ScreenHeader
+                    title={
+                        isReadOnly
+                            ? `${t('workout')} ${formatLocalizedDate(workout?.date || '', i18n.language, { year: 'numeric', month: 'short', day: 'numeric' })}`
+                            : t('activeSession')
+                    }
+                    onDelete={deleteWorkout}
+                    rightAction={!isReadOnly ? { label: t('finish'), onPress: finishWorkout } : undefined}
+                />
+            }
+            floatingElements={
+                <>
+                    {!isReadOnly && (
+                        <TouchableOpacity style={GlobalStyles.fab} onPress={handleOpenAddModal}>
+                            <FontAwesome name={"plus"} size={32} color={theme.onPrimary} />
+                        </TouchableOpacity>
+                    )}
 
-            <ScrollViewContainer
-                style={{ flex: 1 }}
-                contentContainerStyle={styles.listContent}
-                keyboardShouldPersistTaps={"handled"}
-                showsVerticalScrollIndicator={false}
-            >
-                {exerciseNamesOrder.length === 0 ? (
-                    <EmptyState
-                        message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')}
-                        icon={"file-text-o"}
+                    <LogSetModal
+                        visible={modalVisible}
+                        onClose={() => setModalVisible(false)}
+                        onSave={handleSaveSet}
+                        editingSetId={editingSetId}
+                        exercises={exercises}
+                        selectedExerciseId={selectedExerciseId}
+                        setSelectedExerciseId={setSelectedExerciseId}
+                        subSets={subSets}
+                        setSubSets={setSubSets}
+                        inputValues={inputValues}
+                        updateInput={updateInput}
                     />
-                ) : (
-                    exerciseNamesOrder.map((exerciseName) => (
+                </>
+            }
+        >
+            {exerciseNamesOrder.length === 0 ? (
+                <EmptyState
+                    message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')}
+                    icon={"file-text-o"}
+                />
+            ) : (
+                <Animated.View entering={FadeInDown.duration(340)}>
+                    {exerciseNamesOrder.map((exerciseName) => (
                         <WorkoutExerciseGroup
                             key={exerciseName}
                             exerciseName={exerciseName}
@@ -217,30 +255,10 @@ export default function WorkoutSessionScreen() {
                             handleDeleteSet={deleteSet}
                             handleReorderSets={reorderSets}
                         />
-                    ))
-                )}
-            </ScrollViewContainer>
-
-            {!isReadOnly && (
-                <TouchableOpacity style={GlobalStyles.fab} onPress={handleOpenAddModal}>
-                    <FontAwesome name={"plus"} size={32} color={"white"} />
-                </TouchableOpacity>
+                    ))}
+                </Animated.View>
             )}
-
-            <LogSetModal
-                visible={modalVisible}
-                onClose={() => setModalVisible(false)}
-                onSave={handleSaveSet}
-                editingSetId={editingSetId}
-                exercises={exercises}
-                selectedExerciseId={selectedExerciseId}
-                setSelectedExerciseId={setSelectedExerciseId}
-                subSets={subSets}
-                setSubSets={setSubSets}
-                inputValues={inputValues}
-                updateInput={updateInput}
-            />
-        </ScreenLayout>
+        </ScrollScreenLayout>
     );
 }
 
@@ -263,7 +281,7 @@ function WorkoutExerciseGroup({
 }: GroupProps) {
     const { theme } = useTheme();
 
-    const renderItem = useCallback(({ item, index }: any) => {
+    const renderItem = useCallback(({ item, index }: { item: SetWithExercise; index: number }) => {
         return (
             <WorkoutSetItem
                 set={item}
@@ -299,7 +317,7 @@ function WorkoutExerciseGroup({
 
 const styles = StyleSheet.create({
     listContent: {
-        paddingTop: 12,
+        paddingTop: Spacing.sm + Spacing.xs,
         paddingBottom: 100,
     },
     groupCard: {
@@ -307,8 +325,8 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     groupHeader: {
-        padding: 16,
-        paddingBottom: 12,
+        padding: Spacing.md,
+        paddingBottom: Spacing.md,
         borderBottomWidth: 1,
     },
 });
