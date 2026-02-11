@@ -19,9 +19,9 @@ export default function SettingsScreen() {
     ];
 
     const themes: { mode: ThemeMode; label: string; icon: keyof typeof FontAwesome.glyphMap }[] = [
-        { mode: 'light', label: t('lightMode') || 'Light', icon: 'sun-o' },
-        { mode: 'dark', label: t('darkMode') || 'Dark', icon: 'moon-o' },
-        { mode: 'system', label: t('systemDefault') || 'System', icon: 'desktop' },
+        { mode: 'light', label: t('lightMode'), icon: 'sun-o' },
+        { mode: 'dark', label: t('darkMode'), icon: 'moon-o' },
+        { mode: 'system', label: t('systemDefault'), icon: 'desktop' },
     ];
 
     return (
@@ -49,7 +49,7 @@ export default function SettingsScreen() {
                 </Card>
 
 
-                <Typography.Subtitle style={[styles.sectionTitle, { marginTop: Spacing.lg, color: theme.primary }]}>{t('appearance') || 'Appearance'}</Typography.Subtitle>
+                <Typography.Subtitle style={[styles.sectionTitle, { marginTop: Spacing.lg, color: theme.primary }]}>{t('appearance')}</Typography.Subtitle>
                 <Card style={styles.card}>
                     {themes.map((tMode, index) => (
                         <React.Fragment key={tMode.mode}>

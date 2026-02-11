@@ -1,9 +1,10 @@
 import { Spacing } from '@/src/constants/Spacing';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
-import { Image, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useTheme } from '../hooks/useTheme';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Portal } from 'react-native-teleport';
+import { useTheme } from '../hooks/useTheme';
 
 interface FullScreenImageModalProps {
     visible: boolean;
@@ -15,16 +16,12 @@ export const FullScreenImageModal: React.FC<FullScreenImageModalProps> = ({ visi
     const insets = useSafeAreaInsets();
     const { theme } = useTheme();
 
-    if (!imageUri) return null;
+    if (!visible || !imageUri) return null;
 
     return (
-        <Modal
-            visible={visible}
-            onRequestClose={onClose}
-            animationType="fade"
-            transparent={false}
-        >
+        <Portal hostName="overlay">
             <View style={[styles.container, { backgroundColor: theme.overlayScrim }]}>
+                <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
                 <Image source={{ uri: imageUri }} style={styles.image} />
                 <TouchableOpacity
                     onPress={onClose}
@@ -40,12 +37,13 @@ export const FullScreenImageModal: React.FC<FullScreenImageModalProps> = ({ visi
                     <FontAwesome name={"close"} size={20} color={theme.error} />
                 </TouchableOpacity>
             </View>
-        </Modal>
+        </Portal>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
+        ...StyleSheet.absoluteFillObject,
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',

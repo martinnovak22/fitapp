@@ -6,6 +6,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { StyleSheet } from 'react-native';
+import { PortalHost, PortalProvider } from 'react-native-teleport';
 import Toast from 'react-native-toast-message';
 import { useDatabaseInit } from '../src/db/client';
 import { toastConfig } from '../src/modules/core/components/ToastConfig';
@@ -46,9 +48,12 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <CustomThemeProvider>
-        <RootLayoutNav />
-      </CustomThemeProvider>
+      <PortalProvider>
+        <CustomThemeProvider>
+          <RootLayoutNav />
+        </CustomThemeProvider>
+        <PortalHost style={StyleSheet.absoluteFillObject} name="overlay" />
+      </PortalProvider>
     </GestureHandlerRootView>
   );
 }

@@ -1,18 +1,20 @@
 import { GlobalStyles } from '@/src/constants/Styles';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { Link, Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
 export default function NotFoundScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   return (
     <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
+      <Stack.Screen options={{ title: t('oops') }} />
       <View style={GlobalStyles.container}>
-        <Text style={GlobalStyles.title}>This screen doesn't exist.</Text>
+        <Text style={GlobalStyles.title}>{t('screenNotFound')}</Text>
 
         <Link href="/" style={styles.link}>
-          <Text style={[styles.linkText, { color: theme.primary }]}>Go to home screen!</Text>
+          <Text style={[styles.linkText, { color: theme.primary }]}>{t('goHome')}</Text>
         </Link>
       </View>
     </>

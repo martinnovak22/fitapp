@@ -4192,6 +4192,7 @@ __metadata:
     react-native-safe-area-context: "npm:~5.6.0"
     react-native-screens: "npm:~4.16.0"
     react-native-svg: "npm:^15.15.1"
+    react-native-teleport: "npm:^1.0.2"
     react-native-toast-message: "npm:^2.3.3"
     react-native-worklets: "npm:0.5.1"
     react-test-renderer: "npm:19.1.0"
@@ -6310,6 +6311,17 @@ __metadata:
   version: 1.0.5
   resolution: "react-native-swipe-gestures@npm:1.0.5"
   checksum: 10c0/33bb8bd402de82ed751a8f1913fe7e02ddc533edb7178bf9e499387b93d0d14154cef120f273c554bb988ad1ba87165b80be213611cb92af8875f2380ec7878b
+  languageName: node
+  linkType: hard
+
+"react-native-teleport@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "react-native-teleport@npm:1.0.2"
+  peerDependencies:
+    react: "*"
+    react-dom: "*"
+    react-native: "*"
+  checksum: 10c0/8b3d0551d371197a1ef71e2d29ca7b4a478ce07633e88d7819a2dc75b5b5a40f9449f3282b7b3d32f245ba983ee8f648fab71e021e822a340e70c431334f6de6
   languageName: node
   linkType: hard
 

@@ -8,7 +8,7 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -19,6 +19,7 @@ export default function HistoryScreen() {
     const [workouts, setWorkouts] = useState<Workout[]>([]);
     const [initialLoading, setInitialLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const animatedItemIdsRef = useRef<Set<number>>(new Set());
 
     const loadData = async (showRefresh = false) => {
         if (showRefresh) setRefreshing(true);
@@ -48,9 +49,13 @@ export default function HistoryScreen() {
             { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' },
             true
         );
+        const canAnimate = index < 8 && !animatedItemIdsRef.current.has(item.id);
+        if (canAnimate) {
+            animatedItemIdsRef.current.add(item.id);
+        }
 
         return (
-            <Animated.View entering={FadeInDown.delay(50 + Math.min(index, 8) * 50).duration(320)} >
+            <Animated.View entering={canAnimate ? FadeInDown.delay(50 + index * 45).duration(300) : undefined}>
                 <Card onPress={() => router.push(`/(tabs)/history/${item.id}`)} style={styles.workoutCard}>
                     <View style={styles.workoutItem}>
                         <View style={styles.workoutInfo}>
@@ -91,7 +96,7 @@ export default function HistoryScreen() {
                     keyExtractor={item => item.id.toString()}
                     contentContainerStyle={styles.listPadding}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                    ListEmptyComponent={<EmptyState message={t('noWorkoutsYet')} icon={"calendar-o"} />}
+                    ListEmptyComponent={<EmptyState message={t('noWorkoutsYet')} subMessage={t('addFirstWorkout')} icon={"calendar-o"} />}
                 />
             )}
         </ScreenLayout>

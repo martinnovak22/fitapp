@@ -85,7 +85,7 @@ export default function ExerciseDetailScreen() {
     };
 
     return (
-        <ScreenLayout>
+        <ScreenLayout style={{ paddingTop: 0 }}>
             <ScreenHeader
                 title={exercise.name}
                 onDelete={handleDelete}
