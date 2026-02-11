@@ -12,7 +12,7 @@ interface ScreenLayoutProps {
 export const ScreenLayout = ({ children, style }: ScreenLayoutProps) => {
     const { theme } = useTheme();
     return (
-        <View style={[GlobalStyles.container, { backgroundColor: theme.background }, style]}>
+        <View style={[GlobalStyles.container, { backgroundColor: theme.background, paddingTop: Spacing.md }, style]}>
             {children}
         </View>
     );
@@ -32,7 +32,11 @@ export const ScrollScreenLayout = ({ children, style, refreshControl, contentCon
     const { theme } = useTheme();
     return (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
-            <View style={{ paddingHorizontal: Spacing.md }}>{fixedHeader}</View>
+            {
+                fixedHeader && (
+                    <View style={{ paddingHorizontal: Spacing.md }}>{fixedHeader}</View>
+                )
+            }
             <ScrollComponent
                 style={{ flex: 1 }}
                 contentContainerStyle={[

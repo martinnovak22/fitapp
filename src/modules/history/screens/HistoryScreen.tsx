@@ -50,11 +50,11 @@ export default function HistoryScreen() {
         );
 
         return (
-            <Animated.View entering={FadeInDown.delay(50 + Math.min(index, 8) * 50).duration(320)}>
-                <Card onPress={() => router.push(`/(tabs)/history/${item.id}`)}>
+            <Animated.View entering={FadeInDown.delay(50 + Math.min(index, 8) * 50).duration(320)} >
+                <Card onPress={() => router.push(`/(tabs)/history/${item.id}`)} style={styles.workoutCard}>
                     <View style={styles.workoutItem}>
                         <View style={styles.workoutInfo}>
-                            <Typography.Body style={styles.workoutDate}>
+                            <Typography.Body style={styles.workoutDate} numberOfLines={1}>
                                 {formattedDate}
                             </Typography.Body>
                             <Typography.Meta style={styles.workoutTime}>
@@ -69,7 +69,7 @@ export default function HistoryScreen() {
                         </View>
                         <FontAwesome
                             name={item.status === 'finished' ? "check-circle" : "clock-o"}
-                            size={24}
+                            size={20}
                             color={item.status === 'finished' ? theme.primary : theme.secondary}
                         />
                     </View>
@@ -85,14 +85,14 @@ export default function HistoryScreen() {
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>
             ) : (
-            <FlatList
-                data={workouts}
-                renderItem={renderItem}
-                keyExtractor={item => item.id.toString()}
-                contentContainerStyle={styles.listPadding}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                ListEmptyComponent={<EmptyState message={t('noWorkoutsYet')} icon={"calendar-o"} />}
-            />
+                <FlatList
+                    data={workouts}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.id.toString()}
+                    contentContainerStyle={styles.listPadding}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                    ListEmptyComponent={<EmptyState message={t('noWorkoutsYet')} icon={"calendar-o"} />}
+                />
             )}
         </ScreenLayout>
     );
@@ -107,6 +107,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        minHeight: 56,
+    },
+    workoutCard: {
+        paddingVertical: Spacing.sm - Spacing.xs2,
+        paddingHorizontal: Spacing.md,
     },
     workoutInfo: {
         flex: 1,
@@ -114,16 +119,16 @@ const styles = StyleSheet.create({
     },
     workoutDate: {
         fontWeight: 'bold',
+        fontSize: 16,
     },
     workoutTime: {
-        marginTop: Spacing.xs,
+        fontSize: 13,
     },
     workoutNote: {
         fontStyle: 'italic',
         marginTop: Spacing.xs,
     },
     listPadding: {
-        paddingTop: Spacing.md,
         paddingBottom: Spacing.lg,
     },
 });

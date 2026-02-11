@@ -1,6 +1,6 @@
+import { ThemeType } from '@/src/constants/Colors';
 import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
-import { ThemeType } from '@/src/constants/Colors';
 import { Exercise } from '@/src/db/exercises';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
@@ -9,8 +9,8 @@ import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv';
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useNavigation } from 'expo-router';
-import React, { useCallback, useLayoutEffect, useRef } from 'react';
 import { TFunction } from 'i18next';
+import React, { useCallback, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list';
@@ -135,7 +135,11 @@ export default function ExercisesListScreen() {
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>
             ) : exercises.length === 0 ? (
-                <EmptyState message={t('noExercisesRecorded') || t('noExercises') || 'No exercises'} icon={"list"} />
+                <EmptyState
+                    message={t('noExercises')}
+                    subMessage={t('addFirstExercise')}
+                    icon={"list"}
+                />
             ) : (
                 <ReorderableList
                     data={exercises}
@@ -148,7 +152,7 @@ export default function ExercisesListScreen() {
                     ItemSeparatorComponent={ListSeparator}
                     shouldUpdateActiveItem
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingTop: Spacing.md, paddingBottom: 80 }}
+                    contentContainerStyle={{ paddingBottom: 80 }}
                 />
             )}
             <TouchableOpacity
@@ -173,23 +177,26 @@ const styles = StyleSheet.create({
     cardInner: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: Spacing.md,
-        borderRadius: 12,
+        paddingVertical: Spacing.sm + Spacing.xs,
+        paddingHorizontal: Spacing.md,
+        borderRadius: Spacing.md,
+        minHeight: 56,
     },
     content: {
         flex: 1,
     },
     title: {
         fontWeight: 'bold',
-        fontSize: 18,
-        marginBottom: Spacing.xs,
+        fontSize: 16,
+        lineHeight: 20,
     },
     subtitle: {
         fontSize: 13,
+        lineHeight: 18,
     },
     thumbnail: {
-        width: 50,
-        height: 50,
+        width: 44,
+        height: 44,
         borderRadius: 8,
         marginRight: Spacing.md,
     },
