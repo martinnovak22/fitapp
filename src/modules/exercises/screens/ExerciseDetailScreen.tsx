@@ -1,6 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing';
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
-import { WorkoutRepository } from '@/src/db/workouts';
+import { ExerciseHistory, WorkoutRepository } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal';
@@ -23,7 +23,7 @@ export default function ExerciseDetailScreen() {
     const { t } = useTranslation();
     const { id } = useLocalSearchParams();
     const [exercise, setExercise] = useState<Exercise | null>(null);
-    const [historyData, setHistoryData] = useState<any[]>([]);
+    const [historyData, setHistoryData] = useState<ExerciseHistory[]>([]);
     const [showImageFullScreen, setShowImageFullScreen] = useState(false);
     const isFocused = useIsFocused();
     const { theme } = useTheme();

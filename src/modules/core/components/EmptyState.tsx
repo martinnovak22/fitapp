@@ -25,7 +25,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             {icon && (
                 <FontAwesome
                     name={icon}
-                    size={40}
+                    size={Spacing.xl2}
                     color={theme.textSecondary}
                     style={styles.icon}
                 />
@@ -38,7 +38,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        padding: Spacing.xl,
+        padding: Spacing.xl2,
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: 12,

@@ -1,4 +1,6 @@
 import { Exercise } from '@/src/db/exercises';
+import { ExerciseHistory } from '@/src/db/workouts';
+import { Spacing } from '@/src/constants/Spacing';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { formatDuration } from '@/src/utils/formatters';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -10,7 +12,7 @@ import { LineChart } from "react-native-gifted-charts";
 
 interface ExerciseHistoryGraphProps {
     exercise: Exercise;
-    data: any[];
+    data: ExerciseHistory[];
 }
 
 type Metric = 'weight' | 'reps' | 'distance' | 'duration';
@@ -42,7 +44,7 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
     const processedData = useMemo(() => {
         if (!data.length) return [];
 
-        let getValue = (h: any) => h.max_weight || 0;
+        let getValue = (h: ExerciseHistory) => h.max_weight || 0;
 
         switch (selectedMetric) {
             case 'weight':
@@ -283,7 +285,7 @@ const styles = StyleSheet.create({
     toggleGroup: {
         flexDirection: 'row',
         borderRadius: 10,
-        padding: 2,
+        padding: Spacing.xs2,
     },
 
     toggleButton: {
@@ -328,7 +330,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
     },
     emptyState: {
-        padding: 40,
+        padding: Spacing.xl2,
         alignItems: 'center',
     }
 

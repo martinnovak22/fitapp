@@ -2,7 +2,7 @@ import { Spacing } from '@/src/constants/Spacing';
 import { Card } from '@/src/modules/core/components/Card';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
-import { useTheme } from '@/src/modules/core/hooks/useTheme';
+import { ThemeMode, useTheme } from '@/src/modules/core/hooks/useTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +18,7 @@ export default function SettingsScreen() {
         { code: 'cs', label: t('czech'), icon: '🇨🇿' },
     ];
 
-    const themes = [
+    const themes: { mode: ThemeMode; label: string; icon: keyof typeof FontAwesome.glyphMap }[] = [
         { mode: 'light', label: t('lightMode') || 'Light', icon: 'sun-o' },
         { mode: 'dark', label: t('darkMode') || 'Dark', icon: 'moon-o' },
         { mode: 'system', label: t('systemDefault') || 'System', icon: 'desktop' },
@@ -57,11 +57,11 @@ export default function SettingsScreen() {
                             <React.Fragment key={tMode.mode}>
                                 <TouchableOpacity
                                     style={styles.settingItem}
-                                    onPress={() => setMode(tMode.mode as any)}
+                                    onPress={() => setMode(tMode.mode)}
                                 >
                                     <View style={styles.settingLeft}>
                                         <View style={styles.iconContainer}>
-                                            <FontAwesome name={tMode.icon as any} size={18} color={mode === tMode.mode ? theme.primary : theme.textSecondary} />
+                                            <FontAwesome name={tMode.icon} size={18} color={mode === tMode.mode ? theme.primary : theme.textSecondary} />
                                         </View>
                                         <Typography.Body style={[styles.settingLabel, { color: theme.text }]}>{tMode.label}</Typography.Body>
                                     </View>
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '800',
         letterSpacing: 1.5,
-        marginBottom: 12,
+        marginBottom: Spacing.sm + Spacing.xs,
         marginLeft: 4,
         textTransform: 'uppercase',
     },
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
+        padding: Spacing.md,
     },
     settingLeft: {
         flexDirection: 'row',
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     },
     separator: {
         height: StyleSheet.hairlineWidth,
-        marginLeft: 16,
+        marginLeft: Spacing.md,
     },
     iconContainer: {
         width: 36,
@@ -120,6 +120,6 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: Spacing.sm + Spacing.xs,
     }
 });

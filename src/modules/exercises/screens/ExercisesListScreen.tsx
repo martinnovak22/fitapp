@@ -1,5 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
+import { ThemeType } from '@/src/constants/Colors';
 import { Exercise } from '@/src/db/exercises';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
@@ -8,6 +9,7 @@ import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useNavigation } from 'expo-router';
 import React, { useCallback, useLayoutEffect } from 'react';
+import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list';
@@ -16,7 +18,7 @@ import { useExercises } from '../hooks/useExercises';
 
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-const ExerciseListItem = React.memo(({ item, theme, t }: { item: Exercise, theme: any, t: any }) => {
+const ExerciseListItem = React.memo(({ item, theme, t }: { item: Exercise; theme: ThemeType; t: TFunction }) => {
     const drag = useReorderableDrag();
     const isDragged = useIsActive();
     const scale = useSharedValue(1);
@@ -122,7 +124,7 @@ export default function ExercisesListScreen() {
                 style={GlobalStyles.fab}
                 onPress={() => router.push('/(tabs)/exercises/add')}
             >
-                <FontAwesome name={"plus"} size={32} color={"white"} />
+                <FontAwesome name={"plus"} size={32} color={theme.onPrimary} />
             </TouchableOpacity>
         </ScreenLayout>
     );

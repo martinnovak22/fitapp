@@ -1,6 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
-import { Set as WorkoutSet } from '@/src/db/workouts';
+import { Set as WorkoutSet, SubSet } from '@/src/db/workouts';
 import { formatDuration } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
@@ -71,14 +71,22 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                         </Text>
                     </View>
 
-                    {set.sub_sets && JSON.parse(set.sub_sets).map((ss: any, idx: number) => (
-                        <View key={idx} style={styles.subSetRow}>
-                            <View style={[styles.indentLine, { backgroundColor: theme.primary }]} />
-                            <Text style={[styles.subSetText, { color: theme.textSecondary }]}>
-                                {t('drop')} {idx + 1}: {ss.weight}{t('kg')} × {ss.reps} {t('repsShort')}
-                            </Text>
-                        </View>
-                    ))}
+                    {set.sub_sets && (() => {
+                        let parsedSubSets: SubSet[] = [];
+                        try {
+                            parsedSubSets = JSON.parse(set.sub_sets) as SubSet[];
+                        } catch {
+                            parsedSubSets = [];
+                        }
+                        return parsedSubSets.map((ss, idx) => (
+                            <View key={idx} style={styles.subSetRow}>
+                                <View style={[styles.indentLine, { backgroundColor: theme.primary }]} />
+                                <Text style={[styles.subSetText, { color: theme.textSecondary }]}>
+                                    {t('drop')} {idx + 1}: {ss.weight ?? 0}{t('kg')} × {ss.reps ?? 0} {t('repsShort')}
+                                </Text>
+                            </View>
+                        ));
+                    })()}
                 </TouchableOpacity>
 
                 <View style={[styles.actions, { gap: Spacing.sm, height: SET_BASE_HEIGHT }]}>

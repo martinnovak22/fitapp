@@ -5,6 +5,7 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
+import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -35,11 +36,12 @@ export default function HistoryScreen() {
     };
 
     const renderItem = ({ item }: { item: Workout }) => {
-        const localizedDate = new Date(item.date).toLocaleDateString(
-            i18n.language === 'cs' ? 'cs-CZ' : 'en-US',
-            { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+        const formattedDate = formatLocalizedDate(
+            item.date,
+            i18n.language,
+            { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' },
+            true
         );
-        const formattedDate = localizedDate.charAt(0).toUpperCase() + localizedDate.slice(1);
 
         return (
             <Card onPress={() => router.push(`/(tabs)/history/${item.id}`)}>
@@ -49,8 +51,8 @@ export default function HistoryScreen() {
                             {formattedDate}
                         </Typography.Body>
                         <Typography.Meta style={styles.workoutTime}>
-                            {item.start_time ? new Date(item.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                            {item.end_time ? ` - ${new Date(item.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ` (${t('inProgress')})`}
+                            {item.start_time ? formatHourMinute(item.start_time) : ''}
+                            {item.end_time ? ` - ${formatHourMinute(item.end_time)}` : ` (${t('inProgress')})`}
                         </Typography.Meta>
                         {item.note && (
                             <Typography.Meta style={styles.workoutNote}>

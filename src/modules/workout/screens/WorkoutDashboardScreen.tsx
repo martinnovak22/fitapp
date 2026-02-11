@@ -6,6 +6,7 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
+import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -55,7 +56,7 @@ export default function WorkoutDashboardScreen() {
             const d = new Date(dateStr);
             return {
                 date: dateStr,
-                day: d.toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'narrow' }),
+                day: formatLocalizedDate(d, i18n.language, { weekday: 'narrow' }),
                 workedOut: periodMap.has(dateStr),
             };
         });
@@ -180,10 +181,7 @@ export default function WorkoutDashboardScreen() {
                     <View style={layoutStyles.activeContent}>
                         <Typography.Body style={[layoutStyles.activeTime, { color: theme.textSecondary }]}>
                             {t('startedAt')}{' '}
-                            {new Date(activeWorkout.start_time).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                            })}
+                            {formatHourMinute(activeWorkout.start_time)}
                         </Typography.Body>
 
                         <Button
@@ -213,11 +211,12 @@ export default function WorkoutDashboardScreen() {
                         <EmptyState message={t('noWorkoutsRecorded')} icon={"history"} />
                     ) : (
                         allWorkouts.slice(0, 3).map(workout => {
-                            const localizedDate = new Date(workout.date).toLocaleDateString(
-                                i18n.language === 'cs' ? 'cs-CZ' : 'en-US',
-                                { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+                            const formattedDate = formatLocalizedDate(
+                                workout.date,
+                                i18n.language,
+                                { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' },
+                                true
                             );
-                            const formattedDate = localizedDate.charAt(0).toUpperCase() + localizedDate.slice(1);
 
                             return (
 
@@ -234,11 +233,7 @@ export default function WorkoutDashboardScreen() {
 
                                         <Typography.Meta style={[layoutStyles.recentMeta, { color: theme.textSecondary }]}>
                                             {workout.end_time
-                                                ? `${new Date(workout.start_time).toLocaleTimeString([],
-                                                    { hour: '2-digit', minute: '2-digit' }
-                                                )} - ${new Date(workout.end_time).toLocaleTimeString([],
-                                                    { hour: '2-digit', minute: '2-digit' }
-                                                )}`
+                                                ? `${formatHourMinute(workout.start_time)} - ${formatHourMinute(workout.end_time)}`
                                                 : t('incomplete')}
                                         </Typography.Meta>
                                     </View>

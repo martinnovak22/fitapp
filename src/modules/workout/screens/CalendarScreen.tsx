@@ -7,6 +7,7 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
+import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -91,10 +92,6 @@ export default function CalendarScreen() {
         }
     };
 
-    const formatTime = (isoString: string) => {
-        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
-
     return (
         <ScrollScreenLayout
             contentContainerStyle={styles.scrollContent}
@@ -146,7 +143,7 @@ export default function CalendarScreen() {
             {selectedDate && (
                 <View>
                     <Typography.Subtitle style={[styles.dayHeader, { color: theme.text }]}>
-                        {new Date(selectedDate).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(selectedDate).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
+                        {formatLocalizedDate(selectedDate, i18n.language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }, true)}
                     </Typography.Subtitle>
 
                     {dayWorkouts.length > 0 ? (
@@ -159,7 +156,7 @@ export default function CalendarScreen() {
                                 <View style={styles.workoutCardRow}>
                                     <View>
                                         <Typography.Body style={[styles.workoutTime, { color: theme.text }]}>
-                                            {formatTime(w.start_time)} {w.end_time ? `- ${formatTime(w.end_time)}` : `(${t('inProgress')})`}
+                                            {formatHourMinute(w.start_time)} {w.end_time ? `- ${formatHourMinute(w.end_time)}` : `(${t('inProgress')})`}
                                         </Typography.Body>
                                         <Typography.Meta style={[styles.workoutStatus, { color: theme.textSecondary }]}>
                                             {w.status === 'finished' ? t('completed') : t('activeSession')}
@@ -195,10 +192,10 @@ export default function CalendarScreen() {
                         </Typography.Title>
                         {modalWorkout && (
                             <Typography.Meta style={[styles.modalDate, { color: theme.textSecondary }]}>
-                                {new Date(modalWorkout.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                {formatLocalizedDate(modalWorkout.date, i18n.language, { year: 'numeric', month: 'long', day: 'numeric' })}
                                 {' - '}
-                                {formatTime(modalWorkout.start_time)}
-                                {modalWorkout.end_time ? ` - ${formatTime(modalWorkout.end_time)}` : ` (${t('inProgress')})`}
+                                {formatHourMinute(modalWorkout.start_time)}
+                                {modalWorkout.end_time ? ` - ${formatHourMinute(modalWorkout.end_time)}` : ` (${t('inProgress')})`}
                             </Typography.Meta>
                         )}
 
@@ -247,7 +244,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 40,
+        paddingBottom: Spacing.xl2,
     },
     calendarCard: {
         padding: Spacing.sm,

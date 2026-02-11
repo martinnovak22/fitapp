@@ -1,5 +1,5 @@
 import { Exercise, ExerciseRepository } from '@/src/db/exercises';
-import { Workout, WorkoutRepository, Set as WorkoutSet } from '@/src/db/workouts';
+import { SetData, Workout, WorkoutRepository, Set as WorkoutSet } from '@/src/db/workouts';
 import { showToast } from '@/src/modules/core/utils/toast';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -49,7 +49,7 @@ export function useWorkoutSession() {
         }, [loadData])
     );
 
-    const addSet = async (exerciseId: number, data: any) => {
+    const addSet = async (exerciseId: number, data: SetData) => {
         try {
             await WorkoutRepository.addSet(workoutId, exerciseId, data);
             await loadData();
@@ -62,7 +62,7 @@ export function useWorkoutSession() {
         }
     };
 
-    const updateSet = async (setId: number, data: any) => {
+    const updateSet = async (setId: number, data: SetData) => {
         try {
             await WorkoutRepository.updateSet(setId, data);
             await loadData();
