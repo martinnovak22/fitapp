@@ -6,8 +6,9 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type SetWithExercise = WorkoutSet & { exercise_name: string };
+type SessionOrigin = 'workout' | 'history';
 
-export function useWorkoutSession() {
+export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const { t } = useTranslation();
     const { id } = useLocalSearchParams();
     const workoutId = Number(id);
@@ -115,7 +116,7 @@ export function useWorkoutSession() {
                 label: t('delete'),
                 onPress: async () => {
                     await WorkoutRepository.delete(workoutId);
-                    router.replace('/(tabs)/workout');
+                    router.replace(origin === 'history' ? '/(tabs)/history' : '/(tabs)/workout');
                     showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') });
                 },
             },

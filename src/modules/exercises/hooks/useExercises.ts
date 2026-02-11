@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 export function useExercises() {
     const [exercises, setExercises] = useState<Exercise[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [hasLoaded, setHasLoaded] = useState(false);
 
     const loadExercises = useCallback(async () => {
         setIsLoading(true);
@@ -15,6 +16,7 @@ export function useExercises() {
             console.error('Failed to load exercises:', error);
         } finally {
             setIsLoading(false);
+            setHasLoaded(true);
         }
     }, []);
 
@@ -41,6 +43,7 @@ export function useExercises() {
     return {
         exercises,
         isLoading,
+        hasLoaded,
         loadExercises,
         handleReorder,
         setExercises,

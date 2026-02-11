@@ -18,11 +18,17 @@ import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-nati
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { ScrollScreenLayout } from '../../core/components/ScreenLayout';
 
-export default function AddExerciseScreen() {
+type ExerciseFormScreenProps = {
+    mode?: 'create' | 'edit';
+    exerciseId?: number;
+};
+
+export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseFormScreenProps) {
     const { t } = useTranslation();
     const { theme } = useTheme();
-    const { id } = useLocalSearchParams();
-    const isEditing = !!id;
+    const { id } = useLocalSearchParams<{ id?: string }>();
+    const resolvedExerciseId = exerciseId ?? (id ? Number(id) : undefined);
+    const isEditing = mode === 'edit' || resolvedExerciseId !== undefined;
 
     const [name, setName] = useState('');
     const [muscle, setMuscle] = useState('');
@@ -35,10 +41,11 @@ export default function AddExerciseScreen() {
         if (isEditing) {
             loadExercise();
         }
-    }, [id]);
+    }, [resolvedExerciseId, isEditing]);
 
     const loadExercise = async () => {
-        const exercise = await ExerciseRepository.getById(Number(id));
+        if (!resolvedExerciseId) return;
+        const exercise = await ExerciseRepository.getById(resolvedExerciseId);
         if (exercise) {
             setName(exercise.name);
             setMuscle(exercise.muscle_group || '');
@@ -112,7 +119,8 @@ export default function AddExerciseScreen() {
             }
 
             if (isEditing) {
-                await ExerciseRepository.update(Number(id), {
+                if (!resolvedExerciseId) return;
+                await ExerciseRepository.update(resolvedExerciseId, {
                     name: name.trim(),
                     muscle_group: muscle.trim().toLowerCase() || undefined,
                     type: type.toLowerCase() as ExerciseType,
@@ -150,7 +158,8 @@ export default function AddExerciseScreen() {
             action: {
                 label: t('delete'),
                 onPress: async () => {
-                    await ExerciseRepository.delete(Number(id));
+                    if (!resolvedExerciseId) return;
+                    await ExerciseRepository.delete(resolvedExerciseId);
                     router.dismissAll();
                     router.replace('/(tabs)/exercises');
                     showToast.success({
@@ -325,6 +334,10 @@ export default function AddExerciseScreen() {
             </Card>
         </ScrollScreenLayout>
     );
+}
+
+export default function AddExerciseScreen() {
+    return <ExerciseFormScreen mode="create" />;
 }
 
 const styles = StyleSheet.create({

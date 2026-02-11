@@ -10,32 +10,38 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function HistoryScreen() {
     const { t, i18n } = useTranslation();
     const { theme } = useTheme();
     const [workouts, setWorkouts] = useState<Workout[]>([]);
+    const [initialLoading, setInitialLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    const loadData = async () => {
-        const data = await WorkoutRepository.getAllWorkouts();
-        setWorkouts(data);
+    const loadData = async (showRefresh = false) => {
+        if (showRefresh) setRefreshing(true);
+        try {
+            const data = await WorkoutRepository.getAllWorkouts();
+            setWorkouts(data);
+        } finally {
+            if (showRefresh) setRefreshing(false);
+            setInitialLoading(false);
+        }
     };
 
     useFocusEffect(
         useCallback(() => {
-            loadData();
+            loadData(false);
         }, [])
     );
 
     const onRefresh = async () => {
-        setRefreshing(true);
-        await loadData();
-        setRefreshing(false);
+        await loadData(true);
     };
 
-    const renderItem = ({ item }: { item: Workout }) => {
+    const renderItem = ({ item, index }: { item: Workout; index: number }) => {
         const formattedDate = formatLocalizedDate(
             item.date,
             i18n.language,
@@ -44,34 +50,41 @@ export default function HistoryScreen() {
         );
 
         return (
-            <Card onPress={() => router.push(`/(tabs)/history/${item.id}`)}>
-                <View style={styles.workoutItem}>
-                    <View style={styles.workoutInfo}>
-                        <Typography.Body style={styles.workoutDate}>
-                            {formattedDate}
-                        </Typography.Body>
-                        <Typography.Meta style={styles.workoutTime}>
-                            {item.start_time ? formatHourMinute(item.start_time) : ''}
-                            {item.end_time ? ` - ${formatHourMinute(item.end_time)}` : ` (${t('inProgress')})`}
-                        </Typography.Meta>
-                        {item.note && (
-                            <Typography.Meta style={styles.workoutNote}>
-                                "{item.note}"
+            <Animated.View entering={FadeInDown.delay(50 + Math.min(index, 8) * 50).duration(320)}>
+                <Card onPress={() => router.push(`/(tabs)/history/${item.id}`)}>
+                    <View style={styles.workoutItem}>
+                        <View style={styles.workoutInfo}>
+                            <Typography.Body style={styles.workoutDate}>
+                                {formattedDate}
+                            </Typography.Body>
+                            <Typography.Meta style={styles.workoutTime}>
+                                {item.start_time ? formatHourMinute(item.start_time) : ''}
+                                {item.end_time ? ` - ${formatHourMinute(item.end_time)}` : ` (${t('inProgress')})`}
                             </Typography.Meta>
-                        )}
+                            {item.note && (
+                                <Typography.Meta style={styles.workoutNote}>
+                                    "{item.note}"
+                                </Typography.Meta>
+                            )}
+                        </View>
+                        <FontAwesome
+                            name={item.status === 'finished' ? "check-circle" : "clock-o"}
+                            size={24}
+                            color={item.status === 'finished' ? theme.primary : theme.secondary}
+                        />
                     </View>
-                    <FontAwesome
-                        name={item.status === 'finished' ? "check-circle" : "clock-o"}
-                        size={24}
-                        color={item.status === 'finished' ? theme.primary : theme.secondary}
-                    />
-                </View>
-            </Card>
+                </Card>
+            </Animated.View>
         );
     };
 
     return (
         <ScreenLayout>
+            {initialLoading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={theme.primary} />
+                </View>
+            ) : (
             <FlatList
                 data={workouts}
                 renderItem={renderItem}
@@ -80,10 +93,16 @@ export default function HistoryScreen() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListEmptyComponent={<EmptyState message={t('noWorkoutsYet')} icon={"calendar-o"} />}
             />
+            )}
         </ScreenLayout>
     );
 }
 const styles = StyleSheet.create({
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     workoutItem: {
         flexDirection: 'row',
         justifyContent: 'space-between',

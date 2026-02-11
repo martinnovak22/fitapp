@@ -16,6 +16,7 @@ import {
     StyleSheet,
     View
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function WorkoutDashboardScreen() {
     const { t, i18n } = useTranslation();
@@ -30,6 +31,9 @@ export default function WorkoutDashboardScreen() {
         sessions: 0,
         avgDuration: 0,
     });
+    const recentHistoryWorkouts = allWorkouts
+        .filter(workout => workout.status === 'finished' && workout.id !== activeWorkout?.id)
+        .slice(0, 3);
 
     const loadData = async () => {
         const active = await WorkoutRepository.getActiveWorkout();
@@ -112,10 +116,11 @@ export default function WorkoutDashboardScreen() {
                 />
             }
         >
-            <Card
-                onPress={() => router.push('/workout/calendar')}
-                style={layoutStyles.heroCard}
-            >
+            <Animated.View entering={FadeInDown.delay(70).duration(360)}>
+                <Card
+                    onPress={() => router.push('/workout/calendar')}
+                    style={layoutStyles.heroCard}
+                >
                 <View style={layoutStyles.heroStatsRow}>
                     <View style={layoutStyles.heroStatItem}>
                         <Typography.Meta style={{ fontSize: 10, fontWeight: '800', color: theme.textSecondary, letterSpacing: 1, marginBottom: 4 }}>{t('sessions').toUpperCase()}</Typography.Meta>
@@ -160,10 +165,12 @@ export default function WorkoutDashboardScreen() {
                         </View>
                     ))}
                 </View>
-            </Card>
+                </Card>
+            </Animated.View>
 
 
-            <Card style={[layoutStyles.activeCard, { borderLeftColor: theme.primary }]}>
+            <Animated.View entering={FadeInDown.delay(140).duration(360)}>
+                <Card style={[layoutStyles.activeCard, { borderLeftColor: theme.primary }]}>
                 <View style={layoutStyles.activeHeader}>
                     <Typography.Subtitle style={{ fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: 0 }}>
                         {activeWorkout ? t('activeSession') : t('workout')}
@@ -200,57 +207,56 @@ export default function WorkoutDashboardScreen() {
                         />
                     </View>
                 )}
-            </Card>
+                </Card>
+            </Animated.View>
 
+            <Animated.View entering={FadeInDown.delay(210).duration(360)}>
+                <Card>
+                    <Typography.Subtitle style={{ marginBottom: 12 }}>{t('history')}</Typography.Subtitle>
+                    <View style={layoutStyles.recentContainer}>
+                        {recentHistoryWorkouts.length === 0 ? (
+                            <EmptyState message={t('noWorkoutsRecorded')} icon={"history"} />
+                        ) : (
+                            recentHistoryWorkouts.map(workout => {
+                                const formattedDate = formatLocalizedDate(
+                                    workout.date,
+                                    i18n.language,
+                                    { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' },
+                                    true
+                                );
 
-            <Card>
-                <Typography.Subtitle style={{ marginBottom: 12 }}>{t('history')}</Typography.Subtitle>
-                <View style={layoutStyles.recentContainer}>
+                                return (
+                                    <Card
+                                        key={workout.id}
+                                        onPress={() => router.push(`/(tabs)/history/${workout.id}`)}
+                                        style={layoutStyles.recentCard}
+                                    >
+                                        <View style={layoutStyles.recentRow}>
+                                            <View style={layoutStyles.recentLeft}>
+                                                <Typography.Body style={[layoutStyles.recentTitle, { color: theme.text }]}>
+                                                    {formattedDate}
+                                                </Typography.Body>
 
-                    {allWorkouts.length === 0 ? (
-                        <EmptyState message={t('noWorkoutsRecorded')} icon={"history"} />
-                    ) : (
-                        allWorkouts.slice(0, 3).map(workout => {
-                            const formattedDate = formatLocalizedDate(
-                                workout.date,
-                                i18n.language,
-                                { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' },
-                                true
-                            );
+                                                <Typography.Meta style={[layoutStyles.recentMeta, { color: theme.textSecondary }]}>
+                                                    {workout.end_time
+                                                        ? `${formatHourMinute(workout.start_time)} - ${formatHourMinute(workout.end_time)}`
+                                                        : t('incomplete')}
+                                                </Typography.Meta>
+                                            </View>
 
-                            return (
-
-                            <Card
-                                key={workout.id}
-                                onPress={() => router.push(`/(tabs)/history/${workout.id}`)}
-                                style={layoutStyles.recentCard}
-                            >
-                                <View style={layoutStyles.recentRow}>
-                                    <View style={layoutStyles.recentLeft}>
-                                        <Typography.Body style={[layoutStyles.recentTitle, { color: theme.text }]}>
-                                            {formattedDate}
-                                        </Typography.Body>
-
-                                        <Typography.Meta style={[layoutStyles.recentMeta, { color: theme.textSecondary }]}>
-                                            {workout.end_time
-                                                ? `${formatHourMinute(workout.start_time)} - ${formatHourMinute(workout.end_time)}`
-                                                : t('incomplete')}
-                                        </Typography.Meta>
-                                    </View>
-
-                                    <FontAwesome
-                                        name={workout.status === 'finished' ? "check-circle" : "clock-o"}
-                                        size={24}
-                                        color={workout.status === 'finished' ? theme.primary : theme.secondary}
-                                    />
-                                </View>
-                            </Card>
-
-
-                        )})
-                    )}
-                </View>
-            </Card>
+                                            <FontAwesome
+                                                name={workout.status === 'finished' ? "check-circle" : "clock-o"}
+                                                size={24}
+                                                color={workout.status === 'finished' ? theme.primary : theme.secondary}
+                                            />
+                                        </View>
+                                    </Card>
+                                );
+                            })
+                        )}
+                    </View>
+                </Card>
+            </Animated.View>
         </ScrollScreenLayout>
     );
 }

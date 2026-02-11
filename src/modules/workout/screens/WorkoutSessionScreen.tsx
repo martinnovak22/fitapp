@@ -19,13 +19,17 @@ import {
 } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
 import { NestedReorderableList, ScrollViewContainer, reorderItems } from 'react-native-reorderable-list';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LogSetModal } from '../components/LogSetModal';
 import { WorkoutSetItem } from '../components/WorkoutSetItem';
 import { useWorkoutSession } from '../hooks/useWorkoutSession';
 
 type SetWithExercise = WorkoutSet & { exercise_name: string };
+type WorkoutSessionScreenProps = {
+    origin?: 'workout' | 'history';
+};
 
-export default function WorkoutSessionScreen() {
+export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSessionScreenProps) {
     const { t, i18n } = useTranslation();
     const { theme } = useTheme();
     const {
@@ -39,7 +43,7 @@ export default function WorkoutSessionScreen() {
         reorderSets,
         addSet,
         updateSet
-    } = useWorkoutSession();
+    } = useWorkoutSession(origin);
 
     const [modalVisible, setModalVisible] = useState(false);
     const [editingSetId, setEditingSetId] = useState<number | null>(null);
@@ -240,17 +244,19 @@ export default function WorkoutSessionScreen() {
                     icon={"file-text-o"}
                 />
             ) : (
-                exerciseNamesOrder.map((exerciseName) => (
-                    <WorkoutExerciseGroup
-                        key={exerciseName}
-                        exerciseName={exerciseName}
-                        sets={groupedSets[exerciseName]}
-                        isReadOnly={isReadOnly}
-                        handleOpenEditModal={handleOpenEditModal}
-                        handleDeleteSet={deleteSet}
-                        handleReorderSets={reorderSets}
-                    />
-                ))
+                <Animated.View entering={FadeInDown.duration(340)}>
+                    {exerciseNamesOrder.map((exerciseName) => (
+                        <WorkoutExerciseGroup
+                            key={exerciseName}
+                            exerciseName={exerciseName}
+                            sets={groupedSets[exerciseName]}
+                            isReadOnly={isReadOnly}
+                            handleOpenEditModal={handleOpenEditModal}
+                            handleDeleteSet={deleteSet}
+                            handleReorderSets={reorderSets}
+                        />
+                    ))}
+                </Animated.View>
             )}
         </ScrollScreenLayout>
     );

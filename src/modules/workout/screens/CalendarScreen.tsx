@@ -20,6 +20,7 @@ import {
     View
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 interface MarkedDates {
     [date: string]: {
@@ -97,82 +98,90 @@ export default function CalendarScreen() {
             contentContainerStyle={styles.scrollContent}
             style={styles.container}
         >
-            <Card style={styles.calendarCard}>
-                <Calendar
-                    theme={{
-                        backgroundColor: 'transparent',
-                        calendarBackground: 'transparent',
-                        textSectionTitleColor: theme.textSecondary,
-                        selectedDayBackgroundColor: theme.primary,
-                        selectedDayTextColor: theme.onPrimary,
-                        todayTextColor: theme.primary,
-                        dayTextColor: theme.text,
-                        textDisabledColor: theme.inputBackgroundActive,
-                        dotColor: theme.primary,
-                        selectedDotColor: theme.onPrimary,
-                        arrowColor: theme.primary,
-                        disabledArrowColor: theme.border,
-                        monthTextColor: theme.text,
-                        indicatorColor: theme.primary,
-                        textDayFontFamily: 'System',
-                        textMonthFontFamily: 'System',
-                        textDayHeaderFontFamily: 'System',
-                        textDayFontWeight: '300',
-                        textMonthFontWeight: 'bold',
-                        textDayHeaderFontWeight: '300',
-                        textDayFontSize: 16,
-                        textMonthFontSize: 18,
-                        textDayHeaderFontSize: 14
-                    }}
-                    markedDates={{
-                        ...markedDates,
-                        ...(selectedDate ? {
-                            [selectedDate]: {
-                                ...markedDates[selectedDate],
-                                selected: true,
-                                selectedColor: theme.primary + '40'
-                            }
-                        } : {})
-                    }}
-                    onDayPress={handleDayPress}
-                    hideExtraDays={false}
-                    showSixWeeks={true}
-                />
-            </Card>
+            <Animated.View entering={FadeInDown.delay(70).duration(360)}>
+                <Card style={styles.calendarCard}>
+                    <Calendar
+                        theme={{
+                            backgroundColor: 'transparent',
+                            calendarBackground: 'transparent',
+                            textSectionTitleColor: theme.textSecondary,
+                            selectedDayBackgroundColor: theme.primary,
+                            selectedDayTextColor: theme.onPrimary,
+                            todayTextColor: theme.primary,
+                            dayTextColor: theme.text,
+                            textDisabledColor: theme.inputBackgroundActive,
+                            dotColor: theme.primary,
+                            selectedDotColor: theme.onPrimary,
+                            arrowColor: theme.primary,
+                            disabledArrowColor: theme.border,
+                            monthTextColor: theme.text,
+                            indicatorColor: theme.primary,
+                            textDayFontFamily: 'System',
+                            textMonthFontFamily: 'System',
+                            textDayHeaderFontFamily: 'System',
+                            textDayFontWeight: '300',
+                            textMonthFontWeight: 'bold',
+                            textDayHeaderFontWeight: '300',
+                            textDayFontSize: 16,
+                            textMonthFontSize: 18,
+                            textDayHeaderFontSize: 14
+                        }}
+                        markedDates={{
+                            ...markedDates,
+                            ...(selectedDate ? {
+                                [selectedDate]: {
+                                    ...markedDates[selectedDate],
+                                    selected: true,
+                                    selectedColor: theme.primary + '40'
+                                }
+                            } : {})
+                        }}
+                        onDayPress={handleDayPress}
+                        hideExtraDays={false}
+                        showSixWeeks={true}
+                    />
+                </Card>
+            </Animated.View>
 
             {selectedDate && (
-                <View>
-                    <Typography.Subtitle style={[styles.dayHeader, { color: theme.text }]}>
-                        {formatLocalizedDate(selectedDate, i18n.language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }, true)}
-                    </Typography.Subtitle>
+                dayWorkouts.length > 0 ? (
+                    <Animated.View entering={FadeInDown.delay(140).duration(360)}>
+                        <Typography.Subtitle style={[styles.dayHeader, { color: theme.text }]}>
+                            {formatLocalizedDate(selectedDate, i18n.language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }, true)}
+                        </Typography.Subtitle>
 
-                    {dayWorkouts.length > 0 ? (
-                        dayWorkouts.map(w => (
-                            <Card
-                                key={w.id}
-                                style={styles.workoutCard}
-                                onPress={() => handleOpenSummary(w)}
-                            >
-                                <View style={styles.workoutCardRow}>
-                                    <View>
-                                        <Typography.Body style={[styles.workoutTime, { color: theme.text }]}>
-                                            {formatHourMinute(w.start_time)} {w.end_time ? `- ${formatHourMinute(w.end_time)}` : `(${t('inProgress')})`}
-                                        </Typography.Body>
-                                        <Typography.Meta style={[styles.workoutStatus, { color: theme.textSecondary }]}>
-                                            {w.status === 'finished' ? t('completed') : t('activeSession')}
-                                        </Typography.Meta>
+                        {dayWorkouts.map((w, index) => (
+                            <Animated.View key={w.id} entering={FadeInDown.delay(170 + Math.min(index, 8) * 45).duration(320)}>
+                                <Card
+                                    style={styles.workoutCard}
+                                    onPress={() => handleOpenSummary(w)}
+                                >
+                                    <View style={styles.workoutCardRow}>
+                                        <View>
+                                            <Typography.Body style={[styles.workoutTime, { color: theme.text }]}>
+                                                {formatHourMinute(w.start_time)} {w.end_time ? `- ${formatHourMinute(w.end_time)}` : `(${t('inProgress')})`}
+                                            </Typography.Body>
+                                            <Typography.Meta style={[styles.workoutStatus, { color: theme.textSecondary }]}>
+                                                {w.status === 'finished' ? t('completed') : t('activeSession')}
+                                            </Typography.Meta>
+                                        </View>
+                                        <View style={styles.workoutAction}>
+                                            <Typography.Meta style={[styles.viewSummaryText, { color: theme.primary }]}>{t('viewSummary')}</Typography.Meta>
+                                            <FontAwesome name="chevron-right" size={12} color={theme.primary} />
+                                        </View>
                                     </View>
-                                    <View style={styles.workoutAction}>
-                                        <Typography.Meta style={[styles.viewSummaryText, { color: theme.primary }]}>{t('viewSummary')}</Typography.Meta>
-                                        <FontAwesome name="chevron-right" size={12} color={theme.primary} />
-                                    </View>
-                                </View>
-                            </Card>
-                        ))
-                    ) : (
+                                </Card>
+                            </Animated.View>
+                        ))}
+                    </Animated.View>
+                ) : (
+                    <View>
+                        <Typography.Subtitle style={[styles.dayHeader, { color: theme.text }]}>
+                            {formatLocalizedDate(selectedDate, i18n.language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }, true)}
+                        </Typography.Subtitle>
                         <EmptyState message={t('noWorkoutsRecorded')} icon={"calendar-o"} />
-                    )}
-                </View>
+                    </View>
+                )
             )}
 
             <Modal

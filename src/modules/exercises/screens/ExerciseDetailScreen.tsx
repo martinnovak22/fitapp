@@ -90,7 +90,7 @@ export default function ExerciseDetailScreen() {
                 onDelete={handleDelete}
                 rightAction={{
                     label: t('edit'),
-                    onPress: () => router.push(`/(tabs)/exercises/add?id=${exercise.id}`)
+                    onPress: () => router.push(`/(tabs)/exercises/edit/${exercise.id}`)
                 }}
             />
             <Card style={{ marginTop: Spacing.md }}>
