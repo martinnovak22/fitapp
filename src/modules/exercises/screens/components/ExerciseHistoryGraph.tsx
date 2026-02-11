@@ -138,7 +138,7 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
             <Text style={[
                 styles.toggleText,
                 { color: theme.textSecondary },
-                selectedMetric === metric && styles.toggleTextActive
+                selectedMetric === metric && { color: theme.onPrimary }
             ]}>{label}</Text>
         </TouchableOpacity>
 
@@ -298,9 +298,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 
-    toggleTextActive: {
-        color: '#FFF',
-    },
     statsRow: {
         flexDirection: 'row',
         marginBottom: 24,

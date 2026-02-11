@@ -1,3 +1,4 @@
+import { Spacing } from '@/src/constants/Spacing';
 import { Card } from '@/src/modules/core/components/Card';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
@@ -10,7 +11,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function SettingsScreen() {
     const { t, i18n } = useTranslation();
-    const { mode, setMode, theme, isDark } = useTheme();
+    const { mode, setMode, theme } = useTheme();
 
     const languages = [
         { code: 'en', label: t('english'), icon: '🇺🇸' },
@@ -50,7 +51,7 @@ export default function SettingsScreen() {
                 </Animated.View>
 
                 <Animated.View entering={FadeInDown.delay(200).duration(500)}>
-                    <Typography.Subtitle style={[styles.sectionTitle, { marginTop: 24, color: theme.primary }]}>{t('appearance') || 'Appearance'}</Typography.Subtitle>
+                    <Typography.Subtitle style={[styles.sectionTitle, { marginTop: Spacing.lg, color: theme.primary }]}>{t('appearance') || 'Appearance'}</Typography.Subtitle>
                     <Card style={styles.card}>
                         {themes.map((tMode, index) => (
                             <React.Fragment key={tMode.mode}>
@@ -74,7 +75,7 @@ export default function SettingsScreen() {
                     </Card>
                 </Animated.View>
 
-                <Animated.View entering={FadeInDown.delay(300).duration(500)} style={{ alignItems: 'center', marginTop: "auto", padding: 16 }}>
+                <Animated.View entering={FadeInDown.delay(300).duration(500)} style={{ alignItems: 'center', marginTop: "auto", padding: Spacing.md }}>
                     <Typography.Meta style={{ color: theme.textSecondary }}>FitApp - 0.1.2</Typography.Meta>
                 </Animated.View>
             </ScrollView>

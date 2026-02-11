@@ -20,7 +20,7 @@ import { ScrollScreenLayout } from '../../core/components/ScreenLayout';
 
 export default function AddExerciseScreen() {
     const { t } = useTranslation();
-    const { theme, isDark } = useTheme();
+    const { theme } = useTheme();
     const { id } = useLocalSearchParams();
     const isEditing = !!id;
 
@@ -179,7 +179,7 @@ export default function AddExerciseScreen() {
                     <TextInput
                         placeholder={t('placeholderName')}
                         placeholderTextColor={theme.textSecondary}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
                         value={name}
                         onChangeText={setName}
                         autoFocus={!isEditing}
@@ -190,7 +190,7 @@ export default function AddExerciseScreen() {
                     <TextInput
                         placeholder={t('placeholderMuscle')}
                         placeholderTextColor={theme.textSecondary}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
                         value={muscle}
                         onChangeText={setMuscle}
                         selectionColor={theme.primary}
@@ -217,7 +217,7 @@ export default function AddExerciseScreen() {
                                     <Typography.Meta style={[
                                         styles.typeButtonText,
                                         { color: theme.textSecondary },
-                                        isActive && { color: 'white' }
+                                        isActive && { color: theme.onPrimary }
                                     ]}>
                                         {t_item.label}
                                     </Typography.Meta>
@@ -234,12 +234,12 @@ export default function AddExerciseScreen() {
                             style={{ marginTop: 20 }}
                         >
                             <Typography.Label style={{ fontSize: 12, marginBottom: 6 }}>{t('trackingMode')}</Typography.Label>
-                            <View style={[styles.subToggleContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                            <View style={[styles.subToggleContainer, { backgroundColor: theme.inputBackground }]}>
                                 <TouchableOpacity
                                     style={[
                                         styles.subToggleButton,
                                         { backgroundColor: 'transparent' },
-                                        type === 'bodyweight' && [styles.subToggleButtonActive, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]
+                                        type === 'bodyweight' && [styles.subToggleButtonActive, { backgroundColor: theme.inputBackgroundActive, borderColor: theme.inputBackgroundActive }]
                                     ]}
                                     onPress={() => setType('bodyweight')}
                                 >
@@ -253,7 +253,7 @@ export default function AddExerciseScreen() {
                                     style={[
                                         styles.subToggleButton,
                                         { backgroundColor: 'transparent' },
-                                        type === 'bodyweight_timer' && [styles.subToggleButtonActive, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]
+                                        type === 'bodyweight_timer' && [styles.subToggleButtonActive, { backgroundColor: theme.inputBackgroundActive, borderColor: theme.inputBackgroundActive }]
                                     ]}
                                     onPress={() => setType('bodyweight_timer')}
                                 >
@@ -275,18 +275,18 @@ export default function AddExerciseScreen() {
                                 style={[
                                     styles.photoWrapper,
                                     {
-                                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                                        backgroundColor: theme.surfaceSubtle,
+                                        borderColor: theme.inputBackgroundActive
                                     }
                                 ]}
                                 onPress={() => setShowImageFullScreen(true)}
                             >
                                 <Image key={photoUri} source={{ uri: photoUri }} style={styles.photo} />
                                 <TouchableOpacity
-                                    style={styles.removePhotoButton}
+                                    style={[styles.removePhotoButton, { backgroundColor: theme.overlayScrim }]}
                                     onPress={() => setPhotoUri(null)}
                                 >
-                                    <FontAwesome name={"trash"} size={20} color={"#FF6B6B"} />
+                                    <FontAwesome name={"trash"} size={20} color={theme.error} />
                                 </TouchableOpacity>
                             </TouchableOpacity>
                         ) : (
@@ -294,8 +294,8 @@ export default function AddExerciseScreen() {
                                 style={[
                                     styles.addPhotoButton,
                                     {
-                                        backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-                                        borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
+                                        backgroundColor: theme.surfaceSubtle,
+                                        borderColor: theme.inputBackground
                                     }
                                 ]}
                                 onPress={handlePickImage}
@@ -367,7 +367,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 8,
         right: 8,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
         width: 30,
         height: 30,
         borderRadius: 100,
@@ -377,19 +376,15 @@ const styles = StyleSheet.create({
     typeButton: {
         flex: 1,
         minWidth: '30%',
-        paddingHorizontal: Spacing.md,
+        paddingHorizontal: Spacing.sm,
         paddingVertical: Spacing.sm,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
         alignItems: 'center',
     },
     typeButtonText: {
         fontSize: 12,
         fontWeight: '500',
-    },
-    typeButtonActiveText: {
-        color: 'white',
     },
     subToggleContainer: {
         flexDirection: 'row',
@@ -403,9 +398,7 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     subToggleButtonActive: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
     },
     subToggleText: {
         fontSize: 12,

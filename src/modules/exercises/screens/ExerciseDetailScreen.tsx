@@ -108,7 +108,7 @@ export default function ExerciseDetailScreen() {
 
                     {exercise.photo_uri && (
                         <TouchableOpacity
-                            style={[styles.photoContainer, { backgroundColor: theme.surface === '#FFFFFF' ? '#F0F0F0' : 'rgba(255,255,255,0.03)', borderColor: theme.border }]}
+                            style={[styles.photoContainer, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
                             onPress={() => setShowImageFullScreen(true)}
                             activeOpacity={0.9}
                         >

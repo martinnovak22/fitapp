@@ -1,4 +1,3 @@
-import { Theme } from '@/src/constants/Colors';
 import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import { Workout, WorkoutRepository } from '@/src/db/workouts';
@@ -32,7 +31,7 @@ interface MarkedDates {
 
 export default function CalendarScreen() {
     const { t, i18n } = useTranslation();
-    const { theme, isDark } = useTheme();
+    const { theme } = useTheme();
     const [workouts, setWorkouts] = useState<Workout[]>([]);
     const [markedDates, setMarkedDates] = useState<MarkedDates>({});
     const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
@@ -108,14 +107,14 @@ export default function CalendarScreen() {
                         calendarBackground: 'transparent',
                         textSectionTitleColor: theme.textSecondary,
                         selectedDayBackgroundColor: theme.primary,
-                        selectedDayTextColor: '#ffffff',
+                        selectedDayTextColor: theme.onPrimary,
                         todayTextColor: theme.primary,
                         dayTextColor: theme.text,
-                        textDisabledColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                        textDisabledColor: theme.inputBackgroundActive,
                         dotColor: theme.primary,
-                        selectedDotColor: '#ffffff',
+                        selectedDotColor: theme.onPrimary,
                         arrowColor: theme.primary,
-                        disabledArrowColor: '#d9e1e8',
+                        disabledArrowColor: theme.border,
                         monthTextColor: theme.text,
                         indicatorColor: theme.primary,
                         textDayFontFamily: 'System',
@@ -186,11 +185,11 @@ export default function CalendarScreen() {
                 onRequestClose={() => setModalWorkout(null)}
             >
                 <TouchableOpacity
-                    style={styles.modalOverlay}
+                    style={[styles.modalOverlay, { backgroundColor: theme.overlayScrim }]}
                     activeOpacity={1}
                     onPress={() => setModalWorkout(null)}
                 >
-                    <View style={[styles.modalContent, { backgroundColor: theme.surface, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}>
+                    <View style={[styles.modalContent, { backgroundColor: theme.surface, borderColor: theme.inputBackgroundActive }]}>
                         <Typography.Title style={[styles.modalTitle, { color: theme.text }]}>
                             {t('workoutSummary')}
                         </Typography.Title>
@@ -206,7 +205,7 @@ export default function CalendarScreen() {
                         <ScrollView style={styles.summaryScroll} contentContainerStyle={styles.summaryScrollContent}>
                             {workoutSets.length > 0 ? (
                                 workoutSets.map((item, index) => (
-                                    <View key={index} style={[styles.summaryRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                    <View key={index} style={[styles.summaryRow, { borderBottomColor: theme.inputBackground }]}>
                                         <Typography.Body style={[styles.summaryText, { color: theme.text }]}>
                                             {item.exercise_name}
                                         </Typography.Body>
@@ -257,7 +256,6 @@ const styles = StyleSheet.create({
     },
     dayHeader: {
         ...GlobalStyles.subtitle,
-        color: Theme.text,
         marginBottom: Spacing.md,
         marginTop: Spacing.md,
     },
@@ -272,13 +270,11 @@ const styles = StyleSheet.create({
     },
     workoutTime: {
         ...GlobalStyles.text,
-        color: Theme.text,
         fontWeight: 'bold',
         fontSize: 14,
     },
     workoutStatus: {
         ...GlobalStyles.text,
-        color: Theme.textSecondary,
         fontSize: 12,
         marginTop: 2,
     },
@@ -289,37 +285,20 @@ const styles = StyleSheet.create({
     },
     viewSummaryText: {
         ...GlobalStyles.text,
-        color: Theme.primary,
         fontSize: 12,
         fontWeight: '600',
     },
-    noWorkoutContainer: {
-        padding: Spacing.xl,
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.02)',
-        borderRadius: Spacing.md,
-        borderStyle: 'dashed',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    noWorkoutText: {
-        ...GlobalStyles.text,
-        color: Theme.textSecondary,
-    },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     modalContent: {
         width: '85%',
         maxHeight: '70%',
-        backgroundColor: Theme.surface,
         borderRadius: Spacing.md,
         padding: Spacing.lg,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
         elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -328,12 +307,10 @@ const styles = StyleSheet.create({
     },
     modalTitle: {
         ...GlobalStyles.subtitle,
-        color: Theme.text,
         marginBottom: Spacing.xs,
     },
     modalDate: {
         ...GlobalStyles.text,
-        color: Theme.textSecondary,
         fontSize: 14,
         marginBottom: Spacing.lg,
     },
@@ -350,22 +327,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: Spacing.sm,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.05)',
     },
     summaryText: {
         ...GlobalStyles.text,
-        color: Theme.text,
         flex: 1,
     },
     summaryCount: {
         ...GlobalStyles.text,
-        color: Theme.primary,
         fontWeight: 'bold',
         marginLeft: Spacing.md,
     },
     emptySummary: {
         ...GlobalStyles.text,
-        color: Theme.textSecondary,
         fontStyle: 'italic',
         textAlign: 'center',
         marginTop: Spacing.lg,
@@ -374,28 +347,5 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         gap: Spacing.md,
-    },
-    modalButton: {
-        flex: 1,
-        paddingVertical: Spacing.md,
-        borderRadius: Spacing.sm,
-        alignItems: 'center',
-    },
-    primaryButton: {
-        backgroundColor: Theme.primary,
-    },
-    primaryButtonText: {
-        ...GlobalStyles.text,
-        color: 'white',
-        fontWeight: 'bold',
-    },
-    secondaryButton: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    secondaryButtonText: {
-        ...GlobalStyles.text,
-        color: Theme.text,
     },
 });

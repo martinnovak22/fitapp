@@ -130,7 +130,7 @@ export function useWorkoutSession() {
     }, {} as Record<string, SetWithExercise[]>);
 
     const reorderSets = useCallback(async (exerciseName: string, newGroupSets: SetWithExercise[]) => {
-        setSets(prevSets => {
+        setSets(() => {
             const currentGrouped = { ...groupedSets };
             currentGrouped[exerciseName] = newGroupSets;
 

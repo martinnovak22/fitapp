@@ -144,13 +144,13 @@ export default function WorkoutDashboardScreen() {
                             <View
                                 style={[
                                     layoutStyles.dayBox,
-                                    { backgroundColor: theme.surface === '#FFFFFF' ? '#F0F0F0' : 'rgba(255,255,255,0.05)', borderColor: theme.border + '20' },
+                                    { backgroundColor: theme.surfaceMuted, borderColor: theme.border + '20' },
                                     day.workedOut && { backgroundColor: theme.primary, borderColor: theme.primary }
                                 ]}
                             >
 
                                 {day.workedOut && (
-                                    <FontAwesome name="check" size={10} color="white" />
+                                    <FontAwesome name="check" size={10} color={theme.onPrimary} />
                                 )}
                             </View>
                             <Typography.Meta style={[{ fontSize: 11, color: theme.textSecondary }, day.workedOut && { color: theme.text, fontWeight: 'bold' }]}>
@@ -212,7 +212,14 @@ export default function WorkoutDashboardScreen() {
                     {allWorkouts.length === 0 ? (
                         <EmptyState message={t('noWorkoutsRecorded')} icon={"history"} />
                     ) : (
-                        allWorkouts.slice(0, 3).map(workout => (
+                        allWorkouts.slice(0, 3).map(workout => {
+                            const localizedDate = new Date(workout.date).toLocaleDateString(
+                                i18n.language === 'cs' ? 'cs-CZ' : 'en-US',
+                                { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+                            );
+                            const formattedDate = localizedDate.charAt(0).toUpperCase() + localizedDate.slice(1);
+
+                            return (
 
                             <Card
                                 key={workout.id}
@@ -222,7 +229,7 @@ export default function WorkoutDashboardScreen() {
                                 <View style={layoutStyles.recentRow}>
                                     <View style={layoutStyles.recentLeft}>
                                         <Typography.Body style={[layoutStyles.recentTitle, { color: theme.text }]}>
-                                            {new Date(workout.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).charAt(0).toUpperCase() + new Date(workout.date).toLocaleDateString(i18n.language === 'cs' ? 'cs-CZ' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).slice(1)}
+                                            {formattedDate}
                                         </Typography.Body>
 
                                         <Typography.Meta style={[layoutStyles.recentMeta, { color: theme.textSecondary }]}>
@@ -245,7 +252,7 @@ export default function WorkoutDashboardScreen() {
                             </Card>
 
 
-                        ))
+                        )})
                     )}
                 </View>
             </Card>

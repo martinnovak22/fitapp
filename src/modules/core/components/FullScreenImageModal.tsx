@@ -2,6 +2,7 @@ import { Spacing } from '@/src/constants/Spacing';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
 import { Image, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface FullScreenImageModalProps {
@@ -12,6 +13,7 @@ interface FullScreenImageModalProps {
 
 export const FullScreenImageModal: React.FC<FullScreenImageModalProps> = ({ visible, onClose, imageUri }) => {
     const insets = useSafeAreaInsets();
+    const { theme } = useTheme();
 
     if (!imageUri) return null;
 
@@ -22,7 +24,7 @@ export const FullScreenImageModal: React.FC<FullScreenImageModalProps> = ({ visi
             animationType="fade"
             transparent={false}
         >
-            <View style={styles.container}>
+            <View style={[styles.container, { backgroundColor: theme.overlayScrim }]}>
                 <Image source={{ uri: imageUri }} style={styles.image} />
                 <TouchableOpacity
                     onPress={onClose}
@@ -31,10 +33,11 @@ export const FullScreenImageModal: React.FC<FullScreenImageModalProps> = ({ visi
                         {
                             top: insets.top + Spacing.sm,
                             right: Spacing.sm,
+                            backgroundColor: theme.surfaceMuted,
                         }
                     ]}
                 >
-                    <FontAwesome name={"close"} size={20} color={"#FF6B6B"} />
+                    <FontAwesome name={"close"} size={20} color={theme.error} />
                 </TouchableOpacity>
             </View>
         </Modal>
@@ -44,7 +47,6 @@ export const FullScreenImageModal: React.FC<FullScreenImageModalProps> = ({ visi
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -55,7 +57,6 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         position: 'absolute',
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
         width: 40,
         height: 40,
         borderRadius: 100,

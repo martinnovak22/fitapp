@@ -49,7 +49,7 @@ export const LogSetModal = ({
     updateInput
 }: Props) => {
     const { t } = useTranslation();
-    const { theme, isDark } = useTheme();
+    const { theme } = useTheme();
 
     const selectedExercise = exercises.find(e => e.id === selectedExerciseId);
     const [isExpanded, setIsExpanded] = React.useState(false);
@@ -117,7 +117,7 @@ export const LogSetModal = ({
 
     return (
         <Modal animationType="none" transparent visible={visible} onRequestClose={onClose}>
-            <View style={styles.centeredView}>
+            <View style={[styles.centeredView, { backgroundColor: theme.overlayBackdrop }]}>
                 <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
                 <Animated.View style={[styles.modalView, { backgroundColor: theme.surface }, animatedStyle]}>
                     <Text style={[GlobalStyles.title, { color: theme.text }]}>{editingSetId ? t('editSet') : t('inputSet')}</Text>
@@ -142,7 +142,7 @@ export const LogSetModal = ({
                                 />
 
                                 {selectedExercise.type === 'weight' && (
-                                    <Animated.View layout={LinearTransition} style={[styles.pyramidSection, { borderTopColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                    <Animated.View layout={LinearTransition} style={[styles.pyramidSection, { borderTopColor: theme.inputBackground }]}>
 
                                         <View style={styles.pyramidHeader}>
                                             <TouchableOpacity
@@ -162,7 +162,7 @@ export const LogSetModal = ({
                                             </TouchableOpacity>
 
                                             <TouchableOpacity style={[styles.addDropButton, { backgroundColor: theme.primary }]} onPress={addSubSet}>
-                                                <FontAwesome name={"plus"} size={10} color={"white"} />
+                                                <FontAwesome name={"plus"} size={10} color={theme.onPrimary} />
                                             </TouchableOpacity>
 
 
@@ -186,14 +186,14 @@ export const LogSetModal = ({
 
                                                     ) : (
                                                         subSets.map((ss, idx) => (
-                                                            <Animated.View key={idx} entering={FadeIn} layout={LinearTransition} style={[styles.subSetRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                                            <Animated.View key={idx} entering={FadeIn} layout={LinearTransition} style={[styles.subSetRow, { borderBottomColor: theme.inputBackground }]}>
                                                                 <View style={styles.subSetIndexContainer}>
                                                                     <Text style={[styles.subSetIndex, { color: theme.textSecondary }]}>#{idx + 1}</Text>
                                                                 </View>
 
                                                                 <View style={styles.subSetInputGroup}>
                                                                     <TextInput
-                                                                        style={[styles.subSetInput, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}
+                                                                        style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.inputBackground }]}
                                                                         keyboardType="numeric"
                                                                         multiline={false}
                                                                         numberOfLines={1}
@@ -207,7 +207,7 @@ export const LogSetModal = ({
                                                                     />
                                                                     <Text style={[styles.subSetX, { color: theme.textSecondary }]}>×</Text>
                                                                     <TextInput
-                                                                        style={[styles.subSetInput, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}
+                                                                        style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.inputBackground }]}
                                                                         keyboardType="numeric"
                                                                         multiline={false}
                                                                         numberOfLines={1}
@@ -293,7 +293,7 @@ const ExercisePicker = ({ exercises, selectedExerciseId, setSelectedExerciseId, 
 
 const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { selectedExercise?: Exercise; inputValues: Props['inputValues']; updateInput: Props['updateInput'] }) => {
     const { t } = useTranslation();
-    const { theme, isDark } = useTheme();
+    const { theme } = useTheme();
     const type = selectedExercise?.type?.toLowerCase();
 
     return (
@@ -305,7 +305,7 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         keyboardType='numeric'
                         multiline={false}
                         numberOfLines={1}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
                         value={inputValues.weight}
                         onChangeText={(t) => updateInput('weight', t)}
                         placeholder="0"
@@ -324,7 +324,7 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         keyboardType='numeric'
                         multiline={false}
                         numberOfLines={1}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
                         value={inputValues.reps}
                         onChangeText={(t) => updateInput('reps', t)}
                         placeholder="0"
@@ -343,7 +343,7 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         keyboardType='numeric'
                         multiline={false}
                         numberOfLines={1}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
+                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
                         value={inputValues.distance}
                         onChangeText={(t) => updateInput('distance', t)}
                         placeholder="0"
@@ -363,7 +363,7 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                             keyboardType='numeric'
                             multiline={false}
                             numberOfLines={1}
-                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
+                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
                             value={inputValues.durationMinutes}
                             onChangeText={(t) => updateInput('durationMinutes', t)}
                             placeholder="00"
@@ -379,7 +379,7 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                             keyboardType='numeric'
                             multiline={false}
                             numberOfLines={1}
-                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }]}
+                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
                             value={inputValues.durationSeconds}
                             onChangeText={(t) => updateInput('durationSeconds', t)}
                             placeholder="00"
@@ -402,7 +402,6 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.85)'
     },
     modalView: {
         width: '90%',

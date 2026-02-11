@@ -48,7 +48,7 @@ export function DraggableItem({
     activeIndex,
     translationY,
 }: Props) {
-    const { theme, isDark } = useTheme();
+    const { theme } = useTheme();
     const isPressed = useSharedValue(false);
 
 
@@ -113,8 +113,8 @@ export function DraggableItem({
 
         const translation = withSpring(offset, { damping: 80, stiffness: 400, mass: 0.8 });
 
-        const activeBg = isDark ? '#2A2A2A' : '#F5F5F5';
-        const activeBorder = isDark ? '#4A4A4A' : '#CCCCCC';
+        const activeBg = theme.surfaceMuted;
+        const activeBorder = theme.border;
 
         const targetBg = active ? activeBg : theme.card;
         const targetBorder = active ? activeBorder : theme.border;
@@ -133,7 +133,7 @@ export function DraggableItem({
             elevation: isPressed.value ? 2 : 0,
             opacity: withSpring(isPressed.value ? activeOpacity : 1, { damping: 30, stiffness: 300 }),
         };
-    }, [theme, isDark, activeScale, activeOpacity, index, itemCount, itemHeight, isPressed, activeIndexVal, translationYVal]);
+    }, [theme, activeScale, activeOpacity, index, itemCount, itemHeight, isPressed, activeIndexVal, translationYVal]);
 
 
     return (

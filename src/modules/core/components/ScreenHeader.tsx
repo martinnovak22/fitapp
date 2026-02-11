@@ -1,4 +1,3 @@
-import { Theme } from '@/src/constants/Colors';
 import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -27,7 +26,7 @@ export const ScreenHeader = ({ title, onDelete, rightAction }: ScreenHeaderProps
             <View style={styles.actions}>
                 {rightAction && (
                     <TouchableOpacity onPress={rightAction.onPress} style={[styles.textButton, { backgroundColor: theme.primary }]}>
-                        <Text style={[styles.actionText]}>
+                        <Text style={[styles.actionText, { color: theme.onPrimary }]}>
                             {rightAction.label}
                         </Text>
                     </TouchableOpacity>
@@ -64,11 +63,9 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         paddingHorizontal: Spacing.md,
         borderRadius: Spacing.sm,
-        backgroundColor: Theme.primary,
     },
     actionText: {
         fontWeight: 'bold',
         fontSize: 16,
-        color: "#fff",
     }
 });
