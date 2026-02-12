@@ -74,7 +74,7 @@ export default function SettingsScreen() {
 
 
                 <View style={{ alignItems: 'center', marginTop: "auto", padding: Spacing.md }}>
-                    <Typography.Meta style={{ color: theme.textSecondary }}>FitApp - 0.1.2</Typography.Meta>
+                    <Typography.Meta style={{ color: theme.textSecondary }}>FitApp - 0.1.3</Typography.Meta>
                 </View>
             </Animated.View>
         </ScreenLayout>
