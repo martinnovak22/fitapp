@@ -10,9 +10,9 @@ import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useNavigation } from 'expo-router';
 import { TFunction } from 'i18next';
-import React, { useCallback, useLayoutEffect, useRef } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list';
 import { ListSeparator } from '../../core/components/ListSeparator';
 import { useExercises } from '../hooks/useExercises';
@@ -99,6 +99,21 @@ export default function ExercisesListScreen() {
     const { exercises, hasLoaded, loadExercises, handleReorder } = useExercises();
     const { theme } = useTheme();
     const animatedItemIdsRef = useRef<Set<number>>(new Set());
+    const [showAndroidExportSheet, setShowAndroidExportSheet] = useState(false);
+
+    const handleExportPress = useCallback(() => {
+        if (Platform.OS === 'android') {
+            setShowAndroidExportSheet(true);
+            return;
+        }
+
+        exportExercisesToCSV(exercises);
+    }, [exercises]);
+
+    const handleAndroidExportAction = useCallback((action: 'share' | 'save') => {
+        setShowAndroidExportSheet(false);
+        exportExercisesToCSV(exercises, { androidAction: action });
+    }, [exercises]);
 
     useLayoutEffect(() => {
         const hasExercises = exercises.length > 0;
@@ -106,7 +121,7 @@ export default function ExercisesListScreen() {
             headerRight: () => (
                 <View style={{ flexDirection: 'row', gap: Spacing.md, marginRight: Spacing.md }}>
                     <TouchableOpacity
-                        onPress={() => exportExercisesToCSV(exercises)}
+                        onPress={handleExportPress}
                         disabled={!hasExercises}
                         style={{ opacity: hasExercises ? 1 : 0.3 }}
                     >
@@ -118,7 +133,7 @@ export default function ExercisesListScreen() {
                 </View>
             ),
         });
-    }, [navigation, exercises, loadExercises, theme.primary]);
+    }, [navigation, exercises.length, loadExercises, theme.primary, handleExportPress]);
 
     const renderItem = useCallback(({ item, index }: { item: Exercise; index: number }) => {
         const animateOnEnter = !animatedItemIdsRef.current.has(item.id);
@@ -161,6 +176,43 @@ export default function ExercisesListScreen() {
             >
                 <FontAwesome name={"plus"} size={32} color={theme.onPrimary} />
             </TouchableOpacity>
+
+            <Modal
+                visible={showAndroidExportSheet}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowAndroidExportSheet(false)}
+            >
+                <Pressable style={styles.sheetBackdrop} onPress={() => setShowAndroidExportSheet(false)}>
+                    <View />
+                </Pressable>
+                <View style={[styles.sheetContainer, { backgroundColor: theme.card }]}>
+                    <Text style={[styles.sheetTitle, { color: theme.text }]}>{t('chooseExportAction')}</Text>
+
+                    <TouchableOpacity
+                        style={[styles.sheetActionButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => handleAndroidExportAction('share')}
+                    >
+                        <FontAwesome name={"share-alt"} size={18} color={theme.primary} />
+                        <Text style={[styles.sheetActionText, { color: theme.text }]}>{t('shareFile')}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.sheetActionButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => handleAndroidExportAction('save')}
+                    >
+                        <FontAwesome name={"download"} size={18} color={theme.primary} />
+                        <Text style={[styles.sheetActionText, { color: theme.text }]}>{t('saveToPhone')}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.sheetCancelButton, { borderColor: theme.border }]}
+                        onPress={() => setShowAndroidExportSheet(false)}
+                    >
+                        <Text style={[styles.sheetCancelText, { color: theme.textSecondary }]}>{t('cancel')}</Text>
+                    </TouchableOpacity>
+                </View>
+            </Modal>
         </ScreenLayout>
     );
 }
@@ -208,5 +260,47 @@ const styles = StyleSheet.create({
     dragHandle: {
         padding: Spacing.sm,
         marginLeft: Spacing.sm,
+    },
+    sheetBackdrop: {
+        flex: 1,
+        backgroundColor: '#00000066',
+    },
+    sheetContainer: {
+        paddingHorizontal: Spacing.md,
+        paddingTop: Spacing.md,
+        paddingBottom: Spacing.lg,
+        borderTopWidth: 1,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+    },
+    sheetTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        marginBottom: Spacing.md,
+    },
+    sheetActionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.md,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: Spacing.sm,
+    },
+    sheetActionText: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    sheetCancelButton: {
+        marginTop: Spacing.xs,
+        paddingVertical: Spacing.md,
+        alignItems: 'center',
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    sheetCancelText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
 });
