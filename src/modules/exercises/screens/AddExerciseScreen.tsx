@@ -12,7 +12,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
@@ -37,13 +37,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     const [isLoading, setIsLoading] = useState(false);
     const [showImageFullScreen, setShowImageFullScreen] = useState(false);
 
-    useEffect(() => {
-        if (isEditing) {
-            loadExercise();
-        }
-    }, [resolvedExerciseId, isEditing]);
-
-    const loadExercise = async () => {
+    const loadExercise = useCallback(async () => {
         if (!resolvedExerciseId) return;
         const exercise = await ExerciseRepository.getById(resolvedExerciseId);
         if (exercise) {
@@ -52,7 +46,13 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
             setType(exercise.type);
             setPhotoUri(exercise.photo_uri || null);
         }
-    };
+    }, [resolvedExerciseId]);
+
+    useEffect(() => {
+        if (isEditing) {
+            loadExercise();
+        }
+    }, [isEditing, loadExercise]);
 
     const handlePickImage = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -77,11 +77,10 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     const savePhotoPermanently = async (uri: string) => {
         const docDir = FileSystem.documentDirectory;
         if (!docDir) return uri;
+        if (!uri) return uri;
 
-        if (!uri || uri.startsWith('file:///')) {
-            // Check if it's already in permanent storage
-            if (uri.includes(docDir)) return uri;
-        }
+        // Already persisted in app storage.
+        if (uri.includes(docDir)) return uri;
 
         const filename = `${Date.now()}.jpg`;
         const dest = `${docDir}exercises/${filename}`;

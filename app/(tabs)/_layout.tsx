@@ -1,3 +1,4 @@
+import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 import React from 'react';
@@ -9,9 +10,6 @@ function TabBarIcon(props: {
 }) {
     return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
 }
-
-import { useTheme } from '@/src/modules/core/hooks/useTheme';
-
 export default function TabLayout() {
     const { t } = useTranslation();
     const { theme } = useTheme();

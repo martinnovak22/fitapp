@@ -11,6 +11,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dimensions, Keyboard, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { SetFormValues } from '../setPayload';
 
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window');
@@ -25,14 +26,8 @@ interface Props {
     setSelectedExerciseId: (id: number) => void;
     subSets: SubSet[];
     setSubSets: React.Dispatch<React.SetStateAction<SubSet[]>>;
-    inputValues: {
-        weight: string;
-        reps: string;
-        distance: string;
-        durationMinutes: string;
-        durationSeconds: string;
-    };
-    updateInput: (key: string, value: string) => void;
+    inputValues: SetFormValues;
+    updateInput: (key: keyof SetFormValues, value: string) => void;
 }
 
 export const LogSetModal = ({
@@ -70,7 +65,7 @@ export const LogSetModal = ({
             keyboardHeight.value = 0;
             setIsExpanded(false);
         }
-    }, [visible, subSets.length]);
+    }, [keyboardHeight, modalOpacity, modalScale, visible, subSets.length]);
 
     React.useEffect(() => {
         const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -87,7 +82,7 @@ export const LogSetModal = ({
             showSub.remove();
             hideSub.remove();
         };
-    }, []);
+    }, [keyboardHeight]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: modalOpacity.value,
@@ -276,7 +271,8 @@ const ExercisePicker = ({ exercises, selectedExerciseId, setSelectedExerciseId, 
                         ]}
                         onPress={() => {
                             setSelectedExerciseId(ex.id);
-                            ['weight', 'reps', 'distance', 'durationMinutes', 'durationSeconds'].forEach(key => updateInput(key, ''));
+                            const fields = ['weight', 'reps', 'distance', 'durationMinutes', 'durationSeconds'] as const;
+                            fields.forEach(key => updateInput(key, ''));
                         }}
                     >
                         <Text style={[styles.exerciseItemText, { color: theme.text }, selectedExerciseId === ex.id && styles.exerciseItemActiveText]}>{ex.name}</Text>

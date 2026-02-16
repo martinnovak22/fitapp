@@ -1,6 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
-import { SetData, SubSet, Set as WorkoutSet } from '@/src/db/workouts';
+import { SubSet, Set as WorkoutSet } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
@@ -23,6 +23,8 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LogSetModal } from '../components/LogSetModal';
 import { WorkoutSetItem } from '../components/WorkoutSetItem';
 import { useWorkoutSession } from '../hooks/useWorkoutSession';
+import { buildSetPayload, SetFormValues } from '../setPayload';
+import { parseSubSets } from '../workoutUtils';
 
 type SetWithExercise = WorkoutSet & { exercise_name: string };
 type WorkoutSessionScreenProps = {
@@ -50,15 +52,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
     const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null);
     const [subSets, setSubSets] = useState<SubSet[]>([]);
-    type InputValues = {
-        weight: string;
-        reps: string;
-        distance: string;
-        durationMinutes: string;
-        durationSeconds: string;
-    };
-
-    const [inputValues, setInputValues] = useState<InputValues>({
+    const [inputValues, setInputValues] = useState<SetFormValues>({
         weight: '',
         reps: '',
         distance: '',
@@ -74,8 +68,8 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         }
     }, [exercises, selectedExerciseId]);
 
-    const updateInput = (key: string, value: string) => {
-        setInputValues(prev => ({ ...prev, [key as keyof InputValues]: value }));
+    const updateInput = (key: keyof SetFormValues, value: string) => {
+        setInputValues(prev => ({ ...prev, [key]: value }));
     };
 
     const handleOpenAddModal = () => {
@@ -102,15 +96,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             secs = Math.round((s.duration - Math.floor(s.duration)) * 60).toString();
         }
 
-        let parsedSubSets: SubSet[] = [];
-        if (s.sub_sets) {
-            try {
-                parsedSubSets = JSON.parse(s.sub_sets);
-            } catch (e) {
-                console.error("Failed to parse sub_sets", e);
-            }
-        }
-        setSubSets(parsedSubSets);
+        setSubSets(parseSubSets(s.sub_sets));
 
         setInputValues({
             weight: s.weight?.toString() || '',
@@ -131,49 +117,13 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         const selectedExercise = exercises.find(e => e.id === selectedExerciseId);
         if (!selectedExercise) return;
 
-        const type = selectedExercise.type?.toLowerCase();
-        const { weight, reps, distance, durationMinutes, durationSeconds } = inputValues;
+        const { data, hasAnyData } = buildSetPayload({
+            exerciseType: selectedExercise.type,
+            inputValues,
+            subSets,
+        });
 
-        let finalDurationValue: number | undefined;
-        const needsDuration = type === 'cardio' || type === 'bodyweight_timer';
-
-        if (needsDuration) {
-            const mins = parseFloat(durationMinutes || '0');
-            const secs = parseFloat(durationSeconds || '0');
-            if (!isNaN(mins) || !isNaN(secs)) {
-                finalDurationValue = (isNaN(mins) ? 0 : mins) + (isNaN(secs) ? 0 : secs) / 60;
-            }
-        }
-
-        const data: SetData = {};
-        if (type !== 'cardio') {
-            const parsedWeight = weight ? parseFloat(weight) : undefined;
-            data.weight = parsedWeight !== undefined && !isNaN(parsedWeight) ? parsedWeight : undefined;
-        }
-        if (type === 'weight' || type === 'bodyweight') {
-            const parsedReps = reps ? parseInt(reps, 10) : undefined;
-            data.reps = parsedReps !== undefined && !isNaN(parsedReps) ? parsedReps : undefined;
-        }
-        if (type === 'cardio') {
-            const parsedDistance = distance ? parseFloat(distance) : undefined;
-            data.distance = parsedDistance !== undefined && !isNaN(parsedDistance) ? parsedDistance : undefined;
-        }
-        if (needsDuration) data.duration = finalDurationValue;
-
-        // Filter out empty sub-sets (0/0)
-        const filteredSubSets = subSets.filter(ss => (ss.weight || 0) > 0 || (ss.reps || 0) > 0);
-
-        data.sub_sets = filteredSubSets.length > 0 ? JSON.stringify(filteredSubSets) : undefined;
-
-        // Final validation: check if the overall set has ANY non-zero/non-null data
-        const hasMainData = (data.weight && data.weight > 0) ||
-            (data.reps && data.reps > 0) ||
-            (data.distance && data.distance > 0) ||
-            (data.duration && data.duration > 0);
-
-        const hasSubSets = filteredSubSets.length > 0;
-
-        if (!hasMainData && !hasSubSets) {
+        if (!hasAnyData) {
             showToast.info({
                 title: t('emptySetIgnored'),
                 message: t('emptySetIgnoredMessage')

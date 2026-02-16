@@ -49,7 +49,7 @@ export const ExerciseRepository = {
     async update(id: number, data: Partial<Exercise>): Promise<void> {
         const db = await getDb();
         const fields: string[] = [];
-        const values: Array<string | number | null> = [];
+        const values: (string | number | null)[] = [];
 
         if (data.name !== undefined) {
             fields.push('name = ?');

@@ -68,7 +68,7 @@ export default function HistoryScreen() {
                             </Typography.Meta>
                             {item.note && (
                                 <Typography.Meta style={styles.workoutNote}>
-                                    "{item.note}"
+                                    {'"'}{item.note}{'"'}
                                 </Typography.Meta>
                             )}
                         </View>

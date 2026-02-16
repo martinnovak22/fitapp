@@ -6,7 +6,7 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime';
+import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -35,7 +35,7 @@ export default function WorkoutDashboardScreen() {
         .filter(workout => workout.status === 'finished' && workout.id !== activeWorkout?.id)
         .slice(0, 3);
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         const active = await WorkoutRepository.getActiveWorkout();
         setActiveWorkout(active);
 
@@ -47,7 +47,7 @@ export default function WorkoutDashboardScreen() {
         for (let i = 6; i >= 0; i--) {
             const d = new Date(today);
             d.setDate(today.getDate() - i);
-            last7Days.push(d.toISOString().split('T')[0]);
+            last7Days.push(formatLocalDateYYYYMMDD(d));
         }
 
         const periodWorkouts = await WorkoutRepository.getWorkoutsForPeriod(
@@ -76,12 +76,12 @@ export default function WorkoutDashboardScreen() {
             sessions,
             avgDuration: Math.round(avgDuration),
         });
-    };
+    }, [i18n.language]);
 
     useFocusEffect(
         useCallback(() => {
             loadData();
-        }, [i18n.language])
+        }, [loadData])
     );
 
     const onRefresh = async () => {
@@ -96,7 +96,7 @@ export default function WorkoutDashboardScreen() {
             return;
         }
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = formatLocalDateYYYYMMDD();
         const id = await WorkoutRepository.create(today);
         router.push(`/(tabs)/workout/${id}`);
     };

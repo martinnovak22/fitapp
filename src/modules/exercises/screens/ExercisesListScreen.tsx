@@ -38,7 +38,7 @@ const ExerciseListItem = React.memo(({
 
     React.useEffect(() => {
         scale.value = withTiming(isDragged ? 0.9 : 1, { duration: 100 });
-    }, [isDragged]);
+    }, [isDragged, scale]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
@@ -92,6 +92,7 @@ const ExerciseListItem = React.memo(({
         </Animated.View>
     );
 });
+ExerciseListItem.displayName = 'ExerciseListItem';
 
 export default function ExercisesListScreen() {
     const { t } = useTranslation();

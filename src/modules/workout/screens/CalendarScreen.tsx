@@ -7,7 +7,7 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime';
+import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -36,12 +36,12 @@ export default function CalendarScreen() {
     const { theme } = useTheme();
     const [workouts, setWorkouts] = useState<Workout[]>([]);
     const [markedDates, setMarkedDates] = useState<MarkedDates>({});
-    const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string | null>(formatLocalDateYYYYMMDD());
     const [dayWorkouts, setDayWorkouts] = useState<Workout[]>([]);
     const [modalWorkout, setModalWorkout] = useState<Workout | null>(null);
     const [workoutSets, setWorkoutSets] = useState<{ exercise_name: string; count: number }[]>([]);
 
-    const loadWorkouts = async () => {
+    const loadWorkouts = useCallback(async () => {
         const all = await WorkoutRepository.getAllWorkouts();
         setWorkouts(all);
 
@@ -57,12 +57,12 @@ export default function CalendarScreen() {
         if (selectedDate) {
             setDayWorkouts(all.filter(w => w.date === selectedDate));
         }
-    };
+    }, [selectedDate, theme.primary]);
 
     useFocusEffect(
         useCallback(() => {
             loadWorkouts();
-        }, [selectedDate])
+        }, [loadWorkouts])
     );
 
     const handleDayPress = (day: { dateString: string }) => {

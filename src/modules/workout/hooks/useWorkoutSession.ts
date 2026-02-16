@@ -19,7 +19,10 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const [loading, setLoading] = useState(true);
 
     const loadData = useCallback(async () => {
-        if (!workoutId) return;
+        if (!Number.isFinite(workoutId) || workoutId <= 0) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
 
         try {
@@ -133,27 +136,36 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     }, {} as Record<string, SetWithExercise[]>);
 
     const reorderSets = useCallback(async (exerciseName: string, newGroupSets: SetWithExercise[]) => {
-        setSets(() => {
-            const currentGrouped = { ...groupedSets };
-            currentGrouped[exerciseName] = newGroupSets;
+        const previousSets = sets;
+        const currentGrouped = previousSets.reduce((acc, currentSet) => {
+            if (!acc[currentSet.exercise_name]) acc[currentSet.exercise_name] = [];
+            acc[currentSet.exercise_name].push(currentSet);
+            return acc;
+        }, {} as Record<string, SetWithExercise[]>);
 
-            const allNewSets: SetWithExercise[] = [];
-            let currentPos = 0;
+        currentGrouped[exerciseName] = newGroupSets;
+        const currentExerciseOrder = [...new Set(previousSets.map(item => item.exercise_name))];
 
-            exerciseNamesOrder.forEach(name => {
-                const group = currentGrouped[name] || [];
-                group.forEach(s => {
-                    allNewSets.push({ ...s, position: currentPos++ });
-                });
+        const allNewSets: SetWithExercise[] = [];
+        let currentPos = 0;
+        currentExerciseOrder.forEach(name => {
+            const group = currentGrouped[name] || [];
+            group.forEach(item => {
+                allNewSets.push({ ...item, position: currentPos++ });
             });
-
-            const setsToUpdate = allNewSets.filter(s => s.exercise_name === exerciseName);
-            Promise.all(setsToUpdate.map(s => WorkoutRepository.updateSetPosition(s.id, s.position)))
-                .catch(e => console.error("Failed to update positions", e));
-
-            return allNewSets;
         });
-    }, [groupedSets, exerciseNamesOrder]);
+
+        setSets(allNewSets);
+
+        try {
+            const setsToUpdate = allNewSets.filter(item => item.exercise_name === exerciseName);
+            await Promise.all(setsToUpdate.map(item => WorkoutRepository.updateSetPosition(item.id, item.position)));
+        } catch (e) {
+            console.error("Failed to update positions", e);
+            setSets(previousSets);
+            await loadData();
+        }
+    }, [loadData, sets]);
 
     return {
         workout,
