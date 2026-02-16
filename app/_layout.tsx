@@ -9,9 +9,11 @@ import 'react-native-reanimated';
 import { StyleSheet } from 'react-native';
 import { PortalHost, PortalProvider } from 'react-native-teleport';
 import Toast from 'react-native-toast-message';
+import { initializeDataLayer } from '../src/data/bootstrap';
 import { useDatabaseInit } from '../src/db/client';
 import { toastConfig } from '../src/modules/core/components/ToastConfig';
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../src/modules/core/hooks/useTheme';
+import { AuthProvider, useAuth } from '../src/modules/auth/useAuth';
 import '../src/modules/core/utils/i18n';
 
 export {
@@ -25,6 +27,7 @@ export const unstable_settings = {
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+initializeDataLayer();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -37,10 +40,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontError) throw fontError;
     if (dbError) console.error("DB Init Error: ", dbError);
-    if (fontsLoaded && dbLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontError, dbError, fontsLoaded, dbLoaded]);
+  }, [fontError, dbError]);
 
   if (!fontsLoaded || !dbLoaded) {
     return null;
@@ -50,7 +50,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <PortalProvider>
         <CustomThemeProvider>
-          <RootLayoutNav />
+          <AuthProvider>
+            <RootLayoutNav />
+          </AuthProvider>
         </CustomThemeProvider>
         <PortalHost style={StyleSheet.absoluteFillObject} name="overlay" />
       </PortalProvider>
@@ -60,6 +62,17 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const { theme, isDark } = useTheme();
+  const { isInitialized } = useAuth();
+
+  useEffect(() => {
+    if (isInitialized) {
+      SplashScreen.hideAsync();
+    }
+  }, [isInitialized]);
+
+  if (!isInitialized) {
+    return null;
+  }
 
   return (
     <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
@@ -79,6 +92,7 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="landing" options={{ headerShown: false, animation: 'fade' }} />
+        <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
       </Stack>
       <Toast config={toastConfig} />
     </ThemeProvider>

@@ -1,50 +1,172 @@
 import * as SQLite from 'expo-sqlite';
 
 export const DATABASE_NAME = 'fitapp.db';
-/**
- * Initializes the database by creating tables if they don't exist.
- * This ensures the app maintains data across restarts without complex migrations.
- * @param db The SQLite database instance.
- */
+const SCHEMA_VERSION = 2;
+
+type ColumnDef = {
+  name: string;
+  sqlType: string;
+  defaultValue?: string;
+};
+
+const SYNC_METADATA_COLUMNS: ColumnDef[] = [
+  { name: 'uuid', sqlType: 'TEXT' },
+  { name: 'user_id', sqlType: 'TEXT' },
+  { name: 'created_at', sqlType: 'TEXT', defaultValue: 'CURRENT_TIMESTAMP' },
+  { name: 'updated_at', sqlType: 'TEXT', defaultValue: 'CURRENT_TIMESTAMP' },
+  { name: 'deleted_at', sqlType: 'TEXT' },
+  { name: 'sync_status', sqlType: 'TEXT', defaultValue: "'local'" },
+  { name: 'last_synced_at', sqlType: 'TEXT' },
+];
+
+const getColumnDefinitions = async (db: SQLite.SQLiteDatabase, table: string) => {
+  return db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
+};
+
+const ensureColumn = async (db: SQLite.SQLiteDatabase, table: string, column: ColumnDef) => {
+  const columns = await getColumnDefinitions(db, table);
+  if (columns.some(existing => existing.name === column.name)) {
+    return;
+  }
+
+  const defaultClause = column.defaultValue ? ` DEFAULT ${column.defaultValue}` : '';
+  await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${column.name} ${column.sqlType}${defaultClause};`);
+};
+
+const ensureSyncMetadataColumns = async (db: SQLite.SQLiteDatabase, table: 'exercises' | 'workouts' | 'sets') => {
+  for (const column of SYNC_METADATA_COLUMNS) {
+    await ensureColumn(db, table, column);
+  }
+};
+
+const backfillSyncMetadata = async (db: SQLite.SQLiteDatabase) => {
+  for (const table of ['exercises', 'workouts', 'sets'] as const) {
+    await db.execAsync(`
+      UPDATE ${table}
+      SET uuid = lower(hex(randomblob(16)))
+      WHERE uuid IS NULL OR uuid = '';
+    `);
+    await db.execAsync(`
+      UPDATE ${table}
+      SET created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
+          updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP),
+          sync_status = COALESCE(sync_status, 'local')
+      WHERE created_at IS NULL OR updated_at IS NULL OR sync_status IS NULL;
+    `);
+  }
+};
+
+const createTables = async (db: SQLite.SQLiteDatabase) => {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS exercises (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      uuid TEXT UNIQUE,
+      user_id TEXT,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'weight',
+      muscle_group TEXT,
+      photo_uri TEXT,
+      position INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TEXT,
+      sync_status TEXT DEFAULT 'local',
+      last_synced_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS workouts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      uuid TEXT UNIQUE,
+      user_id TEXT,
+      date TEXT NOT NULL,
+      start_time TEXT,
+      end_time TEXT,
+      status TEXT DEFAULT 'finished',
+      note TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TEXT,
+      sync_status TEXT DEFAULT 'local',
+      last_synced_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS sets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      uuid TEXT UNIQUE,
+      user_id TEXT,
+      workout_id INTEGER NOT NULL,
+      exercise_id INTEGER NOT NULL,
+      weight REAL,
+      reps INTEGER,
+      distance REAL,
+      duration REAL,
+      rpe INTEGER,
+      position INTEGER DEFAULT 0,
+      sub_sets TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TEXT,
+      sync_status TEXT DEFAULT 'local',
+      last_synced_at TEXT,
+      FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE,
+      FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS deletion_tombstones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      entity_type TEXT NOT NULL,
+      entity_uuid TEXT NOT NULL,
+      user_id TEXT,
+      deleted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      sync_status TEXT NOT NULL DEFAULT 'dirty'
+    );
+
+    CREATE TABLE IF NOT EXISTS sync_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      entity_type TEXT NOT NULL,
+      entity_uuid TEXT NOT NULL,
+      operation TEXT NOT NULL,
+      payload TEXT,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT,
+      queued_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+};
+
+const createIndexes = async (db: SQLite.SQLiteDatabase) => {
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_exercises_position_name ON exercises(position, name);
+    CREATE INDEX IF NOT EXISTS idx_exercises_uuid ON exercises(uuid);
+
+    CREATE INDEX IF NOT EXISTS idx_workouts_date_status ON workouts(date, status);
+    CREATE INDEX IF NOT EXISTS idx_workouts_uuid ON workouts(uuid);
+
+    CREATE INDEX IF NOT EXISTS idx_sets_workout_position ON sets(workout_id, position);
+    CREATE INDEX IF NOT EXISTS idx_sets_exercise ON sets(exercise_id);
+    CREATE INDEX IF NOT EXISTS idx_sets_uuid ON sets(uuid);
+
+    CREATE INDEX IF NOT EXISTS idx_tombstones_status ON deletion_tombstones(sync_status, deleted_at);
+    CREATE INDEX IF NOT EXISTS idx_tombstones_entity ON deletion_tombstones(entity_type, entity_uuid);
+
+    CREATE INDEX IF NOT EXISTS idx_sync_queue_queued_at ON sync_queue(queued_at);
+    CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_uuid);
+  `);
+};
+
 export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
-
-    CREATE TABLE IF NOT EXISTS exercises (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL DEFAULT 'weight',
-        muscle_group TEXT,
-        photo_uri TEXT,
-        position INTEGER DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS workouts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT NOT NULL,
-        start_time TEXT,
-        end_time TEXT,
-        status TEXT DEFAULT 'finished',
-        note TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS sets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        workout_id INTEGER NOT NULL,
-        exercise_id INTEGER NOT NULL,
-        weight REAL,
-        reps INTEGER,
-        distance REAL,
-        duration REAL,
-        rpe INTEGER,
-        position INTEGER DEFAULT 0,
-        sub_sets TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE,
-        FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
-    );
   `);
-}
 
+  await createTables(db);
+  await ensureSyncMetadataColumns(db, 'exercises');
+  await ensureSyncMetadataColumns(db, 'workouts');
+  await ensureSyncMetadataColumns(db, 'sets');
+  await backfillSyncMetadata(db);
+  await createIndexes(db);
+
+  await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION};`);
+}
 

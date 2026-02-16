@@ -1,6 +1,7 @@
 import { Spacing } from '@/src/constants/Spacing';
-import { Exercise, ExerciseRepository } from '@/src/db/exercises';
-import { ExerciseHistory, WorkoutRepository } from '@/src/db/workouts';
+import { getRepositories } from '@/src/data/repositories';
+import { Exercise } from '@/src/db/exercises';
+import { ExerciseHistory } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal';
@@ -20,6 +21,7 @@ import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph';
 
 
 export default function ExerciseDetailScreen() {
+    const { exercises: exerciseRepo, workouts: workoutRepo } = getRepositories();
     const { t } = useTranslation();
     const { id } = useLocalSearchParams();
     const [exercise, setExercise] = useState<Exercise | null>(null);
@@ -31,7 +33,7 @@ export default function ExerciseDetailScreen() {
 
     const loadData = useCallback(async () => {
         if (id) {
-            const exercise = await ExerciseRepository.getById(Number(id));
+            const exercise = await exerciseRepo.getById(Number(id));
             if (!exercise) {
                 router.replace('/(tabs)/exercises');
                 return;
@@ -39,11 +41,11 @@ export default function ExerciseDetailScreen() {
             setExercise(exercise || null);
 
             if (exercise) {
-                const data = await WorkoutRepository.getExerciseHistory(exercise.id);
+                const data = await workoutRepo.getExerciseHistory(exercise.id);
                 setHistoryData(data);
             }
         }
-    }, [id]);
+    }, [exerciseRepo, id, workoutRepo]);
 
     useEffect(() => {
         if (isFocused) {
@@ -71,7 +73,7 @@ export default function ExerciseDetailScreen() {
                 label: t('delete'),
                 onPress: async () => {
                     if (exercise) {
-                        await ExerciseRepository.delete(exercise.id);
+                        await exerciseRepo.delete(exercise.id);
                         router.replace('/(tabs)/exercises');
                         showToast.success({
                             title: t('exerciseDeleted'),

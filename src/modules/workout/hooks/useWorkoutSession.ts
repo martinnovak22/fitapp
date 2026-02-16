@@ -1,5 +1,6 @@
-import { Exercise, ExerciseRepository } from '@/src/db/exercises';
-import { SetData, Workout, WorkoutRepository, Set as WorkoutSet } from '@/src/db/workouts';
+import { getRepositories } from '@/src/data/repositories';
+import { Exercise } from '@/src/db/exercises';
+import { SetData, Workout, Set as WorkoutSet } from '@/src/db/workouts';
 import { showToast } from '@/src/modules/core/utils/toast';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -9,6 +10,7 @@ type SetWithExercise = WorkoutSet & { exercise_name: string };
 type SessionOrigin = 'workout' | 'history';
 
 export function useWorkoutSession(origin: SessionOrigin = 'workout') {
+    const { exercises: exerciseRepo, workouts: workoutRepo } = getRepositories();
     const { t } = useTranslation();
     const { id } = useLocalSearchParams();
     const workoutId = Number(id);
@@ -27,9 +29,9 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
 
         try {
             const [w, s, ex] = await Promise.all([
-                WorkoutRepository.getById(workoutId),
-                WorkoutRepository.getSets(workoutId),
-                ExerciseRepository.getAll(),
+                workoutRepo.getById(workoutId),
+                workoutRepo.getSets(workoutId),
+                exerciseRepo.getAll(),
             ]);
 
             if (!w) {
@@ -45,7 +47,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         } finally {
             setLoading(false);
         }
-    }, [workoutId]);
+    }, [exerciseRepo, workoutId, workoutRepo]);
 
     useFocusEffect(
         useCallback(() => {
@@ -55,7 +57,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
 
     const addSet = async (exerciseId: number, data: SetData) => {
         try {
-            await WorkoutRepository.addSet(workoutId, exerciseId, data);
+            await workoutRepo.addSet(workoutId, exerciseId, data);
             await loadData();
             showToast.success({ title: t('addSet'), message: t('newSetAdded') });
             return true;
@@ -68,7 +70,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
 
     const updateSet = async (setId: number, data: SetData) => {
         try {
-            await WorkoutRepository.updateSet(setId, data);
+            await workoutRepo.updateSet(setId, data);
             await loadData();
             showToast.success({ title: t('update'), message: t('changesSaved') });
             return true;
@@ -88,7 +90,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             action: {
                 label: t('delete'),
                 onPress: async () => {
-                    await WorkoutRepository.deleteSet(setId);
+                    await workoutRepo.deleteSet(setId);
                     await loadData();
                     showToast.success({ title: t('setDeleted'), message: t('setRemoved') });
                 },
@@ -103,7 +105,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             action: {
                 label: t('finish'),
                 onPress: async () => {
-                    await WorkoutRepository.finish(workoutId);
+                    await workoutRepo.finish(workoutId);
                     router.replace('/(tabs)/history');
                     showToast.success({ title: t('workoutFinished'), message: t('greatJob') });
                 },
@@ -120,7 +122,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             action: {
                 label: t('delete'),
                 onPress: async () => {
-                    await WorkoutRepository.delete(workoutId);
+                    await workoutRepo.delete(workoutId);
                     router.replace(origin === 'history' ? '/(tabs)/history' : '/(tabs)/workout');
                     showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') });
                 },
@@ -159,13 +161,13 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
 
         try {
             const setsToUpdate = allNewSets.filter(item => item.exercise_name === exerciseName);
-            await Promise.all(setsToUpdate.map(item => WorkoutRepository.updateSetPosition(item.id, item.position)));
+            await Promise.all(setsToUpdate.map(item => workoutRepo.updateSetPosition(item.id, item.position)));
         } catch (e) {
             console.error("Failed to update positions", e);
             setSets(previousSets);
             await loadData();
         }
-    }, [loadData, sets]);
+    }, [loadData, sets, workoutRepo]);
 
     return {
         workout,

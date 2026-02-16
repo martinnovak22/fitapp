@@ -1,5 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing';
-import { Workout, WorkoutRepository } from '@/src/db/workouts';
+import { getRepositories } from '@/src/data/repositories';
+import { Workout } from '@/src/db/workouts';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
@@ -14,6 +15,7 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'r
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function HistoryScreen() {
+    const { workouts: workoutRepo } = getRepositories();
     const { t, i18n } = useTranslation();
     const { theme } = useTheme();
     const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -21,21 +23,21 @@ export default function HistoryScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const animatedItemIdsRef = useRef<Set<number>>(new Set());
 
-    const loadData = async (showRefresh = false) => {
+    const loadData = useCallback(async (showRefresh = false) => {
         if (showRefresh) setRefreshing(true);
         try {
-            const data = await WorkoutRepository.getAllWorkouts();
+            const data = await workoutRepo.getAllWorkouts();
             setWorkouts(data);
         } finally {
             if (showRefresh) setRefreshing(false);
             setInitialLoading(false);
         }
-    };
+    }, [workoutRepo]);
 
     useFocusEffect(
         useCallback(() => {
             loadData(false);
-        }, [])
+        }, [loadData])
     );
 
     const onRefresh = async () => {
