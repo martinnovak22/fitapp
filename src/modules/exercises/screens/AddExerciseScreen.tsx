@@ -1,6 +1,7 @@
 import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
-import { ExerciseRepository, ExerciseType } from '@/src/db/exercises';
+import { getRepositories } from '@/src/data/repositories';
+import { ExerciseType } from '@/src/db/exercises';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal';
@@ -24,6 +25,7 @@ type ExerciseFormScreenProps = {
 };
 
 export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseFormScreenProps) {
+    const { exercises: exerciseRepo } = getRepositories();
     const { t } = useTranslation();
     const { theme } = useTheme();
     const { id } = useLocalSearchParams<{ id?: string }>();
@@ -42,14 +44,14 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
 
     const loadExercise = useCallback(async () => {
         if (!resolvedExerciseId) return;
-        const exercise = await ExerciseRepository.getById(resolvedExerciseId);
+        const exercise = await exerciseRepo.getById(resolvedExerciseId);
         if (exercise) {
             setName(exercise.name);
             setMuscle(exercise.muscle_group || '');
             setType(exercise.type);
             setPhotoUri(exercise.photo_uri || null);
         }
-    }, [resolvedExerciseId]);
+    }, [exerciseRepo, resolvedExerciseId]);
 
     useEffect(() => {
         if (isEditing) {
@@ -121,14 +123,14 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
 
             if (isEditing) {
                 if (!resolvedExerciseId) return;
-                await ExerciseRepository.update(resolvedExerciseId, {
+                await exerciseRepo.update(resolvedExerciseId, {
                     name: name.trim(),
                     muscle_group: muscle.trim().toLowerCase() || undefined,
                     type: type.toLowerCase() as ExerciseType,
                     photo_uri: finalPhotoUri
                 });
             } else {
-                await ExerciseRepository.create(
+                await exerciseRepo.create(
                     name.trim(),
                     type.toLowerCase() as ExerciseType,
                     muscle.trim().toLowerCase() || undefined,
@@ -161,7 +163,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                 label: t('delete'),
                 onPress: async () => {
                     if (!resolvedExerciseId) return;
-                    await ExerciseRepository.delete(resolvedExerciseId);
+                    await exerciseRepo.delete(resolvedExerciseId);
                     router.dismissAll();
                     router.replace('/(tabs)/exercises');
                     showToast.success({

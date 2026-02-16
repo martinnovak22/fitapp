@@ -1,4 +1,5 @@
-import { Exercise, ExerciseRepository, ExerciseType } from '@/src/db/exercises';
+import { getRepositories } from '@/src/data/repositories';
+import { Exercise, ExerciseType } from '@/src/db/exercises';
 import i18n from '@/src/modules/core/utils/i18n';
 import { showToast } from '@/src/modules/core/utils/toast';
 import * as DocumentPicker from 'expo-document-picker';
@@ -154,6 +155,7 @@ export const exportExercisesToCSV = async (
 export const importExercisesFromCSV = async (
     onComplete: () => void
 ) => {
+    const { exercises: exerciseRepo } = getRepositories();
     try {
         const result = await DocumentPicker.getDocumentAsync();
         if (result.canceled) return;
@@ -174,7 +176,7 @@ export const importExercisesFromCSV = async (
         const lines = content.split('\n');
         const exercisesToImport = lines.slice(1).filter(line => line.trim().length > 0);
 
-        const existingExercises = await ExerciseRepository.getAll();
+        const existingExercises = await exerciseRepo.getAll();
         const existingByKey = new Map(
             existingExercises.map(ex => [buildExerciseKey(ex.name, ex.type, ex.muscle_group), ex])
         );
@@ -206,7 +208,7 @@ export const importExercisesFromCSV = async (
 
             const existing = existingByKey.get(key);
             if (!existing) {
-                await ExerciseRepository.create(name, resolvedType, muscle_group);
+                await exerciseRepo.create(name, resolvedType, muscle_group);
                 existingByKey.set(key, {
                     id: -1,
                     name,
@@ -216,7 +218,7 @@ export const importExercisesFromCSV = async (
                 });
                 addedCount++;
             } else {
-                await ExerciseRepository.update(existing.id, {
+                await exerciseRepo.update(existing.id, {
                     name,
                     type: resolvedType,
                     muscle_group,

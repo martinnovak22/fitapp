@@ -1,14 +1,22 @@
 import { getDb } from './client';
+import { createEntityUuid, nowIso, recordDeletionTombstone, SyncStatus } from './sync';
 
 export type ExerciseType = 'weight' | 'cardio' | 'bodyweight' | 'bodyweight_timer';
 
 export interface Exercise {
     id: number;
+    uuid?: string;
+    user_id?: string | null;
     name: string;
     type: ExerciseType;
     muscle_group?: string;
     photo_uri?: string | null;
     position: number;
+    created_at?: string;
+    updated_at?: string;
+    deleted_at?: string | null;
+    sync_status?: SyncStatus;
+    last_synced_at?: string | null;
 }
 
 export const ExerciseRepository = {
@@ -34,14 +42,21 @@ export const ExerciseRepository = {
             'SELECT position FROM exercises ORDER BY position DESC LIMIT 1'
         );
         const nextPosition = lastEx ? lastEx.position + 1 : 0;
+        const now = nowIso();
 
         const result = await db.runAsync(
-            'INSERT INTO exercises (name, type, muscle_group, photo_uri, position) VALUES (?, ?, ?, ?, ?)',
+            `INSERT INTO exercises
+             (uuid, name, type, muscle_group, photo_uri, position, created_at, updated_at, sync_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            createEntityUuid(),
             name,
             type.toLowerCase(),
             muscle_group?.toLowerCase() ?? null,
             photo_uri ?? null,
-            nextPosition
+            nextPosition,
+            now,
+            now,
+            'dirty'
         );
         return result.lastInsertRowId;
     },
@@ -74,6 +89,11 @@ export const ExerciseRepository = {
 
         if (fields.length === 0) return;
 
+        fields.push('updated_at = ?');
+        values.push(nowIso());
+        fields.push('sync_status = ?');
+        values.push('dirty');
+
         values.push(id);
         await db.runAsync(
             `UPDATE exercises SET ${fields.join(', ')} WHERE id = ?`,
@@ -86,8 +106,10 @@ export const ExerciseRepository = {
         await db.withTransactionAsync(async () => {
             for (const update of updates) {
                 await db.runAsync(
-                    'UPDATE exercises SET position = ? WHERE id = ?',
+                    'UPDATE exercises SET position = ?, updated_at = ?, sync_status = ? WHERE id = ?',
                     update.position,
+                    nowIso(),
+                    'dirty',
                     update.id
                 );
             }
@@ -96,6 +118,13 @@ export const ExerciseRepository = {
 
     async delete(id: number): Promise<void> {
         const db = await getDb();
+        const entity = await db.getFirstAsync<{ uuid: string; user_id?: string | null }>(
+            'SELECT uuid, user_id FROM exercises WHERE id = ?',
+            id
+        );
+        if (entity?.uuid) {
+            await recordDeletionTombstone(db, 'exercise', entity.uuid, entity.user_id);
+        }
         await db.runAsync('DELETE FROM exercises WHERE id = ?', id);
     }
 };

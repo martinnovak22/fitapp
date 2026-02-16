@@ -1,5 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing';
-import { Workout, WorkoutRepository } from '@/src/db/workouts';
+import { getRepositories } from '@/src/data/repositories';
+import { Workout } from '@/src/db/workouts';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
@@ -19,6 +20,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function WorkoutDashboardScreen() {
+    const { workouts: workoutRepo } = getRepositories();
     const { t, i18n } = useTranslation();
     const { theme } = useTheme();
     const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
@@ -36,10 +38,10 @@ export default function WorkoutDashboardScreen() {
         .slice(0, 3);
 
     const loadData = useCallback(async () => {
-        const active = await WorkoutRepository.getActiveWorkout();
+        const active = await workoutRepo.getActiveWorkout();
         setActiveWorkout(active);
 
-        const all = await WorkoutRepository.getAllWorkouts();
+        const all = await workoutRepo.getAllWorkouts();
         setAllWorkouts(all);
 
         const today = new Date();
@@ -50,7 +52,7 @@ export default function WorkoutDashboardScreen() {
             last7Days.push(formatLocalDateYYYYMMDD(d));
         }
 
-        const periodWorkouts = await WorkoutRepository.getWorkoutsForPeriod(
+        const periodWorkouts = await workoutRepo.getWorkoutsForPeriod(
             last7Days[0],
             last7Days[6]
         );
@@ -69,14 +71,14 @@ export default function WorkoutDashboardScreen() {
 
         // Load stats
         const thisMonthStr = today.toISOString().slice(0, 7);
-        const sessions = await WorkoutRepository.getWorkoutCountForMonth(thisMonthStr);
-        const avgDuration = await WorkoutRepository.getAvgWorkoutDuration(thisMonthStr);
+        const sessions = await workoutRepo.getWorkoutCountForMonth(thisMonthStr);
+        const avgDuration = await workoutRepo.getAvgWorkoutDuration(thisMonthStr);
 
         setStats({
             sessions,
             avgDuration: Math.round(avgDuration),
         });
-    }, [i18n.language]);
+    }, [i18n.language, workoutRepo]);
 
     useFocusEffect(
         useCallback(() => {
@@ -97,7 +99,7 @@ export default function WorkoutDashboardScreen() {
         }
 
         const today = formatLocalDateYYYYMMDD();
-        const id = await WorkoutRepository.create(today);
+        const id = await workoutRepo.create(today);
         router.push(`/(tabs)/workout/${id}`);
     };
 
