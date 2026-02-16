@@ -155,6 +155,8 @@ export default function CalendarScreen() {
                                 <Card
                                     style={styles.workoutCard}
                                     onPress={() => handleOpenSummary(w)}
+                                    accessibilityLabel={`${formatHourMinute(w.start_time)} ${w.end_time ? `- ${formatHourMinute(w.end_time)}` : t('inProgress')}`}
+                                    accessibilityHint={t('viewSummary')}
                                 >
                                     <View style={styles.workoutCardRow}>
                                         <View>

@@ -11,6 +11,9 @@ interface ButtonProps {
     disabled?: boolean;
     style?: StyleProp<ViewStyle>;
     labelStyle?: StyleProp<TextStyle>;
+    accessibilityLabel?: string;
+    accessibilityHint?: string;
+    testID?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -21,6 +24,9 @@ export const Button: React.FC<ButtonProps> = ({
     disabled = false,
     style,
     labelStyle,
+    accessibilityLabel,
+    accessibilityHint,
+    testID,
 }) => {
     const { theme } = useTheme();
 
@@ -47,6 +53,7 @@ export const Button: React.FC<ButtonProps> = ({
                 return [styles.primaryButtonText, { color: theme.onPrimary }];
         }
     };
+    const labelStyles = getLabelStyle();
 
     return (
         <TouchableOpacity
@@ -54,11 +61,16 @@ export const Button: React.FC<ButtonProps> = ({
             onPress={onPress}
             disabled={disabled || isLoading}
             activeOpacity={0.7}
+            accessibilityRole={"button"}
+            accessibilityLabel={accessibilityLabel ?? label}
+            accessibilityHint={accessibilityHint}
+            accessibilityState={{ disabled: disabled || isLoading, busy: isLoading }}
+            testID={testID}
         >
             {isLoading ? (
-                <ActivityIndicator color={theme.onPrimary} />
+                <ActivityIndicator color={(labelStyles[1] as { color: string })?.color ?? theme.onPrimary} />
             ) : (
-                <Text style={[getLabelStyle(), labelStyle]}>{label}</Text>
+                <Text style={[labelStyles, labelStyle]} allowFontScaling={true}>{label}</Text>
             )}
         </TouchableOpacity>
     );
@@ -72,6 +84,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: 'transparent',
+        minHeight: 44,
     },
     primaryButton: {
         borderColor: 'rgba(255,255,255,0.08)',

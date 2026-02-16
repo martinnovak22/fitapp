@@ -109,6 +109,7 @@ export const LogSetModal = ({
     const removeSubSet = (index: number) => {
         setSubSets(prev => prev.filter((_, i) => i !== index));
     };
+    const footerMessage = !selectedExerciseId ? t('selectExerciseFirst') : ' ';
 
     return (
         <Modal animationType="none" transparent visible={visible} onRequestClose={onClose}>
@@ -199,6 +200,8 @@ export const LogSetModal = ({
                                                                         underlineColorAndroid="transparent"
                                                                         selectionColor={theme.primary}
                                                                         scrollEnabled={false}
+                                                                        returnKeyType={"next"}
+                                                                        accessibilityLabel={`${t('drop')} ${idx + 1} ${t('weight')}`}
                                                                     />
                                                                     <Text style={[styles.subSetX, { color: theme.textSecondary }]}>×</Text>
                                                                     <TextInput
@@ -213,6 +216,8 @@ export const LogSetModal = ({
                                                                         underlineColorAndroid="transparent"
                                                                         selectionColor={theme.primary}
                                                                         scrollEnabled={false}
+                                                                        returnKeyType={"done"}
+                                                                        accessibilityLabel={`${t('drop')} ${idx + 1} ${t('reps')}`}
                                                                     />
 
                                                                 </View>
@@ -233,6 +238,19 @@ export const LogSetModal = ({
                         )}
                     </View>
 
+                    <View style={styles.footerHintRow}>
+                        <Text
+                            style={[
+                                styles.footerHintText,
+                                { color: !selectedExerciseId ? theme.error : 'transparent' }
+                            ]}
+                            numberOfLines={1}
+                            accessibilityLiveRegion={"polite"}
+                        >
+                            {footerMessage}
+                        </Text>
+                    </View>
+
                     <View style={styles.footer}>
                         <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
                             <Text style={[styles.cancelText, { color: theme.error }]}>{t('cancel')}</Text>
@@ -242,6 +260,9 @@ export const LogSetModal = ({
                             onPress={onSave}
                             style={[styles.saveButton, { backgroundColor: theme.primary }, !selectedExerciseId && styles.saveButtonDisabled]}
                             disabled={!selectedExerciseId}
+                            accessibilityRole={"button"}
+                            accessibilityLabel={editingSetId ? t('update') : t('addSet')}
+                            accessibilityState={{ disabled: !selectedExerciseId }}
                         >
                             <Text style={styles.saveText}>{editingSetId ? t('update') : t('addSet')}</Text>
                         </TouchableOpacity>
@@ -309,6 +330,8 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         underlineColorAndroid="transparent"
                         selectionColor={theme.primary}
                         scrollEnabled={false}
+                        returnKeyType={"next"}
+                        accessibilityLabel={t('weightKg')}
                     />
                 </View>
             )}
@@ -328,6 +351,8 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         underlineColorAndroid="transparent"
                         selectionColor={theme.primary}
                         scrollEnabled={false}
+                        returnKeyType={"done"}
+                        accessibilityLabel={t('reps')}
                     />
                 </View>
             )}
@@ -347,6 +372,8 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         underlineColorAndroid="transparent"
                         selectionColor={theme.primary}
                         scrollEnabled={false}
+                        returnKeyType={"next"}
+                        accessibilityLabel={t('distM')}
                     />
                 </View>
             )}
@@ -367,6 +394,8 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                             underlineColorAndroid="transparent"
                             selectionColor={theme.primary}
                             scrollEnabled={false}
+                            returnKeyType={"next"}
+                            accessibilityLabel={t('minutes')}
                         />
                     </View>
                     <View style={{ flex: 1 }}>
@@ -383,6 +412,8 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                             underlineColorAndroid="transparent"
                             selectionColor={theme.primary}
                             scrollEnabled={false}
+                            returnKeyType={"done"}
+                            accessibilityLabel={t('seconds')}
                         />
                     </View>
                 </Animated.View>
@@ -545,8 +576,17 @@ const styles = StyleSheet.create({
     footer: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        marginTop: Spacing.md,
         gap: Spacing.sm,
+    },
+    footerHintRow: {
+        minHeight: 18,
+        marginTop: Spacing.md,
+        marginBottom: Spacing.xs,
+        justifyContent: 'center',
+    },
+    footerHintText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     cancelButton: {
         padding: Spacing.sm,

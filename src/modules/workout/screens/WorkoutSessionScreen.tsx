@@ -63,8 +63,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     // We can allow default selection once exercises are loaded
     useEffect(() => {
         if (!selectedExerciseId && exercises.length > 0) {
-            const defaultEx = exercises.find(e => e.name === 'Bench Press') || exercises[0];
-            setSelectedExerciseId(defaultEx.id);
+            setSelectedExerciseId(exercises[0].id);
         }
     }, [exercises, selectedExerciseId]);
 
@@ -167,7 +166,13 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             floatingElements={
                 <>
                     {!isReadOnly && (
-                        <TouchableOpacity style={GlobalStyles.fab} onPress={handleOpenAddModal}>
+                        <TouchableOpacity
+                            style={GlobalStyles.fab}
+                            onPress={handleOpenAddModal}
+                            accessibilityRole={"button"}
+                            accessibilityLabel={t('addSet')}
+                            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                        >
                             <FontAwesome name={"plus"} size={32} color={theme.onPrimary} />
                         </TouchableOpacity>
                     )}

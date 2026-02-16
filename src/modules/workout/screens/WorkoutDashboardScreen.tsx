@@ -120,6 +120,8 @@ export default function WorkoutDashboardScreen() {
                 <Card
                     onPress={() => router.push('/workout/calendar')}
                     style={layoutStyles.heroCard}
+                    accessibilityLabel={t('calendar')}
+                    accessibilityHint={t('fullHistory')}
                 >
                 <View style={layoutStyles.heroStatsRow}>
                     <View style={layoutStyles.heroStatItem}>
@@ -230,6 +232,8 @@ export default function WorkoutDashboardScreen() {
                                         key={workout.id}
                                         onPress={() => router.push(`/(tabs)/history/${workout.id}`)}
                                         style={layoutStyles.recentCard}
+                                        accessibilityLabel={formattedDate}
+                                        accessibilityHint={t('viewHistory')}
                                     >
                                         <View style={layoutStyles.recentRow}>
                                             <View style={layoutStyles.recentLeft}>

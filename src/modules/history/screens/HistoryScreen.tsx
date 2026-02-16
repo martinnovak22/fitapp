@@ -56,7 +56,12 @@ export default function HistoryScreen() {
 
         return (
             <Animated.View entering={canAnimate ? FadeInDown.delay(50 + index * 45).duration(300) : undefined}>
-                <Card onPress={() => router.push(`/(tabs)/history/${item.id}`)} style={styles.workoutCard}>
+                <Card
+                    onPress={() => router.push(`/(tabs)/history/${item.id}`)}
+                    style={styles.workoutCard}
+                    accessibilityLabel={`${formattedDate}, ${item.status === 'finished' ? t('completed') : t('inProgress')}`}
+                    accessibilityHint={t('viewSummary')}
+                >
                     <View style={styles.workoutItem}>
                         <View style={styles.workoutInfo}>
                             <Typography.Body style={styles.workoutDate} numberOfLines={1}>

@@ -64,6 +64,9 @@ const ExerciseListItem = React.memo(({
                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
                     onPress={() => router.push(`/(tabs)/exercises/${item.id}`)}
                     disabled={isDragged}
+                    accessibilityRole={"button"}
+                    accessibilityLabel={`${item.name}, ${t(formatExerciseType(item.type))}`}
+                    accessibilityHint={t('details')}
                 >
                     {item.photo_uri ? (
                         <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
@@ -85,7 +88,13 @@ const ExerciseListItem = React.memo(({
                     </View>
                 </TouchableOpacity>
 
-                <TouchableOpacity onPressIn={drag} style={styles.dragHandle}>
+                <TouchableOpacity
+                    onPressIn={drag}
+                    style={styles.dragHandle}
+                    accessibilityRole={"button"}
+                    accessibilityLabel={t('reorder')}
+                    accessibilityHint={t('holdToDrag')}
+                >
                     <FontAwesome name={"bars"} size={20} color={theme.textSecondary} />
                 </TouchableOpacity>
             </Animated.View>
@@ -125,16 +134,22 @@ export default function ExercisesListScreen() {
                         onPress={handleExportPress}
                         disabled={!hasExercises}
                         style={{ opacity: hasExercises ? 1 : 0.3 }}
+                        accessibilityRole={"button"}
+                        accessibilityLabel={t('export')}
                     >
                         <FontAwesome name={"upload"} size={20} color={theme.primary} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => importExercisesFromCSV(loadExercises)}>
+                    <TouchableOpacity
+                        onPress={() => importExercisesFromCSV(loadExercises)}
+                        accessibilityRole={"button"}
+                        accessibilityLabel={t('import')}
+                    >
                         <FontAwesome name={"download"} size={20} color={theme.primary} />
                     </TouchableOpacity>
                 </View>
             ),
         });
-    }, [navigation, exercises.length, loadExercises, theme.primary, handleExportPress]);
+    }, [navigation, exercises.length, loadExercises, theme.primary, handleExportPress, t]);
 
     const renderItem = useCallback(({ item, index }: { item: Exercise; index: number }) => {
         const animateOnEnter = !animatedItemIdsRef.current.has(item.id);
@@ -174,6 +189,9 @@ export default function ExercisesListScreen() {
             <TouchableOpacity
                 style={GlobalStyles.fab}
                 onPress={() => router.push('/(tabs)/exercises/add')}
+                accessibilityRole={"button"}
+                accessibilityLabel={t('addExercise')}
+                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
             >
                 <FontAwesome name={"plus"} size={32} color={theme.onPrimary} />
             </TouchableOpacity>
@@ -193,6 +211,8 @@ export default function ExercisesListScreen() {
                     <TouchableOpacity
                         style={[styles.sheetActionButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
                         onPress={() => handleAndroidExportAction('share')}
+                        accessibilityRole={"button"}
+                        accessibilityLabel={t('shareFile')}
                     >
                         <FontAwesome name={"share-alt"} size={18} color={theme.primary} />
                         <Text style={[styles.sheetActionText, { color: theme.text }]}>{t('shareFile')}</Text>
@@ -201,6 +221,8 @@ export default function ExercisesListScreen() {
                     <TouchableOpacity
                         style={[styles.sheetActionButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
                         onPress={() => handleAndroidExportAction('save')}
+                        accessibilityRole={"button"}
+                        accessibilityLabel={t('saveToPhone')}
                     >
                         <FontAwesome name={"download"} size={18} color={theme.primary} />
                         <Text style={[styles.sheetActionText, { color: theme.text }]}>{t('saveToPhone')}</Text>
@@ -209,6 +231,8 @@ export default function ExercisesListScreen() {
                     <TouchableOpacity
                         style={[styles.sheetCancelButton, { borderColor: theme.border }]}
                         onPress={() => setShowAndroidExportSheet(false)}
+                        accessibilityRole={"button"}
+                        accessibilityLabel={t('cancel')}
                     >
                         <Text style={[styles.sheetCancelText, { color: theme.textSecondary }]}>{t('cancel')}</Text>
                     </TouchableOpacity>

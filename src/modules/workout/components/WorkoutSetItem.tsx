@@ -63,6 +63,9 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                     disabled={isReadOnly || isActive}
                     activeOpacity={0.7}
                     style={{ flex: 1 }}
+                    accessibilityRole={"button"}
+                    accessibilityLabel={`${t('set')} ${index + 1}: ${renderSetDetails(set)}`}
+                    accessibilityHint={isReadOnly ? undefined : t('editSet')}
                 >
                     <View style={[styles.mainRow, { height: SET_BASE_HEIGHT }]}>
                         <Text style={[styles.index, { color: theme.textSecondary }]}>#{index + 1}</Text>
@@ -87,6 +90,8 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                             onPress={() => onDelete(set.id)}
                             style={styles.deleteButton}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            accessibilityRole={"button"}
+                            accessibilityLabel={t('deleteSetTitle')}
                         >
                             <FontAwesome name={"trash"} size={14} color={theme.error} />
                         </TouchableOpacity>
@@ -97,6 +102,9 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                             delayLongPress={200}
                             style={styles.dragHandle}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            accessibilityRole={"button"}
+                            accessibilityLabel={t('reorder')}
+                            accessibilityHint={t('holdToDrag')}
                         >
                             <FontAwesome name={"reorder"} size={14} color={theme.textSecondary} />
                         </TouchableOpacity>

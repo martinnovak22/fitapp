@@ -8,9 +8,18 @@ interface CardProps {
     style?: StyleProp<ViewStyle>;
     onPress?: () => void;
     activeOpacity?: number;
+    accessibilityLabel?: string;
+    accessibilityHint?: string;
 }
 
-export const Card: React.FC<CardProps> = ({ children, style, onPress, activeOpacity = 0.7 }) => {
+export const Card: React.FC<CardProps> = ({
+    children,
+    style,
+    onPress,
+    activeOpacity = 0.7,
+    accessibilityLabel,
+    accessibilityHint,
+}) => {
     const { theme } = useTheme();
 
     const cardStyle = [
@@ -28,6 +37,8 @@ export const Card: React.FC<CardProps> = ({ children, style, onPress, activeOpac
                 style={cardStyle}
                 onPress={onPress}
                 activeOpacity={activeOpacity}
+                accessibilityLabel={accessibilityLabel}
+                accessibilityHint={accessibilityHint}
             >
                 {children}
             </TouchableOpacity>
