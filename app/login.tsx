@@ -13,6 +13,7 @@ import { showToast } from '@/src/modules/core/utils/toast';
 import { useAuth } from '@/src/modules/auth/useAuth';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -168,12 +169,13 @@ export default function LoginScreen() {
     try {
       const redirectTo = process.env.EXPO_PUBLIC_SUPABASE_EMAIL_REDIRECT_TO?.trim() || Linking.createURL('login');
       const authUrl = getSupabaseOAuthAuthorizeUrl('google', redirectTo);
-      await Linking.openURL(authUrl);
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectTo);
+      if (result.type === 'success' && result.url) {
+        await completeGoogleSignInFromUrl(result.url);
+      }
     } catch (error) {
       const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError');
       setErrorMessage(message);
-      setIsGoogleSubmitting(false);
-      return;
     }
     setIsGoogleSubmitting(false);
   };
