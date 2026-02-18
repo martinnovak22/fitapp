@@ -10,9 +10,9 @@ import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useNavigation } from 'expo-router';
 import { TFunction } from 'i18next';
-import React, { useCallback, useLayoutEffect, useRef } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list';
 import { ListSeparator } from '../../core/components/ListSeparator';
 import { useExercises } from '../hooks/useExercises';
@@ -38,7 +38,7 @@ const ExerciseListItem = React.memo(({
 
     React.useEffect(() => {
         scale.value = withTiming(isDragged ? 0.9 : 1, { duration: 100 });
-    }, [isDragged]);
+    }, [isDragged, scale]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
@@ -64,6 +64,9 @@ const ExerciseListItem = React.memo(({
                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
                     onPress={() => router.push(`/(tabs)/exercises/${item.id}`)}
                     disabled={isDragged}
+                    accessibilityRole={"button"}
+                    accessibilityLabel={`${item.name}, ${t(formatExerciseType(item.type))}`}
+                    accessibilityHint={t('details')}
                 >
                     {item.photo_uri ? (
                         <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
@@ -85,13 +88,20 @@ const ExerciseListItem = React.memo(({
                     </View>
                 </TouchableOpacity>
 
-                <TouchableOpacity onPressIn={drag} style={styles.dragHandle}>
+                <TouchableOpacity
+                    onPressIn={drag}
+                    style={styles.dragHandle}
+                    accessibilityRole={"button"}
+                    accessibilityLabel={t('reorder')}
+                    accessibilityHint={t('holdToDrag')}
+                >
                     <FontAwesome name={"bars"} size={20} color={theme.textSecondary} />
                 </TouchableOpacity>
             </Animated.View>
         </Animated.View>
     );
 });
+ExerciseListItem.displayName = 'ExerciseListItem';
 
 export default function ExercisesListScreen() {
     const { t } = useTranslation();
@@ -99,6 +109,21 @@ export default function ExercisesListScreen() {
     const { exercises, hasLoaded, loadExercises, handleReorder } = useExercises();
     const { theme } = useTheme();
     const animatedItemIdsRef = useRef<Set<number>>(new Set());
+    const [showAndroidExportSheet, setShowAndroidExportSheet] = useState(false);
+
+    const handleExportPress = useCallback(() => {
+        if (Platform.OS === 'android') {
+            setShowAndroidExportSheet(true);
+            return;
+        }
+
+        exportExercisesToCSV(exercises);
+    }, [exercises]);
+
+    const handleAndroidExportAction = useCallback((action: 'share' | 'save') => {
+        setShowAndroidExportSheet(false);
+        exportExercisesToCSV(exercises, { androidAction: action });
+    }, [exercises]);
 
     useLayoutEffect(() => {
         const hasExercises = exercises.length > 0;
@@ -106,19 +131,25 @@ export default function ExercisesListScreen() {
             headerRight: () => (
                 <View style={{ flexDirection: 'row', gap: Spacing.md, marginRight: Spacing.md }}>
                     <TouchableOpacity
-                        onPress={() => exportExercisesToCSV(exercises)}
+                        onPress={handleExportPress}
                         disabled={!hasExercises}
                         style={{ opacity: hasExercises ? 1 : 0.3 }}
+                        accessibilityRole={"button"}
+                        accessibilityLabel={t('export')}
                     >
                         <FontAwesome name={"upload"} size={20} color={theme.primary} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => importExercisesFromCSV(loadExercises)}>
+                    <TouchableOpacity
+                        onPress={() => importExercisesFromCSV(loadExercises)}
+                        accessibilityRole={"button"}
+                        accessibilityLabel={t('import')}
+                    >
                         <FontAwesome name={"download"} size={20} color={theme.primary} />
                     </TouchableOpacity>
                 </View>
             ),
         });
-    }, [navigation, exercises, loadExercises, theme.primary]);
+    }, [navigation, exercises.length, loadExercises, theme.primary, handleExportPress, t]);
 
     const renderItem = useCallback(({ item, index }: { item: Exercise; index: number }) => {
         const animateOnEnter = !animatedItemIdsRef.current.has(item.id);
@@ -158,9 +189,55 @@ export default function ExercisesListScreen() {
             <TouchableOpacity
                 style={GlobalStyles.fab}
                 onPress={() => router.push('/(tabs)/exercises/add')}
+                accessibilityRole={"button"}
+                accessibilityLabel={t('addExercise')}
+                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
             >
                 <FontAwesome name={"plus"} size={32} color={theme.onPrimary} />
             </TouchableOpacity>
+
+            <Modal
+                visible={showAndroidExportSheet}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowAndroidExportSheet(false)}
+            >
+                <Pressable style={styles.sheetBackdrop} onPress={() => setShowAndroidExportSheet(false)}>
+                    <View />
+                </Pressable>
+                <View style={[styles.sheetContainer, { backgroundColor: theme.card }]}>
+                    <Text style={[styles.sheetTitle, { color: theme.text }]}>{t('chooseExportAction')}</Text>
+
+                    <TouchableOpacity
+                        style={[styles.sheetActionButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => handleAndroidExportAction('share')}
+                        accessibilityRole={"button"}
+                        accessibilityLabel={t('shareFile')}
+                    >
+                        <FontAwesome name={"share-alt"} size={18} color={theme.primary} />
+                        <Text style={[styles.sheetActionText, { color: theme.text }]}>{t('shareFile')}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.sheetActionButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => handleAndroidExportAction('save')}
+                        accessibilityRole={"button"}
+                        accessibilityLabel={t('saveToPhone')}
+                    >
+                        <FontAwesome name={"download"} size={18} color={theme.primary} />
+                        <Text style={[styles.sheetActionText, { color: theme.text }]}>{t('saveToPhone')}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.sheetCancelButton, { borderColor: theme.border }]}
+                        onPress={() => setShowAndroidExportSheet(false)}
+                        accessibilityRole={"button"}
+                        accessibilityLabel={t('cancel')}
+                    >
+                        <Text style={[styles.sheetCancelText, { color: theme.textSecondary }]}>{t('cancel')}</Text>
+                    </TouchableOpacity>
+                </View>
+            </Modal>
         </ScreenLayout>
     );
 }
@@ -208,5 +285,47 @@ const styles = StyleSheet.create({
     dragHandle: {
         padding: Spacing.sm,
         marginLeft: Spacing.sm,
+    },
+    sheetBackdrop: {
+        flex: 1,
+        backgroundColor: '#00000066',
+    },
+    sheetContainer: {
+        paddingHorizontal: Spacing.md,
+        paddingTop: Spacing.md,
+        paddingBottom: Spacing.lg,
+        borderTopWidth: 1,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+    },
+    sheetTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        marginBottom: Spacing.md,
+    },
+    sheetActionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.md,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: Spacing.sm,
+    },
+    sheetActionText: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    sheetCancelButton: {
+        marginTop: Spacing.xs,
+        paddingVertical: Spacing.md,
+        alignItems: 'center',
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    sheetCancelText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
 });

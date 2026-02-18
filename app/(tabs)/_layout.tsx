@@ -1,7 +1,9 @@
+import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/src/modules/auth/useAuth';
 
 function TabBarIcon(props: {
     name: React.ComponentProps<typeof FontAwesome>['name'];
@@ -9,12 +11,15 @@ function TabBarIcon(props: {
 }) {
     return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
 }
-
-import { useTheme } from '@/src/modules/core/hooks/useTheme';
-
 export default function TabLayout() {
     const { t } = useTranslation();
     const { theme } = useTheme();
+    const { isAuthRequired, isAuthenticated, isInitialized } = useAuth();
+
+    if (isAuthRequired) {
+        if (!isInitialized) return null;
+        if (!isAuthenticated) return <Redirect href={"../login"} />;
+    }
 
     return (
         <Tabs

@@ -22,3 +22,10 @@ export const formatHourMinute = (value: string | Date): string => {
     const dateValue = value instanceof Date ? value : new Date(value);
     return dateValue.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
+
+export const formatLocalDateYYYYMMDD = (value: Date = new Date()): string => {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};

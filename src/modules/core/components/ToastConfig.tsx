@@ -71,61 +71,69 @@ const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action, cance
     );
 };
 
+const SuccessToast = ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
+    const { theme } = useTheme();
+    return (
+        <CustomToast
+            text1={text1}
+            text2={text2}
+            icon={props?.icon || "check-circle"}
+            iconColor={theme.primary}
+        />
+    );
+};
+
+const DangerToast = ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
+    const { theme } = useTheme();
+    return (
+        <CustomToast
+            text1={text1}
+            text2={text2}
+            icon={props?.icon || "info-circle"}
+            iconColor={theme.error}
+        />
+    );
+};
+
+const InfoToast = ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
+    const { theme } = useTheme();
+    return (
+        <CustomToast
+            text1={text1}
+            text2={text2}
+            icon={props?.icon || "info-circle"}
+            iconColor={theme.info}
+            actionColor={theme.info}
+            action={props?.action}
+        />
+    );
+};
+
+const ConfirmToast = ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
+    const { theme } = useTheme();
+    const isDanger = props?.tone === 'danger';
+    const toneColor = isDanger ? theme.error : theme.info;
+    return (
+        <CustomToast
+            text1={text1}
+            text2={text2}
+            icon={props?.icon || (isDanger ? "trash" : "info-circle")}
+            iconColor={toneColor}
+            actionColor={toneColor}
+            action={props?.action}
+            cancelAction={{
+                label: i18n.t('cancel'),
+                onPress: () => Toast.hide()
+            }}
+        />
+    );
+};
+
 export const toastConfig: ToastConfig = {
-    success: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
-        const { theme } = useTheme();
-        return (
-            <CustomToast
-                text1={text1}
-                text2={text2}
-                icon={props?.icon || "check-circle"}
-                iconColor={theme.primary}
-            />
-        );
-    },
-    danger: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
-        const { theme } = useTheme();
-        return (
-            <CustomToast
-                text1={text1}
-                text2={text2}
-                icon={props?.icon || "info-circle"}
-                iconColor={theme.error}
-            />
-        );
-    },
-    info: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
-        const { theme } = useTheme();
-        return (
-            <CustomToast
-                text1={text1}
-                text2={text2}
-                icon={props?.icon || "info-circle"}
-                iconColor={theme.info}
-            />
-        );
-    },
-
-    confirm: ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
-        const { theme } = useTheme();
-        const isDanger = props?.tone === 'danger';
-        const toneColor = isDanger ? theme.error : theme.info;
-        return (
-            <CustomToast
-                text1={text1}
-                text2={text2}
-                icon={props?.icon || (isDanger ? "trash" : "info-circle")}
-                iconColor={toneColor}
-                actionColor={toneColor}
-
-                action={props?.action}
-                cancelAction={{
-                    label: i18n.t('cancel'),
-                    onPress: () => Toast.hide()
-                }}
-            />
-        );
-    }
+    success: (params) => <SuccessToast {...params} />,
+    danger: (params) => <DangerToast {...params} />,
+    info: (params) => <InfoToast {...params} />,
+    confirm: (params) => <ConfirmToast {...params} />,
 };
 
 const styles = StyleSheet.create({

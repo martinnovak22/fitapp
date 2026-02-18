@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Dimensions, Image, StyleSheet, View } from 'react-native';
 import Animated, {
     Easing,
@@ -33,9 +33,9 @@ export default function LandingScreen() {
         };
     });
 
-    const navigateToMain = () => {
+    const navigateToMain = useCallback(() => {
         router.replace('/(tabs)/workout');
-    };
+    }, [router]);
 
     useEffect(() => {
         SplashScreen.hideAsync().catch(() => { });
@@ -53,7 +53,7 @@ export default function LandingScreen() {
                 runOnJS(navigateToMain)();
             }
         });
-    }, []);
+    }, [iconScale, navigateToMain, progress]);
 
     return (
         <View style={styles.container}>
