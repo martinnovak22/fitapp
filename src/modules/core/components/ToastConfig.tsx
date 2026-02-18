@@ -103,6 +103,8 @@ const InfoToast = ({ text1, text2, props }: ToastConfigParams<CustomToastExtraPr
             text2={text2}
             icon={props?.icon || "info-circle"}
             iconColor={theme.info}
+            actionColor={theme.info}
+            action={props?.action}
         />
     );
 };

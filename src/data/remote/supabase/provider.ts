@@ -19,6 +19,8 @@ type SupabaseSetRow = {
   exercises?: { name: string } | { name: string }[] | null;
 };
 
+const DIRTY_SYNC_STATUS = 'dirty' as const;
+
 const buildQuery = (params: Record<string, string | undefined>) => {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -63,6 +65,18 @@ const parseFirst = <T>(rows: T[]): T | null => {
   if (!Array.isArray(rows) || rows.length === 0) return null;
   return rows[0];
 };
+
+const withDirtySync = <T extends Record<string, unknown>>(payload: T, timestamp = nowIso()) => ({
+  ...payload,
+  updated_at: timestamp,
+  sync_status: DIRTY_SYNC_STATUS,
+});
+
+const withDeletedSync = (timestamp = nowIso()) => ({
+  deleted_at: timestamp,
+  updated_at: timestamp,
+  sync_status: DIRTY_SYNC_STATUS,
+});
 
 const getRequiredSession = () => {
   const session = getSupabaseSession();
@@ -120,7 +134,7 @@ const createExerciseRepository = (config: SupabaseConfig) => ({
         position: nextPosition,
         created_at: now,
         updated_at: now,
-        sync_status: 'dirty',
+        sync_status: DIRTY_SYNC_STATUS,
       },
       accessToken: session.accessToken,
     });
@@ -130,10 +144,7 @@ const createExerciseRepository = (config: SupabaseConfig) => ({
   },
   update: async (id: number, data: Partial<Exercise>): Promise<void> => {
     const session = getRequiredSession();
-    const payload: Record<string, unknown> = {
-      updated_at: nowIso(),
-      sync_status: 'dirty',
-    };
+    const payload: Record<string, unknown> = withDirtySync({});
     if (data.name !== undefined) payload.name = data.name;
     if (data.type !== undefined) payload.type = data.type;
     if (data.muscle_group !== undefined) payload.muscle_group = data.muscle_group ?? null;
@@ -153,9 +164,7 @@ const createExerciseRepository = (config: SupabaseConfig) => ({
         method: 'PATCH',
         query: { id: `eq.${update.id}`, user_id: `eq.${session.userId}` },
         body: {
-          position: update.position,
-          updated_at: nowIso(),
-          sync_status: 'dirty',
+          ...withDirtySync({ position: update.position }),
         },
         accessToken: session.accessToken,
       });
@@ -166,11 +175,7 @@ const createExerciseRepository = (config: SupabaseConfig) => ({
     await request<unknown>(config, 'exercises', {
       method: 'PATCH',
       query: { id: `eq.${id}`, user_id: `eq.${session.userId}` },
-      body: {
-        deleted_at: nowIso(),
-        updated_at: nowIso(),
-        sync_status: 'dirty',
-      },
+      body: withDeletedSync(),
       accessToken: session.accessToken,
     });
   },
@@ -192,7 +197,7 @@ const createWorkoutRepository = (config: SupabaseConfig) => ({
         status: 'in_progress',
         created_at: now,
         updated_at: now,
-        sync_status: 'dirty',
+        sync_status: DIRTY_SYNC_STATUS,
       },
       accessToken: session.accessToken,
     });
@@ -202,15 +207,11 @@ const createWorkoutRepository = (config: SupabaseConfig) => ({
   },
   finish: async (id: number): Promise<void> => {
     const session = getRequiredSession();
+    const now = nowIso();
     await request<unknown>(config, 'workouts', {
       method: 'PATCH',
       query: { id: `eq.${id}`, user_id: `eq.${session.userId}` },
-      body: {
-        end_time: nowIso(),
-        status: 'finished',
-        updated_at: nowIso(),
-        sync_status: 'dirty',
-      },
+      body: withDirtySync({ end_time: now, status: 'finished' }, now),
       accessToken: session.accessToken,
     });
   },
@@ -219,11 +220,7 @@ const createWorkoutRepository = (config: SupabaseConfig) => ({
     await request<unknown>(config, 'workouts', {
       method: 'PATCH',
       query: { id: `eq.${id}`, user_id: `eq.${session.userId}` },
-      body: {
-        deleted_at: nowIso(),
-        updated_at: nowIso(),
-        sync_status: 'dirty',
-      },
+      body: withDeletedSync(),
       accessToken: session.accessToken,
     });
   },
@@ -310,6 +307,7 @@ const createWorkoutRepository = (config: SupabaseConfig) => ({
       accessToken: session.accessToken,
     });
     const nextPosition = existing.length > 0 ? existing[0].position + 1 : 0;
+    const now = nowIso();
     await request<unknown>(config, 'sets', {
       method: 'POST',
       body: {
@@ -323,9 +321,9 @@ const createWorkoutRepository = (config: SupabaseConfig) => ({
         duration: data.duration ?? null,
         position: nextPosition,
         sub_sets: data.sub_sets ?? null,
-        created_at: nowIso(),
-        updated_at: nowIso(),
-        sync_status: 'dirty',
+        created_at: now,
+        updated_at: now,
+        sync_status: DIRTY_SYNC_STATUS,
       },
       accessToken: session.accessToken,
     });
@@ -335,15 +333,13 @@ const createWorkoutRepository = (config: SupabaseConfig) => ({
     await request<unknown>(config, 'sets', {
       method: 'PATCH',
       query: { id: `eq.${setId}`, user_id: `eq.${session.userId}` },
-      body: {
+      body: withDirtySync({
         weight: data.weight ?? null,
         reps: data.reps ?? null,
         distance: data.distance ?? null,
         duration: data.duration ?? null,
         sub_sets: data.sub_sets ?? null,
-        updated_at: nowIso(),
-        sync_status: 'dirty',
-      },
+      }),
       accessToken: session.accessToken,
     });
   },
@@ -352,11 +348,7 @@ const createWorkoutRepository = (config: SupabaseConfig) => ({
     await request<unknown>(config, 'sets', {
       method: 'PATCH',
       query: { id: `eq.${setId}`, user_id: `eq.${session.userId}` },
-      body: {
-        deleted_at: nowIso(),
-        updated_at: nowIso(),
-        sync_status: 'dirty',
-      },
+      body: withDeletedSync(),
       accessToken: session.accessToken,
     });
   },
@@ -365,11 +357,7 @@ const createWorkoutRepository = (config: SupabaseConfig) => ({
     await request<unknown>(config, 'sets', {
       method: 'PATCH',
       query: { id: `eq.${setId}`, user_id: `eq.${session.userId}` },
-      body: {
-        position,
-        updated_at: nowIso(),
-        sync_status: 'dirty',
-      },
+      body: withDirtySync({ position }),
       accessToken: session.accessToken,
     });
   },

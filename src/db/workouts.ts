@@ -85,11 +85,12 @@ export const WorkoutRepository = {
 
     async finish(id: number): Promise<void> {
         const db = await getDb();
+        const now = nowIso();
         await db.runAsync(
             'UPDATE workouts SET end_time = ?, status = ?, updated_at = ?, sync_status = ? WHERE id = ?',
-            nowIso(),
+            now,
             'finished',
-            nowIso(),
+            now,
             'dirty',
             id
         );
@@ -166,6 +167,7 @@ export const WorkoutRepository = {
             workoutId
         );
         const nextPosition = lastSet ? lastSet.position + 1 : 0;
+        const now = nowIso();
 
         await db.runAsync(
             `INSERT INTO sets
@@ -180,8 +182,8 @@ export const WorkoutRepository = {
             data.duration ?? null,
             nextPosition,
             data.sub_sets ?? null,
-            nowIso(),
-            nowIso(),
+            now,
+            now,
             'dirty'
         );
     },
