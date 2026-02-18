@@ -1,13 +1,14 @@
 import { Spacing } from '@/src/constants/Spacing';
 import { GlobalStyles } from '@/src/constants/Styles';
-import { Workout, WorkoutRepository } from '@/src/db/workouts';
+import { getRepositories } from '@/src/data/repositories';
+import { Workout } from '@/src/db/workouts';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime';
+import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -32,17 +33,18 @@ interface MarkedDates {
 }
 
 export default function CalendarScreen() {
+    const { workouts: workoutRepo } = getRepositories();
     const { t, i18n } = useTranslation();
     const { theme } = useTheme();
     const [workouts, setWorkouts] = useState<Workout[]>([]);
     const [markedDates, setMarkedDates] = useState<MarkedDates>({});
-    const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string | null>(formatLocalDateYYYYMMDD());
     const [dayWorkouts, setDayWorkouts] = useState<Workout[]>([]);
     const [modalWorkout, setModalWorkout] = useState<Workout | null>(null);
     const [workoutSets, setWorkoutSets] = useState<{ exercise_name: string; count: number }[]>([]);
 
-    const loadWorkouts = async () => {
-        const all = await WorkoutRepository.getAllWorkouts();
+    const loadWorkouts = useCallback(async () => {
+        const all = await workoutRepo.getAllWorkouts();
         setWorkouts(all);
 
         const marked: MarkedDates = {};
@@ -57,12 +59,12 @@ export default function CalendarScreen() {
         if (selectedDate) {
             setDayWorkouts(all.filter(w => w.date === selectedDate));
         }
-    };
+    }, [selectedDate, theme.primary, workoutRepo]);
 
     useFocusEffect(
         useCallback(() => {
             loadWorkouts();
-        }, [selectedDate])
+        }, [loadWorkouts])
     );
 
     const handleDayPress = (day: { dateString: string }) => {
@@ -72,7 +74,7 @@ export default function CalendarScreen() {
 
     const handleOpenSummary = async (workout: Workout) => {
         setModalWorkout(workout);
-        const sets = await WorkoutRepository.getSets(workout.id);
+        const sets = await workoutRepo.getSets(workout.id);
         const summary = sets.reduce((acc, s) => {
             const existing = acc.find(item => item.exercise_name === s.exercise_name);
             if (existing) {
@@ -155,6 +157,8 @@ export default function CalendarScreen() {
                                 <Card
                                     style={styles.workoutCard}
                                     onPress={() => handleOpenSummary(w)}
+                                    accessibilityLabel={`${formatHourMinute(w.start_time)} ${w.end_time ? `- ${formatHourMinute(w.end_time)}` : t('inProgress')}`}
+                                    accessibilityHint={t('viewSummary')}
                                 >
                                     <View style={styles.workoutCardRow}>
                                         <View>

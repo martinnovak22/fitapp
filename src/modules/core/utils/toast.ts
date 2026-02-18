@@ -7,6 +7,10 @@ export type ToastOptions = {
     icon?: ToastIcon;
 }
 
+export type ActionToastOptions = ToastOptions & {
+    action: ToastAction;
+}
+
 export type ConfirmToastOptions = ToastOptions & {
     action: ToastAction;
     tone?: 'info' | 'danger';
@@ -29,12 +33,25 @@ export const showToast = {
             props: { icon: options.icon }
         });
     },
-    info: (options: ToastOptions) => {
+    info: (options: ToastOptions | ActionToastOptions) => {
+        const hasAction = 'action' in options;
         Toast.show({
             type: 'info',
             text1: options.title,
             text2: options.message,
-            props: { icon: options.icon }
+            props: {
+                icon: options.icon,
+                action: hasAction
+                    ? {
+                        label: options.action.label,
+                        onPress: () => {
+                            options.action.onPress();
+                            Toast.hide();
+                        }
+                    }
+                    : undefined,
+            },
+            autoHide: !hasAction,
         });
     },
     confirm: (options: ConfirmToastOptions) => {

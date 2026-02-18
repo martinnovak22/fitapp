@@ -1,12 +1,13 @@
 import { Spacing } from '@/src/constants/Spacing';
-import { Workout, WorkoutRepository } from '@/src/db/workouts';
+import { getRepositories } from '@/src/data/repositories';
+import { Workout } from '@/src/db/workouts';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
 import { EmptyState } from '@/src/modules/core/components/EmptyState';
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime';
+import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -19,6 +20,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function WorkoutDashboardScreen() {
+    const { workouts: workoutRepo } = getRepositories();
     const { t, i18n } = useTranslation();
     const { theme } = useTheme();
     const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
@@ -35,11 +37,11 @@ export default function WorkoutDashboardScreen() {
         .filter(workout => workout.status === 'finished' && workout.id !== activeWorkout?.id)
         .slice(0, 3);
 
-    const loadData = async () => {
-        const active = await WorkoutRepository.getActiveWorkout();
+    const loadData = useCallback(async () => {
+        const active = await workoutRepo.getActiveWorkout();
         setActiveWorkout(active);
 
-        const all = await WorkoutRepository.getAllWorkouts();
+        const all = await workoutRepo.getAllWorkouts();
         setAllWorkouts(all);
 
         const today = new Date();
@@ -47,10 +49,10 @@ export default function WorkoutDashboardScreen() {
         for (let i = 6; i >= 0; i--) {
             const d = new Date(today);
             d.setDate(today.getDate() - i);
-            last7Days.push(d.toISOString().split('T')[0]);
+            last7Days.push(formatLocalDateYYYYMMDD(d));
         }
 
-        const periodWorkouts = await WorkoutRepository.getWorkoutsForPeriod(
+        const periodWorkouts = await workoutRepo.getWorkoutsForPeriod(
             last7Days[0],
             last7Days[6]
         );
@@ -69,19 +71,19 @@ export default function WorkoutDashboardScreen() {
 
         // Load stats
         const thisMonthStr = today.toISOString().slice(0, 7);
-        const sessions = await WorkoutRepository.getWorkoutCountForMonth(thisMonthStr);
-        const avgDuration = await WorkoutRepository.getAvgWorkoutDuration(thisMonthStr);
+        const sessions = await workoutRepo.getWorkoutCountForMonth(thisMonthStr);
+        const avgDuration = await workoutRepo.getAvgWorkoutDuration(thisMonthStr);
 
         setStats({
             sessions,
             avgDuration: Math.round(avgDuration),
         });
-    };
+    }, [i18n.language, workoutRepo]);
 
     useFocusEffect(
         useCallback(() => {
             loadData();
-        }, [i18n.language])
+        }, [loadData])
     );
 
     const onRefresh = async () => {
@@ -96,8 +98,8 @@ export default function WorkoutDashboardScreen() {
             return;
         }
 
-        const today = new Date().toISOString().split('T')[0];
-        const id = await WorkoutRepository.create(today);
+        const today = formatLocalDateYYYYMMDD();
+        const id = await workoutRepo.create(today);
         router.push(`/(tabs)/workout/${id}`);
     };
 
@@ -120,6 +122,8 @@ export default function WorkoutDashboardScreen() {
                 <Card
                     onPress={() => router.push('/workout/calendar')}
                     style={layoutStyles.heroCard}
+                    accessibilityLabel={t('calendar')}
+                    accessibilityHint={t('fullHistory')}
                 >
                 <View style={layoutStyles.heroStatsRow}>
                     <View style={layoutStyles.heroStatItem}>
@@ -230,6 +234,8 @@ export default function WorkoutDashboardScreen() {
                                         key={workout.id}
                                         onPress={() => router.push(`/(tabs)/history/${workout.id}`)}
                                         style={layoutStyles.recentCard}
+                                        accessibilityLabel={formattedDate}
+                                        accessibilityHint={t('viewHistory')}
                                     >
                                         <View style={layoutStyles.recentRow}>
                                             <View style={layoutStyles.recentLeft}>

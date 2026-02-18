@@ -11,6 +11,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dimensions, Keyboard, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { SetFormValues } from '../setPayload';
 
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window');
@@ -25,14 +26,8 @@ interface Props {
     setSelectedExerciseId: (id: number) => void;
     subSets: SubSet[];
     setSubSets: React.Dispatch<React.SetStateAction<SubSet[]>>;
-    inputValues: {
-        weight: string;
-        reps: string;
-        distance: string;
-        durationMinutes: string;
-        durationSeconds: string;
-    };
-    updateInput: (key: string, value: string) => void;
+    inputValues: SetFormValues;
+    updateInput: (key: keyof SetFormValues, value: string) => void;
 }
 
 export const LogSetModal = ({
@@ -70,7 +65,7 @@ export const LogSetModal = ({
             keyboardHeight.value = 0;
             setIsExpanded(false);
         }
-    }, [visible, subSets.length]);
+    }, [keyboardHeight, modalOpacity, modalScale, visible, subSets.length]);
 
     React.useEffect(() => {
         const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -87,7 +82,7 @@ export const LogSetModal = ({
             showSub.remove();
             hideSub.remove();
         };
-    }, []);
+    }, [keyboardHeight]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: modalOpacity.value,
@@ -114,6 +109,7 @@ export const LogSetModal = ({
     const removeSubSet = (index: number) => {
         setSubSets(prev => prev.filter((_, i) => i !== index));
     };
+    const footerMessage = !selectedExerciseId ? t('selectExerciseFirst') : ' ';
 
     return (
         <Modal animationType="none" transparent visible={visible} onRequestClose={onClose}>
@@ -204,6 +200,8 @@ export const LogSetModal = ({
                                                                         underlineColorAndroid="transparent"
                                                                         selectionColor={theme.primary}
                                                                         scrollEnabled={false}
+                                                                        returnKeyType={"next"}
+                                                                        accessibilityLabel={`${t('drop')} ${idx + 1} ${t('weight')}`}
                                                                     />
                                                                     <Text style={[styles.subSetX, { color: theme.textSecondary }]}>×</Text>
                                                                     <TextInput
@@ -218,6 +216,8 @@ export const LogSetModal = ({
                                                                         underlineColorAndroid="transparent"
                                                                         selectionColor={theme.primary}
                                                                         scrollEnabled={false}
+                                                                        returnKeyType={"done"}
+                                                                        accessibilityLabel={`${t('drop')} ${idx + 1} ${t('reps')}`}
                                                                     />
 
                                                                 </View>
@@ -238,6 +238,19 @@ export const LogSetModal = ({
                         )}
                     </View>
 
+                    <View style={styles.footerHintRow}>
+                        <Text
+                            style={[
+                                styles.footerHintText,
+                                { color: !selectedExerciseId ? theme.error : 'transparent' }
+                            ]}
+                            numberOfLines={1}
+                            accessibilityLiveRegion={"polite"}
+                        >
+                            {footerMessage}
+                        </Text>
+                    </View>
+
                     <View style={styles.footer}>
                         <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
                             <Text style={[styles.cancelText, { color: theme.error }]}>{t('cancel')}</Text>
@@ -247,6 +260,9 @@ export const LogSetModal = ({
                             onPress={onSave}
                             style={[styles.saveButton, { backgroundColor: theme.primary }, !selectedExerciseId && styles.saveButtonDisabled]}
                             disabled={!selectedExerciseId}
+                            accessibilityRole={"button"}
+                            accessibilityLabel={editingSetId ? t('update') : t('addSet')}
+                            accessibilityState={{ disabled: !selectedExerciseId }}
                         >
                             <Text style={styles.saveText}>{editingSetId ? t('update') : t('addSet')}</Text>
                         </TouchableOpacity>
@@ -276,7 +292,8 @@ const ExercisePicker = ({ exercises, selectedExerciseId, setSelectedExerciseId, 
                         ]}
                         onPress={() => {
                             setSelectedExerciseId(ex.id);
-                            ['weight', 'reps', 'distance', 'durationMinutes', 'durationSeconds'].forEach(key => updateInput(key, ''));
+                            const fields = ['weight', 'reps', 'distance', 'durationMinutes', 'durationSeconds'] as const;
+                            fields.forEach(key => updateInput(key, ''));
                         }}
                     >
                         <Text style={[styles.exerciseItemText, { color: theme.text }, selectedExerciseId === ex.id && styles.exerciseItemActiveText]}>{ex.name}</Text>
@@ -313,6 +330,8 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         underlineColorAndroid="transparent"
                         selectionColor={theme.primary}
                         scrollEnabled={false}
+                        returnKeyType={"next"}
+                        accessibilityLabel={t('weightKg')}
                     />
                 </View>
             )}
@@ -332,6 +351,8 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         underlineColorAndroid="transparent"
                         selectionColor={theme.primary}
                         scrollEnabled={false}
+                        returnKeyType={"done"}
+                        accessibilityLabel={t('reps')}
                     />
                 </View>
             )}
@@ -351,6 +372,8 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         underlineColorAndroid="transparent"
                         selectionColor={theme.primary}
                         scrollEnabled={false}
+                        returnKeyType={"next"}
+                        accessibilityLabel={t('distM')}
                     />
                 </View>
             )}
@@ -371,6 +394,8 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                             underlineColorAndroid="transparent"
                             selectionColor={theme.primary}
                             scrollEnabled={false}
+                            returnKeyType={"next"}
+                            accessibilityLabel={t('minutes')}
                         />
                     </View>
                     <View style={{ flex: 1 }}>
@@ -387,6 +412,8 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                             underlineColorAndroid="transparent"
                             selectionColor={theme.primary}
                             scrollEnabled={false}
+                            returnKeyType={"done"}
+                            accessibilityLabel={t('seconds')}
                         />
                     </View>
                 </Animated.View>
@@ -549,8 +576,17 @@ const styles = StyleSheet.create({
     footer: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        marginTop: Spacing.md,
         gap: Spacing.sm,
+    },
+    footerHintRow: {
+        minHeight: 18,
+        marginTop: Spacing.md,
+        marginBottom: Spacing.xs,
+        justifyContent: 'center',
+    },
+    footerHintText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     cancelButton: {
         padding: Spacing.sm,

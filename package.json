@@ -1,11 +1,16 @@
 {
   "name": "fitapp",
   "main": "expo-router/entry",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test:unit": "./node_modules/.bin/ts-node --transpile-only scripts/test-build-set-payload.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "yarn lint && yarn test:unit && yarn typecheck"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -44,6 +49,8 @@
   "devDependencies": {
     "@types/react": "~19.1.0",
     "eas-cli": "^16.32.0",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~10.0.0",
     "react-test-renderer": "19.1.0",
     "typescript": "~5.9.2"
   },

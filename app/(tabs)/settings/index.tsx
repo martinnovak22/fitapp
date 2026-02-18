@@ -1,9 +1,13 @@
 import { Spacing } from '@/src/constants/Spacing';
+import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { ThemeMode, useTheme } from '@/src/modules/core/hooks/useTheme';
+import { useAuth } from '@/src/modules/auth/useAuth';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Constants from 'expo-constants';
+import { router } from 'expo-router';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -12,6 +16,8 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 export default function SettingsScreen() {
     const { t, i18n } = useTranslation();
     const { mode, setMode, theme } = useTheme();
+    const { isAuthRequired, userEmail, signOut } = useAuth();
+    const appVersion = Constants.expoConfig?.version ?? 'dev';
 
     const languages = [
         { code: 'en', label: t('english'), icon: '🇺🇸' },
@@ -25,8 +31,8 @@ export default function SettingsScreen() {
     ];
 
     return (
-        <ScreenLayout style={{ paddingTop: Spacing.md }}>
-            <Animated.View entering={FadeInDown.delay(100).duration(500)} style={{ flex: 1 }}>
+        <ScrollScreenLayout style={{ paddingBottom: Spacing.md }}>
+            <Animated.View entering={FadeInDown.delay(100).duration(500)}>
                 <Typography.Subtitle style={[styles.sectionTitle, { color: theme.primary }]}>{t('language')}</Typography.Subtitle>
                 <Card style={styles.card}>
                     {languages.map((lang, index) => (
@@ -72,12 +78,33 @@ export default function SettingsScreen() {
                     ))}
                 </Card>
 
+                {isAuthRequired && (
+                    <>
+                        <Typography.Subtitle style={[styles.sectionTitle, { marginTop: Spacing.lg, color: theme.primary }]}>
+                            {t('account')}
+                        </Typography.Subtitle>
+                        <Card style={styles.accountCard}>
+                            <View style={{ marginBottom: Spacing.md }}>
+                                <Typography.Meta style={{ color: theme.textSecondary }}>{t('loggedInAs')}</Typography.Meta>
+                                <Typography.Body>{userEmail ?? t('notSpecified')}</Typography.Body>
+                            </View>
+                            <Button
+                                label={t('signOut')}
+                                variant={'outline'}
+                                onPress={async () => {
+                                    await signOut();
+                                    router.replace('../login');
+                                }}
+                            />
+                        </Card>
+                    </>
+                )}
 
-                <View style={{ alignItems: 'center', marginTop: "auto", padding: Spacing.md }}>
-                    <Typography.Meta style={{ color: theme.textSecondary }}>FitApp - 0.1.3</Typography.Meta>
+                <View style={styles.versionWrap}>
+                    <Typography.Meta style={{ color: theme.textSecondary }}>{`FitApp - ${appVersion}`}</Typography.Meta>
                 </View>
             </Animated.View>
-        </ScreenLayout>
+        </ScrollScreenLayout>
     );
 }
 
@@ -93,6 +120,9 @@ const styles = StyleSheet.create({
     card: {
         padding: 0,
         overflow: 'hidden',
+    },
+    accountCard: {
+        padding: Spacing.md,
     },
     settingItem: {
         flexDirection: 'row',
@@ -119,5 +149,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: Spacing.sm + Spacing.xs,
-    }
+    },
+    versionWrap: {
+        alignItems: 'center',
+        marginTop: Spacing.xl,
+    },
 });
