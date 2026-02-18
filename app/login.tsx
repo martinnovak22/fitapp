@@ -8,6 +8,7 @@ import { Card } from '@/src/modules/core/components/Card';
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
+import { showToast } from '@/src/modules/core/utils/toast';
 import { useAuth } from '@/src/modules/auth/useAuth';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router } from 'expo-router';
@@ -19,16 +20,24 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  ScrollView,
   TextInput,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 type AuthMode = 'signin' | 'signup';
 
 const MIN_PASSWORD_LENGTH = 6;
 const formLayoutTransition = LinearTransition.duration(220);
+const cardMaxWidth = 520;
 
 const isValidEmail = (value: string): boolean => {
   const normalized = value.trim();
@@ -39,7 +48,10 @@ const mapAuthErrorToMessage = (message: string, t: (key: string) => string): str
   const normalized = message.toLowerCase();
   if (normalized.includes('invalid login credentials')) return t('authInvalidCredentials');
   if (normalized.includes('email not confirmed')) return t('authEmailNotConfirmed');
-  return t('authUnknownError');
+  if (normalized.includes('redirect_to') || (normalized.includes('redirect') && normalized.includes('not allowed'))) {
+    return 'Auth redirect URL is not allowed. Check Supabase Redirect URLs.';
+  }
+  return message.trim() || t('authUnknownError');
 };
 
 export default function LoginScreen() {
@@ -53,10 +65,10 @@ export default function LoginScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string | null>(null);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
   const emailInputRef = useRef<TextInput>(null);
+  const keyboardOffset = useSharedValue(0);
 
   const isSignUp = mode === 'signup';
 
@@ -66,16 +78,46 @@ export default function LoginScreen() {
     }
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (event) => {
+      const keyboardHeight = event.endCoordinates?.height ?? 0;
+      keyboardOffset.value = withTiming(Math.min(keyboardHeight * 0.42, 140), { duration: 180 });
+    });
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      keyboardOffset.value = withTiming(0, { duration: 180 });
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [keyboardOffset]);
+
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -keyboardOffset.value }],
+  }));
+
   const canSubmit = useMemo(() => {
     if (!isValidEmail(email) || password.length < MIN_PASSWORD_LENGTH) return false;
     if (isSignUp && password !== confirmPassword) return false;
     return true;
   }, [confirmPassword, email, isSignUp, password]);
 
+  const showEmailConfirmationToast = (value: string) => {
+    showToast.info({
+      title: t('checkYourEmail'),
+      message: t('checkYourEmailDescription', { email: value }),
+    });
+  };
+
   const submit = async () => {
     if (isSubmitting) return;
+    const normalizedEmail = email.trim();
 
-    if (!isValidEmail(email)) {
+    if (!isValidEmail(normalizedEmail)) {
       setErrorMessage(t('validationEmailInvalid'));
       return;
     }
@@ -92,14 +134,15 @@ export default function LoginScreen() {
     setErrorMessage(null);
     try {
       if (isSignUp) {
-        await signUp(email, password);
+        await signUp(normalizedEmail, password);
+        router.replace('/landing');
       } else {
-        await signIn(email, password);
+        await signIn(normalizedEmail, password);
+        router.replace('/landing');
       }
-      router.replace('/landing');
     } catch (error) {
       if (error instanceof SupabaseAuthError && error.code === EMAIL_CONFIRMATION_REQUIRED_CODE) {
-        setPendingConfirmationEmail(email.trim());
+        showEmailConfirmationToast(normalizedEmail);
         setMode('signin');
         setPassword('');
         setConfirmPassword('');
@@ -112,34 +155,30 @@ export default function LoginScreen() {
     }
   };
 
-  const handleConfirmedEmail = () => {
-    setMode('signin');
-    setPendingConfirmationEmail(null);
-    setErrorMessage(null);
-    emailInputRef.current?.focus();
-  };
-
   return (
     <ScreenLayout style={styles.container}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
-        <Animated.View
-          layout={formLayoutTransition}
-        >
-          <Card>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps={'handled'}
+            showsVerticalScrollIndicator={false}
+          >
+        <Animated.View layout={formLayoutTransition} style={[styles.cardWrapper, cardAnimatedStyle]}>
+          <Card style={styles.card}>
             <View style={{ marginBottom: Spacing.sm }}>
 
-              <Animated.View entering={FadeInDown.duration(180)}>
+              <Animated.View entering={FadeInDown.duration(220)}>
                 <Typography.Title style={styles.title}>{t(isSignUp ? 'createAccount' : 'welcomeBack')}</Typography.Title>
               </Animated.View>
-              <Animated.View entering={FadeInDown.delay(40).duration(180)}>
+              <Animated.View entering={FadeInDown.delay(40).duration(220)}>
                 <Typography.Body style={[styles.subtitle, { color: theme.textSecondary }]}>
                   {t(isSignUp ? 'authSignUpSubtitle' : 'authSignInSubtitle')}
                 </Typography.Body>
               </Animated.View>
             </View>
 
-            <Animated.View entering={FadeInDown.delay(80).duration(180)}>
+            <Animated.View entering={FadeInDown.delay(80).duration(220)}>
               <Typography.Label>{t('email')}</Typography.Label>
               <TextInput
                 ref={emailInputRef}
@@ -160,7 +199,7 @@ export default function LoginScreen() {
               />
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(120).duration(180)}>
+            <Animated.View entering={FadeInDown.delay(120).duration(220)}>
               <Typography.Label>{t('password')}</Typography.Label>
               <View style={styles.passwordInputContainer}>
                 <TextInput
@@ -203,7 +242,7 @@ export default function LoginScreen() {
             </Animated.View>
 
             {isSignUp && (
-              <Animated.View layout={formLayoutTransition} entering={FadeInDown.duration(160)}>
+              <Animated.View layout={formLayoutTransition} entering={FadeInDown.duration(180)}>
                 <Typography.Label>{t('confirmPassword')}</Typography.Label>
                 <View style={styles.passwordInputContainer}>
                   <TextInput
@@ -242,27 +281,6 @@ export default function LoginScreen() {
               </Animated.View>
             )}
 
-            {pendingConfirmationEmail ? (
-              <Animated.View
-                layout={formLayoutTransition}
-                entering={FadeInDown.duration(180)}
-                style={[styles.feedbackArea, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
-              >
-                <View>
-                  <Typography.Body style={{ fontWeight: '700' }}>{t('checkYourEmail')}</Typography.Body>
-                  <Typography.Meta style={{ color: theme.textSecondary }}>
-                    {t('checkYourEmailDescription', { email: pendingConfirmationEmail })}
-                  </Typography.Meta>
-                  <Button
-                    label={t('iConfirmedEmail')}
-                    variant={'secondary'}
-                    onPress={handleConfirmedEmail}
-                    style={styles.confirmedButton}
-                  />
-                </View>
-              </Animated.View>
-            ) : null}
-
             {errorMessage ? (
               <Animated.View
                 layout={formLayoutTransition}
@@ -271,7 +289,7 @@ export default function LoginScreen() {
               >
                 <Typography.Body style={{ color: theme.error }}>{errorMessage}</Typography.Body>
               </Animated.View>
-            ) : isSignUp && !pendingConfirmationEmail ? (
+            ) : isSignUp ? (
               <Animated.View
                 layout={formLayoutTransition}
                 entering={FadeInDown.duration(140)}
@@ -283,7 +301,7 @@ export default function LoginScreen() {
               </Animated.View>
             ) : null}
 
-            <Animated.View entering={FadeInDown.delay(160).duration(180)}>
+            <Animated.View entering={FadeInDown.delay(160).duration(220)}>
               <Button
                 label={t(isSignUp ? 'createAccount' : 'signIn')}
                 onPress={submit}
@@ -293,7 +311,7 @@ export default function LoginScreen() {
               />
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(200).duration(180)}>
+            <Animated.View entering={FadeInDown.delay(200).duration(220)}>
               <View style={styles.switchRow}>
                 <Typography.Body style={{ color: theme.textSecondary }}>
                   {t(isSignUp ? 'alreadyHaveAccount' : 'noAccountYet')}
@@ -302,7 +320,6 @@ export default function LoginScreen() {
                   onPress={() => {
                     setMode(isSignUp ? 'signin' : 'signup');
                     setErrorMessage(null);
-                    setPendingConfirmationEmail(null);
                   }}
                   hitSlop={8}
                 >
@@ -314,6 +331,7 @@ export default function LoginScreen() {
             </Animated.View>
           </Card>
         </Animated.View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
     </ScreenLayout>
@@ -323,7 +341,19 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    paddingVertical: Spacing.md,
+  },
+  cardWrapper: {
+    width: '100%',
+    maxWidth: cardMaxWidth,
+    alignSelf: 'center',
+  },
+  card: {
+    marginBottom: 0,
   },
   title: {
     marginBottom: Spacing.xs,
@@ -352,16 +382,6 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: Spacing.sm,
     justifyContent: 'center',
-  },
-  feedbackArea: {
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-  },
-  confirmedButton: {
-    marginTop: Spacing.sm,
   },
   errorArea: {
     marginBottom: Spacing.sm,

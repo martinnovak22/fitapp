@@ -1,7 +1,7 @@
 import { Spacing } from '@/src/constants/Spacing';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
+import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { ThemeMode, useTheme } from '@/src/modules/core/hooks/useTheme';
 import { useAuth } from '@/src/modules/auth/useAuth';
@@ -29,8 +29,8 @@ export default function SettingsScreen() {
     ];
 
     return (
-        <ScreenLayout style={{ paddingTop: Spacing.md }}>
-            <Animated.View entering={FadeInDown.delay(100).duration(500)} style={{ flex: 1 }}>
+        <ScrollScreenLayout style={{ paddingBottom: Spacing.md }}>
+            <Animated.View entering={FadeInDown.delay(100).duration(500)}>
                 <Typography.Subtitle style={[styles.sectionTitle, { color: theme.primary }]}>{t('language')}</Typography.Subtitle>
                 <Card style={styles.card}>
                     {languages.map((lang, index) => (
@@ -98,11 +98,11 @@ export default function SettingsScreen() {
                     </>
                 )}
 
-                <View style={{ alignItems: 'center', marginTop: "auto", padding: Spacing.md }}>
+                <View style={styles.versionWrap}>
                     <Typography.Meta style={{ color: theme.textSecondary }}>FitApp - 0.1.3</Typography.Meta>
                 </View>
             </Animated.View>
-        </ScreenLayout>
+        </ScrollScreenLayout>
     );
 }
 
@@ -147,5 +147,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: Spacing.sm + Spacing.xs,
-    }
+    },
+    versionWrap: {
+        alignItems: 'center',
+        marginTop: Spacing.xl,
+    },
 });

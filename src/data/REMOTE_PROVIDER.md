@@ -16,6 +16,7 @@ For Supabase auto-registration, also set:
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (preferred)
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY` (legacy fallback)
+- `EXPO_PUBLIC_SUPABASE_EMAIL_REDIRECT_TO` (optional, recommended for email confirmation links)
 
 If no provider is registered, the app logs a warning and falls back to local mode.
 

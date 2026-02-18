@@ -101,8 +101,13 @@ export const signInWithEmailPassword = async (email: string, password: string): 
 
 export const signUpWithEmailPassword = async (email: string, password: string): Promise<SupabaseAuthSessionData> => {
   const config = requireConfig();
+  const body: Record<string, unknown> = { email, password };
+  if (config.emailRedirectTo) {
+    body.email_redirect_to = config.emailRedirectTo;
+  }
+
   const payload = await authRequest<SupabaseAuthApiResponse>(config, 'signup', {
-    body: { email, password },
+    body,
   });
 
   if (!payload.access_token) {
