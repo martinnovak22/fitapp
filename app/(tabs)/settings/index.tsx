@@ -6,6 +6,7 @@ import { Typography } from '@/src/modules/core/components/Typography';
 import { ThemeMode, useTheme } from '@/src/modules/core/hooks/useTheme';
 import { useAuth } from '@/src/modules/auth/useAuth';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +17,7 @@ export default function SettingsScreen() {
     const { t, i18n } = useTranslation();
     const { mode, setMode, theme } = useTheme();
     const { isAuthRequired, userEmail, signOut } = useAuth();
+    const appVersion = Constants.expoConfig?.version ?? 'dev';
 
     const languages = [
         { code: 'en', label: t('english'), icon: '🇺🇸' },
@@ -99,7 +101,7 @@ export default function SettingsScreen() {
                 )}
 
                 <View style={styles.versionWrap}>
-                    <Typography.Meta style={{ color: theme.textSecondary }}>FitApp - 0.1.3</Typography.Meta>
+                    <Typography.Meta style={{ color: theme.textSecondary }}>{`FitApp - ${appVersion}`}</Typography.Meta>
                 </View>
             </Animated.View>
         </ScrollScreenLayout>
