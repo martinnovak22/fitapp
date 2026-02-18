@@ -153,9 +153,13 @@ export const exportExercisesToCSV = async (
 };
 
 export const importExercisesFromCSV = async (
-    onComplete: () => void
+    onComplete: () => void,
+    options?: {
+        onProcessingStateChange?: (isProcessing: boolean) => void;
+    }
 ) => {
     const { exercises: exerciseRepo } = getRepositories();
+    let didStartProcessing = false;
     try {
         const result = await DocumentPicker.getDocumentAsync();
         if (result.canceled) return;
@@ -170,6 +174,9 @@ export const importExercisesFromCSV = async (
             });
             return;
         }
+
+        options?.onProcessingStateChange?.(true);
+        didStartProcessing = true;
 
         const content = await FileSystem.readAsStringAsync(selectedAsset.uri);
 
@@ -249,5 +256,9 @@ export const importExercisesFromCSV = async (
             title: i18n.t('error'),
             message: i18n.t('importFailed')
         });
+    } finally {
+        if (didStartProcessing) {
+            options?.onProcessingStateChange?.(false);
+        }
     }
 };

@@ -110,6 +110,7 @@ export default function ExercisesListScreen() {
     const { theme } = useTheme();
     const animatedItemIdsRef = useRef<Set<number>>(new Set());
     const [showAndroidExportSheet, setShowAndroidExportSheet] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
 
     const handleExportPress = useCallback(() => {
         if (Platform.OS === 'android') {
@@ -125,6 +126,13 @@ export default function ExercisesListScreen() {
         exportExercisesToCSV(exercises, { androidAction: action });
     }, [exercises]);
 
+    const handleImportPress = useCallback(async () => {
+        if (isImporting) return;
+        await importExercisesFromCSV(loadExercises, {
+            onProcessingStateChange: setIsImporting,
+        });
+    }, [isImporting, loadExercises]);
+
     useLayoutEffect(() => {
         const hasExercises = exercises.length > 0;
         navigation.getParent()?.setOptions({
@@ -132,24 +140,29 @@ export default function ExercisesListScreen() {
                 <View style={{ flexDirection: 'row', gap: Spacing.md, marginRight: Spacing.md }}>
                     <TouchableOpacity
                         onPress={handleExportPress}
-                        disabled={!hasExercises}
-                        style={{ opacity: hasExercises ? 1 : 0.3 }}
+                        disabled={!hasExercises || isImporting}
+                        style={{ opacity: hasExercises && !isImporting ? 1 : 0.3 }}
                         accessibilityRole={"button"}
                         accessibilityLabel={t('export')}
                     >
                         <FontAwesome name={"upload"} size={20} color={theme.primary} />
                     </TouchableOpacity>
                     <TouchableOpacity
-                        onPress={() => importExercisesFromCSV(loadExercises)}
+                        onPress={handleImportPress}
+                        disabled={isImporting}
                         accessibilityRole={"button"}
                         accessibilityLabel={t('import')}
                     >
-                        <FontAwesome name={"download"} size={20} color={theme.primary} />
+                        {isImporting ? (
+                            <ActivityIndicator size="small" color={theme.primary} />
+                        ) : (
+                            <FontAwesome name={"download"} size={20} color={theme.primary} />
+                        )}
                     </TouchableOpacity>
                 </View>
             ),
         });
-    }, [navigation, exercises.length, loadExercises, theme.primary, handleExportPress, t]);
+    }, [navigation, exercises.length, theme.primary, handleExportPress, handleImportPress, isImporting, t]);
 
     const renderItem = useCallback(({ item, index }: { item: Exercise; index: number }) => {
         const animateOnEnter = !animatedItemIdsRef.current.has(item.id);
@@ -236,6 +249,15 @@ export default function ExercisesListScreen() {
                     >
                         <Text style={[styles.sheetCancelText, { color: theme.textSecondary }]}>{t('cancel')}</Text>
                     </TouchableOpacity>
+                </View>
+            </Modal>
+
+            <Modal visible={isImporting} transparent animationType="fade" statusBarTranslucent>
+                <View style={styles.importOverlay}>
+                    <View style={[styles.importOverlayCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                        <ActivityIndicator size="large" color={theme.primary} />
+                        <Text style={[styles.importOverlayText, { color: theme.text }]}>{t('importInProgress')}</Text>
+                    </View>
                 </View>
             </Modal>
         </ScreenLayout>
@@ -327,5 +349,26 @@ const styles = StyleSheet.create({
     sheetCancelText: {
         fontSize: 14,
         fontWeight: '600',
+    },
+    importOverlay: {
+        flex: 1,
+        backgroundColor: '#00000066',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: Spacing.lg,
+    },
+    importOverlayCard: {
+        minWidth: 220,
+        borderRadius: 14,
+        borderWidth: 1,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.md,
+        alignItems: 'center',
+        gap: Spacing.sm,
+    },
+    importOverlayText: {
+        fontSize: 15,
+        fontWeight: '600',
+        textAlign: 'center',
     },
 });
