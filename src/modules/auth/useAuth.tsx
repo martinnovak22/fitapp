@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   SupabaseAuthSessionData,
+  getSupabaseSessionFromOAuthRedirectUrl,
   refreshSupabaseSession,
   signInWithEmailPassword,
   signOutSupabaseSession,
@@ -17,6 +18,7 @@ type AuthContextValue = {
   userEmail: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  signInWithOAuthRedirectUrl: (url: string) => Promise<boolean>;
   signOut: () => Promise<void>;
 };
 
@@ -106,6 +108,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSession(nextSession);
   }, []);
 
+  const signInWithOAuthRedirectUrl = useCallback(async (url: string) => {
+    const nextSession = await getSupabaseSessionFromOAuthRedirectUrl(url);
+    if (!nextSession) return false;
+    applySession(nextSession);
+    await persistSession(nextSession);
+    setSession(nextSession);
+    return true;
+  }, []);
+
   const signOut = useCallback(async () => {
     if (session?.accessToken) {
       try {
@@ -127,9 +138,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userEmail: session?.email ?? null,
       signIn,
       signUp,
+      signInWithOAuthRedirectUrl,
       signOut,
     }),
-    [isAuthRequired, isInitialized, session, signIn, signOut, signUp],
+    [isAuthRequired, isInitialized, session, signIn, signInWithOAuthRedirectUrl, signOut, signUp],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
