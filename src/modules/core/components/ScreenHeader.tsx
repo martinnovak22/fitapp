@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     actions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: Spacing.md,
+        gap: Spacing.sm,
     },
     iconButton: {
         padding: Spacing.xs,
