@@ -33,6 +33,11 @@ type SupabaseAuthApiResponse = {
   msg?: string;
 };
 
+type SupabaseUserResponse = {
+  id?: string;
+  email?: string | null;
+};
+
 type AuthRequestOptions = {
   method?: 'GET' | 'POST';
   body?: unknown;
@@ -135,4 +140,79 @@ export const signOutSupabaseSession = async (accessToken: string): Promise<void>
   await authRequest<unknown>(config, 'logout', {
     accessToken,
   });
+};
+
+export const getSupabaseOAuthAuthorizeUrl = (
+  provider: 'google',
+  redirectTo: string,
+  options?: { flowType?: 'implicit' | 'pkce'; skipBrowserRedirect?: boolean },
+): string => {
+  const config = requireConfig();
+  const params = new URLSearchParams({
+    provider,
+    redirect_to: redirectTo,
+    flow_type: options?.flowType ?? 'implicit',
+  });
+  if (options?.skipBrowserRedirect) {
+    params.set('skip_browser_redirect', 'true');
+  }
+  return `${config.url}/auth/v1/authorize?${params.toString()}`;
+};
+
+const parseUrlParams = (raw: string): URLSearchParams => {
+  const query = raw.includes('?') ? raw.split('?')[1]?.split('#')[0] ?? '' : '';
+  const fragment = raw.includes('#') ? raw.split('#')[1] ?? '' : '';
+  const params = new URLSearchParams(query);
+  const fragmentParams = new URLSearchParams(fragment);
+  fragmentParams.forEach((value, key) => {
+    params.set(key, value);
+  });
+  return params;
+};
+
+const getUserByAccessToken = async (
+  config: SupabaseConfig,
+  accessToken: string,
+): Promise<SupabaseUserResponse | null> => {
+  const response = await fetch(`${config.url}/auth/v1/user`, {
+    method: 'GET',
+    headers: {
+      apikey: config.publicKey,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) return null;
+  const payload = (await response.json()) as SupabaseUserResponse;
+  return payload;
+};
+
+export const getSupabaseSessionFromOAuthRedirectUrl = async (
+  redirectUrl: string,
+): Promise<SupabaseAuthSessionData | null> => {
+  const params = parseUrlParams(redirectUrl);
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  const expiresInRaw = params.get('expires_in');
+  const tokenType = params.get('token_type');
+
+  if (!accessToken || !refreshToken) return null;
+  if (tokenType && tokenType.toLowerCase() !== 'bearer') return null;
+
+  const config = requireConfig();
+  const user = await getUserByAccessToken(config, accessToken);
+  if (!user?.id) {
+    throw new Error('OAuth login succeeded, but user profile could not be loaded.');
+  }
+
+  const expiresIn = Number.parseInt(expiresInRaw ?? '', 10);
+  const safeExpiresIn = Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : 3600;
+
+  return {
+    accessToken,
+    refreshToken,
+    userId: user.id,
+    email: user.email ?? null,
+    expiresAt: Date.now() + safeExpiresIn * 1000,
+  };
 };

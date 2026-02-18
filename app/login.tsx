@@ -2,6 +2,7 @@ import { Spacing } from '@/src/constants/Spacing';
 import {
   EMAIL_CONFIRMATION_REQUIRED_CODE,
   SupabaseAuthError,
+  getSupabaseOAuthAuthorizeUrl,
 } from '@/src/data/remote/supabase/auth';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
@@ -11,10 +12,12 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { showToast } from '@/src/modules/core/utils/toast';
 import { useAuth } from '@/src/modules/auth/useAuth';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -57,17 +60,19 @@ const mapAuthErrorToMessage = (message: string, t: (key: string) => string): str
 export default function LoginScreen() {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { isAuthenticated, signIn, signUp } = useAuth();
+  const { isAuthenticated, signIn, signInWithOAuthRedirectUrl, signUp } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
   const emailInputRef = useRef<TextInput>(null);
+  const handledOAuthUrlRef = useRef<string | null>(null);
   const keyboardOffset = useSharedValue(0);
 
   const isSignUp = mode === 'signup';
@@ -111,6 +116,66 @@ export default function LoginScreen() {
       title: t('checkYourEmail'),
       message: t('checkYourEmailDescription', { email: value }),
     });
+  };
+
+  const completeGoogleSignInFromUrl = useCallback(
+    async (url: string) => {
+      if (!url.includes('access_token=') || !url.includes('refresh_token=')) return false;
+      if (handledOAuthUrlRef.current === url) return true;
+      handledOAuthUrlRef.current = url;
+
+      setIsGoogleSubmitting(true);
+      setErrorMessage(null);
+      try {
+        const applied = await signInWithOAuthRedirectUrl(url);
+        if (!applied) return false;
+        router.replace('/landing');
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError');
+        setErrorMessage(message);
+        return false;
+      } finally {
+        setIsGoogleSubmitting(false);
+      }
+    },
+    [signInWithOAuthRedirectUrl, t],
+  );
+
+  useEffect(() => {
+    const subscription = Linking.addEventListener('url', (event) => {
+      void completeGoogleSignInFromUrl(event.url);
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [completeGoogleSignInFromUrl]);
+
+  useEffect(() => {
+    const hydrateFromInitialUrl = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      if (!initialUrl) return;
+      await completeGoogleSignInFromUrl(initialUrl);
+    };
+    void hydrateFromInitialUrl();
+  }, [completeGoogleSignInFromUrl]);
+
+  const submitGoogle = async () => {
+    if (isSubmitting || isGoogleSubmitting) return;
+
+    setErrorMessage(null);
+    setIsGoogleSubmitting(true);
+    try {
+      const redirectTo = process.env.EXPO_PUBLIC_SUPABASE_EMAIL_REDIRECT_TO?.trim() || Linking.createURL('login');
+      const authUrl = getSupabaseOAuthAuthorizeUrl('google', redirectTo);
+      await Linking.openURL(authUrl);
+    } catch (error) {
+      const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError');
+      setErrorMessage(message);
+      setIsGoogleSubmitting(false);
+      return;
+    }
+    setIsGoogleSubmitting(false);
   };
 
   const submit = async () => {
@@ -178,10 +243,41 @@ export default function LoginScreen() {
               </Animated.View>
             </View>
 
-            <Animated.View entering={FadeInDown.delay(80).duration(220)}>
-              <Typography.Label>{t('email')}</Typography.Label>
-              <TextInput
-                ref={emailInputRef}
+              <Animated.View entering={FadeInDown.delay(80).duration(220)}>
+                <Pressable
+                  onPress={submitGoogle}
+                  disabled={isSubmitting || isGoogleSubmitting}
+                  accessibilityRole={"button"}
+                  accessibilityLabel={t('continueWithGoogle')}
+                  style={[
+                    styles.googleButton,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.inputBackground,
+                    },
+                    (isSubmitting || isGoogleSubmitting) && styles.googleButtonDisabled,
+                  ]}
+                >
+                  <View style={styles.googleButtonInner}>
+                    <FontAwesome name={'google'} size={18} color={theme.text} />
+                    <Typography.Body style={{ color: theme.text, fontWeight: '700' }}>
+                      {t('continueWithGoogle')}
+                    </Typography.Body>
+                  </View>
+                  {isGoogleSubmitting ? <ActivityIndicator size={'small'} color={theme.textSecondary} /> : null}
+                </Pressable>
+              </Animated.View>
+
+              <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
+                <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                <Typography.Meta style={{ color: theme.textSecondary }}>{t('orContinueWithEmail')}</Typography.Meta>
+                <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+              </Animated.View>
+
+              <Animated.View entering={FadeInDown.delay(120).duration(220)}>
+                <Typography.Label>{t('email')}</Typography.Label>
+                <TextInput
+                  ref={emailInputRef}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize={'none'}
@@ -199,7 +295,7 @@ export default function LoginScreen() {
               />
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(120).duration(220)}>
+            <Animated.View entering={FadeInDown.delay(140).duration(220)}>
               <Typography.Label>{t('password')}</Typography.Label>
               <View style={styles.passwordInputContainer}>
                 <TextInput
@@ -305,7 +401,7 @@ export default function LoginScreen() {
               <Button
                 label={t(isSignUp ? 'createAccount' : 'signIn')}
                 onPress={submit}
-                disabled={!canSubmit}
+                disabled={!canSubmit || isGoogleSubmitting}
                 isLoading={isSubmitting}
                 style={styles.submitButton}
               />
@@ -360,6 +456,36 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginBottom: Spacing.sm,
+  },
+  googleButton: {
+    borderWidth: 1,
+    borderRadius: 10,
+    minHeight: 48,
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  googleButtonInner: {
+    flex:1,
+    flexDirection: 'row',
+    justifyContent:"center",
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  googleButtonDisabled: {
+    opacity: 0.5,
+  },
+  dividerRow: {
+    marginBottom: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
   },
   input: {
     borderWidth: 1,
