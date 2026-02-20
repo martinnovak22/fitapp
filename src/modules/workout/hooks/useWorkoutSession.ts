@@ -19,6 +19,15 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const [sets, setSets] = useState<SetWithExercise[]>([]);
     const [exercises, setExercises] = useState<Exercise[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isSavingSet, setIsSavingSet] = useState(false);
+    const [isFinishingWorkout, setIsFinishingWorkout] = useState(false);
+    const [isDeletingWorkout, setIsDeletingWorkout] = useState(false);
+
+    const loadSets = useCallback(async () => {
+        if (!Number.isFinite(workoutId) || workoutId <= 0) return;
+        const nextSets = await workoutRepo.getSets(workoutId);
+        setSets(nextSets as SetWithExercise[]);
+    }, [workoutId, workoutRepo]);
 
     const loadData = useCallback(async () => {
         if (!Number.isFinite(workoutId) || workoutId <= 0) {
@@ -55,30 +64,39 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         }, [loadData])
     );
 
-    const addSet = async (exerciseId: number, data: SetData) => {
+    const runSetMutation = useCallback(async (
+        mutation: () => Promise<void>,
+        successMessage: string,
+        refresh: () => Promise<void> = loadSets
+    ) => {
+        setIsSavingSet(true);
         try {
-            await workoutRepo.addSet(workoutId, exerciseId, data);
-            await loadData();
-            showToast.success({ title: t('addSet'), message: t('newSetAdded') });
+            await mutation();
+            await refresh();
+            showToast.success({ title: t('success'), message: successMessage });
             return true;
         } catch (e) {
-            console.error("Failed to add set:", e);
+            console.error("Failed to persist set mutation:", e);
+            await loadData();
             showToast.danger({ title: t('error'), message: t('failedToSaveSet') });
             return false;
+        } finally {
+            setIsSavingSet(false);
         }
+    }, [loadData, loadSets, t]);
+
+    const addSet = async (exerciseId: number, data: SetData) => {
+        return runSetMutation(
+            () => workoutRepo.addSet(workoutId, exerciseId, data),
+            t('newSetAdded')
+        );
     };
 
     const updateSet = async (setId: number, data: SetData) => {
-        try {
-            await workoutRepo.updateSet(setId, data);
-            await loadData();
-            showToast.success({ title: t('update'), message: t('changesSaved') });
-            return true;
-        } catch (e) {
-            console.error("Failed to update set:", e);
-            showToast.danger({ title: t('error'), message: t('failedToSaveSet') });
-            return false;
-        }
+        return runSetMutation(
+            () => workoutRepo.updateSet(setId, data),
+            t('changesSaved')
+        );
     };
 
     const deleteSet = (setId: number) => {
@@ -90,9 +108,15 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             action: {
                 label: t('delete'),
                 onPress: async () => {
-                    await workoutRepo.deleteSet(setId);
-                    await loadData();
-                    showToast.success({ title: t('setDeleted'), message: t('setRemoved') });
+                    try {
+                        await workoutRepo.deleteSet(setId);
+                        await loadSets();
+                        showToast.success({ title: t('setDeleted'), message: t('setRemoved') });
+                    } catch (e) {
+                        console.error("Failed to delete set:", e);
+                        await loadData();
+                        showToast.danger({ title: t('error'), message: t('failedToSaveSet') });
+                    }
                 },
             },
         });
@@ -105,9 +129,18 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             action: {
                 label: t('finish'),
                 onPress: async () => {
-                    await workoutRepo.finish(workoutId);
-                    router.replace('/(tabs)/history');
-                    showToast.success({ title: t('workoutFinished'), message: t('greatJob') });
+                    if (isFinishingWorkout) return;
+                    setIsFinishingWorkout(true);
+                    try {
+                        await workoutRepo.finish(workoutId);
+                        router.replace('/(tabs)/history');
+                        showToast.success({ title: t('workoutFinished'), message: t('greatJob') });
+                    } catch (e) {
+                        console.error("Failed to finish workout:", e);
+                        showToast.danger({ title: t('error'), message: t('failedToFinishWorkout') });
+                    } finally {
+                        setIsFinishingWorkout(false);
+                    }
                 },
             },
         });
@@ -122,9 +155,18 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             action: {
                 label: t('delete'),
                 onPress: async () => {
-                    await workoutRepo.delete(workoutId);
-                    router.replace(origin === 'history' ? '/(tabs)/history' : '/(tabs)/workout');
-                    showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') });
+                    if (isDeletingWorkout) return;
+                    setIsDeletingWorkout(true);
+                    try {
+                        await workoutRepo.delete(workoutId);
+                        router.replace(origin === 'history' ? '/(tabs)/history' : '/(tabs)/workout');
+                        showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') });
+                    } catch (e) {
+                        console.error("Failed to delete workout:", e);
+                        showToast.danger({ title: t('error'), message: t('failedToDeleteWorkout') });
+                    } finally {
+                        setIsDeletingWorkout(false);
+                    }
                 },
             },
         });
@@ -174,6 +216,9 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         sets,
         exercises,
         loading,
+        isSavingSet,
+        isFinishingWorkout,
+        isDeletingWorkout,
         exerciseNamesOrder,
         groupedSets,
         loadData,

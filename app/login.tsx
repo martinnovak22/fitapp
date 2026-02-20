@@ -10,6 +10,7 @@ import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { useTheme } from '@/src/modules/core/hooks/useTheme';
 import { showToast } from '@/src/modules/core/utils/toast';
+import { isRemoteDataMode } from '@/src/modules/auth/authMode';
 import { useAuth } from '@/src/modules/auth/useAuth';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Linking from 'expo-linking';
@@ -61,7 +62,7 @@ const mapAuthErrorToMessage = (message: string, t: (key: string) => string): str
 export default function LoginScreen() {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { isAuthenticated, signIn, signInWithOAuthRedirectUrl, signUp } = useAuth();
+  const { isAuthenticated, continueAsGuest, signIn, signInWithOAuthRedirectUrl, signUp } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>('signin');
   const [email, setEmail] = useState('');
@@ -408,12 +409,26 @@ export default function LoginScreen() {
                 style={styles.submitButton}
               />
             </Animated.View>
-
+              <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
+                  <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                  <Typography.Meta style={{ color: theme.textSecondary }}>{t(isSignUp ? 'alreadyHaveAccount' : 'noAccountYet')}</Typography.Meta>
+                  <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+              </Animated.View>
             <Animated.View entering={FadeInDown.delay(200).duration(220)}>
               <View style={styles.switchRow}>
-                <Typography.Body style={{ color: theme.textSecondary }}>
-                  {t(isSignUp ? 'alreadyHaveAccount' : 'noAccountYet')}
-                </Typography.Body>
+                  {isRemoteDataMode() ? (
+                          <Pressable
+                              onPress={async () => {
+                                  await continueAsGuest();
+                                  router.replace('/landing');
+                              }}
+                              hitSlop={8}
+                          >
+                                <Typography.Body style={{ color: theme.primary, fontWeight: '700' }}>
+                                    {t('continueAsGuest')}
+                                </Typography.Body>
+                          </Pressable>
+                  ): null}
                 <Pressable
                   onPress={() => {
                     setMode(isSignUp ? 'signin' : 'signup');
@@ -427,6 +442,8 @@ export default function LoginScreen() {
                 </Pressable>
               </View>
             </Animated.View>
+
+
           </Card>
         </Animated.View>
           </ScrollView>
@@ -519,9 +536,10 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: Spacing.sm,
+    marginBottom: Spacing.md
   },
   switchRow: {
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

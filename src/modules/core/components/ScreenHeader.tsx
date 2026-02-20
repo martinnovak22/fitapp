@@ -13,6 +13,7 @@ interface ScreenHeaderProps {
     rightAction?: {
         label: string;
         onPress: () => void;
+        disabled?: boolean;
     };
 }
 
@@ -29,9 +30,11 @@ export const ScreenHeader = ({ title, onDelete, rightAction }: ScreenHeaderProps
                 {rightAction && (
                     <TouchableOpacity
                         onPress={rightAction.onPress}
-                        style={[styles.textButton, { backgroundColor: theme.primary }]}
+                        disabled={rightAction.disabled}
+                        style={[styles.textButton, { backgroundColor: theme.primary }, rightAction.disabled && styles.disabledAction]}
                         accessibilityRole={"button"}
                         accessibilityLabel={rightAction.label}
+                        accessibilityState={rightAction.disabled ? { disabled: true } : undefined}
                         hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                     >
                         <Text style={[styles.actionText, { color: theme.onPrimary }]} allowFontScaling={true}>
@@ -83,6 +86,9 @@ const styles = StyleSheet.create({
         borderRadius: Spacing.sm,
         minHeight: 44,
         justifyContent: 'center',
+    },
+    disabledAction: {
+        opacity: 0.6,
     },
     actionText: {
         fontWeight: 'bold',

@@ -1,3 +1,4 @@
+import { useSync } from '@/src/data/sync/SyncProvider';
 import { Spacing } from '@/src/constants/Spacing';
 import { Button } from '@/src/modules/core/components/Button';
 import { Card } from '@/src/modules/core/components/Card';
@@ -5,6 +6,7 @@ import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
 import { Typography } from '@/src/modules/core/components/Typography';
 import { ThemeMode, useTheme } from '@/src/modules/core/hooks/useTheme';
 import { useAuth } from '@/src/modules/auth/useAuth';
+import { isRemoteDataMode } from '@/src/modules/auth/authMode';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
@@ -14,10 +16,10 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function SettingsScreen() {
-    const { t, i18n } = useTranslation();
-    const { mode, setMode, theme } = useTheme();
-    const { isAuthRequired, userEmail, signOut } = useAuth();
-    const appVersion = Constants.expoConfig?.version ?? 'dev';
+    const { t, i18n } = useTranslation()
+    const { mode, setMode, theme } = useTheme()
+    const { isAuthRequired, userEmail, signOut } = useAuth()
+    const appVersion = Constants.expoConfig?.version ?? 'dev'
 
     const languages = [
         { code: 'en', label: t('english'), icon: '🇺🇸' },
@@ -153,5 +155,15 @@ const styles = StyleSheet.create({
     versionWrap: {
         alignItems: 'center',
         marginTop: Spacing.xl,
+    },
+    syncRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.xs,
+    },
+    syncErrorRow: {
+        marginTop: Spacing.sm,
+        gap: Spacing.xs,
     },
 });
