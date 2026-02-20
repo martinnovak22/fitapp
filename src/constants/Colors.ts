@@ -39,7 +39,7 @@ export const Colors = {
         overlayScrim: 'rgba(0,0,0,0.8)',
         overlayBackdrop: 'rgba(0,0,0,0.85)',
     },
-};
+}
 
-export type ThemeType = typeof Colors.dark;
-export const Theme = Colors.dark;
+export type ThemeType = typeof Colors.dark
+export const Theme = Colors.dark

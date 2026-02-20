@@ -1,63 +1,63 @@
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from 'expo-sqlite'
 
-export const DATABASE_NAME = 'fitapp.db';
-const SCHEMA_VERSION = 2;
+export const DATABASE_NAME = 'fitapp.db'
+const SCHEMA_VERSION = 2
 
 type ColumnDef = {
-  name: string;
-  sqlType: string;
-  defaultValue?: string;
-};
+    name: string
+    sqlType: string
+    defaultValue?: string
+}
 
 const SYNC_METADATA_COLUMNS: ColumnDef[] = [
-  { name: 'uuid', sqlType: 'TEXT' },
-  { name: 'user_id', sqlType: 'TEXT' },
-  { name: 'created_at', sqlType: 'TEXT', defaultValue: 'CURRENT_TIMESTAMP' },
-  { name: 'updated_at', sqlType: 'TEXT', defaultValue: 'CURRENT_TIMESTAMP' },
-  { name: 'deleted_at', sqlType: 'TEXT' },
-  { name: 'sync_status', sqlType: 'TEXT', defaultValue: "'local'" },
-  { name: 'last_synced_at', sqlType: 'TEXT' },
-];
+    { name: 'uuid', sqlType: 'TEXT' },
+    { name: 'user_id', sqlType: 'TEXT' },
+    { name: 'created_at', sqlType: 'TEXT', defaultValue: 'CURRENT_TIMESTAMP' },
+    { name: 'updated_at', sqlType: 'TEXT', defaultValue: 'CURRENT_TIMESTAMP' },
+    { name: 'deleted_at', sqlType: 'TEXT' },
+    { name: 'sync_status', sqlType: 'TEXT', defaultValue: "'local'" },
+    { name: 'last_synced_at', sqlType: 'TEXT' },
+]
 
 const getColumnDefinitions = async (db: SQLite.SQLiteDatabase, table: string) => {
-  return db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
-};
+    return db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`)
+}
 
 const ensureColumn = async (db: SQLite.SQLiteDatabase, table: string, column: ColumnDef) => {
-  const columns = await getColumnDefinitions(db, table);
-  if (columns.some(existing => existing.name === column.name)) {
-    return;
-  }
+    const columns = await getColumnDefinitions(db, table)
+    if (columns.some((existing) => existing.name === column.name)) {
+        return
+    }
 
-  const defaultClause = column.defaultValue ? ` DEFAULT ${column.defaultValue}` : '';
-  await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${column.name} ${column.sqlType}${defaultClause};`);
-};
+    const defaultClause = column.defaultValue ? ` DEFAULT ${column.defaultValue}` : ''
+    await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${column.name} ${column.sqlType}${defaultClause};`)
+}
 
 const ensureSyncMetadataColumns = async (db: SQLite.SQLiteDatabase, table: 'exercises' | 'workouts' | 'sets') => {
-  for (const column of SYNC_METADATA_COLUMNS) {
-    await ensureColumn(db, table, column);
-  }
-};
+    for (const column of SYNC_METADATA_COLUMNS) {
+        await ensureColumn(db, table, column)
+    }
+}
 
 const backfillSyncMetadata = async (db: SQLite.SQLiteDatabase) => {
-  for (const table of ['exercises', 'workouts', 'sets'] as const) {
-    await db.execAsync(`
+    for (const table of ['exercises', 'workouts', 'sets'] as const) {
+        await db.execAsync(`
       UPDATE ${table}
       SET uuid = lower(hex(randomblob(16)))
       WHERE uuid IS NULL OR uuid = '';
-    `);
-    await db.execAsync(`
+    `)
+        await db.execAsync(`
       UPDATE ${table}
       SET created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
           updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP),
           sync_status = COALESCE(sync_status, 'local')
       WHERE created_at IS NULL OR updated_at IS NULL OR sync_status IS NULL;
-    `);
-  }
-};
+    `)
+    }
+}
 
 const createTables = async (db: SQLite.SQLiteDatabase) => {
-  await db.execAsync(`
+    await db.execAsync(`
     CREATE TABLE IF NOT EXISTS exercises (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       uuid TEXT UNIQUE,
@@ -140,11 +140,11 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       last_attempt_at TEXT,
       last_error TEXT
     );
-  `);
-};
+  `)
+}
 
 const createIndexes = async (db: SQLite.SQLiteDatabase) => {
-  await db.execAsync(`
+    await db.execAsync(`
     CREATE INDEX IF NOT EXISTS idx_exercises_position_name ON exercises(position, name);
     CREATE INDEX IF NOT EXISTS idx_exercises_uuid ON exercises(uuid);
 
@@ -160,26 +160,26 @@ const createIndexes = async (db: SQLite.SQLiteDatabase) => {
 
     CREATE INDEX IF NOT EXISTS idx_sync_queue_queued_at ON sync_queue(queued_at);
     CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_uuid);
-  `);
-};
+  `)
+}
 
 export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
-  await db.execAsync(`
+    await db.execAsync(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
     PRAGMA busy_timeout = 5000;
-  `);
+  `)
 
-  await createTables(db);
-  await ensureSyncMetadataColumns(db, 'exercises');
-  await ensureSyncMetadataColumns(db, 'workouts');
-  await ensureSyncMetadataColumns(db, 'sets');
-  await backfillSyncMetadata(db);
-  await createIndexes(db);
-  await db.execAsync(`
+    await createTables(db)
+    await ensureSyncMetadataColumns(db, 'exercises')
+    await ensureSyncMetadataColumns(db, 'workouts')
+    await ensureSyncMetadataColumns(db, 'sets')
+    await backfillSyncMetadata(db)
+    await createIndexes(db)
+    await db.execAsync(`
     INSERT OR IGNORE INTO sync_state (id, is_syncing, outbox_size)
     VALUES (1, 0, 0);
-  `);
+  `)
 
-  await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION};`);
+    await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION};`)
 }

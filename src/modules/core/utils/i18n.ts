@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Localization from 'expo-localization';
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as Localization from 'expo-localization'
+import i18n from 'i18next'
+import { initReactI18next } from 'react-i18next'
 
 const resources = {
     en: {
@@ -144,7 +144,8 @@ const resources = {
             required: 'Required',
             enterName: 'Please enter an exercise name.',
             failedToSaveExercise: 'Failed to save exercise.',
-            deleteExerciseWarning: 'Are you sure? This will not delete past workout data but will remove it from the list.',
+            deleteExerciseWarning:
+                'Are you sure? This will not delete past workout data but will remove it from the list.',
             exerciseUpdated: 'Exercise Updated',
             exerciseCreated: 'Exercise Created',
             updated: 'has been updated.',
@@ -197,7 +198,7 @@ const resources = {
             oops: 'Oops!',
             screenNotFound: "This screen doesn't exist.",
             goHome: 'Go to home screen!',
-        }
+        },
     },
     cs: {
         translation: {
@@ -297,7 +298,7 @@ const resources = {
             never: 'Nikdy',
             account: 'Účet',
             loggedInAs: 'Přihlášen jako',
-            welcomeBack: "Přihlásit se",
+            welcomeBack: 'Přihlásit se',
             createAccount: 'Vytvořit účet',
             authSignInSubtitle: 'Přihlaste se a synchronizujte tréninky do cloudu.',
             authSignUpSubtitle: 'Vytvořte účet a mějte data uložena.',
@@ -308,7 +309,8 @@ const resources = {
             authContinueHint: 'Pokračujte přihlášením do svého účtu.',
             passwordMinHint: 'Heslo musí mít alespoň 6 znaků.',
             checkYourEmail: 'Zkontrolujte e-mail',
-            checkYourEmailDescription: 'Poslali jsme potvrzovací odkaz na {{email}}. Potvrďte e-mail a pak se přihlaste.',
+            checkYourEmailDescription:
+                'Poslali jsme potvrzovací odkaz na {{email}}. Potvrďte e-mail a pak se přihlaste.',
             iConfirmedEmail: 'E-mail jsem potvrdil',
             validationEmailInvalid: 'Zadejte platný e-mail.',
             validationPasswordMin: 'Heslo musí mít alespoň 6 znaků.',
@@ -392,43 +394,42 @@ const resources = {
             oops: 'Jejda!',
             screenNotFound: 'Tato obrazovka neexistuje.',
             goHome: 'Přejít na hlavní obrazovku!',
-        }
-    }
-};
+        },
+    },
+}
 
-const LANGUAGE_KEY = 'user-language';
+const LANGUAGE_KEY = 'user-language'
 
 const languageDetector = {
     type: 'languageDetector' as const,
     async: true,
     detect: async (callback: (lang: string) => void) => {
-        const savedLanguage = await AsyncStorage.getItem(LANGUAGE_KEY);
+        const savedLanguage = await AsyncStorage.getItem(LANGUAGE_KEY)
         if (savedLanguage) {
-            return callback(savedLanguage);
+            return callback(savedLanguage)
         }
-        const locales = Localization.getLocales();
-        const deviceLanguage = locales && locales.length > 0 ? locales[0].languageCode : 'en';
-        callback(deviceLanguage || 'en');
+        const locales = Localization.getLocales()
+        const deviceLanguage = locales && locales.length > 0 ? locales[0].languageCode : 'en'
+        callback(deviceLanguage || 'en')
     },
-    init: () => { },
+    init: () => {},
     cacheUserLanguage: async (language: string) => {
-        await AsyncStorage.setItem(LANGUAGE_KEY, language);
-    }
-};
+        await AsyncStorage.setItem(LANGUAGE_KEY, language)
+    },
+}
 
 // eslint-disable-next-line import/no-named-as-default-member
-i18n
-    .use(languageDetector)
+i18n.use(languageDetector)
     .use(initReactI18next)
     .init({
         resources,
         fallbackLng: 'en',
         interpolation: {
-            escapeValue: false
+            escapeValue: false,
         },
         react: {
-            useSuspense: false
-        }
-    });
+            useSuspense: false,
+        },
+    })
 
-export default i18n;
+export default i18n

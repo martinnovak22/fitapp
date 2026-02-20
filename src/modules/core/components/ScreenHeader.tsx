@@ -1,25 +1,24 @@
-import { Spacing } from '@/src/constants/Spacing';
-import { GlobalStyles } from '@/src/constants/Styles';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useTheme } from '../hooks/useTheme';
-
+import { Spacing } from '@/src/constants/Spacing'
+import { GlobalStyles } from '@/src/constants/Styles'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useTheme } from '../hooks/useTheme'
 
 interface ScreenHeaderProps {
-    title: string;
-    onDelete?: () => void;
+    title: string
+    onDelete?: () => void
     rightAction?: {
-        label: string;
-        onPress: () => void;
-        disabled?: boolean;
-    };
+        label: string
+        onPress: () => void
+        disabled?: boolean
+    }
 }
 
 export const ScreenHeader = ({ title, onDelete, rightAction }: ScreenHeaderProps) => {
-    const { theme } = useTheme();
-    const { t } = useTranslation();
+    const { theme } = useTheme()
+    const { t } = useTranslation()
     return (
         <View style={styles.container}>
             <Text style={[GlobalStyles.title, { color: theme.text, flex: 1, marginBottom: 0 }]} numberOfLines={1}>
@@ -31,8 +30,12 @@ export const ScreenHeader = ({ title, onDelete, rightAction }: ScreenHeaderProps
                     <TouchableOpacity
                         onPress={rightAction.onPress}
                         disabled={rightAction.disabled}
-                        style={[styles.textButton, { backgroundColor: theme.primary }, rightAction.disabled && styles.disabledAction]}
-                        accessibilityRole={"button"}
+                        style={[
+                            styles.textButton,
+                            { backgroundColor: theme.primary },
+                            rightAction.disabled && styles.disabledAction,
+                        ]}
+                        accessibilityRole={'button'}
                         accessibilityLabel={rightAction.label}
                         accessibilityState={rightAction.disabled ? { disabled: true } : undefined}
                         hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
@@ -47,18 +50,17 @@ export const ScreenHeader = ({ title, onDelete, rightAction }: ScreenHeaderProps
                     <TouchableOpacity
                         onPress={onDelete}
                         style={styles.iconButton}
-                        accessibilityRole={"button"}
+                        accessibilityRole={'button'}
                         accessibilityLabel={t('delete')}
                         hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                     >
-                        <FontAwesome name={"trash"} size={24} color={theme.error} />
+                        <FontAwesome name={'trash'} size={24} color={theme.error} />
                     </TouchableOpacity>
                 )}
             </View>
         </View>
-    );
-};
-
+    )
+}
 
 const styles = StyleSheet.create({
     container: {
@@ -93,5 +95,5 @@ const styles = StyleSheet.create({
     actionText: {
         fontWeight: 'bold',
         fontSize: 16,
-    }
-});
+    },
+})

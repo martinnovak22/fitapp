@@ -1,75 +1,75 @@
-import { useRouter } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import React, { useCallback, useEffect } from 'react';
-import { Dimensions, Image, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router'
+import * as SplashScreen from 'expo-splash-screen'
+import React, { useCallback, useEffect } from 'react'
+import { Dimensions, Image, StyleSheet, View } from 'react-native'
 import Animated, {
     Easing,
     runOnJS,
     useAnimatedStyle,
     useSharedValue,
     withSpring,
-    withTiming
-} from 'react-native-reanimated';
+    withTiming,
+} from 'react-native-reanimated'
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get('window')
 
-const BACKGROUND_COLOR = '#607d8b';
+const BACKGROUND_COLOR = '#607d8b'
 
 export default function LandingScreen() {
-    const router = useRouter();
+    const router = useRouter()
 
-    const progress = useSharedValue(0);
-    const iconScale = useSharedValue(0.95);
+    const progress = useSharedValue(0)
+    const iconScale = useSharedValue(0.95)
 
     const iconStyle = useAnimatedStyle(() => {
         return {
             transform: [{ scale: iconScale.value }],
-        };
-    });
+        }
+    })
 
     const progressBarStyle = useAnimatedStyle(() => {
         return {
             width: `${progress.value * 100}%`,
-        };
-    });
+        }
+    })
 
     const navigateToMain = useCallback(() => {
-        router.replace('/(tabs)/workout');
-    }, [router]);
+        router.replace('/(tabs)/workout')
+    }, [router])
 
     useEffect(() => {
-        SplashScreen.hideAsync().catch(() => { });
+        SplashScreen.hideAsync().catch(() => {})
 
         iconScale.value = withSpring(1.15, {
             damping: 10,
-            stiffness: 250
-        });
+            stiffness: 250,
+        })
 
-        progress.value = withTiming(1, {
-            duration: 1000,
-            easing: Easing.bezier(0.4, 0, 0.2, 1)
-        }, (finished) => {
-            if (finished) {
-                runOnJS(navigateToMain)();
+        progress.value = withTiming(
+            1,
+            {
+                duration: 1000,
+                easing: Easing.bezier(0.4, 0, 0.2, 1),
+            },
+            (finished) => {
+                if (finished) {
+                    runOnJS(navigateToMain)()
+                }
             }
-        });
-    }, [iconScale, navigateToMain, progress]);
+        )
+    }, [iconScale, navigateToMain, progress])
 
     return (
         <View style={styles.container}>
             <Animated.View style={[styles.iconContainer, iconStyle]}>
-                <Image
-                    source={require('../assets/images/icon.png')}
-                    style={styles.icon}
-                    resizeMode="contain"
-                />
+                <Image source={require('../assets/images/icon.png')} style={styles.icon} resizeMode="contain" />
             </Animated.View>
 
             <View style={styles.loaderTrack}>
                 <Animated.View style={[styles.loaderBar, progressBarStyle]} />
             </View>
         </View>
-    );
+    )
 }
 
 const styles = StyleSheet.create({
@@ -103,4 +103,4 @@ const styles = StyleSheet.create({
         height: '100%',
         backgroundColor: '#4ADE80',
     },
-});
+})

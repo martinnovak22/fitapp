@@ -1,16 +1,16 @@
 export type SupabaseSession = {
-  accessToken: string;
-  userId: string;
-};
+    accessToken: string
+    userId: string
+}
 
-let currentSession: SupabaseSession | null = null;
+let currentSession: SupabaseSession | null = null
 
 export const setSupabaseSession = (session: SupabaseSession) => {
-  currentSession = session;
-};
+    currentSession = session
+}
 
 export const clearSupabaseSession = () => {
-  currentSession = null;
-};
+    currentSession = null
+}
 
-export const getSupabaseSession = (): SupabaseSession | null => currentSession;
+export const getSupabaseSession = (): SupabaseSession | null => currentSession

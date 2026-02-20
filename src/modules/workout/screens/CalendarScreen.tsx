@@ -1,105 +1,99 @@
-import { Spacing } from '@/src/constants/Spacing';
-import { GlobalStyles } from '@/src/constants/Styles';
-import { getRepositories } from '@/src/data/repositories';
-import { Workout } from '@/src/db/workouts';
-import { Button } from '@/src/modules/core/components/Button';
-import { Card } from '@/src/modules/core/components/Card';
-import { EmptyState } from '@/src/modules/core/components/EmptyState';
-import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
-import { Typography } from '@/src/modules/core/components/Typography';
-import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
-} from 'react-native';
-import { Calendar } from 'react-native-calendars';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Spacing } from '@/src/constants/Spacing'
+import { GlobalStyles } from '@/src/constants/Styles'
+import { getRepositories } from '@/src/data/repositories'
+import { Workout } from '@/src/db/workouts'
+import { Button } from '@/src/modules/core/components/Button'
+import { Card } from '@/src/modules/core/components/Card'
+import { EmptyState } from '@/src/modules/core/components/EmptyState'
+import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router, useFocusEffect } from 'expo-router'
+import React, { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { Calendar } from 'react-native-calendars'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 
 interface MarkedDates {
     [date: string]: {
-        marked?: boolean;
-        selected?: boolean;
-        selectedColor?: string;
-        dotColor?: string;
-    };
+        marked?: boolean
+        selected?: boolean
+        selectedColor?: string
+        dotColor?: string
+    }
 }
 
 export default function CalendarScreen() {
-    const { workouts: workoutRepo } = getRepositories();
-    const { t, i18n } = useTranslation();
-    const { theme } = useTheme();
-    const [workouts, setWorkouts] = useState<Workout[]>([]);
-    const [markedDates, setMarkedDates] = useState<MarkedDates>({});
-    const [selectedDate, setSelectedDate] = useState<string | null>(formatLocalDateYYYYMMDD());
-    const [dayWorkouts, setDayWorkouts] = useState<Workout[]>([]);
-    const [modalWorkout, setModalWorkout] = useState<Workout | null>(null);
-    const [workoutSets, setWorkoutSets] = useState<{ exercise_name: string; count: number }[]>([]);
+    const { workouts: workoutRepo } = getRepositories()
+    const { t, i18n } = useTranslation()
+    const { theme } = useTheme()
+    const [workouts, setWorkouts] = useState<Workout[]>([])
+    const [markedDates, setMarkedDates] = useState<MarkedDates>({})
+    const [selectedDate, setSelectedDate] = useState<string | null>(formatLocalDateYYYYMMDD())
+    const [dayWorkouts, setDayWorkouts] = useState<Workout[]>([])
+    const [modalWorkout, setModalWorkout] = useState<Workout | null>(null)
+    const [workoutSets, setWorkoutSets] = useState<{ exercise_name: string; count: number }[]>([])
 
     const loadWorkouts = useCallback(async () => {
-        const all = await workoutRepo.getAllWorkouts();
-        setWorkouts(all);
+        const all = await workoutRepo.getAllWorkouts()
+        setWorkouts(all)
 
-        const marked: MarkedDates = {};
-        all.forEach(w => {
+        const marked: MarkedDates = {}
+        all.forEach((w) => {
             marked[w.date] = {
                 marked: true,
                 dotColor: theme.primary,
-            };
-        });
-        setMarkedDates(marked);
+            }
+        })
+        setMarkedDates(marked)
 
         if (selectedDate) {
-            setDayWorkouts(all.filter(w => w.date === selectedDate));
+            setDayWorkouts(all.filter((w) => w.date === selectedDate))
         }
-    }, [selectedDate, theme.primary, workoutRepo]);
+    }, [selectedDate, theme.primary, workoutRepo])
 
     useFocusEffect(
         useCallback(() => {
-            loadWorkouts();
+            loadWorkouts()
         }, [loadWorkouts])
-    );
+    )
 
     const handleDayPress = (day: { dateString: string }) => {
-        setSelectedDate(day.dateString);
-        setDayWorkouts(workouts.filter(w => w.date === day.dateString));
-    };
+        setSelectedDate(day.dateString)
+        setDayWorkouts(workouts.filter((w) => w.date === day.dateString))
+    }
 
     const handleOpenSummary = async (workout: Workout) => {
-        setModalWorkout(workout);
-        const sets = await workoutRepo.getSets(workout.id);
-        const summary = sets.reduce((acc, s) => {
-            const existing = acc.find(item => item.exercise_name === s.exercise_name);
-            if (existing) {
-                existing.count++;
-            } else {
-                acc.push({ exercise_name: s.exercise_name, count: 1 });
-            }
-            return acc;
-        }, [] as { exercise_name: string; count: number }[]);
-        setWorkoutSets(summary);
-    };
+        setModalWorkout(workout)
+        const sets = await workoutRepo.getSets(workout.id)
+        const summary = sets.reduce(
+            (acc, s) => {
+                const existing = acc.find((item) => item.exercise_name === s.exercise_name)
+                if (existing) {
+                    existing.count++
+                } else {
+                    acc.push({ exercise_name: s.exercise_name, count: 1 })
+                }
+                return acc
+            },
+            [] as { exercise_name: string; count: number }[]
+        )
+        setWorkoutSets(summary)
+    }
 
     const handleViewHistory = () => {
         if (modalWorkout) {
-            const id = modalWorkout.id;
-            setModalWorkout(null);
-            router.replace(`/(tabs)/history/${id}`);
+            const id = modalWorkout.id
+            setModalWorkout(null)
+            router.replace(`/(tabs)/history/${id}`)
         }
-    };
+    }
 
     return (
-        <ScrollScreenLayout
-            contentContainerStyle={styles.scrollContent}
-            style={styles.container}
-        >
+        <ScrollScreenLayout contentContainerStyle={styles.scrollContent} style={styles.container}>
             <Animated.View entering={FadeInDown.delay(70).duration(360)}>
                 <Card style={styles.calendarCard}>
                     <Calendar
@@ -126,17 +120,19 @@ export default function CalendarScreen() {
                             textDayHeaderFontWeight: '300',
                             textDayFontSize: 16,
                             textMonthFontSize: 18,
-                            textDayHeaderFontSize: 14
+                            textDayHeaderFontSize: 14,
                         }}
                         markedDates={{
                             ...markedDates,
-                            ...(selectedDate ? {
-                                [selectedDate]: {
-                                    ...markedDates[selectedDate],
-                                    selected: true,
-                                    selectedColor: theme.primary + '40'
-                                }
-                            } : {})
+                            ...(selectedDate
+                                ? {
+                                      [selectedDate]: {
+                                          ...markedDates[selectedDate],
+                                          selected: true,
+                                          selectedColor: theme.primary + '40',
+                                      },
+                                  }
+                                : {}),
                         }}
                         onDayPress={handleDayPress}
                         hideExtraDays={false}
@@ -145,15 +141,23 @@ export default function CalendarScreen() {
                 </Card>
             </Animated.View>
 
-            {selectedDate && (
-                dayWorkouts.length > 0 ? (
+            {selectedDate &&
+                (dayWorkouts.length > 0 ? (
                     <Animated.View entering={FadeInDown.delay(140).duration(360)}>
                         <Typography.Subtitle style={[styles.dayHeader, { color: theme.text }]}>
-                            {formatLocalizedDate(selectedDate, i18n.language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }, true)}
+                            {formatLocalizedDate(
+                                selectedDate,
+                                i18n.language,
+                                { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' },
+                                true
+                            )}
                         </Typography.Subtitle>
 
                         {dayWorkouts.map((w, index) => (
-                            <Animated.View key={w.id} entering={FadeInDown.delay(170 + Math.min(index, 8) * 45).duration(320)}>
+                            <Animated.View
+                                key={w.id}
+                                entering={FadeInDown.delay(170 + Math.min(index, 8) * 45).duration(320)}
+                            >
                                 <Card
                                     style={styles.workoutCard}
                                     onPress={() => handleOpenSummary(w)}
@@ -163,14 +167,21 @@ export default function CalendarScreen() {
                                     <View style={styles.workoutCardRow}>
                                         <View>
                                             <Typography.Body style={[styles.workoutTime, { color: theme.text }]}>
-                                                {formatHourMinute(w.start_time)} {w.end_time ? `- ${formatHourMinute(w.end_time)}` : `(${t('inProgress')})`}
+                                                {formatHourMinute(w.start_time)}{' '}
+                                                {w.end_time
+                                                    ? `- ${formatHourMinute(w.end_time)}`
+                                                    : `(${t('inProgress')})`}
                                             </Typography.Body>
-                                            <Typography.Meta style={[styles.workoutStatus, { color: theme.textSecondary }]}>
+                                            <Typography.Meta
+                                                style={[styles.workoutStatus, { color: theme.textSecondary }]}
+                                            >
                                                 {w.status === 'finished' ? t('completed') : t('activeSession')}
                                             </Typography.Meta>
                                         </View>
                                         <View style={styles.workoutAction}>
-                                            <Typography.Meta style={[styles.viewSummaryText, { color: theme.primary }]}>{t('viewSummary')}</Typography.Meta>
+                                            <Typography.Meta style={[styles.viewSummaryText, { color: theme.primary }]}>
+                                                {t('viewSummary')}
+                                            </Typography.Meta>
                                             <FontAwesome name="chevron-right" size={12} color={theme.primary} />
                                         </View>
                                     </View>
@@ -181,12 +192,16 @@ export default function CalendarScreen() {
                 ) : (
                     <View>
                         <Typography.Subtitle style={[styles.dayHeader, { color: theme.text }]}>
-                            {formatLocalizedDate(selectedDate, i18n.language, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }, true)}
+                            {formatLocalizedDate(
+                                selectedDate,
+                                i18n.language,
+                                { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' },
+                                true
+                            )}
                         </Typography.Subtitle>
-                        <EmptyState message={t('noWorkoutsRecorded')} icon={"calendar-o"} />
+                        <EmptyState message={t('noWorkoutsRecorded')} icon={'calendar-o'} />
                     </View>
-                )
-            )}
+                ))}
 
             <Modal
                 animationType="fade"
@@ -199,23 +214,37 @@ export default function CalendarScreen() {
                     activeOpacity={1}
                     onPress={() => setModalWorkout(null)}
                 >
-                    <View style={[styles.modalContent, { backgroundColor: theme.surface, borderColor: theme.inputBackgroundActive }]}>
+                    <View
+                        style={[
+                            styles.modalContent,
+                            { backgroundColor: theme.surface, borderColor: theme.inputBackgroundActive },
+                        ]}
+                    >
                         <Typography.Title style={[styles.modalTitle, { color: theme.text }]}>
                             {t('workoutSummary')}
                         </Typography.Title>
                         {modalWorkout && (
                             <Typography.Meta style={[styles.modalDate, { color: theme.textSecondary }]}>
-                                {formatLocalizedDate(modalWorkout.date, i18n.language, { year: 'numeric', month: 'long', day: 'numeric' })}
+                                {formatLocalizedDate(modalWorkout.date, i18n.language, {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                })}
                                 {' - '}
                                 {formatHourMinute(modalWorkout.start_time)}
-                                {modalWorkout.end_time ? ` - ${formatHourMinute(modalWorkout.end_time)}` : ` (${t('inProgress')})`}
+                                {modalWorkout.end_time
+                                    ? ` - ${formatHourMinute(modalWorkout.end_time)}`
+                                    : ` (${t('inProgress')})`}
                             </Typography.Meta>
                         )}
 
                         <ScrollView style={styles.summaryScroll} contentContainerStyle={styles.summaryScrollContent}>
                             {workoutSets.length > 0 ? (
                                 workoutSets.map((item, index) => (
-                                    <View key={index} style={[styles.summaryRow, { borderBottomColor: theme.inputBackground }]}>
+                                    <View
+                                        key={index}
+                                        style={[styles.summaryRow, { borderBottomColor: theme.inputBackground }]}
+                                    >
                                         <Typography.Body style={[styles.summaryText, { color: theme.text }]}>
                                             {item.exercise_name}
                                         </Typography.Body>
@@ -238,18 +267,13 @@ export default function CalendarScreen() {
                                 variant="secondary"
                                 style={{ flex: 1 }}
                             />
-                            <Button
-                                label={t('viewHistory')}
-                                onPress={handleViewHistory}
-                                style={{ flex: 1 }}
-                            />
+                            <Button label={t('viewHistory')} onPress={handleViewHistory} style={{ flex: 1 }} />
                         </View>
                     </View>
                 </TouchableOpacity>
             </Modal>
         </ScrollScreenLayout>
-
-    );
+    )
 }
 
 const styles = StyleSheet.create({
@@ -358,4 +382,4 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         gap: Spacing.md,
     },
-});
+})

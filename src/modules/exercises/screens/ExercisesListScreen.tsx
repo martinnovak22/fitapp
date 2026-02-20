@@ -1,140 +1,157 @@
-import { ThemeType } from '@/src/constants/Colors';
-import { Spacing } from '@/src/constants/Spacing';
-import { GlobalStyles } from '@/src/constants/Styles';
-import { Exercise } from '@/src/db/exercises';
-import { EmptyState } from '@/src/modules/core/components/EmptyState';
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
-import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv';
-import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router, useNavigation } from 'expo-router';
-import { TFunction } from 'i18next';
-import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Image, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list';
-import { ListSeparator } from '../../core/components/ListSeparator';
-import { useExercises } from '../hooks/useExercises';
+import { ThemeType } from '@/src/constants/Colors'
+import { Spacing } from '@/src/constants/Spacing'
+import { GlobalStyles } from '@/src/constants/Styles'
+import { Exercise } from '@/src/db/exercises'
+import { EmptyState } from '@/src/modules/core/components/EmptyState'
+import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv'
+import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router, useNavigation } from 'expo-router'
+import { TFunction } from 'i18next'
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+    ActivityIndicator,
+    Image,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native'
+import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
+import { ListSeparator } from '../../core/components/ListSeparator'
+import { useExercises } from '../hooks/useExercises'
 
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 
-const ExerciseListItem = React.memo(({
-    item,
-    index,
-    theme,
-    t,
-    animateOnEnter,
-}: {
-    item: Exercise;
-    index: number;
-    theme: ThemeType;
-    t: TFunction;
-    animateOnEnter: boolean;
-}) => {
-    const drag = useReorderableDrag();
-    const isDragged = useIsActive();
-    const scale = useSharedValue(1);
+const ExerciseListItem = React.memo(
+    ({
+        item,
+        index,
+        theme,
+        t,
+        animateOnEnter,
+    }: {
+        item: Exercise
+        index: number
+        theme: ThemeType
+        t: TFunction
+        animateOnEnter: boolean
+    }) => {
+        const drag = useReorderableDrag()
+        const isDragged = useIsActive()
+        const scale = useSharedValue(1)
 
-    React.useEffect(() => {
-        scale.value = withTiming(isDragged ? 0.9 : 1, { duration: 100 });
-    }, [isDragged, scale]);
+        React.useEffect(() => {
+            scale.value = withTiming(isDragged ? 0.9 : 1, { duration: 100 })
+        }, [isDragged, scale])
 
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: scale.value }],
-    }));
+        const animatedStyle = useAnimatedStyle(() => ({
+            transform: [{ scale: scale.value }],
+        }))
 
-    return (
-        <Animated.View
-            entering={animateOnEnter ? FadeInDown.delay(50 + Math.min(index, 8) * 50).duration(320) : undefined}
-            style={styles.itemEnterWrapper}
-        >
+        return (
             <Animated.View
-                style={[
-                    GlobalStyles.card,
-                    styles.cardInner,
-                    {
-                        backgroundColor: isDragged ? theme.surface : theme.card,
-                        borderColor: theme.border,
-                    },
-                    animatedStyle
-                ]}
+                entering={animateOnEnter ? FadeInDown.delay(50 + Math.min(index, 8) * 50).duration(320) : undefined}
+                style={styles.itemEnterWrapper}
             >
-                <TouchableOpacity
-                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
-                    onPress={() => router.push(`/(tabs)/exercises/${item.id}`)}
-                    disabled={isDragged}
-                    accessibilityRole={"button"}
-                    accessibilityLabel={`${item.name}, ${t(formatExerciseType(item.type))}`}
-                    accessibilityHint={t('details')}
+                <Animated.View
+                    style={[
+                        GlobalStyles.card,
+                        styles.cardInner,
+                        {
+                            backgroundColor: isDragged ? theme.surface : theme.card,
+                            borderColor: theme.border,
+                        },
+                        animatedStyle,
+                    ]}
                 >
-                    {item.photo_uri ? (
-                        <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
-                    ) : (
-                        <View style={[styles.thumbnail, styles.placeholderThumbnail, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                            <FontAwesome name={"camera"} size={20} color={theme.textSecondary + '40'} />
+                    <TouchableOpacity
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                        onPress={() => router.push(`/(tabs)/exercises/${item.id}`)}
+                        disabled={isDragged}
+                        accessibilityRole={'button'}
+                        accessibilityLabel={`${item.name}, ${t(formatExerciseType(item.type))}`}
+                        accessibilityHint={t('details')}
+                    >
+                        {item.photo_uri ? (
+                            <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
+                        ) : (
+                            <View
+                                style={[
+                                    styles.thumbnail,
+                                    styles.placeholderThumbnail,
+                                    { backgroundColor: theme.surface, borderColor: theme.border },
+                                ]}
+                            >
+                                <FontAwesome name={'camera'} size={20} color={theme.textSecondary + '40'} />
+                            </View>
+                        )}
+                        <View style={styles.content}>
+                            <Text style={[GlobalStyles.text, styles.title, { color: theme.text }]}>{item.name}</Text>
+                            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                                {item.muscle_group ? `${formatMuscleGroup(item.muscle_group)} • ` : ''}
+                                {t(formatExerciseType(item.type))}
+                            </Text>
                         </View>
-                    )}
-                    <View style={styles.content}>
-                        <Text style={[GlobalStyles.text, styles.title, { color: theme.text }]}>
-                            {item.name}
-                        </Text>
-                        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                            {item.muscle_group
-                                ? `${formatMuscleGroup(item.muscle_group)} • `
-                                : ''}
-                            {t(formatExerciseType(item.type))}
-                        </Text>
-                    </View>
-                </TouchableOpacity>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                    onPressIn={drag}
-                    style={styles.dragHandle}
-                    accessibilityRole={"button"}
-                    accessibilityLabel={t('reorder')}
-                    accessibilityHint={t('holdToDrag')}
-                >
-                    <FontAwesome name={"bars"} size={20} color={theme.textSecondary} />
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        onPressIn={drag}
+                        style={styles.dragHandle}
+                        accessibilityRole={'button'}
+                        accessibilityLabel={t('reorder')}
+                        accessibilityHint={t('holdToDrag')}
+                    >
+                        <FontAwesome name={'bars'} size={20} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                </Animated.View>
             </Animated.View>
-        </Animated.View>
-    );
-});
-ExerciseListItem.displayName = 'ExerciseListItem';
+        )
+    }
+)
+ExerciseListItem.displayName = 'ExerciseListItem'
 
 export default function ExercisesListScreen() {
-    const { t } = useTranslation();
-    const navigation = useNavigation();
-    const { exercises, hasLoaded, loadExercises, handleReorder } = useExercises();
-    const { theme } = useTheme();
-    const animatedItemIdsRef = useRef<Set<number>>(new Set());
-    const [showAndroidExportSheet, setShowAndroidExportSheet] = useState(false);
-    const [isImporting, setIsImporting] = useState(false);
+    const { t } = useTranslation()
+    const navigation = useNavigation()
+    const { exercises, hasLoaded, loadExercises, handleReorder } = useExercises()
+    const { theme } = useTheme()
+    const animatedItemIdsRef = useRef<Set<number>>(new Set())
+    const [showAndroidExportSheet, setShowAndroidExportSheet] = useState(false)
+    const [isImporting, setIsImporting] = useState(false)
 
     const handleExportPress = useCallback(() => {
         if (Platform.OS === 'android') {
-            setShowAndroidExportSheet(true);
-            return;
+            setShowAndroidExportSheet(true)
+            return
         }
 
-        exportExercisesToCSV(exercises);
-    }, [exercises]);
+        exportExercisesToCSV(exercises)
+    }, [exercises])
 
-    const handleAndroidExportAction = useCallback((action: 'share' | 'save') => {
-        setShowAndroidExportSheet(false);
-        exportExercisesToCSV(exercises, { androidAction: action });
-    }, [exercises]);
+    const handleAndroidExportAction = useCallback(
+        (action: 'share' | 'save') => {
+            setShowAndroidExportSheet(false)
+            exportExercisesToCSV(exercises, { androidAction: action })
+        },
+        [exercises]
+    )
 
     const handleImportPress = useCallback(async () => {
-        if (isImporting) return;
+        if (isImporting) return
         await importExercisesFromCSV(loadExercises, {
             onProcessingStateChange: setIsImporting,
-        });
-    }, [isImporting, loadExercises]);
+        })
+    }, [isImporting, loadExercises])
 
     useLayoutEffect(() => {
-        const hasExercises = exercises.length > 0;
+        const hasExercises = exercises.length > 0
         navigation.getParent()?.setOptions({
             headerRight: () => (
                 <View style={{ flexDirection: 'row', gap: Spacing.md, marginRight: Spacing.md }}>
@@ -142,35 +159,38 @@ export default function ExercisesListScreen() {
                         onPress={handleExportPress}
                         disabled={!hasExercises || isImporting}
                         style={{ opacity: hasExercises && !isImporting ? 1 : 0.3 }}
-                        accessibilityRole={"button"}
+                        accessibilityRole={'button'}
                         accessibilityLabel={t('export')}
                     >
-                        <FontAwesome name={"upload"} size={20} color={theme.primary} />
+                        <FontAwesome name={'upload'} size={20} color={theme.primary} />
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={handleImportPress}
                         disabled={isImporting}
-                        accessibilityRole={"button"}
+                        accessibilityRole={'button'}
                         accessibilityLabel={t('import')}
                     >
                         {isImporting ? (
                             <ActivityIndicator size="small" color={theme.primary} />
                         ) : (
-                            <FontAwesome name={"download"} size={20} color={theme.primary} />
+                            <FontAwesome name={'download'} size={20} color={theme.primary} />
                         )}
                     </TouchableOpacity>
                 </View>
             ),
-        });
-    }, [navigation, exercises.length, theme.primary, handleExportPress, handleImportPress, isImporting, t]);
+        })
+    }, [navigation, exercises.length, theme.primary, handleExportPress, handleImportPress, isImporting, t])
 
-    const renderItem = useCallback(({ item, index }: { item: Exercise; index: number }) => {
-        const animateOnEnter = !animatedItemIdsRef.current.has(item.id);
-        if (animateOnEnter) {
-            animatedItemIdsRef.current.add(item.id);
-        }
-        return <ExerciseListItem item={item} index={index} theme={theme} t={t} animateOnEnter={animateOnEnter} />;
-    }, [theme, t]);
+    const renderItem = useCallback(
+        ({ item, index }: { item: Exercise; index: number }) => {
+            const animateOnEnter = !animatedItemIdsRef.current.has(item.id)
+            if (animateOnEnter) {
+                animatedItemIdsRef.current.add(item.id)
+            }
+            return <ExerciseListItem item={item} index={index} theme={theme} t={t} animateOnEnter={animateOnEnter} />
+        },
+        [theme, t]
+    )
 
     return (
         <ScreenLayout>
@@ -179,17 +199,13 @@ export default function ExercisesListScreen() {
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>
             ) : exercises.length === 0 ? (
-                <EmptyState
-                    message={t('noExercises')}
-                    subMessage={t('addFirstExercise')}
-                    icon={"list"}
-                />
+                <EmptyState message={t('noExercises')} subMessage={t('addFirstExercise')} icon={'list'} />
             ) : (
                 <ReorderableList
                     data={exercises}
                     onReorder={({ from, to }) => {
-                        const newData = reorderItems(exercises, from, to);
-                        handleReorder(newData);
+                        const newData = reorderItems(exercises, from, to)
+                        handleReorder(newData)
                     }}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderItem}
@@ -202,11 +218,11 @@ export default function ExercisesListScreen() {
             <TouchableOpacity
                 style={GlobalStyles.fab}
                 onPress={() => router.push('/(tabs)/exercises/add')}
-                accessibilityRole={"button"}
+                accessibilityRole={'button'}
                 accessibilityLabel={t('addExercise')}
                 hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
             >
-                <FontAwesome name={"plus"} size={32} color={theme.onPrimary} />
+                <FontAwesome name={'plus'} size={32} color={theme.onPrimary} />
             </TouchableOpacity>
 
             <Modal
@@ -222,29 +238,35 @@ export default function ExercisesListScreen() {
                     <Text style={[styles.sheetTitle, { color: theme.text }]}>{t('chooseExportAction')}</Text>
 
                     <TouchableOpacity
-                        style={[styles.sheetActionButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        style={[
+                            styles.sheetActionButton,
+                            { backgroundColor: theme.surface, borderColor: theme.border },
+                        ]}
                         onPress={() => handleAndroidExportAction('share')}
-                        accessibilityRole={"button"}
+                        accessibilityRole={'button'}
                         accessibilityLabel={t('shareFile')}
                     >
-                        <FontAwesome name={"share-alt"} size={18} color={theme.primary} />
+                        <FontAwesome name={'share-alt'} size={18} color={theme.primary} />
                         <Text style={[styles.sheetActionText, { color: theme.text }]}>{t('shareFile')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.sheetActionButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        style={[
+                            styles.sheetActionButton,
+                            { backgroundColor: theme.surface, borderColor: theme.border },
+                        ]}
                         onPress={() => handleAndroidExportAction('save')}
-                        accessibilityRole={"button"}
+                        accessibilityRole={'button'}
                         accessibilityLabel={t('saveToPhone')}
                     >
-                        <FontAwesome name={"download"} size={18} color={theme.primary} />
+                        <FontAwesome name={'download'} size={18} color={theme.primary} />
                         <Text style={[styles.sheetActionText, { color: theme.text }]}>{t('saveToPhone')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={[styles.sheetCancelButton, { borderColor: theme.border }]}
                         onPress={() => setShowAndroidExportSheet(false)}
-                        accessibilityRole={"button"}
+                        accessibilityRole={'button'}
                         accessibilityLabel={t('cancel')}
                     >
                         <Text style={[styles.sheetCancelText, { color: theme.textSecondary }]}>{t('cancel')}</Text>
@@ -254,14 +276,16 @@ export default function ExercisesListScreen() {
 
             <Modal visible={isImporting} transparent animationType="fade" statusBarTranslucent>
                 <View style={styles.importOverlay}>
-                    <View style={[styles.importOverlayCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <View
+                        style={[styles.importOverlayCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+                    >
                         <ActivityIndicator size="large" color={theme.primary} />
                         <Text style={[styles.importOverlayText, { color: theme.text }]}>{t('importInProgress')}</Text>
                     </View>
                 </View>
             </Modal>
         </ScreenLayout>
-    );
+    )
 }
 
 const styles = StyleSheet.create({
@@ -371,4 +395,4 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textAlign: 'center',
     },
-});
+})

@@ -1,48 +1,51 @@
-import { Spacing } from '@/src/constants/Spacing';
-import { getRepositories } from '@/src/data/repositories';
-import { Workout } from '@/src/db/workouts';
-import { Card } from '@/src/modules/core/components/Card';
-import { EmptyState } from '@/src/modules/core/components/EmptyState';
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
-import { Typography } from '@/src/modules/core/components/Typography';
-import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Spacing } from '@/src/constants/Spacing'
+import { getRepositories } from '@/src/data/repositories'
+import { Workout } from '@/src/db/workouts'
+import { Card } from '@/src/modules/core/components/Card'
+import { EmptyState } from '@/src/modules/core/components/EmptyState'
+import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router, useFocusEffect } from 'expo-router'
+import React, { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 
 export default function HistoryScreen() {
-    const { workouts: workoutRepo } = getRepositories();
-    const { t, i18n } = useTranslation();
-    const { theme } = useTheme();
-    const [workouts, setWorkouts] = useState<Workout[]>([]);
-    const [initialLoading, setInitialLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const animatedItemIdsRef = useRef<Set<number>>(new Set());
+    const { workouts: workoutRepo } = getRepositories()
+    const { t, i18n } = useTranslation()
+    const { theme } = useTheme()
+    const [workouts, setWorkouts] = useState<Workout[]>([])
+    const [initialLoading, setInitialLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false)
+    const animatedItemIdsRef = useRef<Set<number>>(new Set())
 
-    const loadData = useCallback(async (showRefresh = false) => {
-        if (showRefresh) setRefreshing(true);
-        try {
-            const data = await workoutRepo.getAllWorkouts();
-            setWorkouts(data);
-        } finally {
-            if (showRefresh) setRefreshing(false);
-            setInitialLoading(false);
-        }
-    }, [workoutRepo]);
+    const loadData = useCallback(
+        async (showRefresh = false) => {
+            if (showRefresh) setRefreshing(true)
+            try {
+                const data = await workoutRepo.getAllWorkouts()
+                setWorkouts(data)
+            } finally {
+                if (showRefresh) setRefreshing(false)
+                setInitialLoading(false)
+            }
+        },
+        [workoutRepo]
+    )
 
     useFocusEffect(
         useCallback(() => {
-            loadData(false);
+            loadData(false)
         }, [loadData])
-    );
+    )
 
     const onRefresh = async () => {
-        await loadData(true);
-    };
+        await loadData(true)
+    }
 
     const renderItem = ({ item, index }: { item: Workout; index: number }) => {
         const formattedDate = formatLocalizedDate(
@@ -50,10 +53,10 @@ export default function HistoryScreen() {
             i18n.language,
             { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' },
             true
-        );
-        const canAnimate = index < 8 && !animatedItemIdsRef.current.has(item.id);
+        )
+        const canAnimate = index < 8 && !animatedItemIdsRef.current.has(item.id)
         if (canAnimate) {
-            animatedItemIdsRef.current.add(item.id);
+            animatedItemIdsRef.current.add(item.id)
         }
 
         return (
@@ -75,20 +78,22 @@ export default function HistoryScreen() {
                             </Typography.Meta>
                             {item.note && (
                                 <Typography.Meta style={styles.workoutNote}>
-                                    {'"'}{item.note}{'"'}
+                                    {'"'}
+                                    {item.note}
+                                    {'"'}
                                 </Typography.Meta>
                             )}
                         </View>
                         <FontAwesome
-                            name={item.status === 'finished' ? "check-circle" : "clock-o"}
+                            name={item.status === 'finished' ? 'check-circle' : 'clock-o'}
                             size={20}
                             color={item.status === 'finished' ? theme.primary : theme.secondary}
                         />
                     </View>
                 </Card>
             </Animated.View>
-        );
-    };
+        )
+    }
 
     return (
         <ScreenLayout>
@@ -100,14 +105,20 @@ export default function HistoryScreen() {
                 <FlatList
                     data={workouts}
                     renderItem={renderItem}
-                    keyExtractor={item => item.id.toString()}
+                    keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={styles.listPadding}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                    ListEmptyComponent={<EmptyState message={t('noWorkoutsYet')} subMessage={t('addFirstWorkout')} icon={"calendar-o"} />}
+                    ListEmptyComponent={
+                        <EmptyState
+                            message={t('noWorkoutsYet')}
+                            subMessage={t('addFirstWorkout')}
+                            icon={'calendar-o'}
+                        />
+                    }
                 />
             )}
         </ScreenLayout>
-    );
+    )
 }
 const styles = StyleSheet.create({
     loadingContainer: {
@@ -143,4 +154,4 @@ const styles = StyleSheet.create({
     listPadding: {
         paddingBottom: Spacing.lg,
     },
-});
+})

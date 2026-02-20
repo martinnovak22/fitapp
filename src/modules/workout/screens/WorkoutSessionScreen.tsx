@@ -1,39 +1,35 @@
-import { Spacing } from '@/src/constants/Spacing';
-import { GlobalStyles } from '@/src/constants/Styles';
-import { SubSet, Set as WorkoutSet } from '@/src/db/workouts';
-import { Card } from '@/src/modules/core/components/Card';
-import { EmptyState } from '@/src/modules/core/components/EmptyState';
-import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
-import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
-import { Typography } from '@/src/modules/core/components/Typography';
-import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { showToast } from '@/src/modules/core/utils/toast';
-import { formatLocalizedDate } from '@/src/utils/dateTime';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import React, { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-    StyleSheet,
-    TouchableOpacity,
-    View
-} from 'react-native';
-import { Gesture } from 'react-native-gesture-handler';
-import { NestedReorderableList, ScrollViewContainer, reorderItems } from 'react-native-reorderable-list';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { LogSetModal } from '../components/LogSetModal';
-import { WorkoutSetItem } from '../components/WorkoutSetItem';
-import { useWorkoutSession } from '../hooks/useWorkoutSession';
-import { buildSetPayload, SetFormValues } from '../setPayload';
-import { parseSubSets } from '../workoutUtils';
+import { Spacing } from '@/src/constants/Spacing'
+import { GlobalStyles } from '@/src/constants/Styles'
+import { SubSet, Set as WorkoutSet } from '@/src/db/workouts'
+import { Card } from '@/src/modules/core/components/Card'
+import { EmptyState } from '@/src/modules/core/components/EmptyState'
+import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader'
+import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { showToast } from '@/src/modules/core/utils/toast'
+import { formatLocalizedDate } from '@/src/utils/dateTime'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import React, { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import { Gesture } from 'react-native-gesture-handler'
+import { NestedReorderableList, ScrollViewContainer, reorderItems } from 'react-native-reorderable-list'
+import Animated, { FadeInDown } from 'react-native-reanimated'
+import { LogSetModal } from '../components/LogSetModal'
+import { WorkoutSetItem } from '../components/WorkoutSetItem'
+import { useWorkoutSession } from '../hooks/useWorkoutSession'
+import { buildSetPayload, SetFormValues } from '../setPayload'
+import { parseSubSets } from '../workoutUtils'
 
-type SetWithExercise = WorkoutSet & { exercise_name: string };
+type SetWithExercise = WorkoutSet & { exercise_name: string }
 type WorkoutSessionScreenProps = {
-    origin?: 'workout' | 'history';
-};
+    origin?: 'workout' | 'history'
+}
 
 export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSessionScreenProps) {
-    const { t, i18n } = useTranslation();
-    const { theme } = useTheme();
+    const { t, i18n } = useTranslation()
+    const { theme } = useTheme()
     const {
         workout,
         exercises,
@@ -47,58 +43,58 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         deleteSet,
         reorderSets,
         addSet,
-        updateSet
-    } = useWorkoutSession(origin);
+        updateSet,
+    } = useWorkoutSession(origin)
 
-    const [modalVisible, setModalVisible] = useState(false);
-    const [editingSetId, setEditingSetId] = useState<number | null>(null);
+    const [modalVisible, setModalVisible] = useState(false)
+    const [editingSetId, setEditingSetId] = useState<number | null>(null)
 
-    const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null);
-    const [subSets, setSubSets] = useState<SubSet[]>([]);
+    const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null)
+    const [subSets, setSubSets] = useState<SubSet[]>([])
     const [inputValues, setInputValues] = useState<SetFormValues>({
         weight: '',
         reps: '',
         distance: '',
         durationMinutes: '',
         durationSeconds: '',
-    });
+    })
 
     // We can allow default selection once exercises are loaded
     useEffect(() => {
         if (!selectedExerciseId && exercises.length > 0) {
-            setSelectedExerciseId(exercises[0].id);
+            setSelectedExerciseId(exercises[0].id)
         }
-    }, [exercises, selectedExerciseId]);
+    }, [exercises, selectedExerciseId])
 
     const updateInput = (key: keyof SetFormValues, value: string) => {
-        setInputValues(prev => ({ ...prev, [key]: value }));
-    };
+        setInputValues((prev) => ({ ...prev, [key]: value }))
+    }
 
     const handleOpenAddModal = () => {
-        setEditingSetId(null);
-        setSubSets([]);
+        setEditingSetId(null)
+        setSubSets([])
         setInputValues({
             weight: '',
             reps: '',
             distance: '',
             durationMinutes: '',
             durationSeconds: '',
-        });
-        setModalVisible(true);
-    };
+        })
+        setModalVisible(true)
+    }
 
     const handleOpenEditModal = (s: WorkoutSet) => {
-        setEditingSetId(s.id);
-        setSelectedExerciseId(s.exercise_id);
+        setEditingSetId(s.id)
+        setSelectedExerciseId(s.exercise_id)
 
-        let mins = '';
-        let secs = '';
+        let mins = ''
+        let secs = ''
         if (s.duration) {
-            mins = Math.floor(s.duration).toString();
-            secs = Math.round((s.duration - Math.floor(s.duration)) * 60).toString();
+            mins = Math.floor(s.duration).toString()
+            secs = Math.round((s.duration - Math.floor(s.duration)) * 60).toString()
         }
 
-        setSubSets(parseSubSets(s.sub_sets));
+        setSubSets(parseSubSets(s.sub_sets))
 
         setInputValues({
             weight: s.weight?.toString() || '',
@@ -106,51 +102,51 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             distance: s.distance?.toString() || '',
             durationMinutes: mins,
             durationSeconds: secs,
-        });
-        setModalVisible(true);
-    };
+        })
+        setModalVisible(true)
+    }
 
     const handleSaveSet = async () => {
-        if (isSavingSet) return;
+        if (isSavingSet) return
 
         if (!selectedExerciseId) {
-            showToast.info({ title: t('selectExercise'), message: t('selectExerciseFirst') });
-            return;
+            showToast.info({ title: t('selectExercise'), message: t('selectExerciseFirst') })
+            return
         }
 
-        const selectedExercise = exercises.find(e => e.id === selectedExerciseId);
-        if (!selectedExercise) return;
+        const selectedExercise = exercises.find((e) => e.id === selectedExerciseId)
+        if (!selectedExercise) return
 
         const { data, hasAnyData } = buildSetPayload({
             exerciseType: selectedExercise.type,
             inputValues,
             subSets,
-        });
+        })
 
         if (!hasAnyData) {
             showToast.info({
                 title: t('emptySetIgnored'),
-                message: t('emptySetIgnoredMessage')
-            });
-            setModalVisible(false);
-            return;
+                message: t('emptySetIgnoredMessage'),
+            })
+            setModalVisible(false)
+            return
         }
 
-        let success = false;
+        let success = false
         if (editingSetId) {
-            success = await updateSet(editingSetId, data);
+            success = await updateSet(editingSetId, data)
         } else {
-            success = await addSet(selectedExerciseId, data);
+            success = await addSet(selectedExerciseId, data)
         }
 
         if (success) {
-            setModalVisible(false);
-            setEditingSetId(null);
-            setSubSets([]);
+            setModalVisible(false)
+            setEditingSetId(null)
+            setSubSets([])
         }
-    };
+    }
 
-    const isReadOnly = workout?.status === 'finished';
+    const isReadOnly = workout?.status === 'finished'
 
     return (
         <ScrollScreenLayout
@@ -165,7 +161,15 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             : t('activeSession')
                     }
                     onDelete={isDeletingWorkout ? undefined : deleteWorkout}
-                    rightAction={!isReadOnly ? { label: isFinishingWorkout ? t('saving') : t('finish'), onPress: finishWorkout, disabled: isFinishingWorkout } : undefined}
+                    rightAction={
+                        !isReadOnly
+                            ? {
+                                  label: isFinishingWorkout ? t('saving') : t('finish'),
+                                  onPress: finishWorkout,
+                                  disabled: isFinishingWorkout,
+                              }
+                            : undefined
+                    }
                 />
             }
             floatingElements={
@@ -174,11 +178,11 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                         <TouchableOpacity
                             style={GlobalStyles.fab}
                             onPress={handleOpenAddModal}
-                            accessibilityRole={"button"}
+                            accessibilityRole={'button'}
                             accessibilityLabel={t('addSet')}
                             hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                         >
-                            <FontAwesome name={"plus"} size={32} color={theme.onPrimary} />
+                            <FontAwesome name={'plus'} size={32} color={theme.onPrimary} />
                         </TouchableOpacity>
                     )}
 
@@ -200,10 +204,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             }
         >
             {exerciseNamesOrder.length === 0 ? (
-                <EmptyState
-                    message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')}
-                    icon={"file-text-o"}
-                />
+                <EmptyState message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')} icon={'file-text-o'} />
             ) : (
                 <Animated.View entering={FadeInDown.duration(340)}>
                     {exerciseNamesOrder.map((exerciseName) => (
@@ -220,16 +221,16 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 </Animated.View>
             )}
         </ScrollScreenLayout>
-    );
+    )
 }
 
 interface GroupProps {
-    exerciseName: string;
-    sets: SetWithExercise[];
-    isReadOnly: boolean;
-    handleOpenEditModal: (s: WorkoutSet) => void;
-    handleDeleteSet: (id: number) => void;
-    handleReorderSets: (exerciseName: string, newSets: SetWithExercise[]) => void;
+    exerciseName: string
+    sets: SetWithExercise[]
+    isReadOnly: boolean
+    handleOpenEditModal: (s: WorkoutSet) => void
+    handleDeleteSet: (id: number) => void
+    handleReorderSets: (exerciseName: string, newSets: SetWithExercise[]) => void
 }
 
 function WorkoutExerciseGroup({
@@ -240,19 +241,22 @@ function WorkoutExerciseGroup({
     handleDeleteSet,
     handleReorderSets,
 }: GroupProps) {
-    const { theme } = useTheme();
+    const { theme } = useTheme()
 
-    const renderItem = useCallback(({ item, index }: { item: SetWithExercise; index: number }) => {
-        return (
-            <WorkoutSetItem
-                set={item}
-                index={index}
-                isReadOnly={isReadOnly}
-                onEdit={handleOpenEditModal}
-                onDelete={handleDeleteSet}
-            />
-        );
-    }, [isReadOnly, handleOpenEditModal, handleDeleteSet]);
+    const renderItem = useCallback(
+        ({ item, index }: { item: SetWithExercise; index: number }) => {
+            return (
+                <WorkoutSetItem
+                    set={item}
+                    index={index}
+                    isReadOnly={isReadOnly}
+                    onEdit={handleOpenEditModal}
+                    onDelete={handleDeleteSet}
+                />
+            )
+        },
+        [isReadOnly, handleOpenEditModal, handleDeleteSet]
+    )
 
     return (
         <Card style={[styles.groupCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -263,8 +267,8 @@ function WorkoutExerciseGroup({
             <NestedReorderableList
                 data={sets}
                 onReorder={({ from, to }) => {
-                    const newData = reorderItems(sets, from, to);
-                    handleReorderSets(exerciseName, newData);
+                    const newData = reorderItems(sets, from, to)
+                    handleReorderSets(exerciseName, newData)
                 }}
                 keyExtractor={(item) => item.id.toString()}
                 scrollEnabled={false}
@@ -273,7 +277,7 @@ function WorkoutExerciseGroup({
                 panGesture={Gesture.Pan().activateAfterLongPress(250)}
             />
         </Card>
-    );
+    )
 }
 
 const styles = StyleSheet.create({
@@ -290,4 +294,4 @@ const styles = StyleSheet.create({
         paddingBottom: Spacing.md,
         borderBottomWidth: 1,
     },
-});
+})

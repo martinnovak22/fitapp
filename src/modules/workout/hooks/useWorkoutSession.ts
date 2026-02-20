@@ -1,103 +1,96 @@
-import { getRepositories } from '@/src/data/repositories';
-import { Exercise } from '@/src/db/exercises';
-import { SetData, Workout, Set as WorkoutSet } from '@/src/db/workouts';
-import { showToast } from '@/src/modules/core/utils/toast';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { getRepositories } from '@/src/data/repositories'
+import { Exercise } from '@/src/db/exercises'
+import { SetData, Workout, Set as WorkoutSet } from '@/src/db/workouts'
+import { showToast } from '@/src/modules/core/utils/toast'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
-type SetWithExercise = WorkoutSet & { exercise_name: string };
-type SessionOrigin = 'workout' | 'history';
+type SetWithExercise = WorkoutSet & { exercise_name: string }
+type SessionOrigin = 'workout' | 'history'
 
 export function useWorkoutSession(origin: SessionOrigin = 'workout') {
-    const { exercises: exerciseRepo, workouts: workoutRepo } = getRepositories();
-    const { t } = useTranslation();
-    const { id } = useLocalSearchParams();
-    const workoutId = Number(id);
+    const { exercises: exerciseRepo, workouts: workoutRepo } = getRepositories()
+    const { t } = useTranslation()
+    const { id } = useLocalSearchParams()
+    const workoutId = Number(id)
 
-    const [workout, setWorkout] = useState<Workout | null>(null);
-    const [sets, setSets] = useState<SetWithExercise[]>([]);
-    const [exercises, setExercises] = useState<Exercise[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [isSavingSet, setIsSavingSet] = useState(false);
-    const [isFinishingWorkout, setIsFinishingWorkout] = useState(false);
-    const [isDeletingWorkout, setIsDeletingWorkout] = useState(false);
+    const [workout, setWorkout] = useState<Workout | null>(null)
+    const [sets, setSets] = useState<SetWithExercise[]>([])
+    const [exercises, setExercises] = useState<Exercise[]>([])
+    const [loading, setLoading] = useState(true)
+    const [isSavingSet, setIsSavingSet] = useState(false)
+    const [isFinishingWorkout, setIsFinishingWorkout] = useState(false)
+    const [isDeletingWorkout, setIsDeletingWorkout] = useState(false)
 
     const loadSets = useCallback(async () => {
-        if (!Number.isFinite(workoutId) || workoutId <= 0) return;
-        const nextSets = await workoutRepo.getSets(workoutId);
-        setSets(nextSets as SetWithExercise[]);
-    }, [workoutId, workoutRepo]);
+        if (!Number.isFinite(workoutId) || workoutId <= 0) return
+        const nextSets = await workoutRepo.getSets(workoutId)
+        setSets(nextSets as SetWithExercise[])
+    }, [workoutId, workoutRepo])
 
     const loadData = useCallback(async () => {
         if (!Number.isFinite(workoutId) || workoutId <= 0) {
-            setLoading(false);
-            return;
+            setLoading(false)
+            return
         }
-        setLoading(true);
+        setLoading(true)
 
         try {
             const [w, s, ex] = await Promise.all([
                 workoutRepo.getById(workoutId),
                 workoutRepo.getSets(workoutId),
                 exerciseRepo.getAll(),
-            ]);
+            ])
 
             if (!w) {
-                router.replace('/(tabs)/workout');
-                return;
+                router.replace('/(tabs)/workout')
+                return
             }
 
-            setWorkout(w);
-            setSets(s as SetWithExercise[]);
-            setExercises(ex);
+            setWorkout(w)
+            setSets(s as SetWithExercise[])
+            setExercises(ex)
         } catch (e) {
-            console.error("Failed to load workout session:", e);
+            console.error('Failed to load workout session:', e)
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    }, [exerciseRepo, workoutId, workoutRepo]);
+    }, [exerciseRepo, workoutId, workoutRepo])
 
     useFocusEffect(
         useCallback(() => {
-            loadData();
+            loadData()
         }, [loadData])
-    );
+    )
 
-    const runSetMutation = useCallback(async (
-        mutation: () => Promise<void>,
-        successMessage: string,
-        refresh: () => Promise<void> = loadSets
-    ) => {
-        setIsSavingSet(true);
-        try {
-            await mutation();
-            await refresh();
-            showToast.success({ title: t('success'), message: successMessage });
-            return true;
-        } catch (e) {
-            console.error("Failed to persist set mutation:", e);
-            await loadData();
-            showToast.danger({ title: t('error'), message: t('failedToSaveSet') });
-            return false;
-        } finally {
-            setIsSavingSet(false);
-        }
-    }, [loadData, loadSets, t]);
+    const runSetMutation = useCallback(
+        async (mutation: () => Promise<void>, successMessage: string, refresh: () => Promise<void> = loadSets) => {
+            setIsSavingSet(true)
+            try {
+                await mutation()
+                await refresh()
+                showToast.success({ title: t('success'), message: successMessage })
+                return true
+            } catch (e) {
+                console.error('Failed to persist set mutation:', e)
+                await loadData()
+                showToast.danger({ title: t('error'), message: t('failedToSaveSet') })
+                return false
+            } finally {
+                setIsSavingSet(false)
+            }
+        },
+        [loadData, loadSets, t]
+    )
 
     const addSet = async (exerciseId: number, data: SetData) => {
-        return runSetMutation(
-            () => workoutRepo.addSet(workoutId, exerciseId, data),
-            t('newSetAdded')
-        );
-    };
+        return runSetMutation(() => workoutRepo.addSet(workoutId, exerciseId, data), t('newSetAdded'))
+    }
 
     const updateSet = async (setId: number, data: SetData) => {
-        return runSetMutation(
-            () => workoutRepo.updateSet(setId, data),
-            t('changesSaved')
-        );
-    };
+        return runSetMutation(() => workoutRepo.updateSet(setId, data), t('changesSaved'))
+    }
 
     const deleteSet = (setId: number) => {
         showToast.confirm({
@@ -109,18 +102,18 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
                 label: t('delete'),
                 onPress: async () => {
                     try {
-                        await workoutRepo.deleteSet(setId);
-                        await loadSets();
-                        showToast.success({ title: t('setDeleted'), message: t('setRemoved') });
+                        await workoutRepo.deleteSet(setId)
+                        await loadSets()
+                        showToast.success({ title: t('setDeleted'), message: t('setRemoved') })
                     } catch (e) {
-                        console.error("Failed to delete set:", e);
-                        await loadData();
-                        showToast.danger({ title: t('error'), message: t('failedToSaveSet') });
+                        console.error('Failed to delete set:', e)
+                        await loadData()
+                        showToast.danger({ title: t('error'), message: t('failedToSaveSet') })
                     }
                 },
             },
-        });
-    };
+        })
+    }
 
     const finishWorkout = () => {
         showToast.confirm({
@@ -129,22 +122,22 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             action: {
                 label: t('finish'),
                 onPress: async () => {
-                    if (isFinishingWorkout) return;
-                    setIsFinishingWorkout(true);
+                    if (isFinishingWorkout) return
+                    setIsFinishingWorkout(true)
                     try {
-                        await workoutRepo.finish(workoutId);
-                        router.replace('/(tabs)/history');
-                        showToast.success({ title: t('workoutFinished'), message: t('greatJob') });
+                        await workoutRepo.finish(workoutId)
+                        router.replace('/(tabs)/history')
+                        showToast.success({ title: t('workoutFinished'), message: t('greatJob') })
                     } catch (e) {
-                        console.error("Failed to finish workout:", e);
-                        showToast.danger({ title: t('error'), message: t('failedToFinishWorkout') });
+                        console.error('Failed to finish workout:', e)
+                        showToast.danger({ title: t('error'), message: t('failedToFinishWorkout') })
                     } finally {
-                        setIsFinishingWorkout(false);
+                        setIsFinishingWorkout(false)
                     }
                 },
             },
-        });
-    };
+        })
+    }
 
     const deleteWorkout = () => {
         showToast.confirm({
@@ -155,61 +148,70 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             action: {
                 label: t('delete'),
                 onPress: async () => {
-                    if (isDeletingWorkout) return;
-                    setIsDeletingWorkout(true);
+                    if (isDeletingWorkout) return
+                    setIsDeletingWorkout(true)
                     try {
-                        await workoutRepo.delete(workoutId);
-                        router.replace(origin === 'history' ? '/(tabs)/history' : '/(tabs)/workout');
-                        showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') });
+                        await workoutRepo.delete(workoutId)
+                        router.replace(origin === 'history' ? '/(tabs)/history' : '/(tabs)/workout')
+                        showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') })
                     } catch (e) {
-                        console.error("Failed to delete workout:", e);
-                        showToast.danger({ title: t('error'), message: t('failedToDeleteWorkout') });
+                        console.error('Failed to delete workout:', e)
+                        showToast.danger({ title: t('error'), message: t('failedToDeleteWorkout') })
                     } finally {
-                        setIsDeletingWorkout(false);
+                        setIsDeletingWorkout(false)
                     }
                 },
             },
-        });
-    };
+        })
+    }
 
-    const exerciseNamesOrder = [...new Set(sets.map(s => s.exercise_name))];
-    const groupedSets = sets.reduce((acc, set) => {
-        if (!acc[set.exercise_name]) acc[set.exercise_name] = [];
-        acc[set.exercise_name].push(set);
-        return acc;
-    }, {} as Record<string, SetWithExercise[]>);
+    const exerciseNamesOrder = [...new Set(sets.map((s) => s.exercise_name))]
+    const groupedSets = sets.reduce(
+        (acc, set) => {
+            if (!acc[set.exercise_name]) acc[set.exercise_name] = []
+            acc[set.exercise_name].push(set)
+            return acc
+        },
+        {} as Record<string, SetWithExercise[]>
+    )
 
-    const reorderSets = useCallback(async (exerciseName: string, newGroupSets: SetWithExercise[]) => {
-        const previousSets = sets;
-        const currentGrouped = previousSets.reduce((acc, currentSet) => {
-            if (!acc[currentSet.exercise_name]) acc[currentSet.exercise_name] = [];
-            acc[currentSet.exercise_name].push(currentSet);
-            return acc;
-        }, {} as Record<string, SetWithExercise[]>);
+    const reorderSets = useCallback(
+        async (exerciseName: string, newGroupSets: SetWithExercise[]) => {
+            const previousSets = sets
+            const currentGrouped = previousSets.reduce(
+                (acc, currentSet) => {
+                    if (!acc[currentSet.exercise_name]) acc[currentSet.exercise_name] = []
+                    acc[currentSet.exercise_name].push(currentSet)
+                    return acc
+                },
+                {} as Record<string, SetWithExercise[]>
+            )
 
-        currentGrouped[exerciseName] = newGroupSets;
-        const currentExerciseOrder = [...new Set(previousSets.map(item => item.exercise_name))];
+            currentGrouped[exerciseName] = newGroupSets
+            const currentExerciseOrder = [...new Set(previousSets.map((item) => item.exercise_name))]
 
-        const allNewSets: SetWithExercise[] = [];
-        let currentPos = 0;
-        currentExerciseOrder.forEach(name => {
-            const group = currentGrouped[name] || [];
-            group.forEach(item => {
-                allNewSets.push({ ...item, position: currentPos++ });
-            });
-        });
+            const allNewSets: SetWithExercise[] = []
+            let currentPos = 0
+            currentExerciseOrder.forEach((name) => {
+                const group = currentGrouped[name] || []
+                group.forEach((item) => {
+                    allNewSets.push({ ...item, position: currentPos++ })
+                })
+            })
 
-        setSets(allNewSets);
+            setSets(allNewSets)
 
-        try {
-            const setsToUpdate = allNewSets.filter(item => item.exercise_name === exerciseName);
-            await Promise.all(setsToUpdate.map(item => workoutRepo.updateSetPosition(item.id, item.position)));
-        } catch (e) {
-            console.error("Failed to update positions", e);
-            setSets(previousSets);
-            await loadData();
-        }
-    }, [loadData, sets, workoutRepo]);
+            try {
+                const setsToUpdate = allNewSets.filter((item) => item.exercise_name === exerciseName)
+                await Promise.all(setsToUpdate.map((item) => workoutRepo.updateSetPosition(item.id, item.position)))
+            } catch (e) {
+                console.error('Failed to update positions', e)
+                setSets(previousSets)
+                await loadData()
+            }
+        },
+        [loadData, sets, workoutRepo]
+    )
 
     return {
         workout,
@@ -228,5 +230,5 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         finishWorkout,
         deleteWorkout,
         reorderSets,
-    };
+    }
 }
