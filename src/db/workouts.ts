@@ -1,5 +1,6 @@
 import { getDb } from './client';
 import { createEntityUuid, nowIso, recordDeletionTombstone, SyncStatus } from './sync';
+import { executeWrite, executeWriteTransaction } from './writeQueue';
 
 export interface Workout {
     id: number;
@@ -66,46 +67,49 @@ export interface SetWithExerciseName extends Set {
 
 export const WorkoutRepository = {
     async create(date: string): Promise<number> {
-        const db = await getDb();
-        const now = nowIso();
-        const result = await db.runAsync(
-            `INSERT INTO workouts
-             (uuid, date, start_time, status, created_at, updated_at, sync_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            createEntityUuid(),
-            date,
-            now,
-            'in_progress',
-            now,
-            now,
-            'dirty'
-        );
-        return result.lastInsertRowId;
+        return executeWrite(async (db) => {
+            const now = nowIso();
+            const result = await db.runAsync(
+                `INSERT INTO workouts
+                 (uuid, date, start_time, status, created_at, updated_at, sync_status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                createEntityUuid(),
+                date,
+                now,
+                'in_progress',
+                now,
+                now,
+                'dirty'
+            );
+            return result.lastInsertRowId;
+        });
     },
 
     async finish(id: number): Promise<void> {
-        const db = await getDb();
-        const now = nowIso();
-        await db.runAsync(
-            'UPDATE workouts SET end_time = ?, status = ?, updated_at = ?, sync_status = ? WHERE id = ?',
-            now,
-            'finished',
-            now,
-            'dirty',
-            id
-        );
+        await executeWrite((db) => {
+            const now = nowIso();
+            return db.runAsync(
+                'UPDATE workouts SET end_time = ?, status = ?, updated_at = ?, sync_status = ? WHERE id = ?',
+                now,
+                'finished',
+                now,
+                'dirty',
+                id
+            );
+        });
     },
 
     async delete(id: number): Promise<void> {
-        const db = await getDb();
-        const entity = await db.getFirstAsync<{ uuid: string; user_id?: string | null }>(
-            'SELECT uuid, user_id FROM workouts WHERE id = ?',
-            id
-        );
-        if (entity?.uuid) {
-            await recordDeletionTombstone(db, 'workout', entity.uuid, entity.user_id);
-        }
-        await db.runAsync('DELETE FROM workouts WHERE id = ?', id);
+        await executeWriteTransaction(async (db) => {
+            const entity = await db.getFirstAsync<{ uuid: string; user_id?: string | null }>(
+                'SELECT uuid, user_id FROM workouts WHERE id = ?',
+                id
+            );
+            if (entity?.uuid) {
+                await recordDeletionTombstone(db, 'workout', entity.uuid, entity.user_id);
+            }
+            await db.runAsync('DELETE FROM workouts WHERE id = ?', id);
+        });
     },
 
     async getById(id: number): Promise<Workout | null> {
@@ -160,37 +164,36 @@ export const WorkoutRepository = {
     },
 
     async addSet(workoutId: number, exerciseId: number, data: SetData): Promise<void> {
-        const db = await getDb();
+        await executeWriteTransaction(async (db) => {
+            const lastSet = await db.getFirstAsync<{ position: number }>(
+                'SELECT position FROM sets WHERE workout_id = ? ORDER BY position DESC LIMIT 1',
+                workoutId
+            );
+            const nextPosition = lastSet ? lastSet.position + 1 : 0;
+            const now = nowIso();
 
-        const lastSet = await db.getFirstAsync<{ position: number }>(
-            'SELECT position FROM sets WHERE workout_id = ? ORDER BY position DESC LIMIT 1',
-            workoutId
-        );
-        const nextPosition = lastSet ? lastSet.position + 1 : 0;
-        const now = nowIso();
-
-        await db.runAsync(
-            `INSERT INTO sets
-             (uuid, workout_id, exercise_id, weight, reps, distance, duration, position, sub_sets, created_at, updated_at, sync_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            createEntityUuid(),
-            workoutId,
-            exerciseId,
-            data.weight ?? null,
-            data.reps ?? null,
-            data.distance ?? null,
-            data.duration ?? null,
-            nextPosition,
-            data.sub_sets ?? null,
-            now,
-            now,
-            'dirty'
-        );
+            await db.runAsync(
+                `INSERT INTO sets
+                 (uuid, workout_id, exercise_id, weight, reps, distance, duration, position, sub_sets, created_at, updated_at, sync_status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                createEntityUuid(),
+                workoutId,
+                exerciseId,
+                data.weight ?? null,
+                data.reps ?? null,
+                data.distance ?? null,
+                data.duration ?? null,
+                nextPosition,
+                data.sub_sets ?? null,
+                now,
+                now,
+                'dirty'
+            );
+        });
     },
 
     async updateSet(setId: number, data: SetData): Promise<void> {
-        const db = await getDb();
-        await db.runAsync(
+        await executeWrite((db) => db.runAsync(
             'UPDATE sets SET weight = ?, reps = ?, distance = ?, duration = ?, sub_sets = ?, updated_at = ?, sync_status = ? WHERE id = ?',
             data.weight ?? null,
             data.reps ?? null,
@@ -200,30 +203,30 @@ export const WorkoutRepository = {
             nowIso(),
             'dirty',
             setId
-        );
+        ));
     },
 
     async deleteSet(setId: number): Promise<void> {
-        const db = await getDb();
-        const entity = await db.getFirstAsync<{ uuid: string; user_id?: string | null }>(
-            'SELECT uuid, user_id FROM sets WHERE id = ?',
-            setId
-        );
-        if (entity?.uuid) {
-            await recordDeletionTombstone(db, 'set', entity.uuid, entity.user_id);
-        }
-        await db.runAsync('DELETE FROM sets WHERE id = ?', setId);
+        await executeWriteTransaction(async (db) => {
+            const entity = await db.getFirstAsync<{ uuid: string; user_id?: string | null }>(
+                'SELECT uuid, user_id FROM sets WHERE id = ?',
+                setId
+            );
+            if (entity?.uuid) {
+                await recordDeletionTombstone(db, 'set', entity.uuid, entity.user_id);
+            }
+            await db.runAsync('DELETE FROM sets WHERE id = ?', setId);
+        });
     },
 
     async updateSetPosition(setId: number, position: number): Promise<void> {
-        const db = await getDb();
-        await db.runAsync(
+        await executeWrite((db) => db.runAsync(
             'UPDATE sets SET position = ?, updated_at = ?, sync_status = ? WHERE id = ?',
             position,
             nowIso(),
             'dirty',
             setId
-        );
+        ));
     },
 
     async getSets(workoutId: number): Promise<SetWithExerciseName[]> {

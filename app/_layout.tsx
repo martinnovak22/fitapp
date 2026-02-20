@@ -10,6 +10,7 @@ import { StyleSheet } from 'react-native';
 import { PortalHost, PortalProvider } from 'react-native-teleport';
 import Toast from 'react-native-toast-message';
 import { initializeDataLayer } from '../src/data/bootstrap';
+import { SyncProvider } from '../src/data/sync/SyncProvider';
 import { useDatabaseInit } from '../src/db/client';
 import { toastConfig } from '../src/modules/core/components/ToastConfig';
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../src/modules/core/hooks/useTheme';
@@ -51,7 +52,9 @@ export default function RootLayout() {
       <PortalProvider>
         <CustomThemeProvider>
           <AuthProvider>
-            <RootLayoutNav />
+            <SyncProvider>
+              <RootLayoutNav />
+            </SyncProvider>
           </AuthProvider>
         </CustomThemeProvider>
         <PortalHost style={StyleSheet.absoluteFillObject} name="overlay" />

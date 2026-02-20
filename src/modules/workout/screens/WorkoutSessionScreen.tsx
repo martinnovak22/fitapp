@@ -37,6 +37,9 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     const {
         workout,
         exercises,
+        isSavingSet,
+        isFinishingWorkout,
+        isDeletingWorkout,
         exerciseNamesOrder,
         groupedSets,
         finishWorkout,
@@ -108,6 +111,8 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     };
 
     const handleSaveSet = async () => {
+        if (isSavingSet) return;
+
         if (!selectedExerciseId) {
             showToast.info({ title: t('selectExercise'), message: t('selectExerciseFirst') });
             return;
@@ -159,8 +164,8 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             ? `${t('workout')} ${formatLocalizedDate(workout?.date || '', i18n.language, { year: 'numeric', month: 'short', day: 'numeric' })}`
                             : t('activeSession')
                     }
-                    onDelete={deleteWorkout}
-                    rightAction={!isReadOnly ? { label: t('finish'), onPress: finishWorkout } : undefined}
+                    onDelete={isDeletingWorkout ? undefined : deleteWorkout}
+                    rightAction={!isReadOnly ? { label: isFinishingWorkout ? t('saving') : t('finish'), onPress: finishWorkout, disabled: isFinishingWorkout } : undefined}
                 />
             }
             floatingElements={
@@ -189,6 +194,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                         setSubSets={setSubSets}
                         inputValues={inputValues}
                         updateInput={updateInput}
+                        isSaving={isSavingSet}
                     />
                 </>
             }

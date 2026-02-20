@@ -1,5 +1,6 @@
 import { getDb } from './client';
 import { createEntityUuid, nowIso, recordDeletionTombstone, SyncStatus } from './sync';
+import { executeWrite, executeWriteTransaction } from './writeQueue';
 
 export type ExerciseType = 'weight' | 'cardio' | 'bodyweight' | 'bodyweight_timer';
 
@@ -37,32 +38,32 @@ export const ExerciseRepository = {
     },
 
     async create(name: string, type: ExerciseType, muscle_group?: string, photo_uri?: string): Promise<number> {
-        const db = await getDb();
-        const lastEx = await db.getFirstAsync<{ position: number }>(
-            'SELECT position FROM exercises ORDER BY position DESC LIMIT 1'
-        );
-        const nextPosition = lastEx ? lastEx.position + 1 : 0;
-        const now = nowIso();
+        return executeWriteTransaction(async (db) => {
+            const lastEx = await db.getFirstAsync<{ position: number }>(
+                'SELECT position FROM exercises ORDER BY position DESC LIMIT 1'
+            );
+            const nextPosition = lastEx ? lastEx.position + 1 : 0;
+            const now = nowIso();
 
-        const result = await db.runAsync(
-            `INSERT INTO exercises
-             (uuid, name, type, muscle_group, photo_uri, position, created_at, updated_at, sync_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            createEntityUuid(),
-            name,
-            type.toLowerCase(),
-            muscle_group?.toLowerCase() ?? null,
-            photo_uri ?? null,
-            nextPosition,
-            now,
-            now,
-            'dirty'
-        );
-        return result.lastInsertRowId;
+            const result = await db.runAsync(
+                `INSERT INTO exercises
+                 (uuid, name, type, muscle_group, photo_uri, position, created_at, updated_at, sync_status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                createEntityUuid(),
+                name,
+                type.toLowerCase(),
+                muscle_group?.toLowerCase() ?? null,
+                photo_uri ?? null,
+                nextPosition,
+                now,
+                now,
+                'dirty'
+            );
+            return result.lastInsertRowId;
+        });
     },
 
     async update(id: number, data: Partial<Exercise>): Promise<void> {
-        const db = await getDb();
         const fields: string[] = [];
         const values: (string | number | null)[] = [];
 
@@ -95,15 +96,14 @@ export const ExerciseRepository = {
         values.push('dirty');
 
         values.push(id);
-        await db.runAsync(
+        await executeWrite((innerDb) => innerDb.runAsync(
             `UPDATE exercises SET ${fields.join(', ')} WHERE id = ?`,
             ...values
-        );
+        ));
     },
 
     async updatePositions(updates: { id: number; position: number }[]): Promise<void> {
-        const db = await getDb();
-        await db.withTransactionAsync(async () => {
+        await executeWriteTransaction(async (db) => {
             for (const update of updates) {
                 await db.runAsync(
                     'UPDATE exercises SET position = ?, updated_at = ?, sync_status = ? WHERE id = ?',
@@ -117,14 +117,15 @@ export const ExerciseRepository = {
     },
 
     async delete(id: number): Promise<void> {
-        const db = await getDb();
-        const entity = await db.getFirstAsync<{ uuid: string; user_id?: string | null }>(
-            'SELECT uuid, user_id FROM exercises WHERE id = ?',
-            id
-        );
-        if (entity?.uuid) {
-            await recordDeletionTombstone(db, 'exercise', entity.uuid, entity.user_id);
-        }
-        await db.runAsync('DELETE FROM exercises WHERE id = ?', id);
+        await executeWriteTransaction(async (db) => {
+            const entity = await db.getFirstAsync<{ uuid: string; user_id?: string | null }>(
+                'SELECT uuid, user_id FROM exercises WHERE id = ?',
+                id
+            );
+            if (entity?.uuid) {
+                await recordDeletionTombstone(db, 'exercise', entity.uuid, entity.user_id);
+            }
+            await db.runAsync('DELETE FROM exercises WHERE id = ?', id);
+        });
     }
 };

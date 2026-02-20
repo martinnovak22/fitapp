@@ -131,6 +131,15 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       last_error TEXT,
       queued_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS sync_state (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      is_syncing INTEGER NOT NULL DEFAULT 0,
+      outbox_size INTEGER NOT NULL DEFAULT 0,
+      last_success_at TEXT,
+      last_attempt_at TEXT,
+      last_error TEXT
+    );
   `);
 };
 
@@ -158,6 +167,7 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
+    PRAGMA busy_timeout = 5000;
   `);
 
   await createTables(db);
@@ -166,7 +176,10 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
   await ensureSyncMetadataColumns(db, 'sets');
   await backfillSyncMetadata(db);
   await createIndexes(db);
+  await db.execAsync(`
+    INSERT OR IGNORE INTO sync_state (id, is_syncing, outbox_size)
+    VALUES (1, 0, 0);
+  `);
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION};`);
 }
-
