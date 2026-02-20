@@ -1,122 +1,102 @@
-import { Spacing } from '@/src/constants/Spacing';
-import { getRepositories } from '@/src/data/repositories';
-import { Workout } from '@/src/db/workouts';
-import { Button } from '@/src/modules/core/components/Button';
-import { Card } from '@/src/modules/core/components/Card';
-import { EmptyState } from '@/src/modules/core/components/EmptyState';
-import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout';
-import { Typography } from '@/src/modules/core/components/Typography';
-import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-    RefreshControl,
-    StyleSheet,
-    View
-} from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Spacing } from '@/src/constants/Spacing'
+import { getRepositories } from '@/src/data/repositories'
+import { Workout } from '@/src/db/workouts'
+import { Button } from '@/src/modules/core/components/Button'
+import { Card } from '@/src/modules/core/components/Card'
+import { EmptyState } from '@/src/modules/core/components/EmptyState'
+import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router, useFocusEffect } from 'expo-router'
+import React, { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { RefreshControl, StyleSheet, View } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 
 export default function WorkoutDashboardScreen() {
-    const { workouts: workoutRepo } = getRepositories();
-    const { t, i18n } = useTranslation();
-    const { theme } = useTheme();
-    const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
-    const [allWorkouts, setAllWorkouts] = useState<Workout[]>([]);
-    const [refreshing, setRefreshing] = useState(false);
-    const [consistency, setConsistency] = useState<
-        { date: string; day: string; workedOut: boolean }[]
-    >([]);
+    const { workouts: workoutRepo } = getRepositories()
+    const { t, i18n } = useTranslation()
+    const { theme } = useTheme()
+    const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null)
+    const [allWorkouts, setAllWorkouts] = useState<Workout[]>([])
+    const [refreshing, setRefreshing] = useState(false)
+    const [consistency, setConsistency] = useState<{ date: string; day: string; workedOut: boolean }[]>([])
     const [stats, setStats] = useState({
         sessions: 0,
         avgDuration: 0,
-    });
+    })
     const recentHistoryWorkouts = allWorkouts
-        .filter(workout => workout.status === 'finished' && workout.id !== activeWorkout?.id)
-        .slice(0, 3);
+        .filter((workout) => workout.status === 'finished' && workout.id !== activeWorkout?.id)
+        .slice(0, 3)
 
     const loadData = useCallback(async () => {
-        const active = await workoutRepo.getActiveWorkout();
-        setActiveWorkout(active);
+        const active = await workoutRepo.getActiveWorkout()
+        setActiveWorkout(active)
 
-        const all = await workoutRepo.getAllWorkouts();
-        setAllWorkouts(all);
+        const all = await workoutRepo.getAllWorkouts()
+        setAllWorkouts(all)
 
-        const today = new Date();
-        const last7Days: string[] = [];
+        const today = new Date()
+        const last7Days: string[] = []
         for (let i = 6; i >= 0; i--) {
-            const d = new Date(today);
-            d.setDate(today.getDate() - i);
-            last7Days.push(formatLocalDateYYYYMMDD(d));
+            const d = new Date(today)
+            d.setDate(today.getDate() - i)
+            last7Days.push(formatLocalDateYYYYMMDD(d))
         }
 
-        const periodWorkouts = await workoutRepo.getWorkoutsForPeriod(
-            last7Days[0],
-            last7Days[6]
-        );
-        const periodMap = new Set(periodWorkouts.map(w => w.date));
+        const periodWorkouts = await workoutRepo.getWorkoutsForPeriod(last7Days[0], last7Days[6])
+        const periodMap = new Set(periodWorkouts.map((w) => w.date))
 
-        const consData = last7Days.map(dateStr => {
-            const d = new Date(dateStr);
+        const consData = last7Days.map((dateStr) => {
+            const d = new Date(dateStr)
             return {
                 date: dateStr,
                 day: formatLocalizedDate(d, i18n.language, { weekday: 'narrow' }),
                 workedOut: periodMap.has(dateStr),
-            };
-        });
+            }
+        })
 
-        setConsistency(consData);
+        setConsistency(consData)
 
         // Load stats
-        const thisMonthStr = today.toISOString().slice(0, 7);
-        const sessions = await workoutRepo.getWorkoutCountForMonth(thisMonthStr);
-        const avgDuration = await workoutRepo.getAvgWorkoutDuration(thisMonthStr);
+        const thisMonthStr = today.toISOString().slice(0, 7)
+        const sessions = await workoutRepo.getWorkoutCountForMonth(thisMonthStr)
+        const avgDuration = await workoutRepo.getAvgWorkoutDuration(thisMonthStr)
 
         setStats({
             sessions,
             avgDuration: Math.round(avgDuration),
-        });
-    }, [i18n.language, workoutRepo]);
+        })
+    }, [i18n.language, workoutRepo])
 
     useFocusEffect(
         useCallback(() => {
-            loadData();
+            loadData()
         }, [loadData])
-    );
+    )
 
     const onRefresh = async () => {
-        setRefreshing(true);
-        await loadData();
-        setRefreshing(false);
-    };
+        setRefreshing(true)
+        await loadData()
+        setRefreshing(false)
+    }
 
     const handleStartWorkout = async () => {
         if (activeWorkout) {
-            router.push(`/(tabs)/workout/${activeWorkout.id}`);
-            return;
+            router.push(`/(tabs)/workout/${activeWorkout.id}`)
+            return
         }
 
-        const today = formatLocalDateYYYYMMDD();
-        const id = await workoutRepo.create(today);
-        router.push(`/(tabs)/workout/${id}`);
-    };
-
-
-
-
-
+        const today = formatLocalDateYYYYMMDD()
+        const id = await workoutRepo.create(today)
+        router.push(`/(tabs)/workout/${id}`)
+    }
 
     return (
         <ScrollScreenLayout
-            refreshControl={
-                <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={onRefresh}
-                    tintColor={theme.primary}
-                />
-            }
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         >
             <Animated.View entering={FadeInDown.delay(70).duration(360)}>
                 <Card
@@ -125,92 +105,124 @@ export default function WorkoutDashboardScreen() {
                     accessibilityLabel={t('calendar')}
                     accessibilityHint={t('fullHistory')}
                 >
-                <View style={layoutStyles.heroStatsRow}>
-                    <View style={layoutStyles.heroStatItem}>
-                        <Typography.Meta style={{ fontSize: 10, fontWeight: '800', color: theme.textSecondary, letterSpacing: 1, marginBottom: 4 }}>{t('sessions').toUpperCase()}</Typography.Meta>
-                        <Typography.Subtitle style={layoutStyles.statValue}>🗓️ {stats.sessions}</Typography.Subtitle>
-                        <Typography.Meta style={{ fontSize: 10, color: theme.textSecondary }}>{t('completed')}</Typography.Meta>
-                    </View>
-                    <View style={[layoutStyles.heroStatSeparator, { backgroundColor: theme.border + '20' }]} />
-
-                    <View style={[layoutStyles.heroStatItem]}>
-                        <Typography.Meta style={{ fontSize: 10, fontWeight: '800', color: theme.textSecondary, letterSpacing: 1, marginBottom: 4 }}>{t('avgTime').toUpperCase()}</Typography.Meta>
-                        <Typography.Subtitle style={layoutStyles.statValue}>⏱️ {stats.avgDuration}{t('min')}</Typography.Subtitle>
-                        <Typography.Meta style={{ fontSize: 10, color: theme.textSecondary }}>{t('perSession')}</Typography.Meta>
-                    </View>
-                </View>
-
-                <View style={[layoutStyles.heroDivider, { backgroundColor: theme.border + '15' }]} />
-
-
-                <View style={layoutStyles.headerRow}>
-                    <Typography.Subtitle style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>{t('weeklyActivity')}</Typography.Subtitle>
-                    <FontAwesome name="chevron-right" size={12} color={theme.textSecondary} />
-                </View>
-
-                <View style={layoutStyles.weekRow}>
-                    {consistency.map(day => (
-                        <View key={day.date} style={layoutStyles.dayCol}>
-                            <View
-                                style={[
-                                    layoutStyles.dayBox,
-                                    { backgroundColor: theme.surfaceMuted, borderColor: theme.border + '20' },
-                                    day.workedOut && { backgroundColor: theme.primary, borderColor: theme.primary }
-                                ]}
+                    <View style={layoutStyles.heroStatsRow}>
+                        <View style={layoutStyles.heroStatItem}>
+                            <Typography.Meta
+                                style={{
+                                    fontSize: 10,
+                                    fontWeight: '800',
+                                    color: theme.textSecondary,
+                                    letterSpacing: 1,
+                                    marginBottom: 4,
+                                }}
                             >
-
-                                {day.workedOut && (
-                                    <FontAwesome name="check" size={10} color={theme.onPrimary} />
-                                )}
-                            </View>
-                            <Typography.Meta style={[{ fontSize: 11, color: theme.textSecondary }, day.workedOut && { color: theme.text, fontWeight: 'bold' }]}>
-                                {day.day}
+                                {t('sessions').toUpperCase()}
+                            </Typography.Meta>
+                            <Typography.Subtitle style={layoutStyles.statValue}>🗓️ {stats.sessions}</Typography.Subtitle>
+                            <Typography.Meta style={{ fontSize: 10, color: theme.textSecondary }}>
+                                {t('completed')}
                             </Typography.Meta>
                         </View>
-                    ))}
-                </View>
+                        <View style={[layoutStyles.heroStatSeparator, { backgroundColor: theme.border + '20' }]} />
+
+                        <View style={[layoutStyles.heroStatItem]}>
+                            <Typography.Meta
+                                style={{
+                                    fontSize: 10,
+                                    fontWeight: '800',
+                                    color: theme.textSecondary,
+                                    letterSpacing: 1,
+                                    marginBottom: 4,
+                                }}
+                            >
+                                {t('avgTime').toUpperCase()}
+                            </Typography.Meta>
+                            <Typography.Subtitle style={layoutStyles.statValue}>
+                                ⏱️ {stats.avgDuration}
+                                {t('min')}
+                            </Typography.Subtitle>
+                            <Typography.Meta style={{ fontSize: 10, color: theme.textSecondary }}>
+                                {t('perSession')}
+                            </Typography.Meta>
+                        </View>
+                    </View>
+
+                    <View style={[layoutStyles.heroDivider, { backgroundColor: theme.border + '15' }]} />
+
+                    <View style={layoutStyles.headerRow}>
+                        <Typography.Subtitle style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>
+                            {t('weeklyActivity')}
+                        </Typography.Subtitle>
+                        <FontAwesome name="chevron-right" size={12} color={theme.textSecondary} />
+                    </View>
+
+                    <View style={layoutStyles.weekRow}>
+                        {consistency.map((day) => (
+                            <View key={day.date} style={layoutStyles.dayCol}>
+                                <View
+                                    style={[
+                                        layoutStyles.dayBox,
+                                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border + '20' },
+                                        day.workedOut && { backgroundColor: theme.primary, borderColor: theme.primary },
+                                    ]}
+                                >
+                                    {day.workedOut && <FontAwesome name="check" size={10} color={theme.onPrimary} />}
+                                </View>
+                                <Typography.Meta
+                                    style={[
+                                        { fontSize: 11, color: theme.textSecondary },
+                                        day.workedOut && { color: theme.text, fontWeight: 'bold' },
+                                    ]}
+                                >
+                                    {day.day}
+                                </Typography.Meta>
+                            </View>
+                        ))}
+                    </View>
                 </Card>
             </Animated.View>
 
-
             <Animated.View entering={FadeInDown.delay(140).duration(360)}>
                 <Card style={[layoutStyles.activeCard, { borderLeftColor: theme.primary }]}>
-                <View style={layoutStyles.activeHeader}>
-                    <Typography.Subtitle style={{ fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: 0 }}>
-                        {activeWorkout ? t('activeSession') : t('workout')}
-                    </Typography.Subtitle>
-                    {activeWorkout && (
-                        <View style={[layoutStyles.liveIndicator, { backgroundColor: theme.primary + '20' }]}>
-                            <View style={[layoutStyles.liveDot, { backgroundColor: theme.primary }]} />
-                            <Typography.Meta style={{ fontSize: 10, fontWeight: 'bold', color: theme.primary, letterSpacing: 0.5 }}>{t('live')}</Typography.Meta>
+                    <View style={layoutStyles.activeHeader}>
+                        <Typography.Subtitle
+                            style={{ fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: 0 }}
+                        >
+                            {activeWorkout ? t('activeSession') : t('workout')}
+                        </Typography.Subtitle>
+                        {activeWorkout && (
+                            <View style={[layoutStyles.liveIndicator, { backgroundColor: theme.primary + '20' }]}>
+                                <View style={[layoutStyles.liveDot, { backgroundColor: theme.primary }]} />
+                                <Typography.Meta
+                                    style={{
+                                        fontSize: 10,
+                                        fontWeight: 'bold',
+                                        color: theme.primary,
+                                        letterSpacing: 0.5,
+                                    }}
+                                >
+                                    {t('live')}
+                                </Typography.Meta>
+                            </View>
+                        )}
+                    </View>
+
+                    {activeWorkout ? (
+                        <View style={layoutStyles.activeContent}>
+                            <Typography.Body style={[layoutStyles.activeTime, { color: theme.textSecondary }]}>
+                                {t('startedAt')} {formatHourMinute(activeWorkout.start_time)}
+                            </Typography.Body>
+
+                            <Button label={t('resumeSession')} onPress={handleStartWorkout} />
+                        </View>
+                    ) : (
+                        <View style={layoutStyles.activeContent}>
+                            <Typography.Body style={[layoutStyles.activePromo, { color: theme.textSecondary }]}>
+                                {t('readyToCrush')}
+                            </Typography.Body>
+                            <Button label={t('startNewWorkout')} onPress={handleStartWorkout} />
                         </View>
                     )}
-
-                </View>
-
-                {activeWorkout ? (
-                    <View style={layoutStyles.activeContent}>
-                        <Typography.Body style={[layoutStyles.activeTime, { color: theme.textSecondary }]}>
-                            {t('startedAt')}{' '}
-                            {formatHourMinute(activeWorkout.start_time)}
-                        </Typography.Body>
-
-                        <Button
-                            label={t('resumeSession')}
-                            onPress={handleStartWorkout}
-                        />
-                    </View>
-                ) : (
-                    <View style={layoutStyles.activeContent}>
-                        <Typography.Body style={[layoutStyles.activePromo, { color: theme.textSecondary }]}>
-                            {t('readyToCrush')}
-                        </Typography.Body>
-                        <Button
-                            label={t('startNewWorkout')}
-                            onPress={handleStartWorkout}
-                        />
-                    </View>
-                )}
                 </Card>
             </Animated.View>
 
@@ -219,15 +231,15 @@ export default function WorkoutDashboardScreen() {
                     <Typography.Subtitle style={{ marginBottom: 12 }}>{t('history')}</Typography.Subtitle>
                     <View style={layoutStyles.recentContainer}>
                         {recentHistoryWorkouts.length === 0 ? (
-                            <EmptyState message={t('noWorkoutsRecorded')} icon={"history"} />
+                            <EmptyState message={t('noWorkoutsRecorded')} icon={'history'} />
                         ) : (
-                            recentHistoryWorkouts.map(workout => {
+                            recentHistoryWorkouts.map((workout) => {
                                 const formattedDate = formatLocalizedDate(
                                     workout.date,
                                     i18n.language,
                                     { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' },
                                     true
-                                );
+                                )
 
                                 return (
                                     <Card
@@ -239,11 +251,15 @@ export default function WorkoutDashboardScreen() {
                                     >
                                         <View style={layoutStyles.recentRow}>
                                             <View style={layoutStyles.recentLeft}>
-                                                <Typography.Body style={[layoutStyles.recentTitle, { color: theme.text }]}>
+                                                <Typography.Body
+                                                    style={[layoutStyles.recentTitle, { color: theme.text }]}
+                                                >
                                                     {formattedDate}
                                                 </Typography.Body>
 
-                                                <Typography.Meta style={[layoutStyles.recentMeta, { color: theme.textSecondary }]}>
+                                                <Typography.Meta
+                                                    style={[layoutStyles.recentMeta, { color: theme.textSecondary }]}
+                                                >
                                                     {workout.end_time
                                                         ? `${formatHourMinute(workout.start_time)} - ${formatHourMinute(workout.end_time)}`
                                                         : t('incomplete')}
@@ -251,26 +267,26 @@ export default function WorkoutDashboardScreen() {
                                             </View>
 
                                             <FontAwesome
-                                                name={workout.status === 'finished' ? "check-circle" : "clock-o"}
+                                                name={workout.status === 'finished' ? 'check-circle' : 'clock-o'}
                                                 size={24}
                                                 color={workout.status === 'finished' ? theme.primary : theme.secondary}
                                             />
                                         </View>
                                     </Card>
-                                );
+                                )
                             })
                         )}
                     </View>
                 </Card>
             </Animated.View>
         </ScrollScreenLayout>
-    );
+    )
 }
 
 const layoutStyles = StyleSheet.create({
     heroCard: {
         marginBottom: Spacing.lg,
-        paddingVertical: Spacing.lg
+        paddingVertical: Spacing.lg,
     },
     heroStatsRow: {
         flexDirection: 'row',
@@ -382,4 +398,4 @@ const layoutStyles = StyleSheet.create({
         fontSize: 12,
         marginTop: Spacing.xs,
     },
-});
+})

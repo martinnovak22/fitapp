@@ -1,15 +1,15 @@
-import { GlobalStyles } from '@/src/constants/Styles';
-import React from 'react';
-import { StyleProp, TouchableOpacity, View, ViewStyle } from 'react-native';
-import { useTheme } from '../hooks/useTheme';
+import { GlobalStyles } from '@/src/constants/Styles'
+import React from 'react'
+import { StyleProp, TouchableOpacity, View, ViewStyle } from 'react-native'
+import { useTheme } from '../hooks/useTheme'
 
 interface CardProps {
-    children: React.ReactNode;
-    style?: StyleProp<ViewStyle>;
-    onPress?: () => void;
-    activeOpacity?: number;
-    accessibilityLabel?: string;
-    accessibilityHint?: string;
+    children: React.ReactNode
+    style?: StyleProp<ViewStyle>
+    onPress?: () => void
+    activeOpacity?: number
+    accessibilityLabel?: string
+    accessibilityHint?: string
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -20,16 +20,16 @@ export const Card: React.FC<CardProps> = ({
     accessibilityLabel,
     accessibilityHint,
 }) => {
-    const { theme } = useTheme();
+    const { theme } = useTheme()
 
     const cardStyle = [
         GlobalStyles.card,
         {
             backgroundColor: theme.card,
-            borderColor: theme.border
+            borderColor: theme.border,
         },
-        style
-    ];
+        style,
+    ]
 
     if (onPress) {
         return (
@@ -42,12 +42,8 @@ export const Card: React.FC<CardProps> = ({
             >
                 {children}
             </TouchableOpacity>
-        );
+        )
     }
 
-    return (
-        <View style={cardStyle}>
-            {children}
-        </View>
-    );
-};
+    return <View style={cardStyle}>{children}</View>
+}

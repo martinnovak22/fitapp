@@ -1,6 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { Theme } from './Colors';
-import { Spacing } from './Spacing';
+import { StyleSheet } from 'react-native'
+import { Theme } from './Colors'
+import { Spacing } from './Spacing'
 
 export const GlobalStyles = StyleSheet.create({
     container: {
@@ -47,5 +47,5 @@ export const GlobalStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.27,
         shadowRadius: 4.65,
-    }
-});
+    },
+})

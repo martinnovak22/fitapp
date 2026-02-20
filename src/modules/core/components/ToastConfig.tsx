@@ -1,39 +1,38 @@
-import { Spacing } from '@/src/constants/Spacing';
-import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import i18n from '@/src/modules/core/utils/i18n';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import React, { ComponentProps } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import Toast, { ToastConfig, ToastConfigParams } from 'react-native-toast-message';
-import { Typography } from './Typography';
+import { Spacing } from '@/src/constants/Spacing'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import i18n from '@/src/modules/core/utils/i18n'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import React, { ComponentProps } from 'react'
+import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import Toast, { ToastConfig, ToastConfigParams } from 'react-native-toast-message'
+import { Typography } from './Typography'
 
-
-export type ToastIcon = ComponentProps<typeof FontAwesome>['name'];
+export type ToastIcon = ComponentProps<typeof FontAwesome>['name']
 
 export interface ToastAction {
-    label: string;
-    onPress: () => void;
+    label: string
+    onPress: () => void
 }
 
 export interface CustomToastExtraProps {
-    icon?: ToastIcon;
-    action?: ToastAction;
-    tone?: 'info' | 'danger';
+    icon?: ToastIcon
+    action?: ToastAction
+    tone?: 'info' | 'danger'
 }
 
 interface CustomToastProps {
-    text1?: string;
-    text2?: string;
-    icon: ToastIcon;
-    iconColor?: string;
-    actionColor?: string;
-    action?: ToastAction;
-    cancelAction?: ToastAction;
+    text1?: string
+    text2?: string
+    icon: ToastIcon
+    iconColor?: string
+    actionColor?: string
+    action?: ToastAction
+    cancelAction?: ToastAction
 }
 
 const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action, cancelAction }: CustomToastProps) => {
-    const { theme } = useTheme();
-    const primaryActionColor = actionColor || theme.primary;
+    const { theme } = useTheme()
+    const primaryActionColor = actionColor || theme.primary
     return (
         <View style={[styles.toastContainer, { backgroundColor: theme.surface, borderColor: theme.border + '20' }]}>
             <View style={styles.contentRow}>
@@ -41,11 +40,16 @@ const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action, cance
                     <FontAwesome name={icon} size={20} color={iconColor || theme.primary} />
                 </View>
                 <View style={styles.textContainer}>
-                    {text1 && <Typography.Subtitle style={[styles.title, { color: theme.text }]}>{text1}</Typography.Subtitle>}
-                    {text2 && <Typography.Body style={[styles.message, { color: theme.textSecondary }]}>{text2}</Typography.Body>}
+                    {text1 && (
+                        <Typography.Subtitle style={[styles.title, { color: theme.text }]}>{text1}</Typography.Subtitle>
+                    )}
+                    {text2 && (
+                        <Typography.Body style={[styles.message, { color: theme.textSecondary }]}>
+                            {text2}
+                        </Typography.Body>
+                    )}
                 </View>
             </View>
-
 
             {(action || cancelAction) && (
                 <View style={[styles.actionRow, { borderTopColor: theme.border + '15' }]}>
@@ -55,86 +59,78 @@ const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action, cance
                                 style={[styles.actionButton, styles.cancelButton, { backgroundColor: 'transparent' }]}
                                 onPress={cancelAction.onPress}
                             >
-                                <Typography.Meta style={[styles.cancelText, { color: theme.textSecondary }]}>{cancelAction.label}</Typography.Meta>
+                                <Typography.Meta style={[styles.cancelText, { color: theme.textSecondary }]}>
+                                    {cancelAction.label}
+                                </Typography.Meta>
                             </TouchableOpacity>
                         )}
                         {action && (
-                            <TouchableOpacity style={[styles.actionButton, { backgroundColor: primaryActionColor + '20' }]} onPress={action.onPress}>
-                                <Typography.Meta style={[styles.actionText, { color: primaryActionColor }]}>{action.label}</Typography.Meta>
+                            <TouchableOpacity
+                                style={[styles.actionButton, { backgroundColor: primaryActionColor + '20' }]}
+                                onPress={action.onPress}
+                            >
+                                <Typography.Meta style={[styles.actionText, { color: primaryActionColor }]}>
+                                    {action.label}
+                                </Typography.Meta>
                             </TouchableOpacity>
                         )}
                     </View>
                 </View>
             )}
-
         </View>
-    );
-};
+    )
+}
 
 const SuccessToast = ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
-    const { theme } = useTheme();
-    return (
-        <CustomToast
-            text1={text1}
-            text2={text2}
-            icon={props?.icon || "check-circle"}
-            iconColor={theme.primary}
-        />
-    );
-};
+    const { theme } = useTheme()
+    return <CustomToast text1={text1} text2={text2} icon={props?.icon || 'check-circle'} iconColor={theme.primary} />
+}
 
 const DangerToast = ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
-    const { theme } = useTheme();
-    return (
-        <CustomToast
-            text1={text1}
-            text2={text2}
-            icon={props?.icon || "info-circle"}
-            iconColor={theme.error}
-        />
-    );
-};
+    const { theme } = useTheme()
+    return <CustomToast text1={text1} text2={text2} icon={props?.icon || 'info-circle'} iconColor={theme.error} />
+}
 
 const InfoToast = ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
-    const { theme } = useTheme();
+    const { theme } = useTheme()
     return (
         <CustomToast
             text1={text1}
             text2={text2}
-            icon={props?.icon || "info-circle"}
+            icon={props?.icon || 'info-circle'}
             iconColor={theme.info}
             actionColor={theme.info}
             action={props?.action}
         />
-    );
-};
+    )
+}
 
 const ConfirmToast = ({ text1, text2, props }: ToastConfigParams<CustomToastExtraProps>) => {
-    const { theme } = useTheme();
-    const isDanger = props?.tone === 'danger';
-    const toneColor = isDanger ? theme.error : theme.info;
+    const { theme } = useTheme()
+    const isDanger = props?.tone === 'danger'
+    const toneColor = isDanger ? theme.error : theme.info
     return (
         <CustomToast
             text1={text1}
             text2={text2}
-            icon={props?.icon || (isDanger ? "trash" : "info-circle")}
+            icon={props?.icon || (isDanger ? 'trash' : 'info-circle')}
             iconColor={toneColor}
             actionColor={toneColor}
             action={props?.action}
             cancelAction={{
                 label: i18n.t('cancel'),
-                onPress: () => Toast.hide()
+                onPress: () => Toast.hide(),
             }}
         />
-    );
-};
+    )
+}
 
 export const toastConfig: ToastConfig = {
     success: (params) => <SuccessToast {...params} />,
     danger: (params) => <DangerToast {...params} />,
     info: (params) => <InfoToast {...params} />,
     confirm: (params) => <ConfirmToast {...params} />,
-};
+}
 
 const styles = StyleSheet.create({
     toastContainer: {
@@ -212,5 +208,4 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         fontSize: 13,
     },
-
-});
+})

@@ -1,21 +1,21 @@
-import { Spacing } from '@/src/constants/Spacing';
-import { GlobalStyles } from '@/src/constants/Styles';
-import { Set as WorkoutSet } from '@/src/db/workouts';
-import { formatDuration } from '@/src/utils/formatters';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useIsActive, useReorderableDrag } from 'react-native-reorderable-list';
-import { useTheme } from '../../core/hooks/useTheme';
-import { SET_BASE_HEIGHT, SUBSET_HEIGHT, calculateSetHeight, parseSubSets } from '../workoutUtils';
+import { Spacing } from '@/src/constants/Spacing'
+import { GlobalStyles } from '@/src/constants/Styles'
+import { Set as WorkoutSet } from '@/src/db/workouts'
+import { formatDuration } from '@/src/utils/formatters'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
+import { useTheme } from '../../core/hooks/useTheme'
+import { SET_BASE_HEIGHT, SUBSET_HEIGHT, calculateSetHeight, parseSubSets } from '../workoutUtils'
 
 interface Props<T extends WorkoutSet = WorkoutSet> {
-    set: T;
-    index: number;
-    isReadOnly: boolean;
-    onEdit: (set: T) => void;
-    onDelete: (setId: number) => void;
+    set: T
+    index: number
+    isReadOnly: boolean
+    onEdit: (set: T) => void
+    onDelete: (setId: number) => void
 }
 
 /**
@@ -29,21 +29,21 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
     onEdit,
     onDelete,
 }: Props<T>) {
-    const drag = useReorderableDrag();
-    const isActive = useIsActive();
-    const { t } = useTranslation();
-    const { theme } = useTheme();
-    const totalHeight = calculateSetHeight(set.sub_sets);
+    const drag = useReorderableDrag()
+    const isActive = useIsActive()
+    const { t } = useTranslation()
+    const { theme } = useTheme()
+    const totalHeight = calculateSetHeight(set.sub_sets)
 
     const renderSetDetails = (s: WorkoutSet) => {
-        const parts = [];
-        if (s.weight != null) parts.push(`${s.weight}${t('kg')}`);
-        if (s.reps != null) parts.push(`${s.reps} ${t('repsShort')}`);
-        if (s.distance != null) parts.push(`${s.distance}m`);
-        if (s.duration != null) parts.push(formatDuration(s.duration));
+        const parts = []
+        if (s.weight != null) parts.push(`${s.weight}${t('kg')}`)
+        if (s.reps != null) parts.push(`${s.reps} ${t('repsShort')}`)
+        if (s.distance != null) parts.push(`${s.distance}m`)
+        if (s.duration != null) parts.push(formatDuration(s.duration))
 
-        return parts.join(' × ') || t('noData');
-    };
+        return parts.join(' × ') || t('noData')
+    }
 
     return (
         <View
@@ -53,8 +53,8 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                     borderBottomColor: theme.border + '15',
                     backgroundColor: isActive ? theme.surface : 'transparent',
                     height: totalHeight,
-                    transform: [{ scale: isActive ? 0.9 : 1 }]
-                }
+                    transform: [{ scale: isActive ? 0.9 : 1 }],
+                },
             ]}
         >
             <View style={[styles.innerContent, { height: totalHeight, flexDirection: 'row' }]}>
@@ -63,7 +63,7 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                     disabled={isReadOnly || isActive}
                     activeOpacity={0.7}
                     style={{ flex: 1 }}
-                    accessibilityRole={"button"}
+                    accessibilityRole={'button'}
                     accessibilityLabel={`${t('set')} ${index + 1}: ${renderSetDetails(set)}`}
                     accessibilityHint={isReadOnly ? undefined : t('editSet')}
                 >
@@ -74,11 +74,13 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                         </Text>
                     </View>
 
-                    {set.sub_sets && parseSubSets(set.sub_sets).map((ss, idx) => (
+                    {set.sub_sets &&
+                        parseSubSets(set.sub_sets).map((ss, idx) => (
                             <View key={idx} style={styles.subSetRow}>
                                 <View style={[styles.indentLine, { backgroundColor: theme.primary }]} />
                                 <Text style={[styles.subSetText, { color: theme.textSecondary }]}>
-                                    {t('drop')} {idx + 1}: {ss.weight ?? 0}{t('kg')} × {ss.reps ?? 0} {t('repsShort')}
+                                    {t('drop')} {idx + 1}: {ss.weight ?? 0}
+                                    {t('kg')} × {ss.reps ?? 0} {t('repsShort')}
                                 </Text>
                             </View>
                         ))}
@@ -90,10 +92,10 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                             onPress={() => onDelete(set.id)}
                             style={styles.deleteButton}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            accessibilityRole={"button"}
+                            accessibilityRole={'button'}
                             accessibilityLabel={t('deleteSetTitle')}
                         >
-                            <FontAwesome name={"trash"} size={14} color={theme.error} />
+                            <FontAwesome name={'trash'} size={14} color={theme.error} />
                         </TouchableOpacity>
                     )}
                     {!isReadOnly && (
@@ -102,17 +104,17 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
                             delayLongPress={200}
                             style={styles.dragHandle}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            accessibilityRole={"button"}
+                            accessibilityRole={'button'}
                             accessibilityLabel={t('reorder')}
                             accessibilityHint={t('holdToDrag')}
                         >
-                            <FontAwesome name={"reorder"} size={14} color={theme.textSecondary} />
+                            <FontAwesome name={'reorder'} size={14} color={theme.textSecondary} />
                         </TouchableOpacity>
                     )}
                 </View>
             </View>
         </View>
-    );
+    )
 }
 
 const styles = StyleSheet.create({
@@ -167,5 +169,5 @@ const styles = StyleSheet.create({
     subSetText: {
         fontSize: 13,
         fontWeight: '600',
-    }
-});
+    },
+})
