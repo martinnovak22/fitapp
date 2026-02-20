@@ -1,154 +1,229 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import {
-  SupabaseAuthSessionData,
-  getSupabaseSessionFromOAuthRedirectUrl,
-  refreshSupabaseSession,
-  signInWithEmailPassword,
-  signOutSupabaseSession,
-  signUpWithEmailPassword,
-} from '@/src/data/remote/supabase/auth';
-import { clearSupabaseSession, setSupabaseSession } from '@/src/data/remote/supabase/session';
-import { isRemoteDataMode } from '@/src/modules/auth/authMode';
+    SupabaseAuthSessionData,
+    getSupabaseSessionFromOAuthRedirectUrl,
+    refreshSupabaseSession,
+    signInWithEmailPassword,
+    signOutSupabaseSession,
+    signUpWithEmailPassword,
+} from '@/src/data/remote/supabase/auth'
+import { clearSupabaseSession, setSupabaseSession } from '@/src/data/remote/supabase/session'
+import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 
 type AuthContextValue = {
-  isAuthRequired: boolean;
-  isInitialized: boolean;
-  isAuthenticated: boolean;
-  userEmail: string | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
-  signInWithOAuthRedirectUrl: (url: string) => Promise<boolean>;
-  signOut: () => Promise<void>;
-};
+    isAuthRequired: boolean
+    isInitialized: boolean
+    isAuthenticated: boolean
+    authMode: 'guest' | 'account'
+    userEmail: string | null
+    signIn: (email: string, password: string) => Promise<void>
+    signUp: (email: string, password: string) => Promise<void>
+    signInWithOAuthRedirectUrl: (url: string) => Promise<boolean>
+    continueAsGuest: () => Promise<void>
+    signOut: () => Promise<void>
+}
 
-const STORAGE_KEY = 'supabase-auth-session';
+const STORAGE_KEY = 'supabase-auth-session'
+const AUTH_MODE_STORAGE_KEY = 'auth-mode'
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 const shouldRefresh = (session: SupabaseAuthSessionData): boolean => {
-  const refreshBufferMs = 60 * 1000;
-  return session.expiresAt - Date.now() <= refreshBufferMs;
-};
+    const refreshBufferMs = 60 * 1000
+    return session.expiresAt - Date.now() <= refreshBufferMs
+}
 
 const applySession = (session: SupabaseAuthSessionData) => {
-  setSupabaseSession({
-    accessToken: session.accessToken,
-    userId: session.userId,
-  });
-};
+    setSupabaseSession({
+        accessToken: session.accessToken,
+        userId: session.userId,
+    })
+}
 
 const persistSession = async (session: SupabaseAuthSessionData) => {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-};
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+}
 
 const loadStoredSession = async (): Promise<SupabaseAuthSessionData | null> => {
-  const raw = await AsyncStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-  return JSON.parse(raw) as SupabaseAuthSessionData;
-};
+    const raw = await AsyncStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as SupabaseAuthSessionData
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [session, setSession] = useState<SupabaseAuthSessionData | null>(null);
-  const isAuthRequired = isRemoteDataMode();
+    const [isInitialized, setIsInitialized] = useState(false)
+    const [session, setSession] = useState<SupabaseAuthSessionData | null>(null)
+    const [authMode, setAuthMode] = useState<'guest' | 'account'>('account')
+    const isRemoteMode = isRemoteDataMode()
+    const isAuthRequired = isRemoteMode && authMode === 'account'
 
-  useEffect(() => {
-    let isMounted = true;
+    useEffect(() => {
+        let isMounted = true
 
-    const initialize = async () => {
-      if (!isAuthRequired) {
-        if (isMounted) {
-          clearSupabaseSession();
-          setSession(null);
-          setIsInitialized(true);
+        const initialize = async () => {
+            if (!isAuthRequired) {
+                if (isMounted) {
+                    clearSupabaseSession()
+                    setSession(null)
+                    setIsInitialized(true)
+                }
+                return
+            }
+
+            try {
+                if (isRemoteMode) {
+                    const storedModeRaw = await AsyncStorage.getItem(AUTH_MODE_STORAGE_KEY)
+                    const storedMode = storedModeRaw === 'guest' ? 'guest' : 'account'
+                    if (isMounted) setAuthMode(storedMode)
+                    if (storedMode === 'guest') {
+                        clearSupabaseSession()
+                        if (isMounted) setSession(null)
+                        return
+                    }
+                }
+
+                const stored = await loadStoredSession()
+                if (!stored) {
+                    clearSupabaseSession()
+                    if (isMounted) setSession(null)
+                    return
+                }
+
+                const activeSession = shouldRefresh(stored) ? await refreshSupabaseSession(stored.refreshToken) : stored
+                applySession(activeSession)
+                await persistSession(activeSession)
+                if (isMounted) setSession(activeSession)
+            } catch {
+                await AsyncStorage.removeItem(STORAGE_KEY)
+                clearSupabaseSession()
+                if (isMounted) setSession(null)
+            } finally {
+                if (isMounted) setIsInitialized(true)
+            }
         }
-        return;
-      }
 
-      try {
-        const stored = await loadStoredSession();
-        if (!stored) {
-          clearSupabaseSession();
-          if (isMounted) setSession(null);
-          return;
+        initialize()
+
+        return () => {
+            isMounted = false
+        }
+    }, [isAuthRequired, isRemoteMode])
+
+    useEffect(() => {
+        if (!isRemoteMode || authMode !== 'account' || !session) return
+
+        let isDisposed = false
+
+        const ensureFreshSession = async () => {
+            if (!shouldRefresh(session)) return
+            try {
+                const refreshedSession = await refreshSupabaseSession(session.refreshToken)
+                if (isDisposed) return
+                applySession(refreshedSession)
+                await persistSession(refreshedSession)
+                if (isDisposed) return
+                setSession(refreshedSession)
+            } catch {
+                if (isDisposed) return
+                await AsyncStorage.removeItem(STORAGE_KEY)
+                clearSupabaseSession()
+                setSession(null)
+            }
         }
 
-        const activeSession = shouldRefresh(stored) ? await refreshSupabaseSession(stored.refreshToken) : stored;
-        applySession(activeSession);
-        await persistSession(activeSession);
-        if (isMounted) setSession(activeSession);
-      } catch {
-        await AsyncStorage.removeItem(STORAGE_KEY);
-        clearSupabaseSession();
-        if (isMounted) setSession(null);
-      } finally {
-        if (isMounted) setIsInitialized(true);
-      }
-    };
+        void ensureFreshSession()
+        const intervalId = setInterval(() => {
+            void ensureFreshSession()
+        }, 30_000)
 
-    initialize();
+        return () => {
+            isDisposed = true
+            clearInterval(intervalId)
+        }
+    }, [authMode, isRemoteMode, session])
 
-    return () => {
-      isMounted = false;
-    };
-  }, [isAuthRequired]);
+    const signIn = useCallback(async (email: string, password: string) => {
+        const nextSession = await signInWithEmailPassword(email.trim(), password)
+        await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
+        setAuthMode('account')
+        applySession(nextSession)
+        await persistSession(nextSession)
+        setSession(nextSession)
+    }, [])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const nextSession = await signInWithEmailPassword(email.trim(), password);
-    applySession(nextSession);
-    await persistSession(nextSession);
-    setSession(nextSession);
-  }, []);
+    const signUp = useCallback(async (email: string, password: string) => {
+        const nextSession = await signUpWithEmailPassword(email.trim(), password)
+        await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
+        setAuthMode('account')
+        applySession(nextSession)
+        await persistSession(nextSession)
+        setSession(nextSession)
+    }, [])
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    const nextSession = await signUpWithEmailPassword(email.trim(), password);
-    applySession(nextSession);
-    await persistSession(nextSession);
-    setSession(nextSession);
-  }, []);
+    const signInWithOAuthRedirectUrl = useCallback(async (url: string) => {
+        const nextSession = await getSupabaseSessionFromOAuthRedirectUrl(url)
+        if (!nextSession) return false
+        await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
+        setAuthMode('account')
+        applySession(nextSession)
+        await persistSession(nextSession)
+        setSession(nextSession)
+        return true
+    }, [])
 
-  const signInWithOAuthRedirectUrl = useCallback(async (url: string) => {
-    const nextSession = await getSupabaseSessionFromOAuthRedirectUrl(url);
-    if (!nextSession) return false;
-    applySession(nextSession);
-    await persistSession(nextSession);
-    setSession(nextSession);
-    return true;
-  }, []);
+    const continueAsGuest = useCallback(async () => {
+        await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'guest')
+        await AsyncStorage.removeItem(STORAGE_KEY)
+        clearSupabaseSession()
+        setSession(null)
+        setAuthMode('guest')
+    }, [])
 
-  const signOut = useCallback(async () => {
-    if (session?.accessToken) {
-      try {
-        await signOutSupabaseSession(session.accessToken);
-      } catch {
-        // Local sign-out should still complete even when network logout fails.
-      }
-    }
-    await AsyncStorage.removeItem(STORAGE_KEY);
-    clearSupabaseSession();
-    setSession(null);
-  }, [session]);
+    const signOut = useCallback(async () => {
+        if (session?.accessToken) {
+            try {
+                await signOutSupabaseSession(session.accessToken)
+            } catch {
+                // Local sign-out should still complete even when network logout fails.
+            }
+        }
+        await AsyncStorage.removeItem(STORAGE_KEY)
+        clearSupabaseSession()
+        setSession(null)
+    }, [session])
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      isAuthRequired,
-      isInitialized,
-      isAuthenticated: !isAuthRequired || session !== null,
-      userEmail: session?.email ?? null,
-      signIn,
-      signUp,
-      signInWithOAuthRedirectUrl,
-      signOut,
-    }),
-    [isAuthRequired, isInitialized, session, signIn, signInWithOAuthRedirectUrl, signOut, signUp],
-  );
+    const value = useMemo<AuthContextValue>(
+        () => ({
+            isAuthRequired,
+            isInitialized,
+            isAuthenticated: authMode === 'guest' || !isAuthRequired || session !== null,
+            authMode,
+            userEmail: session?.email ?? null,
+            signIn,
+            signUp,
+            signInWithOAuthRedirectUrl,
+            continueAsGuest,
+            signOut,
+        }),
+        [
+            authMode,
+            continueAsGuest,
+            isAuthRequired,
+            isInitialized,
+            session,
+            signIn,
+            signInWithOAuthRedirectUrl,
+            signOut,
+            signUp,
+        ]
+    )
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
 
 export const useAuth = (): AuthContextValue => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used inside AuthProvider.');
-  return context;
-};
+    const context = useContext(AuthContext)
+    if (!context) throw new Error('useAuth must be used inside AuthProvider.')
+    return context
+}

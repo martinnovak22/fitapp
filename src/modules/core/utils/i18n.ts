@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Localization from 'expo-localization';
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as Localization from 'expo-localization'
+import i18n from 'i18next'
+import { initReactI18next } from 'react-i18next'
 
 const resources = {
     en: {
@@ -55,6 +55,7 @@ const resources = {
             incomplete: 'Incomplete',
             startedAt: 'Started at',
             loading: 'Loading...',
+            saving: 'Saving...',
             notSpecified: 'Not specified',
             statsComingSoon: 'Stats coming soon',
             inProgress: 'In Progress',
@@ -88,6 +89,17 @@ const resources = {
             signIn: 'Sign in',
             signUp: 'Sign up',
             signOut: 'Sign out',
+            continueAsGuest: 'Continue as guest',
+            guestMode: 'Guest mode',
+            accountMode: 'Account mode',
+            signInToEnableSync: 'Sign in to enable cloud sync',
+            sync: 'Sync',
+            syncNow: 'Sync now',
+            syncing: 'Syncing...',
+            outbox: 'Outbox',
+            lastSuccess: 'Last success',
+            lastError: 'Last error',
+            never: 'Never',
             account: 'Account',
             loggedInAs: 'Logged in as',
             welcomeBack: 'Welcome back',
@@ -96,8 +108,8 @@ const resources = {
             authSignUpSubtitle: 'Create your account to keep your data in sync.',
             continueWithGoogle: 'Continue with Google',
             orContinueWithEmail: 'or continue with email',
-            noAccountYet: "Don't have an account?",
-            alreadyHaveAccount: 'Already have an account?',
+            noAccountYet: "don't have an account",
+            alreadyHaveAccount: 'already have an account',
             authContinueHint: 'Use your account credentials to continue.',
             passwordMinHint: 'Password must be at least 6 characters.',
             checkYourEmail: 'Check your email',
@@ -122,6 +134,8 @@ const resources = {
             selectExercise: 'Select Exercise',
             selectExerciseFirst: 'Please select an exercise first.',
             failedToSaveSet: 'Failed to save set. Please try again.',
+            failedToFinishWorkout: 'Failed to finish workout. Please try again.',
+            failedToDeleteWorkout: 'Failed to delete workout. Please try again.',
             emptySetIgnored: 'Set Ignored',
             emptySetIgnoredMessage: 'An empty set cannot be added.',
             finish: 'Finish',
@@ -130,7 +144,8 @@ const resources = {
             required: 'Required',
             enterName: 'Please enter an exercise name.',
             failedToSaveExercise: 'Failed to save exercise.',
-            deleteExerciseWarning: 'Are you sure? This will not delete past workout data but will remove it from the list.',
+            deleteExerciseWarning:
+                'Are you sure? This will not delete past workout data but will remove it from the list.',
             exerciseUpdated: 'Exercise Updated',
             exerciseCreated: 'Exercise Created',
             updated: 'has been updated.',
@@ -183,7 +198,7 @@ const resources = {
             oops: 'Oops!',
             screenNotFound: "This screen doesn't exist.",
             goHome: 'Go to home screen!',
-        }
+        },
     },
     cs: {
         translation: {
@@ -236,6 +251,7 @@ const resources = {
             incomplete: 'Nedokončeno',
             startedAt: 'Začalo v',
             loading: 'Načítání...',
+            saving: 'Ukládání...',
             notSpecified: 'Nespecifikováno',
             statsComingSoon: 'Statistiky již brzy',
             inProgress: 'Probíhá',
@@ -269,20 +285,32 @@ const resources = {
             signIn: 'Přihlásit se',
             signUp: 'Registrovat se',
             signOut: 'Odhlásit se',
+            continueAsGuest: 'Pokračovat jako host',
+            guestMode: 'Host režim',
+            accountMode: 'Účet režim',
+            signInToEnableSync: 'Přihlaste se pro cloud synchronizaci',
+            sync: 'Synchronizace',
+            syncNow: 'Synchronizovat',
+            syncing: 'Synchronizace...',
+            outbox: 'Fronta změn',
+            lastSuccess: 'Poslední úspěch',
+            lastError: 'Poslední chyba',
+            never: 'Nikdy',
             account: 'Účet',
             loggedInAs: 'Přihlášen jako',
-            welcomeBack: "Přihlásit se",
+            welcomeBack: 'Přihlásit se',
             createAccount: 'Vytvořit účet',
             authSignInSubtitle: 'Přihlaste se a synchronizujte tréninky do cloudu.',
             authSignUpSubtitle: 'Vytvořte účet a mějte data uložena.',
             continueWithGoogle: 'Pokračovat přes Google',
             orContinueWithEmail: 'nebo pokračujte e-mailem',
-            noAccountYet: 'Ještě nemáte účet?',
-            alreadyHaveAccount: 'Už máte účet?',
+            noAccountYet: 'ještě nemáte účet',
+            alreadyHaveAccount: 'už máte účet',
             authContinueHint: 'Pokračujte přihlášením do svého účtu.',
             passwordMinHint: 'Heslo musí mít alespoň 6 znaků.',
             checkYourEmail: 'Zkontrolujte e-mail',
-            checkYourEmailDescription: 'Poslali jsme potvrzovací odkaz na {{email}}. Potvrďte e-mail a pak se přihlaste.',
+            checkYourEmailDescription:
+                'Poslali jsme potvrzovací odkaz na {{email}}. Potvrďte e-mail a pak se přihlaste.',
             iConfirmedEmail: 'E-mail jsem potvrdil',
             validationEmailInvalid: 'Zadejte platný e-mail.',
             validationPasswordMin: 'Heslo musí mít alespoň 6 znaků.',
@@ -303,6 +331,8 @@ const resources = {
             selectExercise: 'Vyberte cvik',
             selectExerciseFirst: 'Prosím, nejdříve vyberte cvik.',
             failedToSaveSet: 'Nepodařilo se uložit sérii. Zkuste to znovu.',
+            failedToFinishWorkout: 'Nepodařilo se ukončit trénink. Zkuste to znovu.',
+            failedToDeleteWorkout: 'Nepodařilo se smazat trénink. Zkuste to znovu.',
             emptySetIgnored: 'Série ignorována',
             emptySetIgnoredMessage: 'Prázdnou sérii nelze přidat.',
             finish: 'Dokončit',
@@ -364,43 +394,42 @@ const resources = {
             oops: 'Jejda!',
             screenNotFound: 'Tato obrazovka neexistuje.',
             goHome: 'Přejít na hlavní obrazovku!',
-        }
-    }
-};
+        },
+    },
+}
 
-const LANGUAGE_KEY = 'user-language';
+const LANGUAGE_KEY = 'user-language'
 
 const languageDetector = {
     type: 'languageDetector' as const,
     async: true,
     detect: async (callback: (lang: string) => void) => {
-        const savedLanguage = await AsyncStorage.getItem(LANGUAGE_KEY);
+        const savedLanguage = await AsyncStorage.getItem(LANGUAGE_KEY)
         if (savedLanguage) {
-            return callback(savedLanguage);
+            return callback(savedLanguage)
         }
-        const locales = Localization.getLocales();
-        const deviceLanguage = locales && locales.length > 0 ? locales[0].languageCode : 'en';
-        callback(deviceLanguage || 'en');
+        const locales = Localization.getLocales()
+        const deviceLanguage = locales && locales.length > 0 ? locales[0].languageCode : 'en'
+        callback(deviceLanguage || 'en')
     },
-    init: () => { },
+    init: () => {},
     cacheUserLanguage: async (language: string) => {
-        await AsyncStorage.setItem(LANGUAGE_KEY, language);
-    }
-};
+        await AsyncStorage.setItem(LANGUAGE_KEY, language)
+    },
+}
 
 // eslint-disable-next-line import/no-named-as-default-member
-i18n
-    .use(languageDetector)
+i18n.use(languageDetector)
     .use(initReactI18next)
     .init({
         resources,
         fallbackLng: 'en',
         interpolation: {
-            escapeValue: false
+            escapeValue: false,
         },
         react: {
-            useSuspense: false
-        }
-    });
+            useSuspense: false,
+        },
+    })
 
-export default i18n;
+export default i18n

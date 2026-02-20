@@ -1,5 +1,5 @@
-import WorkoutSessionScreen from '@/src/modules/workout/screens/WorkoutSessionScreen';
+import WorkoutSessionScreen from '@/src/modules/workout/screens/WorkoutSessionScreen'
 
 export default function HistoryWorkoutDetailRoute() {
-    return <WorkoutSessionScreen origin="history" />;
+    return <WorkoutSessionScreen origin="history" />
 }

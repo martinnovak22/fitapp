@@ -1,8 +1,8 @@
-import React, { ReactNode } from 'react';
-import { useTheme } from '../hooks/useTheme';
+import React, { ReactNode } from 'react'
+import { useTheme } from '../hooks/useTheme'
 
-import { StyleProp, ViewStyle } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { StyleProp, ViewStyle } from 'react-native'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
     LinearTransition,
     runOnJS,
@@ -10,26 +10,25 @@ import Animated, {
     useAnimatedStyle,
     useDerivedValue,
     useSharedValue,
-    withSpring
-} from 'react-native-reanimated';
-
+    withSpring,
+} from 'react-native-reanimated'
 
 interface Props {
-    children: ReactNode;
-    index: number;
-    itemCount?: number;
-    itemHeight?: number;
-    enabled?: boolean;
-    onDrop: (index: number, translationY: number) => void;
-    onDragStart?: () => void;
-    onDragEnd?: () => void;
-    style?: StyleProp<ViewStyle>;
-    activeScale?: number;
-    activeOpacity?: number;
-    longPressDuration?: number;
-    useLayoutAnimation?: boolean;
-    activeIndex?: SharedValue<number>;
-    translationY?: SharedValue<number>;
+    children: ReactNode
+    index: number
+    itemCount?: number
+    itemHeight?: number
+    enabled?: boolean
+    onDrop: (index: number, translationY: number) => void
+    onDragStart?: () => void
+    onDragEnd?: () => void
+    style?: StyleProp<ViewStyle>
+    activeScale?: number
+    activeOpacity?: number
+    longPressDuration?: number
+    useLayoutAnimation?: boolean
+    activeIndex?: SharedValue<number>
+    translationY?: SharedValue<number>
 }
 
 export function DraggableItem({
@@ -48,81 +47,80 @@ export function DraggableItem({
     activeIndex,
     translationY,
 }: Props) {
-    const { theme } = useTheme();
-    const isPressed = useSharedValue(false);
+    const { theme } = useTheme()
+    const isPressed = useSharedValue(false)
 
+    const localActiveIndex = useSharedValue(-1)
+    const localTranslationY = useSharedValue(0)
+    const dragTranslationY = useSharedValue(0)
 
-    const localActiveIndex = useSharedValue(-1);
-    const localTranslationY = useSharedValue(0);
-    const dragTranslationY = useSharedValue(0);
-
-    const activeIndexVal = activeIndex ?? localActiveIndex;
-    const translationYVal = translationY ?? localTranslationY;
+    const activeIndexVal = activeIndex ?? localActiveIndex
+    const translationYVal = translationY ?? localTranslationY
 
     const isActive = useDerivedValue(() => {
-        return isPressed.value || (activeIndexVal.value === index && activeIndexVal.value !== -1);
-    });
+        return isPressed.value || (activeIndexVal.value === index && activeIndexVal.value !== -1)
+    })
 
     const panGesture = Gesture.Pan()
 
         .activateAfterLongPress(longPressDuration)
         .onStart(() => {
-            isPressed.value = true;
-            activeIndexVal.value = index;
-            if (onDragStart) runOnJS(onDragStart)();
+            isPressed.value = true
+            activeIndexVal.value = index
+            if (onDragStart) runOnJS(onDragStart)()
         })
         .onUpdate((event) => {
-            dragTranslationY.value = event.translationY;
-            translationYVal.value = event.translationY;
+            dragTranslationY.value = event.translationY
+            translationYVal.value = event.translationY
         })
         .onEnd((event) => {
-            const finalY = event.translationY;
-            isPressed.value = false;
+            const finalY = event.translationY
+            isPressed.value = false
 
             if (itemHeight) {
-                const delta = Math.round(finalY / itemHeight);
-                dragTranslationY.value = withSpring(delta * itemHeight, { damping: 50, stiffness: 600 });
+                const delta = Math.round(finalY / itemHeight)
+                dragTranslationY.value = withSpring(delta * itemHeight, { damping: 50, stiffness: 600 })
             } else {
-                dragTranslationY.value = withSpring(0);
+                dragTranslationY.value = withSpring(0)
             }
 
-            runOnJS(onDrop)(index, finalY);
+            runOnJS(onDrop)(index, finalY)
         })
         .onFinalize(() => {
-            dragTranslationY.value = withSpring(0);
-            if (onDragEnd) runOnJS(onDragEnd)();
+            dragTranslationY.value = withSpring(0)
+            if (onDragEnd) runOnJS(onDragEnd)()
         })
-        .enabled(enabled);
+        .enabled(enabled)
 
     const animatedStyle = useAnimatedStyle(() => {
-        let offset = 0;
-        const active = isActive.value;
+        let offset = 0
+        const active = isActive.value
 
         if (active) {
-            offset = dragTranslationY.value;
+            offset = dragTranslationY.value
         } else if (activeIndexVal.value !== -1 && itemCount !== undefined && itemHeight !== undefined) {
-            const delta = Math.round(translationYVal.value / itemHeight);
-            const targetIndex = Math.max(0, Math.min(itemCount - 1, activeIndexVal.value + delta));
+            const delta = Math.round(translationYVal.value / itemHeight)
+            const targetIndex = Math.max(0, Math.min(itemCount - 1, activeIndexVal.value + delta))
 
             if (index > activeIndexVal.value && index <= targetIndex) {
-                offset = -itemHeight;
+                offset = -itemHeight
             } else if (index < activeIndexVal.value && index >= targetIndex) {
-                offset = itemHeight;
+                offset = itemHeight
             }
         }
 
-        const translation = withSpring(offset, { damping: 80, stiffness: 400, mass: 0.8 });
+        const translation = withSpring(offset, { damping: 80, stiffness: 400, mass: 0.8 })
 
-        const activeBg = theme.surfaceMuted;
-        const activeBorder = theme.border;
+        const activeBg = theme.surfaceMuted
+        const activeBorder = theme.border
 
-        const targetBg = active ? activeBg : theme.card;
-        const targetBorder = active ? activeBorder : theme.border;
+        const targetBg = active ? activeBg : theme.card
+        const targetBorder = active ? activeBorder : theme.border
 
         return {
             transform: [
                 { translateY: translation },
-                { scale: withSpring(isPressed.value ? activeScale : 1, { damping: 20, stiffness: 300 }) }
+                { scale: withSpring(isPressed.value ? activeScale : 1, { damping: 20, stiffness: 300 }) },
             ],
             zIndex: active ? 1000 : 1,
             backgroundColor: withSpring(targetBg, { damping: 30, stiffness: 300 }),
@@ -132,9 +130,8 @@ export function DraggableItem({
             shadowOffset: { width: 0, height: 5 },
             elevation: isPressed.value ? 2 : 0,
             opacity: withSpring(isPressed.value ? activeOpacity : 1, { damping: 30, stiffness: 300 }),
-        };
-    }, [theme, activeScale, activeOpacity, index, itemCount, itemHeight, isPressed, activeIndexVal, translationYVal]);
-
+        }
+    }, [theme, activeScale, activeOpacity, index, itemCount, itemHeight, isPressed, activeIndexVal, translationYVal])
 
     return (
         <GestureDetector gesture={panGesture}>
@@ -145,5 +142,5 @@ export function DraggableItem({
                 {children}
             </Animated.View>
         </GestureDetector>
-    );
+    )
 }
