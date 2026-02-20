@@ -1,2 +1,2 @@
-import AddExerciseScreen from '@/src/modules/exercises/screens/AddExerciseScreen';
-export default AddExerciseScreen;
+import AddExerciseScreen from '@/src/modules/exercises/screens/AddExerciseScreen'
+export default AddExerciseScreen

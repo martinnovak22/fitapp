@@ -7,6 +7,6 @@ export const Spacing = {
     xl: 32,
     xl2: 40,
     xxl: 48,
-};
+}
 
-export type SpacingType = typeof Spacing;
+export type SpacingType = typeof Spacing

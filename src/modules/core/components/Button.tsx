@@ -1,19 +1,19 @@
-import { Spacing } from '@/src/constants/Spacing';
-import React from 'react';
-import { ActivityIndicator, StyleProp, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
-import { useTheme } from '../hooks/useTheme';
+import { Spacing } from '@/src/constants/Spacing'
+import React from 'react'
+import { ActivityIndicator, StyleProp, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native'
+import { useTheme } from '../hooks/useTheme'
 
 interface ButtonProps {
-    label: string;
-    onPress: () => void;
-    variant?: 'primary' | 'secondary' | 'outline' | 'danger';
-    isLoading?: boolean;
-    disabled?: boolean;
-    style?: StyleProp<ViewStyle>;
-    labelStyle?: StyleProp<TextStyle>;
-    accessibilityLabel?: string;
-    accessibilityHint?: string;
-    testID?: string;
+    label: string
+    onPress: () => void
+    variant?: 'primary' | 'secondary' | 'outline' | 'danger'
+    isLoading?: boolean
+    disabled?: boolean
+    style?: StyleProp<ViewStyle>
+    labelStyle?: StyleProp<TextStyle>
+    accessibilityLabel?: string
+    accessibilityHint?: string
+    testID?: string
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -28,32 +28,32 @@ export const Button: React.FC<ButtonProps> = ({
     accessibilityHint,
     testID,
 }) => {
-    const { theme } = useTheme();
+    const { theme } = useTheme()
 
     const getButtonStyle = () => {
         switch (variant) {
             case 'secondary':
-                return [styles.secondaryButton, { backgroundColor: theme.inputBackground, borderColor: theme.border }];
+                return [styles.secondaryButton, { backgroundColor: theme.inputBackground, borderColor: theme.border }]
             case 'outline':
-                return [styles.outlineButton, { borderColor: theme.primary }];
+                return [styles.outlineButton, { borderColor: theme.primary }]
             case 'danger':
-                return [styles.dangerButton, { backgroundColor: theme.error, borderColor: theme.border }];
+                return [styles.dangerButton, { backgroundColor: theme.error, borderColor: theme.border }]
             default:
-                return [styles.primaryButton, { backgroundColor: theme.primary }];
+                return [styles.primaryButton, { backgroundColor: theme.primary }]
         }
-    };
+    }
 
     const getLabelStyle = () => {
         switch (variant) {
             case 'outline':
-                return [styles.outlineButtonText, { color: theme.primary }];
+                return [styles.outlineButtonText, { color: theme.primary }]
             case 'secondary':
-                return [styles.secondaryButtonText, { color: theme.text }];
+                return [styles.secondaryButtonText, { color: theme.text }]
             default:
-                return [styles.primaryButtonText, { color: theme.onPrimary }];
+                return [styles.primaryButtonText, { color: theme.onPrimary }]
         }
-    };
-    const labelStyles = getLabelStyle();
+    }
+    const labelStyles = getLabelStyle()
 
     return (
         <TouchableOpacity
@@ -61,7 +61,7 @@ export const Button: React.FC<ButtonProps> = ({
             onPress={onPress}
             disabled={disabled || isLoading}
             activeOpacity={0.7}
-            accessibilityRole={"button"}
+            accessibilityRole={'button'}
             accessibilityLabel={accessibilityLabel ?? label}
             accessibilityHint={accessibilityHint}
             accessibilityState={{ disabled: disabled || isLoading, busy: isLoading }}
@@ -70,11 +70,13 @@ export const Button: React.FC<ButtonProps> = ({
             {isLoading ? (
                 <ActivityIndicator color={(labelStyles[1] as { color: string })?.color ?? theme.onPrimary} />
             ) : (
-                <Text style={[labelStyles, labelStyle]} allowFontScaling={true}>{label}</Text>
+                <Text style={[labelStyles, labelStyle]} allowFontScaling={true}>
+                    {label}
+                </Text>
             )}
         </TouchableOpacity>
-    );
-};
+    )
+}
 
 const styles = StyleSheet.create({
     baseButton: {
@@ -95,8 +97,7 @@ const styles = StyleSheet.create({
     outlineButton: {
         backgroundColor: 'transparent',
     },
-    dangerButton: {
-    },
+    dangerButton: {},
     primaryButtonText: {
         fontWeight: 'bold',
         fontSize: 16,
@@ -110,4 +111,4 @@ const styles = StyleSheet.create({
     disabled: {
         opacity: 0.5,
     },
-});
+})

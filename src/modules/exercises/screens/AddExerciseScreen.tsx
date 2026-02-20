@@ -1,157 +1,157 @@
-import { Spacing } from '@/src/constants/Spacing';
-import { GlobalStyles } from '@/src/constants/Styles';
-import { getRepositories } from '@/src/data/repositories';
-import { ExerciseType } from '@/src/db/exercises';
-import { Button } from '@/src/modules/core/components/Button';
-import { Card } from '@/src/modules/core/components/Card';
-import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal';
-import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
-import { Typography } from '@/src/modules/core/components/Typography';
-import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { showToast } from '@/src/modules/core/utils/toast';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as ImagePicker from 'expo-image-picker';
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
-import { ScrollScreenLayout } from '../../core/components/ScreenLayout';
+import { Spacing } from '@/src/constants/Spacing'
+import { GlobalStyles } from '@/src/constants/Styles'
+import { getRepositories } from '@/src/data/repositories'
+import { ExerciseType } from '@/src/db/exercises'
+import { Button } from '@/src/modules/core/components/Button'
+import { Card } from '@/src/modules/core/components/Card'
+import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
+import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { showToast } from '@/src/modules/core/utils/toast'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import * as FileSystem from 'expo-file-system/legacy'
+import * as ImagePicker from 'expo-image-picker'
+import { router, useLocalSearchParams } from 'expo-router'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
+import { ScrollScreenLayout } from '../../core/components/ScreenLayout'
 
 type ExerciseFormScreenProps = {
-    mode?: 'create' | 'edit';
-    exerciseId?: number;
-};
+    mode?: 'create' | 'edit'
+    exerciseId?: number
+}
 
 export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseFormScreenProps) {
-    const { exercises: exerciseRepo } = getRepositories();
-    const { t } = useTranslation();
-    const { theme } = useTheme();
-    const { id } = useLocalSearchParams<{ id?: string }>();
-    const resolvedExerciseId = exerciseId ?? (id ? Number(id) : undefined);
-    const isEditing = mode === 'edit' || resolvedExerciseId !== undefined;
+    const { exercises: exerciseRepo } = getRepositories()
+    const { t } = useTranslation()
+    const { theme } = useTheme()
+    const { id } = useLocalSearchParams<{ id?: string }>()
+    const resolvedExerciseId = exerciseId ?? (id ? Number(id) : undefined)
+    const isEditing = mode === 'edit' || resolvedExerciseId !== undefined
 
-    const [name, setName] = useState('');
-    const [muscle, setMuscle] = useState('');
-    const [type, setType] = useState<ExerciseType>('weight');
-    const [photoUri, setPhotoUri] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [showImageFullScreen, setShowImageFullScreen] = useState(false);
-    const [nameError, setNameError] = useState('');
-    const nameInputRef = useRef<TextInput>(null);
-    const muscleInputRef = useRef<TextInput>(null);
+    const [name, setName] = useState('')
+    const [muscle, setMuscle] = useState('')
+    const [type, setType] = useState<ExerciseType>('weight')
+    const [photoUri, setPhotoUri] = useState<string | null>(null)
+    const [isLoading, setIsLoading] = useState(false)
+    const [showImageFullScreen, setShowImageFullScreen] = useState(false)
+    const [nameError, setNameError] = useState('')
+    const nameInputRef = useRef<TextInput>(null)
+    const muscleInputRef = useRef<TextInput>(null)
 
     const loadExercise = useCallback(async () => {
-        if (!resolvedExerciseId) return;
-        const exercise = await exerciseRepo.getById(resolvedExerciseId);
+        if (!resolvedExerciseId) return
+        const exercise = await exerciseRepo.getById(resolvedExerciseId)
         if (exercise) {
-            setName(exercise.name);
-            setMuscle(exercise.muscle_group || '');
-            setType(exercise.type);
-            setPhotoUri(exercise.photo_uri || null);
+            setName(exercise.name)
+            setMuscle(exercise.muscle_group || '')
+            setType(exercise.type)
+            setPhotoUri(exercise.photo_uri || null)
         }
-    }, [exerciseRepo, resolvedExerciseId]);
+    }, [exerciseRepo, resolvedExerciseId])
 
     useEffect(() => {
         if (isEditing) {
-            loadExercise();
+            loadExercise()
         }
-    }, [isEditing, loadExercise]);
+    }, [isEditing, loadExercise])
 
     const handlePickImage = async () => {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        const { status } = await ImagePicker.requestCameraPermissionsAsync()
         if (status !== 'granted') {
             showToast.info({
                 title: t('permissionNeeded'),
-                message: t('allowCamera')
-            });
-            return;
+                message: t('allowCamera'),
+            })
+            return
         }
 
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ['images'],
             quality: 0.7,
-        });
+        })
 
         if (!result.canceled) {
-            setPhotoUri(result.assets[0].uri);
+            setPhotoUri(result.assets[0].uri)
         }
-    };
+    }
 
     const savePhotoPermanently = async (uri: string) => {
-        const docDir = FileSystem.documentDirectory;
-        if (!docDir) return uri;
-        if (!uri) return uri;
+        const docDir = FileSystem.documentDirectory
+        if (!docDir) return uri
+        if (!uri) return uri
 
         // Already persisted in app storage.
-        if (uri.includes(docDir)) return uri;
+        if (uri.includes(docDir)) return uri
 
-        const filename = `${Date.now()}.jpg`;
-        const dest = `${docDir}exercises/${filename}`;
+        const filename = `${Date.now()}.jpg`
+        const dest = `${docDir}exercises/${filename}`
 
         // Ensure directory exists
-        const dir = `${docDir}exercises/`;
-        const dirInfo = await FileSystem.getInfoAsync(dir);
+        const dir = `${docDir}exercises/`
+        const dirInfo = await FileSystem.getInfoAsync(dir)
         if (!dirInfo.exists) {
-            await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+            await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
         }
 
         await FileSystem.copyAsync({
             from: uri,
-            to: dest
-        });
+            to: dest,
+        })
 
-        return dest;
-    };
+        return dest
+    }
 
     const handleSave = async () => {
         if (!name.trim()) {
-            setNameError(t('enterName'));
-            nameInputRef.current?.focus();
-            return;
+            setNameError(t('enterName'))
+            nameInputRef.current?.focus()
+            return
         }
-        setNameError('');
+        setNameError('')
 
-        setIsLoading(true);
+        setIsLoading(true)
         try {
-            let finalPhotoUri = photoUri;
-            const docDir = FileSystem.documentDirectory;
+            let finalPhotoUri = photoUri
+            const docDir = FileSystem.documentDirectory
             if (photoUri && docDir && !photoUri.includes(docDir)) {
-                finalPhotoUri = await savePhotoPermanently(photoUri);
+                finalPhotoUri = await savePhotoPermanently(photoUri)
             }
 
             if (isEditing) {
-                if (!resolvedExerciseId) return;
+                if (!resolvedExerciseId) return
                 await exerciseRepo.update(resolvedExerciseId, {
                     name: name.trim(),
                     muscle_group: muscle.trim().toLowerCase() || undefined,
                     type: type.toLowerCase() as ExerciseType,
-                    photo_uri: finalPhotoUri
-                });
+                    photo_uri: finalPhotoUri,
+                })
             } else {
                 await exerciseRepo.create(
                     name.trim(),
                     type.toLowerCase() as ExerciseType,
                     muscle.trim().toLowerCase() || undefined,
                     finalPhotoUri ?? undefined
-                );
+                )
             }
-            router.replace('/(tabs)/exercises');
+            router.replace('/(tabs)/exercises')
             showToast.success({
                 title: isEditing ? t('exerciseUpdated') : t('exerciseCreated'),
-                message: isEditing ? `${name} ${t('updated')}` : `${name} ${t('ready')}`
-            });
+                message: isEditing ? `${name} ${t('updated')}` : `${name} ${t('ready')}`,
+            })
         } catch (error) {
-            console.error('Failed to save exercise:', error);
+            console.error('Failed to save exercise:', error)
             showToast.danger({
                 title: t('error'),
-                message: t('failedToSaveExercise')
-            });
+                message: t('failedToSaveExercise'),
+            })
         } finally {
-            setIsLoading(false);
+            setIsLoading(false)
         }
-    };
+    }
 
     const handleDelete = () => {
         showToast.confirm({
@@ -162,31 +162,33 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
             action: {
                 label: t('delete'),
                 onPress: async () => {
-                    if (!resolvedExerciseId) return;
-                    await exerciseRepo.delete(resolvedExerciseId);
-                    router.dismissAll();
-                    router.replace('/(tabs)/exercises');
+                    if (!resolvedExerciseId) return
+                    await exerciseRepo.delete(resolvedExerciseId)
+                    router.dismissAll()
+                    router.replace('/(tabs)/exercises')
                     showToast.success({
                         title: t('exerciseDeleted'),
-                        message: t('exerciseRemoved')
-                    });
-
-                }
-            }
-        });
-    };
+                        message: t('exerciseRemoved'),
+                    })
+                },
+            },
+        })
+    }
 
     return (
-        <ScrollScreenLayout fixedHeader={
-            <ScreenHeader
-                title={isEditing ? t('editExercise') : t('addExercise')}
-                onDelete={isEditing ? handleDelete : undefined}
-            />
-        }>
-
+        <ScrollScreenLayout
+            fixedHeader={
+                <ScreenHeader
+                    title={isEditing ? t('editExercise') : t('addExercise')}
+                    onDelete={isEditing ? handleDelete : undefined}
+                />
+            }
+        >
             <Card style={{ padding: 0, overflow: 'hidden' }}>
                 <Animated.View layout={LinearTransition.duration(300)} style={{ padding: Spacing.md }}>
-                    <Typography.Subtitle style={{ marginBottom: Spacing.md }}>{t('exerciseDetails')}</Typography.Subtitle>
+                    <Typography.Subtitle style={{ marginBottom: Spacing.md }}>
+                        {t('exerciseDetails')}
+                    </Typography.Subtitle>
 
                     <Typography.Label>{t('name')}</Typography.Label>
                     <TextInput
@@ -198,27 +200,24 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                             {
                                 color: theme.text,
                                 backgroundColor: theme.inputBackground,
-                                borderColor: nameError ? theme.error : theme.border
-                            }
+                                borderColor: nameError ? theme.error : theme.border,
+                            },
                         ]}
                         value={name}
                         onChangeText={(value) => {
-                            setName(value);
-                            if (nameError) setNameError('');
+                            setName(value)
+                            if (nameError) setNameError('')
                         }}
                         autoFocus={!isEditing}
                         selectionColor={theme.primary}
-                        returnKeyType={"next"}
+                        returnKeyType={'next'}
                         blurOnSubmit={false}
                         onSubmitEditing={() => muscleInputRef.current?.focus()}
                         accessibilityLabel={t('name')}
                         accessibilityHint={t('required')}
                     />
                     <View style={styles.helperTextSlot}>
-                        <Typography.Meta
-                            style={{ color: nameError ? theme.error : 'transparent' }}
-                            numberOfLines={1}
-                        >
+                        <Typography.Meta style={{ color: nameError ? theme.error : 'transparent' }} numberOfLines={1}>
                             {nameError || ' '}
                         </Typography.Meta>
                     </View>
@@ -228,119 +227,152 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                         ref={muscleInputRef}
                         placeholder={t('placeholderMuscle')}
                         placeholderTextColor={theme.textSecondary}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
+                        style={[
+                            GlobalStyles.input,
+                            { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                        ]}
                         value={muscle}
                         onChangeText={setMuscle}
                         selectionColor={theme.primary}
-                        returnKeyType={"done"}
+                        returnKeyType={'done'}
                         onSubmitEditing={handleSave}
                         accessibilityLabel={t('muscleGroup')}
                     />
 
-                    <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>{t('exerciseType')}</Typography.Subtitle>
+                    <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>
+                        {t('exerciseType')}
+                    </Typography.Subtitle>
                     <Animated.View layout={LinearTransition.duration(300)} style={styles.typeContainer}>
                         {[
                             { label: t('typeWeight'), value: 'weight' as ExerciseType },
                             { label: t('typeCardio'), value: 'cardio' as ExerciseType },
                             { label: t('typeBodyweight'), value: 'bodyweight' as ExerciseType },
                         ].map((t_item) => {
-                            const isActive = type === t_item.value || (t_item.value === 'bodyweight' && type === 'bodyweight_timer');
+                            const isActive =
+                                type === t_item.value || (t_item.value === 'bodyweight' && type === 'bodyweight_timer')
                             return (
                                 <TouchableOpacity
                                     key={t_item.value}
                                     style={[
                                         styles.typeButton,
                                         { borderColor: theme.border },
-                                        isActive && { backgroundColor: theme.primary, borderColor: theme.primary }
+                                        isActive && { backgroundColor: theme.primary, borderColor: theme.primary },
                                     ]}
                                     onPress={() => setType(t_item.value)}
-                                    accessibilityRole={"button"}
+                                    accessibilityRole={'button'}
                                     accessibilityLabel={t_item.label}
                                     accessibilityState={{ selected: isActive }}
                                 >
-                                    <Typography.Meta style={[
-                                        styles.typeButtonText,
-                                        { color: theme.textSecondary },
-                                        isActive && { color: theme.onPrimary }
-                                    ]}>
+                                    <Typography.Meta
+                                        style={[
+                                            styles.typeButtonText,
+                                            { color: theme.textSecondary },
+                                            isActive && { color: theme.onPrimary },
+                                        ]}
+                                    >
                                         {t_item.label}
                                     </Typography.Meta>
                                 </TouchableOpacity>
-                            );
+                            )
                         })}
                     </Animated.View>
 
                     {/* Tracking Mode Toggle */}
                     {(type === 'bodyweight' || type === 'bodyweight_timer') && (
-                        <Animated.View
-                            entering={FadeIn}
-                            layout={LinearTransition}
-                            style={{ marginTop: 20 }}
-                        >
-                            <Typography.Label style={{ fontSize: 12, marginBottom: 6 }}>{t('trackingMode')}</Typography.Label>
+                        <Animated.View entering={FadeIn} layout={LinearTransition} style={{ marginTop: 20 }}>
+                            <Typography.Label style={{ fontSize: 12, marginBottom: 6 }}>
+                                {t('trackingMode')}
+                            </Typography.Label>
                             <View style={[styles.subToggleContainer, { backgroundColor: theme.inputBackground }]}>
                                 <TouchableOpacity
                                     style={[
                                         styles.subToggleButton,
                                         { backgroundColor: 'transparent' },
-                                        type === 'bodyweight' && [styles.subToggleButtonActive, { backgroundColor: theme.inputBackgroundActive, borderColor: theme.inputBackgroundActive }]
+                                        type === 'bodyweight' && [
+                                            styles.subToggleButtonActive,
+                                            {
+                                                backgroundColor: theme.inputBackgroundActive,
+                                                borderColor: theme.inputBackgroundActive,
+                                            },
+                                        ],
                                     ]}
                                     onPress={() => setType('bodyweight')}
-                                    accessibilityRole={"button"}
+                                    accessibilityRole={'button'}
                                     accessibilityLabel={t('reps')}
                                     accessibilityState={{ selected: type === 'bodyweight' }}
                                 >
-                                    <Typography.Meta style={[
-                                        styles.subToggleText,
-                                        { color: theme.textSecondary },
-                                        type === 'bodyweight' && [styles.subToggleTextActive, { color: theme.text }]
-                                    ]}>{t('reps')}</Typography.Meta>
+                                    <Typography.Meta
+                                        style={[
+                                            styles.subToggleText,
+                                            { color: theme.textSecondary },
+                                            type === 'bodyweight' && [
+                                                styles.subToggleTextActive,
+                                                { color: theme.text },
+                                            ],
+                                        ]}
+                                    >
+                                        {t('reps')}
+                                    </Typography.Meta>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[
                                         styles.subToggleButton,
                                         { backgroundColor: 'transparent' },
-                                        type === 'bodyweight_timer' && [styles.subToggleButtonActive, { backgroundColor: theme.inputBackgroundActive, borderColor: theme.inputBackgroundActive }]
+                                        type === 'bodyweight_timer' && [
+                                            styles.subToggleButtonActive,
+                                            {
+                                                backgroundColor: theme.inputBackgroundActive,
+                                                borderColor: theme.inputBackgroundActive,
+                                            },
+                                        ],
                                     ]}
                                     onPress={() => setType('bodyweight_timer')}
-                                    accessibilityRole={"button"}
+                                    accessibilityRole={'button'}
                                     accessibilityLabel={t('timer')}
                                     accessibilityState={{ selected: type === 'bodyweight_timer' }}
                                 >
-                                    <Typography.Meta style={[
-                                        styles.subToggleText,
-                                        { color: theme.textSecondary },
-                                        type === 'bodyweight_timer' && [styles.subToggleTextActive, { color: theme.text }]
-                                    ]}>{t('timer')}</Typography.Meta>
+                                    <Typography.Meta
+                                        style={[
+                                            styles.subToggleText,
+                                            { color: theme.textSecondary },
+                                            type === 'bodyweight_timer' && [
+                                                styles.subToggleTextActive,
+                                                { color: theme.text },
+                                            ],
+                                        ]}
+                                    >
+                                        {t('timer')}
+                                    </Typography.Meta>
                                 </TouchableOpacity>
                             </View>
                         </Animated.View>
                     )}
 
-
                     <Animated.View entering={FadeIn} layout={LinearTransition} style={styles.photoSection}>
-                        <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>{t('photo')}</Typography.Subtitle>
+                        <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>
+                            {t('photo')}
+                        </Typography.Subtitle>
                         {photoUri ? (
                             <TouchableOpacity
                                 style={[
                                     styles.photoWrapper,
                                     {
                                         backgroundColor: theme.surfaceSubtle,
-                                        borderColor: theme.inputBackgroundActive
-                                    }
+                                        borderColor: theme.inputBackgroundActive,
+                                    },
                                 ]}
                                 onPress={() => setShowImageFullScreen(true)}
-                                accessibilityRole={"button"}
+                                accessibilityRole={'button'}
                                 accessibilityLabel={t('photo')}
                             >
                                 <Image key={photoUri} source={{ uri: photoUri }} style={styles.photo} />
                                 <TouchableOpacity
                                     style={[styles.removePhotoButton, { backgroundColor: theme.overlayScrim }]}
                                     onPress={() => setPhotoUri(null)}
-                                    accessibilityRole={"button"}
+                                    accessibilityRole={'button'}
                                     accessibilityLabel={t('delete')}
                                 >
-                                    <FontAwesome name={"trash"} size={20} color={theme.error} />
+                                    <FontAwesome name={'trash'} size={20} color={theme.error} />
                                 </TouchableOpacity>
                             </TouchableOpacity>
                         ) : (
@@ -349,22 +381,24 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                                     styles.addPhotoButton,
                                     {
                                         backgroundColor: theme.surfaceSubtle,
-                                        borderColor: theme.inputBackground
-                                    }
+                                        borderColor: theme.inputBackground,
+                                    },
                                 ]}
                                 onPress={handlePickImage}
-                                accessibilityRole={"button"}
+                                accessibilityRole={'button'}
                                 accessibilityLabel={t('photo')}
                             >
-                                <FontAwesome name={"camera"} size={30} color={theme.primary} />
-                                <Typography.Meta style={[styles.addPhotoText, { color: theme.primary }]}>{t('photo')}</Typography.Meta>
+                                <FontAwesome name={'camera'} size={30} color={theme.primary} />
+                                <Typography.Meta style={[styles.addPhotoText, { color: theme.primary }]}>
+                                    {t('photo')}
+                                </Typography.Meta>
                             </TouchableOpacity>
                         )}
                     </Animated.View>
 
                     <Animated.View layout={LinearTransition.duration(300)}>
                         <Button
-                            label={isLoading ? t('loading') : (isEditing ? t('saveChanges') : t('createExercise'))}
+                            label={isLoading ? t('loading') : isEditing ? t('saveChanges') : t('createExercise')}
                             onPress={handleSave}
                             isLoading={isLoading}
                             disabled={!name.trim()}
@@ -382,11 +416,11 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                 )}
             </Card>
         </ScrollScreenLayout>
-    );
+    )
 }
 
 export default function AddExerciseScreen() {
-    return <ExerciseFormScreen mode="create" />;
+    return <ExerciseFormScreen mode="create" />
 }
 
 const styles = StyleSheet.create({
@@ -474,4 +508,4 @@ const styles = StyleSheet.create({
     subToggleTextActive: {
         fontWeight: 'bold',
     },
-});
+})

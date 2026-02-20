@@ -1,66 +1,61 @@
-import { Spacing } from '@/src/constants/Spacing';
-import { getRepositories } from '@/src/data/repositories';
-import { Exercise } from '@/src/db/exercises';
-import { ExerciseHistory } from '@/src/db/workouts';
-import { Card } from '@/src/modules/core/components/Card';
-import { EmptyState } from '@/src/modules/core/components/EmptyState';
-import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal';
-import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader';
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout';
-import { Typography } from '@/src/modules/core/components/Typography';
-import { useTheme } from '@/src/modules/core/hooks/useTheme';
-import { showToast } from '@/src/modules/core/utils/toast';
-import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters';
-import { useIsFocused } from '@react-navigation/native';
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph';
-
-
+import { Spacing } from '@/src/constants/Spacing'
+import { getRepositories } from '@/src/data/repositories'
+import { Exercise } from '@/src/db/exercises'
+import { ExerciseHistory } from '@/src/db/workouts'
+import { Card } from '@/src/modules/core/components/Card'
+import { EmptyState } from '@/src/modules/core/components/EmptyState'
+import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
+import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader'
+import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { showToast } from '@/src/modules/core/utils/toast'
+import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
+import { useIsFocused } from '@react-navigation/native'
+import { router, useLocalSearchParams } from 'expo-router'
+import React, { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph'
 
 export default function ExerciseDetailScreen() {
-    const { exercises: exerciseRepo, workouts: workoutRepo } = getRepositories();
-    const { t } = useTranslation();
-    const { id } = useLocalSearchParams();
-    const [exercise, setExercise] = useState<Exercise | null>(null);
-    const [historyData, setHistoryData] = useState<ExerciseHistory[]>([]);
-    const [showImageFullScreen, setShowImageFullScreen] = useState(false);
-    const isFocused = useIsFocused();
-    const { theme } = useTheme();
-
+    const { exercises: exerciseRepo, workouts: workoutRepo } = getRepositories()
+    const { t } = useTranslation()
+    const { id } = useLocalSearchParams()
+    const [exercise, setExercise] = useState<Exercise | null>(null)
+    const [historyData, setHistoryData] = useState<ExerciseHistory[]>([])
+    const [showImageFullScreen, setShowImageFullScreen] = useState(false)
+    const isFocused = useIsFocused()
+    const { theme } = useTheme()
 
     const loadData = useCallback(async () => {
         if (id) {
-            const exercise = await exerciseRepo.getById(Number(id));
+            const exercise = await exerciseRepo.getById(Number(id))
             if (!exercise) {
-                router.replace('/(tabs)/exercises');
-                return;
+                router.replace('/(tabs)/exercises')
+                return
             }
-            setExercise(exercise || null);
+            setExercise(exercise || null)
 
             if (exercise) {
-                const data = await workoutRepo.getExerciseHistory(exercise.id);
-                setHistoryData(data);
+                const data = await workoutRepo.getExerciseHistory(exercise.id)
+                setHistoryData(data)
             }
         }
-    }, [exerciseRepo, id, workoutRepo]);
+    }, [exerciseRepo, id, workoutRepo])
 
     useEffect(() => {
         if (isFocused) {
-            loadData();
+            loadData()
         }
-    }, [isFocused, loadData]);
-
-
+    }, [isFocused, loadData])
 
     if (!exercise) {
         return (
             <ScreenLayout>
                 <Typography.Body>{t('loading')}</Typography.Body>
             </ScreenLayout>
-        );
+        )
     }
 
     const handleDelete = () => {
@@ -73,18 +68,17 @@ export default function ExerciseDetailScreen() {
                 label: t('delete'),
                 onPress: async () => {
                     if (exercise) {
-                        await exerciseRepo.delete(exercise.id);
-                        router.replace('/(tabs)/exercises');
+                        await exerciseRepo.delete(exercise.id)
+                        router.replace('/(tabs)/exercises')
                         showToast.success({
                             title: t('exerciseDeleted'),
-                            message: t('exerciseRemoved')
-                        });
-
+                            message: t('exerciseRemoved'),
+                        })
                     }
-                }
-            }
-        });
-    };
+                },
+            },
+        })
+    }
 
     return (
         <ScreenLayout style={{ paddingTop: 0 }}>
@@ -93,49 +87,52 @@ export default function ExerciseDetailScreen() {
                 onDelete={handleDelete}
                 rightAction={{
                     label: t('edit'),
-                    onPress: () => router.push(`/(tabs)/exercises/edit/${exercise.id}`)
+                    onPress: () => router.push(`/(tabs)/exercises/edit/${exercise.id}`),
                 }}
             />
             <Card style={{ marginTop: Spacing.md }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', height: 120, marginBottom: Spacing.md }}>
-                    <View style={{ flexDirection: 'column', gap: Spacing.md, justifyContent: "space-between" }}>
+                <View
+                    style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        height: 120,
+                        marginBottom: Spacing.md,
+                    }}
+                >
+                    <View style={{ flexDirection: 'column', gap: Spacing.md, justifyContent: 'space-between' }}>
                         <View>
                             <Typography.Label>{t('type')}</Typography.Label>
                             <Typography.Body>{t(formatExerciseType(exercise.type))}</Typography.Body>
                         </View>
                         <View>
                             <Typography.Label>{t('muscleGroup')}</Typography.Label>
-                            <Typography.Body>{exercise.muscle_group ? formatMuscleGroup(exercise.muscle_group) : t('notSpecified')}</Typography.Body>
+                            <Typography.Body>
+                                {exercise.muscle_group ? formatMuscleGroup(exercise.muscle_group) : t('notSpecified')}
+                            </Typography.Body>
                         </View>
                     </View>
 
                     {exercise.photo_uri && (
                         <TouchableOpacity
-                            style={[styles.photoContainer, { backgroundColor: theme.surfaceSubtle, borderColor: theme.border }]}
+                            style={[
+                                styles.photoContainer,
+                                { backgroundColor: theme.surfaceSubtle, borderColor: theme.border },
+                            ]}
                             onPress={() => setShowImageFullScreen(true)}
                             activeOpacity={0.9}
                         >
-
-                            <Image
-                                key={exercise.photo_uri}
-                                source={{ uri: exercise.photo_uri }}
-                                style={styles.photo}
-                            />
+                            <Image key={exercise.photo_uri} source={{ uri: exercise.photo_uri }} style={styles.photo} />
                         </TouchableOpacity>
                     )}
                 </View>
                 {historyData.length > 0 ? (
-                    <ExerciseHistoryGraph
-                        exercise={exercise}
-                        data={historyData}
-                    />
+                    <ExerciseHistoryGraph exercise={exercise} data={historyData} />
                 ) : (
                     <EmptyState
                         message={t('statsComingSoon')}
-                        icon={"line-chart"}
+                        icon={'line-chart'}
                         style={{ backgroundColor: theme.surface }}
                     />
-
                 )}
             </Card>
             <FullScreenImageModal
@@ -144,12 +141,12 @@ export default function ExerciseDetailScreen() {
                 imageUri={exercise.photo_uri || null}
             />
         </ScreenLayout>
-    );
+    )
 }
 
 const styles = StyleSheet.create({
     photoContainer: {
-        width: "50%",
+        width: '50%',
         height: 120,
         borderRadius: 12,
         overflow: 'hidden',
@@ -161,4 +158,4 @@ const styles = StyleSheet.create({
         height: '100%',
         resizeMode: 'cover',
     },
-});
+})
