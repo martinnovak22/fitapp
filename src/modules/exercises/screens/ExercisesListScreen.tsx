@@ -2,6 +2,7 @@ import { ThemeType } from '@/src/constants/Colors'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { Exercise } from '@/src/db/exercises'
+import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
@@ -120,7 +121,7 @@ ExerciseListItem.displayName = 'ExerciseListItem'
 export default function ExercisesListScreen() {
     const { t } = useTranslation()
     const navigation = useNavigation()
-    const { exercises, hasLoaded, loadExercises, handleReorder } = useExercises()
+    const { exercises, hasLoaded, loadError, loadExercises, handleReorder, isReordering } = useExercises()
     const { theme } = useTheme()
     const animatedItemIdsRef = useRef<Set<number>>(new Set())
     const [showAndroidExportSheet, setShowAndroidExportSheet] = useState(false)
@@ -171,7 +172,7 @@ export default function ExercisesListScreen() {
                         accessibilityLabel={t('import')}
                     >
                         {isImporting ? (
-                            <ActivityIndicator size="small" color={theme.primary} />
+                            <ActivityIndicator size={"small"} color={theme.primary} />
                         ) : (
                             <FontAwesome name={'download'} size={20} color={theme.primary} />
                         )}
@@ -196,7 +197,12 @@ export default function ExercisesListScreen() {
         <ScreenLayout>
             {!hasLoaded ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={theme.primary} />
+                    <ActivityIndicator size={"large"} color={theme.primary} />
+                </View>
+            ) : loadError && exercises.length === 0 ? (
+                <View style={styles.loadingContainer}>
+                    <EmptyState message={loadError} icon={"exclamation-circle"} />
+                    <Button label={t('retry')} onPress={loadExercises} style={{ marginTop: Spacing.md }} />
                 </View>
             ) : exercises.length === 0 ? (
                 <EmptyState message={t('noExercises')} subMessage={t('addFirstExercise')} icon={'list'} />
@@ -214,6 +220,12 @@ export default function ExercisesListScreen() {
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 80 }}
                 />
+            )}
+            {isReordering && (
+                <View style={styles.reorderOverlay}>
+                    <ActivityIndicator size={"small"} color={theme.primary} />
+                    <Text style={[styles.reorderOverlayText, { color: theme.text }]}>{t('saving')}</Text>
+                </View>
             )}
             <TouchableOpacity
                 style={GlobalStyles.fab}
@@ -279,7 +291,7 @@ export default function ExercisesListScreen() {
                     <View
                         style={[styles.importOverlayCard, { backgroundColor: theme.card, borderColor: theme.border }]}
                     >
-                        <ActivityIndicator size="large" color={theme.primary} />
+                        <ActivityIndicator size={"large"} color={theme.primary} />
                         <Text style={[styles.importOverlayText, { color: theme.text }]}>{t('importInProgress')}</Text>
                     </View>
                 </View>
@@ -394,5 +406,21 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
         textAlign: 'center',
+    },
+    reorderOverlay: {
+        position: 'absolute',
+        top: Spacing.md,
+        right: Spacing.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+        paddingVertical: Spacing.xs,
+        paddingHorizontal: Spacing.sm,
+        borderRadius: 999,
+        backgroundColor: '#00000099',
+    },
+    reorderOverlayText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
 })

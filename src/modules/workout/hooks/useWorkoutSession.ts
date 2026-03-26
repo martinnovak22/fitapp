@@ -19,7 +19,9 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const [sets, setSets] = useState<SetWithExercise[]>([])
     const [exercises, setExercises] = useState<Exercise[]>([])
     const [loading, setLoading] = useState(true)
+    const [loadError, setLoadError] = useState<string | null>(null)
     const [isSavingSet, setIsSavingSet] = useState(false)
+    const [isSavingWorkoutTime, setIsSavingWorkoutTime] = useState(false)
     const [isFinishingWorkout, setIsFinishingWorkout] = useState(false)
     const [isDeletingWorkout, setIsDeletingWorkout] = useState(false)
 
@@ -31,10 +33,12 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
 
     const loadData = useCallback(async () => {
         if (!Number.isFinite(workoutId) || workoutId <= 0) {
+            setLoadError(t('failedToLoadWorkoutSession'))
             setLoading(false)
             return
         }
         setLoading(true)
+        setLoadError(null)
 
         try {
             const [w, s, ex] = await Promise.all([
@@ -53,10 +57,11 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             setExercises(ex)
         } catch (e) {
             console.error('Failed to load workout session:', e)
+            setLoadError(t('failedToLoadWorkoutSession'))
         } finally {
             setLoading(false)
         }
-    }, [exerciseRepo, workoutId, workoutRepo])
+    }, [exerciseRepo, t, workoutId, workoutRepo])
 
     useFocusEffect(
         useCallback(() => {
@@ -165,6 +170,25 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         })
     }
 
+    const updateWorkoutTiming = useCallback(
+        async (date: string, startTime: string, endTime?: string) => {
+            setIsSavingWorkoutTime(true)
+            try {
+                await workoutRepo.updateTiming(workoutId, date, startTime, endTime)
+                await loadData()
+                showToast.success({ title: t('success'), message: t('changesSaved') })
+                return true
+            } catch (e) {
+                console.error('Failed to update workout timing:', e)
+                showToast.danger({ title: t('error'), message: t('failedToSaveWorkoutTime') })
+                return false
+            } finally {
+                setIsSavingWorkoutTime(false)
+            }
+        },
+        [loadData, t, workoutId, workoutRepo]
+    )
+
     const exerciseNamesOrder = [...new Set(sets.map((s) => s.exercise_name))]
     const groupedSets = sets.reduce(
         (acc, set) => {
@@ -218,7 +242,9 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         sets,
         exercises,
         loading,
+        loadError,
         isSavingSet,
+        isSavingWorkoutTime,
         isFinishingWorkout,
         isDeletingWorkout,
         exerciseNamesOrder,
@@ -230,5 +256,6 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         finishWorkout,
         deleteWorkout,
         reorderSets,
+        updateWorkoutTiming,
     }
 }

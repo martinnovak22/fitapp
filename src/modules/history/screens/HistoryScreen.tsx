@@ -1,6 +1,7 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { getRepositories } from '@/src/data/repositories'
 import { Workout } from '@/src/db/workouts'
+import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
@@ -20,21 +21,26 @@ export default function HistoryScreen() {
     const { theme } = useTheme()
     const [workouts, setWorkouts] = useState<Workout[]>([])
     const [initialLoading, setInitialLoading] = useState(true)
+    const [loadError, setLoadError] = useState<string | null>(null)
     const [refreshing, setRefreshing] = useState(false)
     const animatedItemIdsRef = useRef<Set<number>>(new Set())
 
     const loadData = useCallback(
         async (showRefresh = false) => {
             if (showRefresh) setRefreshing(true)
+            setLoadError(null)
             try {
                 const data = await workoutRepo.getAllWorkouts()
                 setWorkouts(data)
+            } catch (error) {
+                console.error('Failed to load workouts history:', error)
+                setLoadError(t('failedToLoadWorkouts'))
             } finally {
                 if (showRefresh) setRefreshing(false)
                 setInitialLoading(false)
             }
         },
-        [workoutRepo]
+        [t, workoutRepo]
     )
 
     useFocusEffect(
@@ -99,7 +105,12 @@ export default function HistoryScreen() {
         <ScreenLayout>
             {initialLoading ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={theme.primary} />
+                    <ActivityIndicator size={"large"} color={theme.primary} />
+                </View>
+            ) : loadError && workouts.length === 0 ? (
+                <View style={styles.loadingContainer}>
+                    <EmptyState message={loadError} icon={"exclamation-circle"} />
+                    <Button label={t('retry')} onPress={onRefresh} style={{ marginTop: Spacing.md }} />
                 </View>
             ) : (
                 <FlatList
