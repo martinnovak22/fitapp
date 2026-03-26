@@ -275,4 +275,18 @@ export const WorkoutRepository = {
         )
         return result?.avg_duration ?? 0
     },
+
+    async updateTiming(id: number, date: string, startTime: string, endTime?: string): Promise<void> {
+        await executeWrite((db) =>
+            db.runAsync(
+                'UPDATE workouts SET date = ?, start_time = ?, end_time = ?, updated_at = ?, sync_status = ? WHERE id = ?',
+                date,
+                startTime,
+                endTime ?? null,
+                nowIso(),
+                'dirty',
+                id
+            )
+        )
+    },
 }

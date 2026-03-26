@@ -7,12 +7,13 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { showToast } from '@/src/modules/core/utils/toast'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect } from 'expo-router'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshControl, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 
 export default function WorkoutDashboardScreen() {
@@ -22,6 +23,9 @@ export default function WorkoutDashboardScreen() {
     const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null)
     const [allWorkouts, setAllWorkouts] = useState<Workout[]>([])
     const [refreshing, setRefreshing] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
+    const [isStartingWorkout, setIsStartingWorkout] = useState(false)
+    const [loadError, setLoadError] = useState<string | null>(null)
     const [consistency, setConsistency] = useState<{ date: string; day: string; workedOut: boolean }[]>([])
     const [stats, setStats] = useState({
         sessions: 0,
@@ -32,44 +36,52 @@ export default function WorkoutDashboardScreen() {
         .slice(0, 3)
 
     const loadData = useCallback(async () => {
-        const active = await workoutRepo.getActiveWorkout()
-        setActiveWorkout(active)
+        setLoadError(null)
+        setIsLoading(true)
+        try {
+            const active = await workoutRepo.getActiveWorkout()
+            setActiveWorkout(active)
 
-        const all = await workoutRepo.getAllWorkouts()
-        setAllWorkouts(all)
+            const all = await workoutRepo.getAllWorkouts()
+            setAllWorkouts(all)
 
-        const today = new Date()
-        const last7Days: string[] = []
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date(today)
-            d.setDate(today.getDate() - i)
-            last7Days.push(formatLocalDateYYYYMMDD(d))
-        }
-
-        const periodWorkouts = await workoutRepo.getWorkoutsForPeriod(last7Days[0], last7Days[6])
-        const periodMap = new Set(periodWorkouts.map((w) => w.date))
-
-        const consData = last7Days.map((dateStr) => {
-            const d = new Date(dateStr)
-            return {
-                date: dateStr,
-                day: formatLocalizedDate(d, i18n.language, { weekday: 'narrow' }),
-                workedOut: periodMap.has(dateStr),
+            const today = new Date()
+            const last7Days: string[] = []
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(today)
+                d.setDate(today.getDate() - i)
+                last7Days.push(formatLocalDateYYYYMMDD(d))
             }
-        })
 
-        setConsistency(consData)
+            const periodWorkouts = await workoutRepo.getWorkoutsForPeriod(last7Days[0], last7Days[6])
+            const periodMap = new Set(periodWorkouts.map((w) => w.date))
 
-        // Load stats
-        const thisMonthStr = today.toISOString().slice(0, 7)
-        const sessions = await workoutRepo.getWorkoutCountForMonth(thisMonthStr)
-        const avgDuration = await workoutRepo.getAvgWorkoutDuration(thisMonthStr)
+            const consData = last7Days.map((dateStr) => {
+                const d = new Date(dateStr)
+                return {
+                    date: dateStr,
+                    day: formatLocalizedDate(d, i18n.language, { weekday: 'narrow' }),
+                    workedOut: periodMap.has(dateStr),
+                }
+            })
 
-        setStats({
-            sessions,
-            avgDuration: Math.round(avgDuration),
-        })
-    }, [i18n.language, workoutRepo])
+            setConsistency(consData)
+
+            const thisMonthStr = today.toISOString().slice(0, 7)
+            const sessions = await workoutRepo.getWorkoutCountForMonth(thisMonthStr)
+            const avgDuration = await workoutRepo.getAvgWorkoutDuration(thisMonthStr)
+
+            setStats({
+                sessions,
+                avgDuration: Math.round(avgDuration),
+            })
+        } catch (error) {
+            console.error('Failed to load workout dashboard:', error)
+            setLoadError(t('failedToLoadWorkouts'))
+        } finally {
+            setIsLoading(false)
+        }
+    }, [i18n.language, t, workoutRepo])
 
     useFocusEffect(
         useCallback(() => {
@@ -84,14 +96,44 @@ export default function WorkoutDashboardScreen() {
     }
 
     const handleStartWorkout = async () => {
+        if (isStartingWorkout) return
+        setIsStartingWorkout(true)
         if (activeWorkout) {
             router.push(`/(tabs)/workout/${activeWorkout.id}`)
+            setIsStartingWorkout(false)
             return
         }
+        try {
+            const today = formatLocalDateYYYYMMDD()
+            const id = await workoutRepo.create(today)
+            router.push(`/(tabs)/workout/${id}`)
+        } catch (error) {
+            console.error('Failed to start workout:', error)
+            showToast.danger({ title: t('error'), message: t('failedToStartWorkout') })
+        } finally {
+            setIsStartingWorkout(false)
+        }
+    }
 
-        const today = formatLocalDateYYYYMMDD()
-        const id = await workoutRepo.create(today)
-        router.push(`/(tabs)/workout/${id}`)
+    if (isLoading && allWorkouts.length === 0) {
+        return (
+            <ScrollScreenLayout>
+                <View style={layoutStyles.loadingContainer}>
+                    <ActivityIndicator size={"large"} color={theme.primary} />
+                </View>
+            </ScrollScreenLayout>
+        )
+    }
+
+    if (loadError && allWorkouts.length === 0) {
+        return (
+            <ScrollScreenLayout>
+                <View style={layoutStyles.loadingContainer}>
+                    <EmptyState message={loadError} icon={"exclamation-circle"} />
+                    <Button label={t('retry')} onPress={loadData} style={{ marginTop: Spacing.md }} />
+                </View>
+            </ScrollScreenLayout>
+        )
     }
 
     return (
@@ -213,14 +255,14 @@ export default function WorkoutDashboardScreen() {
                                 {t('startedAt')} {formatHourMinute(activeWorkout.start_time)}
                             </Typography.Body>
 
-                            <Button label={t('resumeSession')} onPress={handleStartWorkout} />
+                            <Button label={t('resumeSession')} onPress={handleStartWorkout} isLoading={isStartingWorkout} />
                         </View>
                     ) : (
                         <View style={layoutStyles.activeContent}>
                             <Typography.Body style={[layoutStyles.activePromo, { color: theme.textSecondary }]}>
                                 {t('readyToCrush')}
                             </Typography.Body>
-                            <Button label={t('startNewWorkout')} onPress={handleStartWorkout} />
+                            <Button label={t('startNewWorkout')} onPress={handleStartWorkout} isLoading={isStartingWorkout} />
                         </View>
                     )}
                 </Card>
@@ -284,6 +326,11 @@ export default function WorkoutDashboardScreen() {
 }
 
 const layoutStyles = StyleSheet.create({
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     heroCard: {
         marginBottom: Spacing.lg,
         paddingVertical: Spacing.lg,
