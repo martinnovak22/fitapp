@@ -75,6 +75,11 @@ type TombstoneRow = {
     deleted_at: string
 }
 
+type DeletedRow = {
+    uuid: string
+    deleted_at: string | null
+}
+
 type RemoteSetWithRefs = {
     uuid: string
     user_id: string
@@ -208,7 +213,7 @@ const updateSyncState = async (partial: Partial<SyncState>) => {
     await executeWrite((db) => db.runAsync(`UPDATE sync_state SET ${updates.join(', ')} WHERE id = 1`, ...values))
 }
 
-const setEntitySynced = async (table: SyncTable, uuid: string) => {
+const setEntitySyncedIfUnchanged = async (table: SyncTable, uuid: string, expectedUpdatedAt: string | null) => {
     const syncedAt = nowIso()
     await executeWrite((db) =>
         db.runAsync(
@@ -216,16 +221,31 @@ const setEntitySynced = async (table: SyncTable, uuid: string) => {
       SET sync_status = 'synced',
           last_synced_at = ?,
           updated_at = COALESCE(updated_at, ?)
-      WHERE uuid = ?`,
+      WHERE uuid = ?
+        AND sync_status IN ${DIRTY_STATUSES}
+        AND ((? IS NULL AND updated_at IS NULL) OR updated_at = ?)`,
             syncedAt,
             syncedAt,
-            uuid
+            uuid,
+            expectedUpdatedAt,
+            expectedUpdatedAt
         )
     )
 }
 
-const setEntityFailed = async (table: SyncTable, uuid: string) => {
-    await executeWrite((db) => db.runAsync(`UPDATE ${table} SET sync_status = 'failed' WHERE uuid = ?`, uuid))
+const setEntityFailedIfUnchanged = async (table: SyncTable, uuid: string, expectedUpdatedAt: string | null) => {
+    await executeWrite((db) =>
+        db.runAsync(
+            `UPDATE ${table}
+      SET sync_status = 'failed'
+      WHERE uuid = ?
+        AND sync_status IN ${DIRTY_STATUSES}
+        AND ((? IS NULL AND updated_at IS NULL) OR updated_at = ?)`,
+            uuid,
+            expectedUpdatedAt,
+            expectedUpdatedAt
+        )
+    )
 }
 
 const assignUserToLocalRows = async (userId: string) => {
@@ -237,8 +257,9 @@ const assignUserToLocalRows = async (userId: string) => {
     })
 }
 
-const pushExercises = async (userId: string) => {
+const pushExercises = async (userId: string): Promise<number> => {
     const db = await getDb()
+    let failures = 0
     const rows = await db.getAllAsync<ExerciseRow>(
         `SELECT uuid, user_id, name, type, muscle_group, photo_uri, position, created_at, updated_at, deleted_at, sync_status
      FROM exercises
@@ -265,15 +286,18 @@ const pushExercises = async (userId: string) => {
                     sync_status: 'dirty',
                 },
             })
-            await setEntitySynced('exercises', row.uuid)
+            await setEntitySyncedIfUnchanged('exercises', row.uuid, row.updated_at ?? null)
         } catch {
-            await setEntityFailed('exercises', row.uuid)
+            failures += 1
+            await setEntityFailedIfUnchanged('exercises', row.uuid, row.updated_at ?? null)
         }
     }
+    return failures
 }
 
-const pushWorkouts = async (userId: string) => {
+const pushWorkouts = async (userId: string): Promise<number> => {
     const db = await getDb()
+    let failures = 0
     const rows = await db.getAllAsync<WorkoutRow>(
         `SELECT uuid, user_id, date, start_time, end_time, status, note, created_at, updated_at, deleted_at, sync_status
      FROM workouts
@@ -300,11 +324,13 @@ const pushWorkouts = async (userId: string) => {
                     sync_status: 'dirty',
                 },
             })
-            await setEntitySynced('workouts', row.uuid)
+            await setEntitySyncedIfUnchanged('workouts', row.uuid, row.updated_at ?? null)
         } catch {
-            await setEntityFailed('workouts', row.uuid)
+            failures += 1
+            await setEntityFailedIfUnchanged('workouts', row.uuid, row.updated_at ?? null)
         }
     }
+    return failures
 }
 
 const getRemoteIdByUuid = async (table: 'exercises' | 'workouts', uuid: string, cache: Map<string, number>) => {
@@ -320,8 +346,9 @@ const getRemoteIdByUuid = async (table: 'exercises' | 'workouts', uuid: string, 
     return id
 }
 
-const pushSets = async (userId: string) => {
+const pushSets = async (userId: string): Promise<number> => {
     const db = await getDb()
+    let failures = 0
     const rows = await db.getAllAsync<DirtySetRow>(
         `SELECT
       s.uuid,
@@ -358,7 +385,8 @@ const pushSets = async (userId: string) => {
                 getRemoteIdByUuid('exercises', row.exercise_uuid, exerciseIdCache),
             ])
             if (!remoteWorkoutId || !remoteExerciseId) {
-                await setEntityFailed('sets', row.uuid)
+                failures += 1
+                await setEntityFailedIfUnchanged('sets', row.uuid, row.updated_at ?? null)
                 continue
             }
 
@@ -384,15 +412,18 @@ const pushSets = async (userId: string) => {
                     sync_status: 'dirty',
                 },
             })
-            await setEntitySynced('sets', row.uuid)
+            await setEntitySyncedIfUnchanged('sets', row.uuid, row.updated_at ?? null)
         } catch {
-            await setEntityFailed('sets', row.uuid)
+            failures += 1
+            await setEntityFailedIfUnchanged('sets', row.uuid, row.updated_at ?? null)
         }
     }
+    return failures
 }
 
-const pushDeletions = async (userId: string) => {
+const pushDeletions = async (userId: string): Promise<number> => {
     const db = await getDb()
+    let failures = 0
     const tombstones = await db.getAllAsync<TombstoneRow>(
         `SELECT id, entity_type, entity_uuid, user_id, deleted_at
      FROM deletion_tombstones
@@ -417,11 +448,13 @@ const pushDeletions = async (userId: string) => {
                 innerDb.runAsync(`UPDATE deletion_tombstones SET sync_status = 'synced' WHERE id = ?`, tombstone.id)
             )
         } catch {
+            failures += 1
             await executeWrite((innerDb) =>
                 innerDb.runAsync(`UPDATE deletion_tombstones SET sync_status = 'failed' WHERE id = ?`, tombstone.id)
             )
         }
     }
+    return failures
 }
 
 const pullExercises = async (userId: string) => {
@@ -475,11 +508,20 @@ const pullExercises = async (userId: string) => {
         })
     }
 
-    const deleted = await request<{ uuid: string }[]>('exercises', {
-        query: { select: 'uuid', user_id: `eq.${userId}`, deleted_at: 'not.is.null' },
+    const deleted = await request<DeletedRow[]>('exercises', {
+        query: { select: 'uuid,deleted_at', user_id: `eq.${userId}`, deleted_at: 'not.is.null' },
     })
     for (const row of deleted) {
-        await executeWrite((innerDb) => innerDb.runAsync('DELETE FROM exercises WHERE uuid = ?', row.uuid))
+        await executeWriteTransaction(async (innerDb) => {
+            const local = await innerDb.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
+                'SELECT updated_at, sync_status FROM exercises WHERE uuid = ? LIMIT 1',
+                row.uuid
+            )
+            if (!local) return
+            const localIsDirty = local.sync_status === 'dirty' || local.sync_status === 'failed'
+            if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) return
+            await innerDb.runAsync('DELETE FROM exercises WHERE uuid = ?', row.uuid)
+        })
     }
 }
 
@@ -534,11 +576,20 @@ const pullWorkouts = async (userId: string) => {
         })
     }
 
-    const deleted = await request<{ uuid: string }[]>('workouts', {
-        query: { select: 'uuid', user_id: `eq.${userId}`, deleted_at: 'not.is.null' },
+    const deleted = await request<DeletedRow[]>('workouts', {
+        query: { select: 'uuid,deleted_at', user_id: `eq.${userId}`, deleted_at: 'not.is.null' },
     })
     for (const row of deleted) {
-        await executeWrite((db) => db.runAsync('DELETE FROM workouts WHERE uuid = ?', row.uuid))
+        await executeWriteTransaction(async (db) => {
+            const local = await db.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
+                'SELECT updated_at, sync_status FROM workouts WHERE uuid = ? LIMIT 1',
+                row.uuid
+            )
+            if (!local) return
+            const localIsDirty = local.sync_status === 'dirty' || local.sync_status === 'failed'
+            if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) return
+            await db.runAsync('DELETE FROM workouts WHERE uuid = ?', row.uuid)
+        })
     }
 }
 
@@ -622,11 +673,20 @@ const pullSets = async (userId: string) => {
         })
     }
 
-    const deleted = await request<{ uuid: string }[]>('sets', {
-        query: { select: 'uuid', user_id: `eq.${userId}`, deleted_at: 'not.is.null' },
+    const deleted = await request<DeletedRow[]>('sets', {
+        query: { select: 'uuid,deleted_at', user_id: `eq.${userId}`, deleted_at: 'not.is.null' },
     })
     for (const row of deleted) {
-        await executeWrite((db) => db.runAsync('DELETE FROM sets WHERE uuid = ?', row.uuid))
+        await executeWriteTransaction(async (db) => {
+            const local = await db.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
+                'SELECT updated_at, sync_status FROM sets WHERE uuid = ? LIMIT 1',
+                row.uuid
+            )
+            if (!local) return
+            const localIsDirty = local.sync_status === 'dirty' || local.sync_status === 'failed'
+            if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) return
+            await db.runAsync('DELETE FROM sets WHERE uuid = ?', row.uuid)
+        })
     }
 }
 
@@ -643,14 +703,19 @@ export const runSync = async () => {
 
         try {
             await assignUserToLocalRows(session.userId)
-            await pushExercises(session.userId)
-            await pushWorkouts(session.userId)
-            await pushSets(session.userId)
-            await pushDeletions(session.userId)
+            const pushFailures =
+                (await pushExercises(session.userId)) +
+                (await pushWorkouts(session.userId)) +
+                (await pushSets(session.userId)) +
+                (await pushDeletions(session.userId))
 
             await pullExercises(session.userId)
             await pullWorkouts(session.userId)
             await pullSets(session.userId)
+
+            if (pushFailures > 0) {
+                throw new Error(`Sync completed with ${pushFailures} failed push operations.`)
+            }
 
             await updateSyncState({
                 is_syncing: 0,

@@ -65,13 +65,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return 'signed-out'
     }, [authMode, session?.userId])
 
+    const shouldClearLocalDataOnPrincipalChange = useCallback((currentPrincipal: string, nextPrincipal: string) => {
+        if (currentPrincipal === nextPrincipal) return false
+        // Preserve guest-created local data when the user creates/signs into an account.
+        if (currentPrincipal === 'guest' && nextPrincipal.startsWith('account:')) return false
+        // Keep existing local data when moving from signed-out to account.
+        if (currentPrincipal === 'signed-out' && nextPrincipal.startsWith('account:')) return false
+        return true
+    }, [])
+
     const clearLocalDataOnPrincipalChange = useCallback(
         async (nextPrincipal: string) => {
             if (!isRemoteMode) return
-            if (getCurrentPrincipal() === nextPrincipal) return
+            const currentPrincipal = getCurrentPrincipal()
+            if (!shouldClearLocalDataOnPrincipalChange(currentPrincipal, nextPrincipal)) return
             await clearLocalUserData()
         },
-        [getCurrentPrincipal, isRemoteMode]
+        [getCurrentPrincipal, isRemoteMode, shouldClearLocalDataOnPrincipalChange]
     )
 
     useEffect(() => {
