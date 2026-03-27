@@ -744,14 +744,21 @@ export const runSync = async () => {
 
 export const getSyncState = async (): Promise<SyncState> => {
     const db = await getDb()
+    const scopedOutboxSize = await getOutboxSize(getSupabaseSession()?.userId)
     const row = await db.getFirstAsync<SyncState>(
         'SELECT is_syncing, outbox_size, last_success_at, last_attempt_at, last_error FROM sync_state WHERE id = 1'
     )
-    if (row) return row
+    if (row) {
+        return {
+            ...row,
+            // Always report live outbox for current account scope.
+            outbox_size: scopedOutboxSize,
+        }
+    }
 
     return {
         is_syncing: 0,
-        outbox_size: await getOutboxSize(getSupabaseSession()?.userId),
+        outbox_size: scopedOutboxSize,
         last_attempt_at: null,
         last_success_at: null,
         last_error: null,
