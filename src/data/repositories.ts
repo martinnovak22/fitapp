@@ -28,6 +28,7 @@ export interface WorkoutRepositoryPort {
     getExerciseHistory: (exerciseId: number) => Promise<ExerciseHistory[]>
     getWorkoutCountForMonth: (month: string) => Promise<number>
     getAvgWorkoutDuration: (month: string) => Promise<number>
+    updateTiming: (id: number, date: string, startTime: string, endTime?: string) => Promise<void>
 }
 
 export interface DataRepositories {
