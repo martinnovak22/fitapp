@@ -9,6 +9,7 @@ import {
     signUpWithEmailPassword,
 } from '@/src/data/remote/supabase/auth'
 import { clearSupabaseSession, setSupabaseSession } from '@/src/data/remote/supabase/session'
+import { clearLocalUserData } from '@/src/db/reset'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 
 type AuthContextValue = {
@@ -57,6 +58,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [authMode, setAuthMode] = useState<'guest' | 'account'>('account')
     const isRemoteMode = isRemoteDataMode()
     const isAuthRequired = isRemoteMode && authMode === 'account'
+
+    const getCurrentPrincipal = useCallback((): string => {
+        if (authMode === 'guest') return 'guest'
+        if (session?.userId) return `account:${session.userId}`
+        return 'signed-out'
+    }, [authMode, session?.userId])
+
+    const clearLocalDataOnPrincipalChange = useCallback(
+        async (nextPrincipal: string) => {
+            if (!isRemoteMode) return
+            if (getCurrentPrincipal() === nextPrincipal) return
+            await clearLocalUserData()
+        },
+        [getCurrentPrincipal, isRemoteMode]
+    )
 
     useEffect(() => {
         let isMounted = true
@@ -145,53 +161,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const signIn = useCallback(async (email: string, password: string) => {
         const nextSession = await signInWithEmailPassword(email.trim(), password)
+        await clearLocalDataOnPrincipalChange(`account:${nextSession.userId}`)
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
         setAuthMode('account')
         applySession(nextSession)
         await persistSession(nextSession)
         setSession(nextSession)
-    }, [])
+    }, [clearLocalDataOnPrincipalChange])
 
     const signUp = useCallback(async (email: string, password: string) => {
         const nextSession = await signUpWithEmailPassword(email.trim(), password)
+        await clearLocalDataOnPrincipalChange(`account:${nextSession.userId}`)
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
         setAuthMode('account')
         applySession(nextSession)
         await persistSession(nextSession)
         setSession(nextSession)
-    }, [])
+    }, [clearLocalDataOnPrincipalChange])
 
     const signInWithOAuthRedirectUrl = useCallback(async (url: string) => {
         const nextSession = await getSupabaseSessionFromOAuthRedirectUrl(url)
         if (!nextSession) return false
+        await clearLocalDataOnPrincipalChange(`account:${nextSession.userId}`)
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
         setAuthMode('account')
         applySession(nextSession)
         await persistSession(nextSession)
         setSession(nextSession)
         return true
-    }, [])
+    }, [clearLocalDataOnPrincipalChange])
 
     const continueAsGuest = useCallback(async () => {
+        await clearLocalDataOnPrincipalChange('guest')
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'guest')
         await AsyncStorage.removeItem(STORAGE_KEY)
         clearSupabaseSession()
         setSession(null)
         setAuthMode('guest')
-    }, [])
+    }, [clearLocalDataOnPrincipalChange])
 
     const signOut = useCallback(async () => {
-        if (session?.accessToken) {
+        const accessToken = session?.accessToken ?? null
+
+        await clearLocalDataOnPrincipalChange('signed-out')
+        await AsyncStorage.removeItem(STORAGE_KEY)
+        clearSupabaseSession()
+        setSession(null)
+
+        if (accessToken) {
             try {
-                await signOutSupabaseSession(session.accessToken)
+                await signOutSupabaseSession(accessToken)
             } catch {
                 // Local sign-out should still complete even when network logout fails.
             }
         }
-        await AsyncStorage.removeItem(STORAGE_KEY)
-        clearSupabaseSession()
-        setSession(null)
-    }, [session])
+    }, [clearLocalDataOnPrincipalChange, session?.accessToken])
 
     const value = useMemo<AuthContextValue>(
         () => ({
