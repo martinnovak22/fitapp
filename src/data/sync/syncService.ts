@@ -164,20 +164,24 @@ const request = async <T>(
     return payload
 }
 
-const getOutboxSize = async () => {
+const getOutboxSize = async (userId?: string) => {
     const db = await getDb()
+    const shouldScopeByUser = shouldUseRemoteSync() && !!userId
+    const userScopeClause = shouldScopeByUser ? 'AND user_id = ?' : ''
+    const userScopeParams = shouldScopeByUser ? [userId as string] : []
     const [exerciseCount, workoutCount, setCount, tombstoneCount] = await Promise.all([
         db.getFirstAsync<{ count: number }>(
-            `SELECT COUNT(*) as count FROM exercises WHERE sync_status IN ${DIRTY_STATUSES}`
+            `SELECT COUNT(*) as count FROM exercises WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
+            ...userScopeParams
         ),
         db.getFirstAsync<{ count: number }>(
-            `SELECT COUNT(*) as count FROM workouts WHERE sync_status IN ${DIRTY_STATUSES}`
+            `SELECT COUNT(*) as count FROM workouts WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
+            ...userScopeParams
         ),
+        db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) as count FROM sets WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`, ...userScopeParams),
         db.getFirstAsync<{ count: number }>(
-            `SELECT COUNT(*) as count FROM sets WHERE sync_status IN ${DIRTY_STATUSES}`
-        ),
-        db.getFirstAsync<{ count: number }>(
-            `SELECT COUNT(*) as count FROM deletion_tombstones WHERE sync_status IN ${DIRTY_STATUSES}`
+            `SELECT COUNT(*) as count FROM deletion_tombstones WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
+            ...userScopeParams
         ),
     ])
     return (
@@ -248,23 +252,15 @@ const setEntityFailedIfUnchanged = async (table: SyncTable, uuid: string, expect
     )
 }
 
-const assignUserToLocalRows = async (userId: string) => {
-    await executeWriteTransaction(async (db) => {
-        await db.runAsync('UPDATE exercises SET user_id = ? WHERE user_id IS NULL', userId)
-        await db.runAsync('UPDATE workouts SET user_id = ? WHERE user_id IS NULL', userId)
-        await db.runAsync('UPDATE sets SET user_id = ? WHERE user_id IS NULL', userId)
-        await db.runAsync('UPDATE deletion_tombstones SET user_id = ? WHERE user_id IS NULL', userId)
-    })
-}
-
 const pushExercises = async (userId: string): Promise<number> => {
     const db = await getDb()
     let failures = 0
     const rows = await db.getAllAsync<ExerciseRow>(
         `SELECT uuid, user_id, name, type, muscle_group, photo_uri, position, created_at, updated_at, deleted_at, sync_status
      FROM exercises
-     WHERE sync_status IN ${DIRTY_STATUSES}
-     ORDER BY updated_at ASC`
+     WHERE sync_status IN ${DIRTY_STATUSES} AND user_id = ?
+     ORDER BY updated_at ASC`,
+        userId
     )
     for (const row of rows) {
         try {
@@ -301,8 +297,9 @@ const pushWorkouts = async (userId: string): Promise<number> => {
     const rows = await db.getAllAsync<WorkoutRow>(
         `SELECT uuid, user_id, date, start_time, end_time, status, note, created_at, updated_at, deleted_at, sync_status
      FROM workouts
-     WHERE sync_status IN ${DIRTY_STATUSES}
-     ORDER BY updated_at ASC`
+     WHERE sync_status IN ${DIRTY_STATUSES} AND user_id = ?
+     ORDER BY updated_at ASC`,
+        userId
     )
     for (const row of rows) {
         try {
@@ -372,7 +369,13 @@ const pushSets = async (userId: string): Promise<number> => {
     JOIN workouts w ON w.id = s.workout_id
     JOIN exercises e ON e.id = s.exercise_id
     WHERE s.sync_status IN ${DIRTY_STATUSES}
-    ORDER BY s.updated_at ASC`
+      AND s.user_id = ?
+      AND w.user_id = ?
+      AND e.user_id = ?
+    ORDER BY s.updated_at ASC`,
+        userId,
+        userId,
+        userId
     )
 
     const workoutIdCache = new Map<string, number>()
@@ -428,7 +431,9 @@ const pushDeletions = async (userId: string): Promise<number> => {
         `SELECT id, entity_type, entity_uuid, user_id, deleted_at
      FROM deletion_tombstones
      WHERE sync_status IN ${DIRTY_STATUSES}
-     ORDER BY deleted_at ASC`
+       AND user_id = ?
+     ORDER BY deleted_at ASC`,
+        userId
     )
 
     for (const tombstone of tombstones) {
@@ -702,7 +707,6 @@ export const runSync = async () => {
         await updateSyncState({ is_syncing: 1, last_attempt_at: startedAt, last_error: null })
 
         try {
-            await assignUserToLocalRows(session.userId)
             const pushFailures =
                 (await pushExercises(session.userId)) +
                 (await pushWorkouts(session.userId)) +
@@ -719,14 +723,14 @@ export const runSync = async () => {
 
             await updateSyncState({
                 is_syncing: 0,
-                outbox_size: await getOutboxSize(),
+                outbox_size: await getOutboxSize(session.userId),
                 last_success_at: nowIso(),
                 last_error: null,
             })
         } catch (error) {
             await updateSyncState({
                 is_syncing: 0,
-                outbox_size: await getOutboxSize(),
+                outbox_size: await getOutboxSize(session.userId),
                 last_error: error instanceof Error ? error.message : String(error),
             })
             throw error
@@ -747,7 +751,7 @@ export const getSyncState = async (): Promise<SyncState> => {
 
     return {
         is_syncing: 0,
-        outbox_size: await getOutboxSize(),
+        outbox_size: await getOutboxSize(getSupabaseSession()?.userId),
         last_attempt_at: null,
         last_success_at: null,
         last_error: null,

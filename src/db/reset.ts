@@ -1,4 +1,5 @@
 import { getDb } from './client'
+import { nowIso } from './sync'
 import { executeWriteTransaction } from './writeQueue'
 
 export const clearLocalUserData = async (): Promise<void> => {
@@ -34,4 +35,37 @@ export const hasLocalUserData = async (): Promise<boolean> => {
     ])
 
     return (exerciseCount?.count ?? 0) > 0 || (workoutCount?.count ?? 0) > 0 || (setCount?.count ?? 0) > 0
+}
+
+export const migrateGuestDataToUser = async (userId: string): Promise<void> => {
+    await executeWriteTransaction(async (db) => {
+        const now = nowIso()
+        await db.runAsync(
+            `UPDATE exercises
+             SET user_id = ?, updated_at = ?, sync_status = 'dirty'
+             WHERE user_id IS NULL`,
+            userId,
+            now
+        )
+        await db.runAsync(
+            `UPDATE workouts
+             SET user_id = ?, updated_at = ?, sync_status = 'dirty'
+             WHERE user_id IS NULL`,
+            userId,
+            now
+        )
+        await db.runAsync(
+            `UPDATE sets
+             SET user_id = ?, updated_at = ?, sync_status = 'dirty'
+             WHERE user_id IS NULL`,
+            userId,
+            now
+        )
+        await db.runAsync(
+            `UPDATE deletion_tombstones
+             SET user_id = ?, sync_status = CASE WHEN sync_status = 'synced' THEN 'dirty' ELSE sync_status END
+             WHERE user_id IS NULL`,
+            userId
+        )
+    })
 }

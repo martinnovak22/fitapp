@@ -1,3 +1,4 @@
+import { buildPrincipalWhereClause, getScopedUserId } from '@/src/data/principal'
 import { getDb } from './client'
 import { createEntityUuid, nowIso, recordDeletionTombstone, SyncStatus } from './sync'
 import { executeWrite, executeWriteTransaction } from './writeQueue'
@@ -23,12 +24,24 @@ export interface Exercise {
 export const ExerciseRepository = {
     async getAll(): Promise<Exercise[]> {
         const db = await getDb()
-        return await db.getAllAsync<Exercise>('SELECT * FROM exercises ORDER BY position ASC, name ASC')
+        const scope = buildPrincipalWhereClause('user_id')
+        return await db.getAllAsync<Exercise>(
+            `SELECT * FROM exercises
+             WHERE deleted_at IS NULL AND ${scope.clause}
+             ORDER BY position ASC, name ASC`,
+            ...scope.params
+        )
     },
 
     async getById(id: number): Promise<Exercise | null> {
         const db = await getDb()
-        const result = await db.getFirstAsync<Exercise>('SELECT * FROM exercises WHERE id = ?', id)
+        const scope = buildPrincipalWhereClause('user_id')
+        const result = await db.getFirstAsync<Exercise>(
+            `SELECT * FROM exercises
+             WHERE id = ? AND deleted_at IS NULL AND ${scope.clause}`,
+            id,
+            ...scope.params
+        )
         return result ?? null
     },
 
@@ -42,9 +55,10 @@ export const ExerciseRepository = {
 
             const result = await db.runAsync(
                 `INSERT INTO exercises
-                 (uuid, name, type, muscle_group, photo_uri, position, created_at, updated_at, sync_status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 (uuid, user_id, name, type, muscle_group, photo_uri, position, created_at, updated_at, sync_status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 createEntityUuid(),
+                getScopedUserId(),
                 name,
                 type.toLowerCase(),
                 muscle_group?.toLowerCase() ?? null,
@@ -90,21 +104,30 @@ export const ExerciseRepository = {
         fields.push('sync_status = ?')
         values.push('dirty')
 
+        const scope = buildPrincipalWhereClause('user_id')
         values.push(id)
         await executeWrite((innerDb) =>
-            innerDb.runAsync(`UPDATE exercises SET ${fields.join(', ')} WHERE id = ?`, ...values)
+            innerDb.runAsync(
+                `UPDATE exercises SET ${fields.join(', ')} WHERE id = ? AND ${scope.clause}`,
+                ...values,
+                ...scope.params
+            )
         )
     },
 
     async updatePositions(updates: { id: number; position: number }[]): Promise<void> {
         await executeWriteTransaction(async (db) => {
+            const scope = buildPrincipalWhereClause('user_id')
             for (const update of updates) {
                 await db.runAsync(
-                    'UPDATE exercises SET position = ?, updated_at = ?, sync_status = ? WHERE id = ?',
+                    `UPDATE exercises
+                     SET position = ?, updated_at = ?, sync_status = ?
+                     WHERE id = ? AND ${scope.clause}`,
                     update.position,
                     nowIso(),
                     'dirty',
-                    update.id
+                    update.id,
+                    ...scope.params
                 )
             }
         })
@@ -112,14 +135,16 @@ export const ExerciseRepository = {
 
     async delete(id: number): Promise<void> {
         await executeWriteTransaction(async (db) => {
+            const scope = buildPrincipalWhereClause('user_id')
             const entity = await db.getFirstAsync<{ uuid: string; user_id?: string | null }>(
-                'SELECT uuid, user_id FROM exercises WHERE id = ?',
-                id
+                `SELECT uuid, user_id FROM exercises WHERE id = ? AND ${scope.clause}`,
+                id,
+                ...scope.params
             )
             if (entity?.uuid) {
                 await recordDeletionTombstone(db, 'exercise', entity.uuid, entity.user_id)
             }
-            await db.runAsync('DELETE FROM exercises WHERE id = ?', id)
+            await db.runAsync(`DELETE FROM exercises WHERE id = ? AND ${scope.clause}`, id, ...scope.params)
         })
     },
 }
