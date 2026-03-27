@@ -9,7 +9,8 @@ import {
     signUpWithEmailPassword,
 } from '@/src/data/remote/supabase/auth'
 import { clearSupabaseSession, setSupabaseSession } from '@/src/data/remote/supabase/session'
-import { clearLocalUserData } from '@/src/db/reset'
+import { setActivePrincipal } from '@/src/data/principal'
+import { clearLocalUserData, migrateGuestDataToUser } from '@/src/db/reset'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 
 type MigrationPolicy = 'clear' | 'preserve'
@@ -60,6 +61,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [authMode, setAuthMode] = useState<'guest' | 'account'>('account')
     const isRemoteMode = isRemoteDataMode()
     const isAuthRequired = isRemoteMode && authMode === 'account'
+
+    useEffect(() => {
+        if (!isRemoteMode) {
+            setActivePrincipal({ mode: 'local', userId: null })
+            return
+        }
+        if (authMode === 'guest') {
+            setActivePrincipal({ mode: 'guest', userId: null })
+            return
+        }
+        if (session?.userId) {
+            setActivePrincipal({ mode: 'account', userId: session.userId })
+            return
+        }
+        setActivePrincipal({ mode: 'signed-out', userId: null })
+    }, [authMode, isRemoteMode, session?.userId])
 
     const getCurrentPrincipal = useCallback((): string => {
         if (authMode === 'guest') return 'guest'
@@ -177,7 +194,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         options?: { migrationPolicy?: MigrationPolicy }
     ) => {
         const nextSession = await signInWithEmailPassword(email.trim(), password)
-        await clearLocalDataOnPrincipalChange(`account:${nextSession.userId}`, options?.migrationPolicy ?? 'clear')
+        const migrationPolicy = options?.migrationPolicy ?? 'clear'
+        await clearLocalDataOnPrincipalChange(`account:${nextSession.userId}`, migrationPolicy)
+        if (migrationPolicy === 'preserve') {
+            await migrateGuestDataToUser(nextSession.userId)
+        }
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
         setAuthMode('account')
         applySession(nextSession)
@@ -188,6 +209,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const signUp = useCallback(async (email: string, password: string) => {
         const nextSession = await signUpWithEmailPassword(email.trim(), password)
         await clearLocalDataOnPrincipalChange(`account:${nextSession.userId}`, 'preserve')
+        await migrateGuestDataToUser(nextSession.userId)
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
         setAuthMode('account')
         applySession(nextSession)
@@ -201,7 +223,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ) => {
         const nextSession = await getSupabaseSessionFromOAuthRedirectUrl(url)
         if (!nextSession) return false
-        await clearLocalDataOnPrincipalChange(`account:${nextSession.userId}`, options?.migrationPolicy ?? 'clear')
+        const migrationPolicy = options?.migrationPolicy ?? 'clear'
+        await clearLocalDataOnPrincipalChange(`account:${nextSession.userId}`, migrationPolicy)
+        if (migrationPolicy === 'preserve') {
+            await migrateGuestDataToUser(nextSession.userId)
+        }
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
         setAuthMode('account')
         applySession(nextSession)
