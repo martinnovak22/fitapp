@@ -1,3 +1,4 @@
+import { getDb } from './client'
 import { executeWriteTransaction } from './writeQueue'
 
 export const clearLocalUserData = async (): Promise<void> => {
@@ -22,4 +23,15 @@ export const clearLocalUserData = async (): Promise<void> => {
             "DELETE FROM sqlite_sequence WHERE name IN ('sets', 'workouts', 'exercises', 'deletion_tombstones', 'sync_queue')"
         )
     })
+}
+
+export const hasLocalUserData = async (): Promise<boolean> => {
+    const db = await getDb()
+    const [exerciseCount, workoutCount, setCount] = await Promise.all([
+        db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM exercises'),
+        db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM workouts'),
+        db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM sets'),
+    ])
+
+    return (exerciseCount?.count ?? 0) > 0 || (workoutCount?.count ?? 0) > 0 || (setCount?.count ?? 0) > 0
 }

@@ -112,6 +112,8 @@ const resources = {
             noAccountYet: "don't have an account",
             alreadyHaveAccount: 'already have an account',
             authContinueHint: 'Use your account credentials to continue.',
+            mergeGuestDataLabel: 'Merge guest data into this account',
+            mergeGuestDataHint: 'Turn this on only on your own device. Keep it off on shared devices.',
             passwordMinHint: 'Password must be at least 6 characters.',
             checkYourEmail: 'Check your email',
             checkYourEmailDescription: 'We sent a confirmation link to {{email}}. Confirm your email, then sign in.',
@@ -326,6 +328,8 @@ const resources = {
             noAccountYet: 'ještě nemáte účet',
             alreadyHaveAccount: 'už máte účet',
             authContinueHint: 'Pokračujte přihlášením do svého účtu.',
+            mergeGuestDataLabel: 'Sloučit data hosta do tohoto účtu',
+            mergeGuestDataHint: 'Zapněte jen na vlastním zařízení. Na sdílených zařízeních nechte vypnuté.',
             passwordMinHint: 'Heslo musí mít alespoň 6 znaků.',
             checkYourEmail: 'Zkontrolujte e-mail',
             checkYourEmailDescription:
