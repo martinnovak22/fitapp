@@ -8,12 +8,13 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { showToast } from '@/src/modules/core/utils/toast'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect } from 'expo-router'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Calendar } from 'react-native-calendars'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 
@@ -36,24 +37,36 @@ export default function CalendarScreen() {
     const [dayWorkouts, setDayWorkouts] = useState<Workout[]>([])
     const [modalWorkout, setModalWorkout] = useState<Workout | null>(null)
     const [workoutSets, setWorkoutSets] = useState<{ exercise_name: string; count: number }[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [isLoadingSummary, setIsLoadingSummary] = useState(false)
+    const [loadError, setLoadError] = useState<string | null>(null)
 
     const loadWorkouts = useCallback(async () => {
-        const all = await workoutRepo.getAllWorkouts()
-        setWorkouts(all)
+        setLoadError(null)
+        setIsLoading(true)
+        try {
+            const all = await workoutRepo.getAllWorkouts()
+            setWorkouts(all)
 
-        const marked: MarkedDates = {}
-        all.forEach((w) => {
-            marked[w.date] = {
-                marked: true,
-                dotColor: theme.primary,
+            const marked: MarkedDates = {}
+            all.forEach((w) => {
+                marked[w.date] = {
+                    marked: true,
+                    dotColor: theme.primary,
+                }
+            })
+            setMarkedDates(marked)
+
+            if (selectedDate) {
+                setDayWorkouts(all.filter((w) => w.date === selectedDate))
             }
-        })
-        setMarkedDates(marked)
-
-        if (selectedDate) {
-            setDayWorkouts(all.filter((w) => w.date === selectedDate))
+        } catch (error) {
+            console.error('Failed to load calendar workouts:', error)
+            setLoadError(t('failedToLoadCalendar'))
+        } finally {
+            setIsLoading(false)
         }
-    }, [selectedDate, theme.primary, workoutRepo])
+    }, [selectedDate, t, theme.primary, workoutRepo])
 
     useFocusEffect(
         useCallback(() => {
@@ -68,20 +81,29 @@ export default function CalendarScreen() {
 
     const handleOpenSummary = async (workout: Workout) => {
         setModalWorkout(workout)
-        const sets = await workoutRepo.getSets(workout.id)
-        const summary = sets.reduce(
-            (acc, s) => {
-                const existing = acc.find((item) => item.exercise_name === s.exercise_name)
-                if (existing) {
-                    existing.count++
-                } else {
-                    acc.push({ exercise_name: s.exercise_name, count: 1 })
-                }
-                return acc
-            },
-            [] as { exercise_name: string; count: number }[]
-        )
-        setWorkoutSets(summary)
+        setIsLoadingSummary(true)
+        try {
+            const sets = await workoutRepo.getSets(workout.id)
+            const summary = sets.reduce(
+                (acc, s) => {
+                    const existing = acc.find((item) => item.exercise_name === s.exercise_name)
+                    if (existing) {
+                        existing.count++
+                    } else {
+                        acc.push({ exercise_name: s.exercise_name, count: 1 })
+                    }
+                    return acc
+                },
+                [] as { exercise_name: string; count: number }[]
+            )
+            setWorkoutSets(summary)
+        } catch (error) {
+            console.error('Failed to load workout summary:', error)
+            setWorkoutSets([])
+            showToast.danger({ title: t('error'), message: t('failedToLoadWorkoutSummary') })
+        } finally {
+            setIsLoadingSummary(false)
+        }
     }
 
     const handleViewHistory = () => {
@@ -90,6 +112,27 @@ export default function CalendarScreen() {
             setModalWorkout(null)
             router.replace(`/(tabs)/history/${id}`)
         }
+    }
+
+    if (isLoading && workouts.length === 0) {
+        return (
+            <ScrollScreenLayout contentContainerStyle={styles.scrollContent} style={styles.container}>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size={"large"} color={theme.primary} />
+                </View>
+            </ScrollScreenLayout>
+        )
+    }
+
+    if (loadError && workouts.length === 0) {
+        return (
+            <ScrollScreenLayout contentContainerStyle={styles.scrollContent} style={styles.container}>
+                <View style={styles.loadingContainer}>
+                    <EmptyState message={loadError} icon={"exclamation-circle"} />
+                    <Button label={t('retry')} onPress={loadWorkouts} style={{ marginTop: Spacing.md }} />
+                </View>
+            </ScrollScreenLayout>
+        )
     }
 
     return (
@@ -239,7 +282,11 @@ export default function CalendarScreen() {
                         )}
 
                         <ScrollView style={styles.summaryScroll} contentContainerStyle={styles.summaryScrollContent}>
-                            {workoutSets.length > 0 ? (
+                            {isLoadingSummary ? (
+                                <View style={styles.summaryLoading}>
+                                    <ActivityIndicator size={"small"} color={theme.primary} />
+                                </View>
+                            ) : workoutSets.length > 0 ? (
                                 workoutSets.map((item, index) => (
                                     <View
                                         key={index}
@@ -282,6 +329,11 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingBottom: Spacing.xl2,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     calendarCard: {
         padding: Spacing.sm,
@@ -354,6 +406,11 @@ const styles = StyleSheet.create({
     },
     summaryScrollContent: {
         paddingVertical: Spacing.xs,
+    },
+    summaryLoading: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: Spacing.lg,
     },
     summaryRow: {
         flexDirection: 'row',
