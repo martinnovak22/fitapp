@@ -1,10 +1,11 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { SubSet, Set as WorkoutSet } from '@/src/db/workouts'
+import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader'
-import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
@@ -12,7 +13,7 @@ import { formatLocalizedDate } from '@/src/utils/dateTime'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import { Gesture } from 'react-native-gesture-handler'
 import { NestedReorderableList, ScrollViewContainer, reorderItems } from 'react-native-reorderable-list'
 import Animated, { FadeInDown } from 'react-native-reanimated'
@@ -33,7 +34,11 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     const {
         workout,
         exercises,
+        loading,
+        loadError,
+        loadData,
         isSavingSet,
+        isSavingWorkoutTime,
         isFinishingWorkout,
         isDeletingWorkout,
         exerciseNamesOrder,
@@ -44,6 +49,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         reorderSets,
         addSet,
         updateSet,
+        updateWorkoutTiming,
     } = useWorkoutSession(origin)
 
     const [modalVisible, setModalVisible] = useState(false)
@@ -51,6 +57,11 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
     const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null)
     const [subSets, setSubSets] = useState<SubSet[]>([])
+    const [isHistoryEditMode, setIsHistoryEditMode] = useState(false)
+    const [timingModalVisible, setTimingModalVisible] = useState(false)
+    const [timingDate, setTimingDate] = useState('')
+    const [timingStartTime, setTimingStartTime] = useState('')
+    const [timingEndTime, setTimingEndTime] = useState('')
     const [inputValues, setInputValues] = useState<SetFormValues>({
         weight: '',
         reps: '',
@@ -146,7 +157,80 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         }
     }
 
-    const isReadOnly = workout?.status === 'finished'
+    const toLocalTimeInput = (value?: string) => {
+        if (!value) return ''
+        const d = new Date(value)
+        if (Number.isNaN(d.getTime())) return ''
+        const hours = String(d.getHours()).padStart(2, '0')
+        const mins = String(d.getMinutes()).padStart(2, '0')
+        return `${hours}:${mins}`
+    }
+
+    const toIsoDateTime = (date: string, time: string) => {
+        const normalizedTime = time.trim()
+        const dateTime = new Date(`${date}T${normalizedTime.length === 5 ? `${normalizedTime}:00` : normalizedTime}`)
+        if (Number.isNaN(dateTime.getTime())) return null
+        return dateTime.toISOString()
+    }
+
+    const isFinishedWorkout = workout?.status === 'finished'
+    const canEditHistoryWorkout = origin === 'history' && isFinishedWorkout
+    const isReadOnly = isFinishedWorkout && !isHistoryEditMode
+    const canFinishWorkout = origin === 'workout' && !isFinishedWorkout
+
+    const openTimingModal = () => {
+        if (!workout) return
+        setTimingDate(workout.date ?? '')
+        setTimingStartTime(toLocalTimeInput(workout.start_time))
+        setTimingEndTime(toLocalTimeInput(workout.end_time))
+        setTimingModalVisible(true)
+    }
+
+    const saveTiming = async () => {
+        if (!workout) return
+
+        const nextStart = toIsoDateTime(timingDate, timingStartTime)
+        if (!nextStart) {
+            showToast.danger({ title: t('error'), message: t('invalidDateTime') })
+            return
+        }
+
+        let nextEnd: string | undefined
+        if (timingEndTime.trim().length > 0) {
+            const parsedEnd = toIsoDateTime(timingDate, timingEndTime)
+            if (!parsedEnd) {
+                showToast.danger({ title: t('error'), message: t('invalidDateTime') })
+                return
+            }
+            nextEnd = parsedEnd
+            if (new Date(nextEnd).getTime() < new Date(nextStart).getTime()) {
+                showToast.danger({ title: t('error'), message: t('invalidTimeRange') })
+                return
+            }
+        }
+
+        const saved = await updateWorkoutTiming(timingDate, nextStart, nextEnd)
+        if (saved) {
+            setTimingModalVisible(false)
+        }
+    }
+
+    if (loading && !workout) {
+        return (
+            <ScreenLayout style={styles.loadingContainer}>
+                <ActivityIndicator size={"large"} color={theme.primary} />
+            </ScreenLayout>
+        )
+    }
+
+    if (loadError && !workout) {
+        return (
+            <ScreenLayout style={styles.loadingContainer}>
+                <EmptyState message={loadError} icon={"exclamation-circle"} />
+                <Button label={t('retry')} onPress={loadData} style={{ marginTop: Spacing.md }} />
+            </ScreenLayout>
+        )
+    }
 
     return (
         <ScrollScreenLayout
@@ -162,7 +246,12 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                     }
                     onDelete={isDeletingWorkout ? undefined : deleteWorkout}
                     rightAction={
-                        !isReadOnly
+                        canEditHistoryWorkout
+                            ? {
+                                  label: isHistoryEditMode ? t('close') : t('edit'),
+                                  onPress: () => setIsHistoryEditMode((prev) => !prev),
+                              }
+                            : canFinishWorkout
                             ? {
                                   label: isFinishingWorkout ? t('saving') : t('finish'),
                                   onPress: finishWorkout,
@@ -203,6 +292,34 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 </>
             }
         >
+            {canEditHistoryWorkout && (
+                <Card style={[styles.timingCard, { borderColor: theme.border, backgroundColor: theme.surfaceSubtle }]}>
+                    <View style={styles.timingHeader}>
+                        <Typography.Meta style={{ color: theme.textSecondary }}>{t('workoutTiming')}</Typography.Meta>
+                        <TouchableOpacity onPress={openTimingModal} accessibilityRole={'button'}>
+                            <Typography.Meta style={{ color: theme.primary, fontWeight: '700' }}>{t('editTime')}</Typography.Meta>
+                        </TouchableOpacity>
+                    </View>
+                    <Typography.Body>{`${t('startedAt')}: ${formatLocalizedDate(
+                        workout?.start_time || '',
+                        i18n.language,
+                        { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
+                        true
+                    )}`}</Typography.Body>
+                    <Typography.Body style={{ marginTop: Spacing.xs }}>
+                        {`${t('time')}: ${
+                            workout?.end_time
+                                ? `${formatLocalizedDate(
+                                      workout.end_time,
+                                      i18n.language,
+                                      { hour: '2-digit', minute: '2-digit' },
+                                      true
+                                  )}`
+                                : t('notSpecified')
+                        }`}
+                    </Typography.Body>
+                </Card>
+            )}
             {exerciseNamesOrder.length === 0 ? (
                 <EmptyState message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')} icon={'file-text-o'} />
             ) : (
@@ -220,6 +337,71 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                     ))}
                 </Animated.View>
             )}
+
+            <Modal visible={timingModalVisible} transparent animationType={'fade'} onRequestClose={() => setTimingModalVisible(false)}>
+                <View style={[styles.modalBackdrop, { backgroundColor: theme.overlayBackdrop }]}>
+                    <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                        <Typography.Subtitle style={{ marginBottom: Spacing.md }}>{t('editTime')}</Typography.Subtitle>
+
+                        <Typography.Label>{t('workoutDate')}</Typography.Label>
+                        <TextInput
+                            value={timingDate}
+                            onChangeText={setTimingDate}
+                            placeholder={'YYYY-MM-DD'}
+                            placeholderTextColor={theme.textSecondary}
+                            style={[
+                                styles.modalInput,
+                                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                            ]}
+                            autoCapitalize={'none'}
+                            keyboardType={'numbers-and-punctuation'}
+                        />
+
+                        <Typography.Label>{t('startTime')}</Typography.Label>
+                        <TextInput
+                            value={timingStartTime}
+                            onChangeText={setTimingStartTime}
+                            placeholder={'HH:mm'}
+                            placeholderTextColor={theme.textSecondary}
+                            style={[
+                                styles.modalInput,
+                                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                            ]}
+                            autoCapitalize={'none'}
+                            keyboardType={'numbers-and-punctuation'}
+                        />
+
+                        <Typography.Label>{t('endTime')}</Typography.Label>
+                        <TextInput
+                            value={timingEndTime}
+                            onChangeText={setTimingEndTime}
+                            placeholder={'HH:mm'}
+                            placeholderTextColor={theme.textSecondary}
+                            style={[
+                                styles.modalInput,
+                                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                            ]}
+                            autoCapitalize={'none'}
+                            keyboardType={'numbers-and-punctuation'}
+                        />
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity onPress={() => setTimingModalVisible(false)} style={styles.modalCancel}>
+                                <Typography.Body style={{ color: theme.error }}>{t('cancel')}</Typography.Body>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={saveTiming}
+                                style={[styles.modalSave, { backgroundColor: theme.primary }, isSavingWorkoutTime && styles.modalSaveDisabled]}
+                                disabled={isSavingWorkoutTime}
+                            >
+                                <Typography.Body style={{ color: theme.onPrimary, fontWeight: '700' }}>
+                                    {isSavingWorkoutTime ? t('saving') : t('saveChanges')}
+                                </Typography.Body>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </ScrollScreenLayout>
     )
 }
@@ -289,9 +471,55 @@ const styles = StyleSheet.create({
         padding: 0,
         marginBottom: 16,
     },
+    loadingContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     groupHeader: {
         padding: Spacing.md,
         paddingBottom: Spacing.md,
         borderBottomWidth: 1,
+    },
+    timingCard: {
+        marginBottom: Spacing.md,
+    },
+    timingHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: Spacing.sm,
+    },
+    modalBackdrop: {
+        flex: 1,
+        justifyContent: 'center',
+        padding: Spacing.md,
+    },
+    modalCard: {
+        borderWidth: 1,
+        borderRadius: 12,
+        padding: Spacing.md,
+    },
+    modalInput: {
+        ...GlobalStyles.input,
+        marginBottom: Spacing.sm,
+    },
+    modalActions: {
+        marginTop: Spacing.sm,
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        gap: Spacing.sm,
+    },
+    modalCancel: {
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: Spacing.xs,
+    },
+    modalSave: {
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderRadius: Spacing.sm,
+    },
+    modalSaveDisabled: {
+        opacity: 0.5,
     },
 })
