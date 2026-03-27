@@ -15,7 +15,7 @@ import { useAuth } from '@/src/modules/auth/useAuth'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import * as Linking from 'expo-linking'
 import * as WebBrowser from 'expo-web-browser'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -62,7 +62,8 @@ const mapAuthErrorToMessage = (message: string, t: (key: string) => string): str
 export default function LoginScreen() {
     const { t } = useTranslation()
     const { theme } = useTheme()
-    const { isAuthenticated, continueAsGuest, signIn, signInWithOAuthRedirectUrl, signUp } = useAuth()
+    const { authMode, isAuthenticated, continueAsGuest, signIn, signInWithOAuthRedirectUrl, signUp } = useAuth()
+    const { mode: modeParam } = useLocalSearchParams<{ mode?: string | string[] }>()
 
     const [mode, setMode] = useState<AuthMode>('signin')
     const [email, setEmail] = useState('')
@@ -80,10 +81,16 @@ export default function LoginScreen() {
     const isSignUp = mode === 'signup'
 
     useEffect(() => {
-        if (isAuthenticated) {
+        if (isAuthenticated && authMode === 'account') {
             router.replace('/landing')
         }
-    }, [isAuthenticated])
+    }, [authMode, isAuthenticated])
+
+    useEffect(() => {
+        const requestedMode = Array.isArray(modeParam) ? modeParam[0] : modeParam
+        if (requestedMode !== 'signin' && requestedMode !== 'signup') return
+        setMode(requestedMode)
+    }, [modeParam])
 
     useEffect(() => {
         const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'

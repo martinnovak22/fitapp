@@ -1,0 +1,25 @@
+import { executeWriteTransaction } from './writeQueue'
+
+export const clearLocalUserData = async (): Promise<void> => {
+    await executeWriteTransaction(async (db) => {
+        await db.runAsync('DELETE FROM sets')
+        await db.runAsync('DELETE FROM workouts')
+        await db.runAsync('DELETE FROM exercises')
+        await db.runAsync('DELETE FROM deletion_tombstones')
+        await db.runAsync('DELETE FROM sync_queue')
+
+        await db.runAsync(
+            `UPDATE sync_state
+             SET is_syncing = 0,
+                 outbox_size = 0,
+                 last_success_at = NULL,
+                 last_attempt_at = NULL,
+                 last_error = NULL
+             WHERE id = 1`
+        )
+
+        await db.runAsync(
+            "DELETE FROM sqlite_sequence WHERE name IN ('sets', 'workouts', 'exercises', 'deletion_tombstones', 'sync_queue')"
+        )
+    })
+}
