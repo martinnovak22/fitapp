@@ -21,7 +21,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import Animated, { FadeIn, FadeOut, LinearTransition, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import Animated, { FadeIn, LinearTransition, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { SetFormValues } from '../setPayload'
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window')
