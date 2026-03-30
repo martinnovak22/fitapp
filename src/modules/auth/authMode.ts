@@ -1,1 +1,4 @@
-export const isRemoteDataMode = (): boolean => process.env.EXPO_PUBLIC_DATA_MODE?.toLowerCase() === 'remote'
+export const isRemoteDataMode = (): boolean => {
+    const mode = (process.env.EXPO_PUBLIC_DATA_MODE ?? 'remote').toLowerCase()
+    return mode !== 'local'
+}
