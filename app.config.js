@@ -19,7 +19,8 @@ module.exports = {
         },
         android: {
             edgeToEdgeEnabled: true,
-            package: "com.martinnovak22.fitapp"
+            package: "com.martinnovak22.fitapp",
+            versionCode: 31
         },
         web: {
             bundler: "metro",
