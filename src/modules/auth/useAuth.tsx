@@ -9,7 +9,11 @@ import {
     signUpWithEmailPassword,
 } from '@/src/data/remote/supabase/auth'
 import { clearSupabaseSession, setSupabaseSession } from '@/src/data/remote/supabase/session'
+import { setActivePrincipal } from '@/src/data/principal'
+import { clearLocalUserData, migrateGuestDataToUser } from '@/src/db/reset'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
+
+type MigrationPolicy = 'clear' | 'preserve'
 
 type AuthContextValue = {
     isAuthRequired: boolean
@@ -17,9 +21,9 @@ type AuthContextValue = {
     isAuthenticated: boolean
     authMode: 'guest' | 'account'
     userEmail: string | null
-    signIn: (email: string, password: string) => Promise<void>
+    signIn: (email: string, password: string, options?: { migrationPolicy?: MigrationPolicy }) => Promise<void>
     signUp: (email: string, password: string) => Promise<void>
-    signInWithOAuthRedirectUrl: (url: string) => Promise<boolean>
+    signInWithOAuthRedirectUrl: (url: string, options?: { migrationPolicy?: MigrationPolicy }) => Promise<boolean>
     continueAsGuest: () => Promise<void>
     signOut: () => Promise<void>
 }
@@ -57,6 +61,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [authMode, setAuthMode] = useState<'guest' | 'account'>('account')
     const isRemoteMode = isRemoteDataMode()
     const isAuthRequired = isRemoteMode && authMode === 'account'
+
+    useEffect(() => {
+        if (!isRemoteMode) {
+            setActivePrincipal({ mode: 'local', userId: null })
+            return
+        }
+        if (authMode === 'guest') {
+            setActivePrincipal({ mode: 'guest', userId: null })
+            return
+        }
+        if (session?.userId) {
+            setActivePrincipal({ mode: 'account', userId: session.userId })
+            return
+        }
+        setActivePrincipal({ mode: 'signed-out', userId: null })
+    }, [authMode, isRemoteMode, session?.userId])
+
+    const getCurrentPrincipal = useCallback((): string => {
+        if (authMode === 'guest') return 'guest'
+        if (session?.userId) return `account:${session.userId}`
+        return 'signed-out'
+    }, [authMode, session?.userId])
+
+    const shouldClearLocalDataOnPrincipalChange = useCallback((
+        currentPrincipal: string,
+        nextPrincipal: string,
+        policy: MigrationPolicy
+    ) => {
+        if (currentPrincipal === nextPrincipal) return false
+        return policy === 'clear'
+    }, [])
+
+    const clearLocalDataOnPrincipalChange = useCallback(
+        async (nextPrincipal: string, policy: MigrationPolicy) => {
+            if (!isRemoteMode) return
+            const currentPrincipal = getCurrentPrincipal()
+            if (!shouldClearLocalDataOnPrincipalChange(currentPrincipal, nextPrincipal, policy)) return
+            await clearLocalUserData()
+        },
+        [getCurrentPrincipal, isRemoteMode, shouldClearLocalDataOnPrincipalChange]
+    )
 
     useEffect(() => {
         let isMounted = true
@@ -143,55 +188,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [authMode, isRemoteMode, session])
 
-    const signIn = useCallback(async (email: string, password: string) => {
+    const signIn = useCallback(async (
+        email: string,
+        password: string,
+        options?: { migrationPolicy?: MigrationPolicy }
+    ) => {
         const nextSession = await signInWithEmailPassword(email.trim(), password)
+        const migrationPolicy = options?.migrationPolicy ?? 'clear'
+        await clearLocalDataOnPrincipalChange(`account:${nextSession.userId}`, migrationPolicy)
+        if (migrationPolicy === 'preserve') {
+            await migrateGuestDataToUser(nextSession.userId)
+        }
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
         setAuthMode('account')
         applySession(nextSession)
         await persistSession(nextSession)
         setSession(nextSession)
-    }, [])
+    }, [clearLocalDataOnPrincipalChange])
 
     const signUp = useCallback(async (email: string, password: string) => {
         const nextSession = await signUpWithEmailPassword(email.trim(), password)
+        await clearLocalDataOnPrincipalChange(`account:${nextSession.userId}`, 'preserve')
+        await migrateGuestDataToUser(nextSession.userId)
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
         setAuthMode('account')
         applySession(nextSession)
         await persistSession(nextSession)
         setSession(nextSession)
-    }, [])
+    }, [clearLocalDataOnPrincipalChange])
 
-    const signInWithOAuthRedirectUrl = useCallback(async (url: string) => {
+    const signInWithOAuthRedirectUrl = useCallback(async (
+        url: string,
+        options?: { migrationPolicy?: MigrationPolicy }
+    ) => {
         const nextSession = await getSupabaseSessionFromOAuthRedirectUrl(url)
         if (!nextSession) return false
+        const migrationPolicy = options?.migrationPolicy ?? 'clear'
+        await clearLocalDataOnPrincipalChange(`account:${nextSession.userId}`, migrationPolicy)
+        if (migrationPolicy === 'preserve') {
+            await migrateGuestDataToUser(nextSession.userId)
+        }
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')
         setAuthMode('account')
         applySession(nextSession)
         await persistSession(nextSession)
         setSession(nextSession)
         return true
-    }, [])
+    }, [clearLocalDataOnPrincipalChange])
 
     const continueAsGuest = useCallback(async () => {
+        await clearLocalDataOnPrincipalChange('guest', 'clear')
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'guest')
         await AsyncStorage.removeItem(STORAGE_KEY)
         clearSupabaseSession()
         setSession(null)
         setAuthMode('guest')
-    }, [])
+    }, [clearLocalDataOnPrincipalChange])
 
     const signOut = useCallback(async () => {
-        if (session?.accessToken) {
+        const accessToken = session?.accessToken ?? null
+
+        await clearLocalDataOnPrincipalChange('signed-out', 'clear')
+        await AsyncStorage.removeItem(STORAGE_KEY)
+        clearSupabaseSession()
+        setSession(null)
+
+        if (accessToken) {
             try {
-                await signOutSupabaseSession(session.accessToken)
+                await signOutSupabaseSession(accessToken)
             } catch {
                 // Local sign-out should still complete even when network logout fails.
             }
         }
-        await AsyncStorage.removeItem(STORAGE_KEY)
-        clearSupabaseSession()
-        setSession(null)
-    }, [session])
+    }, [clearLocalDataOnPrincipalChange, session?.accessToken])
 
     const value = useMemo<AuthContextValue>(
         () => ({

@@ -4,6 +4,7 @@ import {
     SupabaseAuthError,
     getSupabaseOAuthAuthorizeUrl,
 } from '@/src/data/remote/supabase/auth'
+import { hasLocalUserData } from '@/src/db/reset'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
@@ -15,7 +16,7 @@ import { useAuth } from '@/src/modules/auth/useAuth'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import * as Linking from 'expo-linking'
 import * as WebBrowser from 'expo-web-browser'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -62,7 +63,8 @@ const mapAuthErrorToMessage = (message: string, t: (key: string) => string): str
 export default function LoginScreen() {
     const { t } = useTranslation()
     const { theme } = useTheme()
-    const { isAuthenticated, continueAsGuest, signIn, signInWithOAuthRedirectUrl, signUp } = useAuth()
+    const { authMode, isAuthenticated, continueAsGuest, signIn, signInWithOAuthRedirectUrl, signUp } = useAuth()
+    const { mode: modeParam } = useLocalSearchParams<{ mode?: string | string[] }>()
 
     const [mode, setMode] = useState<AuthMode>('signin')
     const [email, setEmail] = useState('')
@@ -71,6 +73,8 @@ export default function LoginScreen() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
+    const [guestDataExists, setGuestDataExists] = useState(false)
+    const [mergeGuestDataOnSignIn, setMergeGuestDataOnSignIn] = useState(false)
     const [isPasswordVisible, setIsPasswordVisible] = useState(false)
     const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false)
     const emailInputRef = useRef<TextInput>(null)
@@ -80,10 +84,38 @@ export default function LoginScreen() {
     const isSignUp = mode === 'signup'
 
     useEffect(() => {
-        if (isAuthenticated) {
+        if (isAuthenticated && authMode === 'account') {
             router.replace('/landing')
         }
-    }, [isAuthenticated])
+    }, [authMode, isAuthenticated])
+
+    useEffect(() => {
+        const requestedMode = Array.isArray(modeParam) ? modeParam[0] : modeParam
+        if (requestedMode !== 'signin' && requestedMode !== 'signup') return
+        setMode(requestedMode)
+    }, [modeParam])
+
+    useEffect(() => {
+        const refreshGuestDataState = async () => {
+            if (authMode !== 'guest') {
+                setGuestDataExists(false)
+                setMergeGuestDataOnSignIn(false)
+                return
+            }
+
+            try {
+                const hasData = await hasLocalUserData()
+                setGuestDataExists(hasData)
+                setMergeGuestDataOnSignIn(hasData && isSignUp)
+            } catch (error) {
+                console.error('Failed to detect local guest data:', error)
+                setGuestDataExists(false)
+                setMergeGuestDataOnSignIn(false)
+            }
+        }
+
+        void refreshGuestDataState()
+    }, [authMode, isSignUp])
 
     useEffect(() => {
         const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
@@ -129,7 +161,9 @@ export default function LoginScreen() {
             setIsGoogleSubmitting(true)
             setErrorMessage(null)
             try {
-                const applied = await signInWithOAuthRedirectUrl(url)
+                const applied = await signInWithOAuthRedirectUrl(url, {
+                    migrationPolicy: mergeGuestDataOnSignIn ? 'preserve' : 'clear',
+                })
                 if (!applied) return false
                 router.replace('/landing')
                 return true
@@ -141,7 +175,7 @@ export default function LoginScreen() {
                 setIsGoogleSubmitting(false)
             }
         },
-        [signInWithOAuthRedirectUrl, t]
+        [mergeGuestDataOnSignIn, signInWithOAuthRedirectUrl, t]
     )
 
     useEffect(() => {
@@ -205,7 +239,9 @@ export default function LoginScreen() {
                 await signUp(normalizedEmail, password)
                 router.replace('/landing')
             } else {
-                await signIn(normalizedEmail, password)
+                await signIn(normalizedEmail, password, {
+                    migrationPolicy: mergeGuestDataOnSignIn ? 'preserve' : 'clear',
+                })
                 router.replace('/landing')
             }
         } catch (error) {
@@ -423,6 +459,36 @@ export default function LoginScreen() {
                                     </Animated.View>
                                 ) : null}
 
+                                {authMode === 'guest' && guestDataExists && !isSignUp ? (
+                                    <Animated.View
+                                        layout={formLayoutTransition}
+                                        entering={FadeInDown.duration(160)}
+                                        style={styles.hintArea}
+                                    >
+                                        <Pressable
+                                            style={[styles.migrationRow, { borderColor: theme.border }]}
+                                            onPress={() => setMergeGuestDataOnSignIn((prev) => !prev)}
+                                            accessibilityRole={'checkbox'}
+                                            accessibilityLabel={t('mergeGuestDataLabel')}
+                                            accessibilityState={{ checked: mergeGuestDataOnSignIn }}
+                                        >
+                                            <FontAwesome
+                                                name={mergeGuestDataOnSignIn ? 'check-square-o' : 'square-o'}
+                                                size={18}
+                                                color={mergeGuestDataOnSignIn ? theme.primary : theme.textSecondary}
+                                            />
+                                            <View style={styles.migrationTextWrap}>
+                                                <Typography.Meta style={{ color: theme.text }}>
+                                                    {t('mergeGuestDataLabel')}
+                                                </Typography.Meta>
+                                                <Typography.Meta style={{ color: theme.textSecondary }}>
+                                                    {t('mergeGuestDataHint')}
+                                                </Typography.Meta>
+                                            </View>
+                                        </Pressable>
+                                    </Animated.View>
+                                ) : null}
+
                                 <Animated.View entering={FadeInDown.delay(160).duration(220)}>
                                     <Button
                                         label={t(isSignUp ? 'createAccount' : 'signIn')}
@@ -498,6 +564,17 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         marginBottom: Spacing.sm,
+    },
+    migrationRow: {
+        borderWidth: 1,
+        borderRadius: 10,
+        padding: Spacing.sm,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: Spacing.sm,
+    },
+    migrationTextWrap: {
+        flex: 1,
     },
     googleButton: {
         borderWidth: 1,

@@ -4,6 +4,7 @@ import { Card } from '@/src/modules/core/components/Card'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { ThemeMode, useTheme } from '@/src/modules/core/hooks/useTheme'
+import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { useAuth } from '@/src/modules/auth/useAuth'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import Constants from 'expo-constants'
@@ -16,7 +17,8 @@ import Animated, { FadeInDown } from 'react-native-reanimated'
 export default function SettingsScreen() {
     const { t, i18n } = useTranslation()
     const { mode, setMode, theme } = useTheme()
-    const { isAuthRequired, userEmail, signOut } = useAuth()
+    const { authMode, isAuthRequired, userEmail, signOut } = useAuth()
+    const isGuestMode = isRemoteDataMode() && authMode === 'guest'
     const appVersion = Constants.expoConfig?.version ?? 'dev'
 
     const languages = [
@@ -87,7 +89,7 @@ export default function SettingsScreen() {
                     ))}
                 </Card>
 
-                {isAuthRequired && (
+                {(isAuthRequired || isGuestMode) && (
                     <>
                         <Typography.Subtitle
                             style={[styles.sectionTitle, { marginTop: Spacing.lg, color: theme.primary }]}
@@ -95,20 +97,36 @@ export default function SettingsScreen() {
                             {t('account')}
                         </Typography.Subtitle>
                         <Card style={styles.accountCard}>
-                            <View style={{ marginBottom: Spacing.md }}>
-                                <Typography.Meta style={{ color: theme.textSecondary }}>
-                                    {t('loggedInAs')}
-                                </Typography.Meta>
-                                <Typography.Body>{userEmail ?? t('notSpecified')}</Typography.Body>
-                            </View>
-                            <Button
-                                label={t('signOut')}
-                                variant={'outline'}
-                                onPress={async () => {
-                                    await signOut()
-                                    router.replace('../login')
-                                }}
-                            />
+                            {isGuestMode ? (
+                                <>
+                                    <View style={{ marginBottom: Spacing.md }}>
+                                        <Typography.Meta style={{ color: theme.textSecondary }}>
+                                            {t('signInToEnableSync')}
+                                        </Typography.Meta>
+                                    </View>
+                                    <Button
+                                        label={t('createAccount')}
+                                        onPress={() => router.push({ pathname: '../login', params: { mode: 'signup' } })}
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <View style={{ marginBottom: Spacing.md }}>
+                                        <Typography.Meta style={{ color: theme.textSecondary }}>
+                                            {t('loggedInAs')}
+                                        </Typography.Meta>
+                                        <Typography.Body>{userEmail ?? t('notSpecified')}</Typography.Body>
+                                    </View>
+                                    <Button
+                                        label={t('signOut')}
+                                        variant={'outline'}
+                                        onPress={async () => {
+                                            await signOut()
+                                            router.replace('../login')
+                                        }}
+                                    />
+                                </>
+                            )}
                         </Card>
                     </>
                 )}

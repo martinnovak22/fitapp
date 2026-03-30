@@ -77,6 +77,14 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [authMode, isAuthenticated, triggerSync])
 
+    useEffect(() => {
+        if (!isRemoteDataMode() || authMode !== 'account' || !isAuthenticated) {
+            setStatus(DEFAULT_STATUS)
+            return
+        }
+        void refreshStatus()
+    }, [authMode, isAuthenticated, refreshStatus])
+
     const value = useMemo<SyncContextValue>(
         () => ({
             status,
