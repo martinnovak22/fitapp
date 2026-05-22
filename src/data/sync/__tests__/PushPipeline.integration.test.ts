@@ -6,7 +6,7 @@ vi.mock('@/src/db/client', () => ({
     getDb: async () => getTestDb(),
 }))
 
-const { executeWrite } = await import('@/src/db/writeQueue')
+const { executeWriteTransaction } = await import('@/src/db/writeQueue')
 const { createOutbox } = await import('../Outbox')
 const { capturePrincipalSnapshot } = await import('../PrincipalSnapshot')
 const { drainOutbox } = await import('../SyncCycle')
@@ -74,7 +74,7 @@ describe('PushPipeline end-to-end via fake adapter', () => {
         await insertDirtySet('set-1', wk!.id, ex!.id)
         await insertDirtySet('set-2', wk2!.id, ex!.id)
 
-        const outbox = createOutbox(db as never, executeWrite)
+        const outbox = createOutbox(db as never, executeWriteTransaction)
         const writer = createRemoteWriter(adapter)
         const resolver = createRemoteIdResolver(adapter)
 
@@ -102,7 +102,7 @@ describe('PushPipeline end-to-end via fake adapter', () => {
     it('does NOT mark a row synced when the remote silently returns no rows (empty-after-upsert)', async () => {
         await insertDirtyExercise('ex-1')
 
-        const outbox = createOutbox(db as never, executeWrite)
+        const outbox = createOutbox(db as never, executeWriteTransaction)
         const writer = createRemoteWriter(adapter)
         const resolver = createRemoteIdResolver(adapter)
 
