@@ -11,6 +11,7 @@ import type { RemoteAdapter } from './RemoteAdapter'
 import { createRemoteIdResolver } from './RemoteIdResolver'
 import { createRemoteWriter } from './RemoteWriter'
 import { makePushFn, preloadSetParents } from './PushPipeline'
+import { syncStatusStore, type SyncFailure } from './SyncStatus'
 
 type SyncState = {
     is_syncing: number
@@ -124,30 +125,16 @@ const getOutboxSize = async (userId?: string) => {
     const shouldScopeByUser = shouldUseRemoteSync() && !!userId
     const userScopeClause = shouldScopeByUser ? 'AND user_id = ?' : ''
     const userScopeParams = shouldScopeByUser ? [userId as string] : []
-    const [exerciseCount, workoutCount, setCount, tombstoneCount] = await Promise.all([
-        db.getFirstAsync<{ count: number }>(
-            `SELECT COUNT(*) as count FROM exercises WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
-            ...userScopeParams
-        ),
-        db.getFirstAsync<{ count: number }>(
-            `SELECT COUNT(*) as count FROM workouts WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
-            ...userScopeParams
-        ),
-        db.getFirstAsync<{ count: number }>(
-            `SELECT COUNT(*) as count FROM sets WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
-            ...userScopeParams
-        ),
-        db.getFirstAsync<{ count: number }>(
-            `SELECT COUNT(*) as count FROM deletion_tombstones WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
-            ...userScopeParams
-        ),
-    ])
-    return (
-        (exerciseCount?.count ?? 0) +
-        (workoutCount?.count ?? 0) +
-        (setCount?.count ?? 0) +
-        (tombstoneCount?.count ?? 0)
+    const tables = ['exercises', 'workouts', 'sets', 'deletion_tombstones'] as const
+    const counts = await Promise.all(
+        tables.map((table) =>
+            db.getFirstAsync<{ count: number }>(
+                `SELECT COUNT(*) as count FROM ${table} WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
+                ...userScopeParams
+            )
+        )
     )
+    return counts.reduce((sum, row) => sum + (row?.count ?? 0), 0)
 }
 
 const updateSyncState = async (partial: Partial<SyncState>) => {
@@ -460,6 +447,7 @@ export const runSync = async () => {
     if (currentRun) return currentRun
     currentRun = (async () => {
         const startedAt = nowIso()
+        syncStatusStore.set({ kind: 'running' })
         await updateSyncState({ is_syncing: 1, last_attempt_at: startedAt, last_error: null })
 
         try {
@@ -468,7 +456,7 @@ export const runSync = async () => {
             const adapter = createSupabaseHttpAdapter()
             const writer = createRemoteWriter(adapter)
             const resolver = createRemoteIdResolver(adapter)
-            const { aborted, failed } = await drainOutbox(
+            const { aborted, failed, failures } = await drainOutbox(
                 outbox,
                 snapshot,
                 makePushFn(snapshot, writer, resolver),
@@ -482,13 +470,32 @@ export const runSync = async () => {
                 await pullSets(snapshot.userId as string)
             }
 
-            if (failed > 0) {
-                throw new Error(`Sync completed with ${failed} failed push operations.`)
-            }
-            if (aborted) {
-                throw new Error('Sync aborted: principal changed mid-cycle.')
+            if (failed > 0 || aborted) {
+                const rows: SyncFailure[] = aborted
+                    ? [
+                          {
+                              entityType: 'tombstone',
+                              uuid: '',
+                              reason: { kind: 'principal-diverged', message: 'principal changed mid-cycle' },
+                          },
+                      ]
+                    : failures.map((f) => ({
+                          entityType: f.row.kind === 'tombstone' ? 'tombstone' : f.row.entityType,
+                          uuid: f.row.uuid,
+                          reason: f.reason,
+                      }))
+                syncStatusStore.set({ kind: 'failed', rows, lastAttemptAt: startedAt })
+                await updateSyncState({
+                    is_syncing: 0,
+                    outbox_size: await getOutboxSize(snapshot.userId as string),
+                    last_error: aborted
+                        ? 'Sync aborted: principal changed mid-cycle.'
+                        : `Sync completed with ${failed} failed push operations.`,
+                })
+                return
             }
 
+            syncStatusStore.set({ kind: 'idle' })
             await updateSyncState({
                 is_syncing: 0,
                 outbox_size: await getOutboxSize(snapshot.userId as string),
@@ -496,12 +503,17 @@ export const runSync = async () => {
                 last_error: null,
             })
         } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            syncStatusStore.set({
+                kind: 'failed',
+                rows: [{ entityType: 'tombstone', uuid: '', reason: { kind: 'unknown', message } }],
+                lastAttemptAt: startedAt,
+            })
             await updateSyncState({
                 is_syncing: 0,
                 outbox_size: await getOutboxSize(snapshot.userId as string),
-                last_error: error instanceof Error ? error.message : String(error),
+                last_error: message,
             })
-            throw error
         } finally {
             currentRun = null
         }

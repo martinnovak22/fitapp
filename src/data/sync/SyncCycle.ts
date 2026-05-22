@@ -21,6 +21,7 @@ export type CycleResult = {
     processed: number
     acked: number
     failed: number
+    failures: { row: OutboxRow; reason: SyncFailureReason }[]
 }
 
 export const drainOutbox = async (
@@ -54,5 +55,5 @@ export const drainOutbox = async (
         await outbox.fail([row], reason)
     }
 
-    return { aborted, processed, acked: acks.length, failed: fails.length }
+    return { aborted, processed, acked: acks.length, failed: fails.length, failures: fails }
 }
