@@ -11,8 +11,9 @@
         "biome:check": "biome check .",
         "biome:format": "biome format --write .",
         "test:unit": "./node_modules/.bin/ts-node --transpile-only scripts/test-build-set-payload.ts",
+        "test": "vitest run",
         "typecheck": "tsc --noEmit",
-        "check": "yarn lint && yarn test:unit && yarn typecheck"
+        "check": "yarn lint && yarn test:unit && yarn test && yarn typecheck"
     },
     "dependencies": {
         "@expo/vector-icons": "^15.0.3",
@@ -51,12 +52,15 @@
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.3",
+        "@types/better-sqlite3": "^7.6.13",
         "@types/react": "~19.1.0",
+        "better-sqlite3": "^12.10.0",
         "eas-cli": "^16.32.0",
         "eslint": "^9.0.0",
         "eslint-config-expo": "~10.0.0",
         "react-test-renderer": "19.1.0",
-        "typescript": "~5.9.2"
+        "typescript": "~5.9.2",
+        "vitest": "^4.1.7"
     },
     "private": true
 }
