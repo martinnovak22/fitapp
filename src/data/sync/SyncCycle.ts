@@ -27,9 +27,11 @@ export const drainOutbox = async (
     outbox: Outbox,
     snapshot: PrincipalSnapshot,
     push: PushFn,
-    getLivePrincipal: () => LivePrincipal
+    getLivePrincipal: () => LivePrincipal,
+    onBatchLoaded?: (batch: OutboxRow[]) => Promise<void> | void
 ): Promise<CycleResult> => {
     const batch = await outbox.nextBatch(snapshot)
+    if (onBatchLoaded) await onBatchLoaded(batch)
     const acks: OutboxRow[] = []
     const fails: { row: OutboxRow; reason: SyncFailureReason }[] = []
     let processed = 0
