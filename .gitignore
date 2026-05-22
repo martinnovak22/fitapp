@@ -53,3 +53,4 @@ imports/
 *apk
 
 .vscode/
+.claude/scheduled_tasks.lock
