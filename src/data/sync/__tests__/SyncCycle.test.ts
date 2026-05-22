@@ -5,7 +5,7 @@ vi.mock('@/src/db/client', () => ({
     getDb: async () => getTestDb(),
 }))
 
-const { executeWrite } = await import('@/src/db/writeQueue')
+const { executeWriteTransaction } = await import('@/src/db/writeQueue')
 const { createOutbox } = await import('../Outbox')
 const { capturePrincipalSnapshot } = await import('../PrincipalSnapshot')
 const { drainOutbox } = await import('../SyncCycle')
@@ -37,7 +37,7 @@ describe('drainOutbox — mid-cycle principal divergence', () => {
         await insertDirtyExercise('ex-b', '2026-01-01T00:00:01Z')
         await insertDirtyExercise('ex-c', '2026-01-01T00:00:02Z')
 
-        const outbox = createOutbox(db as never, executeWrite)
+        const outbox = createOutbox(db as never, executeWriteTransaction)
         const snap = capturePrincipalSnapshot({ userId, remote: true })
 
         let live: { userId: string | null; remote: boolean } = { userId, remote: true }
@@ -65,7 +65,7 @@ describe('drainOutbox — mid-cycle principal divergence', () => {
         await insertDirtyExercise('ex-a', '2026-01-01T00:00:00Z')
         await insertDirtyExercise('ex-b', '2026-01-01T00:00:01Z')
 
-        const outbox = createOutbox(db as never, executeWrite)
+        const outbox = createOutbox(db as never, executeWriteTransaction)
         const snap = capturePrincipalSnapshot({ userId, remote: true })
 
         const result = await drainOutbox(

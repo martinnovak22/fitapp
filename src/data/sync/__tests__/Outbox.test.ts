@@ -5,7 +5,7 @@ vi.mock('@/src/db/client', () => ({
     getDb: async () => getTestDb(),
 }))
 
-const { executeWrite } = await import('@/src/db/writeQueue')
+const { executeWriteTransaction } = await import('@/src/db/writeQueue')
 const { createOutbox } = await import('../Outbox')
 const { capturePrincipalSnapshot } = await import('../PrincipalSnapshot')
 
@@ -77,7 +77,7 @@ describe('Outbox.nextBatch', () => {
             userId
         )
 
-        const outbox = createOutbox(db as never, executeWrite)
+        const outbox = createOutbox(db as never, executeWriteTransaction)
         const snap = capturePrincipalSnapshot({ userId, remote: true })
         const batch = await outbox.nextBatch(snap)
 
@@ -94,7 +94,7 @@ describe('Outbox.nextBatch', () => {
             '2026-01-01T00:00:00Z'
         )
 
-        const outbox = createOutbox(db as never, executeWrite)
+        const outbox = createOutbox(db as never, executeWriteTransaction)
         const guestSnap = capturePrincipalSnapshot({ userId: null, remote: true })
         const batch = await outbox.nextBatch(guestSnap)
         expect(batch.map((r) => r.uuid)).toEqual(['ex-guest'])
@@ -109,7 +109,7 @@ describe('Outbox.nextBatch', () => {
             '2026-01-01T00:00:00Z',
             '2026-01-01T00:00:00Z'
         )
-        const outbox = createOutbox(db as never, executeWrite)
+        const outbox = createOutbox(db as never, executeWriteTransaction)
         const snap = capturePrincipalSnapshot({ userId, remote: true })
         const batch = await outbox.nextBatch(snap)
         expect(batch.map((r) => r.uuid)).toEqual(['ex-dirty'])
@@ -119,7 +119,7 @@ describe('Outbox.nextBatch', () => {
 describe('Outbox.ack', () => {
     it('marks rows synced when updated_at has not changed since the batch was drawn', async () => {
         await insertExercise('ex-1', 'Bench', '2026-01-01T00:00:00Z')
-        const outbox = createOutbox(db as never, executeWrite)
+        const outbox = createOutbox(db as never, executeWriteTransaction)
         const snap = capturePrincipalSnapshot({ userId, remote: true })
         const batch = await outbox.nextBatch(snap)
 
@@ -132,7 +132,7 @@ describe('Outbox.ack', () => {
 
     it('does NOT mark synced if the row was re-dirtied (updated_at advanced) since the batch', async () => {
         await insertExercise('ex-1', 'Bench', '2026-01-01T00:00:00Z')
-        const outbox = createOutbox(db as never, executeWrite)
+        const outbox = createOutbox(db as never, executeWriteTransaction)
         const snap = capturePrincipalSnapshot({ userId, remote: true })
         const batch = await outbox.nextBatch(snap)
 
@@ -153,7 +153,7 @@ describe('Outbox.ack', () => {
 describe('Outbox.fail', () => {
     it('marks rows failed and exposes a structured reason to the caller', async () => {
         await insertExercise('ex-1', 'Bench')
-        const outbox = createOutbox(db as never, executeWrite)
+        const outbox = createOutbox(db as never, executeWriteTransaction)
         const snap = capturePrincipalSnapshot({ userId, remote: true })
         const batch = await outbox.nextBatch(snap)
 
