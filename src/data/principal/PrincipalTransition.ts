@@ -33,8 +33,8 @@ export type TransitionOutcome =
 
 type SqliteWrite = Pick<SQLite.SQLiteDatabase, 'runAsync'>
 
-type DataTable = 'sets' | 'workouts' | 'exercises' | 'deletion_tombstones' | 'sync_queue'
-const DATA_TABLES: DataTable[] = ['sets', 'workouts', 'exercises', 'deletion_tombstones', 'sync_queue']
+type DataTable = 'sets' | 'workouts' | 'exercises' | 'deletion_tombstones'
+const DATA_TABLES: DataTable[] = ['sets', 'workouts', 'exercises', 'deletion_tombstones']
 
 const sameIdentity = (a: PrincipalIdentity, b: PrincipalIdentity): boolean => {
     if (a.kind !== b.kind) return false
@@ -55,7 +55,7 @@ const clearLocal = async (db: SqliteWrite): Promise<number> => {
          WHERE id = 1`
     )
     await db.runAsync(
-        `DELETE FROM sqlite_sequence WHERE name IN ('sets','workouts','exercises','deletion_tombstones','sync_queue')`
+        `DELETE FROM sqlite_sequence WHERE name IN ('sets','workouts','exercises','deletion_tombstones')`
     )
     return total
 }

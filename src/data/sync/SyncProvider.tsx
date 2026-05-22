@@ -1,56 +1,64 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { AppState } from 'react-native'
 import { getSyncState, runSync } from './syncService'
+import { syncStatusStore, type SyncStatus as ObservableSyncStatus } from './SyncStatus'
 import { useAuth } from '@/src/modules/auth/useAuth'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 
-type SyncStatus = {
+type SyncBannerStatus = {
     isSyncing: boolean
     outboxSize: number
     lastSuccessAt: string | null
     lastAttemptAt: string | null
     lastError: string | null
+    observable: ObservableSyncStatus
 }
 
 type SyncContextValue = {
-    status: SyncStatus
+    status: SyncBannerStatus
     refreshStatus: () => Promise<void>
     triggerSync: () => Promise<void>
 }
 
-const DEFAULT_STATUS: SyncStatus = {
+const DEFAULT_STATUS: SyncBannerStatus = {
     isSyncing: false,
     outboxSize: 0,
     lastSuccessAt: null,
     lastAttemptAt: null,
     lastError: null,
+    observable: { kind: 'idle' },
 }
 
 const SyncContext = createContext<SyncContextValue | undefined>(undefined)
 
 export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [status, setStatus] = useState<SyncStatus>(DEFAULT_STATUS)
+    const [status, setStatus] = useState<SyncBannerStatus>(DEFAULT_STATUS)
     const { isAuthenticated, authMode } = useAuth()
 
     const refreshStatus = useCallback(async () => {
         const state = await getSyncState()
-        setStatus({
+        setStatus((prev) => ({
             isSyncing: state.is_syncing === 1,
             outboxSize: state.outbox_size,
             lastSuccessAt: state.last_success_at,
             lastAttemptAt: state.last_attempt_at,
             lastError: state.last_error,
+            observable: prev.observable,
+        }))
+    }, [])
+
+    useEffect(() => {
+        const unsubscribe = syncStatusStore.subscribe((observable) => {
+            setStatus((prev) => ({ ...prev, observable }))
         })
+        return unsubscribe
     }, [])
 
     const triggerSync = useCallback(async () => {
-        try {
-            await runSync()
-        } catch (error) {
-            console.warn('[sync] run failed', error)
-        } finally {
-            await refreshStatus()
-        }
+        // Errors are surfaced via the SyncStatus observable; no need to throw
+        // up the React tree.
+        await runSync()
+        await refreshStatus()
     }, [refreshStatus])
 
     useEffect(() => {

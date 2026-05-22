@@ -121,17 +121,6 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       sync_status TEXT NOT NULL DEFAULT 'dirty'
     );
 
-    CREATE TABLE IF NOT EXISTS sync_queue (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      entity_type TEXT NOT NULL,
-      entity_uuid TEXT NOT NULL,
-      operation TEXT NOT NULL,
-      payload TEXT,
-      attempts INTEGER NOT NULL DEFAULT 0,
-      last_error TEXT,
-      queued_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
     CREATE TABLE IF NOT EXISTS sync_state (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       is_syncing INTEGER NOT NULL DEFAULT 0,
@@ -157,10 +146,13 @@ const createIndexes = async (db: SQLite.SQLiteDatabase) => {
 
     CREATE INDEX IF NOT EXISTS idx_tombstones_status ON deletion_tombstones(sync_status, deleted_at);
     CREATE INDEX IF NOT EXISTS idx_tombstones_entity ON deletion_tombstones(entity_type, entity_uuid);
-
-    CREATE INDEX IF NOT EXISTS idx_sync_queue_queued_at ON sync_queue(queued_at);
-    CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_uuid);
   `)
+}
+
+const dropDeadTables = async (db: SQLite.SQLiteDatabase) => {
+    // sync_queue was conceptually replaced by the Outbox in the data-layer
+    // refactor (PRD #1). The table was carried forward unused; drop it now.
+    await db.execAsync(`DROP TABLE IF EXISTS sync_queue;`)
 }
 
 export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
@@ -171,6 +163,7 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
   `)
 
     await createTables(db)
+    await dropDeadTables(db)
     await ensureSyncMetadataColumns(db, 'exercises')
     await ensureSyncMetadataColumns(db, 'workouts')
     await ensureSyncMetadataColumns(db, 'sets')

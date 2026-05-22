@@ -31,7 +31,6 @@ describe('test harness smoke', () => {
                 'workouts',
                 'sets',
                 'deletion_tombstones',
-                'sync_queue',
                 'sync_state',
             ])
         )
