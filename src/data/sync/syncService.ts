@@ -2,7 +2,7 @@ import { getSupabaseConfig } from '@/src/data/remote/supabase/config'
 import { getSupabaseSession } from '@/src/data/remote/supabase/session'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { getDb } from '@/src/db/client'
-import { executeWrite, executeWriteTransaction } from '@/src/db/writeQueue'
+import { executeWriteTransaction } from '@/src/db/writeQueue'
 import { nowIso } from '@/src/db/sync'
 import { createOutbox, DIRTY_STATUSES } from './Outbox'
 import { capturePrincipalSnapshot, type LivePrincipal } from './PrincipalSnapshot'
@@ -175,7 +175,9 @@ const updateSyncState = async (partial: Partial<SyncState>) => {
     }
     if (updates.length === 0) return
 
-    await executeWrite((db) => db.runAsync(`UPDATE sync_state SET ${updates.join(', ')} WHERE id = 1`, ...values))
+    await executeWriteTransaction((db) =>
+        db.runAsync(`UPDATE sync_state SET ${updates.join(', ')} WHERE id = 1`, ...values)
+    )
 }
 
 const createSupabaseHttpAdapter = (): RemoteAdapter => ({
@@ -462,7 +464,7 @@ export const runSync = async () => {
 
         try {
             const db = await getDb()
-            const outbox = createOutbox(db, executeWrite)
+            const outbox = createOutbox(db, executeWriteTransaction)
             const adapter = createSupabaseHttpAdapter()
             const writer = createRemoteWriter(adapter)
             const resolver = createRemoteIdResolver(adapter)
