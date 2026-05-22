@@ -30,9 +30,15 @@ export type FailureMode =
 
 export type UpsertResult = { id: number; uuid: string }[]
 
+export type CallCounts = Record<
+    'upsert' | 'selectByUuid' | 'selectIdsByUuids' | 'selectActive' | 'selectDeleted' | 'patchByUuid',
+    Record<RemoteTable, number>
+>
+
 export interface FakeSupabaseAdapter {
     upsert(table: RemoteTable, rows: RemoteRow[]): Promise<UpsertResult>
     selectByUuid(table: RemoteTable, uuid: string): Promise<{ id: number } | null>
+    selectIdsByUuids(table: RemoteTable, uuids: string[]): Promise<{ id: number; uuid: string }[]>
     selectActive(table: RemoteTable, userId: string): Promise<RemoteRow[]>
     selectDeleted(table: RemoteTable, userId: string): Promise<{ uuid: string; deleted_at: string | null }[]>
     patchByUuid(
@@ -47,6 +53,9 @@ export interface FakeSupabaseAdapter {
 
     /** Test introspection: all rows currently "in" the remote, by table. */
     snapshot(table: RemoteTable): RemoteRow[]
+
+    /** Test introspection: count of each method invocation, per table. */
+    callCounts(): CallCounts
 }
 
 export const createFakeSupabaseAdapter = (): FakeSupabaseAdapter => {
@@ -62,6 +71,14 @@ export const createFakeSupabaseAdapter = (): FakeSupabaseAdapter => {
     }
     const nextId: Record<RemoteTable, number> = { exercises: 1, workouts: 1, sets: 1 }
     const failureQueue: FailureMode[] = []
+    const counts: CallCounts = {
+        upsert: { exercises: 0, workouts: 0, sets: 0 },
+        selectByUuid: { exercises: 0, workouts: 0, sets: 0 },
+        selectIdsByUuids: { exercises: 0, workouts: 0, sets: 0 },
+        selectActive: { exercises: 0, workouts: 0, sets: 0 },
+        selectDeleted: { exercises: 0, workouts: 0, sets: 0 },
+        patchByUuid: { exercises: 0, workouts: 0, sets: 0 },
+    }
 
     const takeFailure = () => failureQueue.shift()
 
@@ -75,6 +92,7 @@ export const createFakeSupabaseAdapter = (): FakeSupabaseAdapter => {
 
     return {
         async upsert(table, rows) {
+            counts.upsert[table] += 1
             const failure = takeFailure()
             if (failure?.kind === 'network-error') {
                 throw new Error(failure.message ?? 'network error')
@@ -92,6 +110,7 @@ export const createFakeSupabaseAdapter = (): FakeSupabaseAdapter => {
         },
 
         async selectByUuid(table, uuid) {
+            counts.selectByUuid[table] += 1
             const failure = takeFailure()
             if (failure?.kind === 'network-error') {
                 throw new Error(failure.message ?? 'network error')
@@ -100,7 +119,22 @@ export const createFakeSupabaseAdapter = (): FakeSupabaseAdapter => {
             return id === undefined ? null : { id }
         },
 
+        async selectIdsByUuids(table, uuids) {
+            counts.selectIdsByUuids[table] += 1
+            const failure = takeFailure()
+            if (failure?.kind === 'network-error') {
+                throw new Error(failure.message ?? 'network error')
+            }
+            const result: { id: number; uuid: string }[] = []
+            for (const uuid of uuids) {
+                const id = idsByUuid[table].get(uuid)
+                if (id !== undefined) result.push({ id, uuid })
+            }
+            return result
+        },
+
         async selectActive(table, userId) {
+            counts.selectActive[table] += 1
             const failure = takeFailure()
             if (failure?.kind === 'network-error') {
                 throw new Error(failure.message ?? 'network error')
@@ -111,6 +145,7 @@ export const createFakeSupabaseAdapter = (): FakeSupabaseAdapter => {
         },
 
         async selectDeleted(table, userId) {
+            counts.selectDeleted[table] += 1
             const failure = takeFailure()
             if (failure?.kind === 'network-error') {
                 throw new Error(failure.message ?? 'network error')
@@ -121,6 +156,7 @@ export const createFakeSupabaseAdapter = (): FakeSupabaseAdapter => {
         },
 
         async patchByUuid(table, uuid, userId, patch) {
+            counts.patchByUuid[table] += 1
             const failure = takeFailure()
             if (failure?.kind === 'network-error') {
                 throw new Error(failure.message ?? 'network error')
@@ -136,6 +172,10 @@ export const createFakeSupabaseAdapter = (): FakeSupabaseAdapter => {
 
         snapshot(table) {
             return [...tables[table].values()]
+        },
+
+        callCounts() {
+            return counts
         },
     }
 }
