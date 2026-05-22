@@ -4,6 +4,22 @@ import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { getDb } from '@/src/db/client'
 import { executeWrite, executeWriteTransaction } from '@/src/db/writeQueue'
 import { nowIso } from '@/src/db/sync'
+import {
+    createOutbox,
+    DIRTY_STATUSES,
+    tableOf,
+    type ExerciseRow,
+    type OutboxRow,
+    type SetRowWithRefs,
+    type SyncFailureReason,
+    type WorkoutRow,
+} from './Outbox'
+import {
+    capturePrincipalSnapshot,
+    type LivePrincipal,
+    type PrincipalSnapshot,
+} from './PrincipalSnapshot'
+import { drainOutbox, type PushOutcome } from './SyncCycle'
 
 type SyncState = {
     is_syncing: number
@@ -11,68 +27,6 @@ type SyncState = {
     last_success_at: string | null
     last_attempt_at: string | null
     last_error: string | null
-}
-
-type SyncTable = 'exercises' | 'workouts' | 'sets'
-type EntityType = 'exercise' | 'workout' | 'set'
-
-type ExerciseRow = {
-    uuid: string
-    user_id: string | null
-    name: string
-    type: string
-    muscle_group: string | null
-    photo_uri: string | null
-    position: number
-    created_at: string | null
-    updated_at: string | null
-    deleted_at: string | null
-    sync_status: 'local' | 'dirty' | 'synced' | 'failed'
-}
-
-type WorkoutRow = {
-    uuid: string
-    user_id: string | null
-    date: string
-    start_time: string | null
-    end_time: string | null
-    status: 'in_progress' | 'finished'
-    note: string | null
-    created_at: string | null
-    updated_at: string | null
-    deleted_at: string | null
-    sync_status: 'local' | 'dirty' | 'synced' | 'failed'
-}
-
-type SetRow = {
-    uuid: string
-    user_id: string | null
-    workout_id: number
-    exercise_id: number
-    weight: number | null
-    reps: number | null
-    distance: number | null
-    duration: number | null
-    rpe: number | null
-    position: number
-    sub_sets: string | null
-    created_at: string | null
-    updated_at: string | null
-    deleted_at: string | null
-    sync_status: 'local' | 'dirty' | 'synced' | 'failed'
-}
-
-type DirtySetRow = SetRow & {
-    workout_uuid: string
-    exercise_uuid: string
-}
-
-type TombstoneRow = {
-    id: number
-    entity_type: EntityType
-    entity_uuid: string
-    user_id: string | null
-    deleted_at: string
 }
 
 type DeletedRow = {
@@ -97,15 +51,25 @@ type RemoteSetWithRefs = {
     exercises: { uuid: string } | { uuid: string }[] | null
 }
 
-const DIRTY_STATUSES = `('dirty','failed')`
+type RemoteSimpleRow = {
+    uuid: string
+    user_id: string | null
+    name?: string
+    type?: string
+    muscle_group?: string | null
+    photo_uri?: string | null
+    position?: number
+    date?: string
+    start_time?: string | null
+    end_time?: string | null
+    status?: 'in_progress' | 'finished'
+    note?: string | null
+    created_at: string | null
+    updated_at: string | null
+    deleted_at: string | null
+}
 
 let currentRun: Promise<void> | null = null
-
-const tableByEntityType: Record<EntityType, SyncTable> = {
-    exercise: 'exercises',
-    workout: 'workouts',
-    set: 'sets',
-}
 
 const toIsoOrNow = (value?: string | null) => value ?? nowIso()
 
@@ -178,14 +142,20 @@ const getOutboxSize = async (userId?: string) => {
             `SELECT COUNT(*) as count FROM workouts WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
             ...userScopeParams
         ),
-        db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) as count FROM sets WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`, ...userScopeParams),
+        db.getFirstAsync<{ count: number }>(
+            `SELECT COUNT(*) as count FROM sets WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
+            ...userScopeParams
+        ),
         db.getFirstAsync<{ count: number }>(
             `SELECT COUNT(*) as count FROM deletion_tombstones WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
             ...userScopeParams
         ),
     ])
     return (
-        (exerciseCount?.count ?? 0) + (workoutCount?.count ?? 0) + (setCount?.count ?? 0) + (tombstoneCount?.count ?? 0)
+        (exerciseCount?.count ?? 0) +
+        (workoutCount?.count ?? 0) +
+        (setCount?.count ?? 0) +
+        (tombstoneCount?.count ?? 0)
     )
 }
 
@@ -217,118 +187,55 @@ const updateSyncState = async (partial: Partial<SyncState>) => {
     await executeWrite((db) => db.runAsync(`UPDATE sync_state SET ${updates.join(', ')} WHERE id = 1`, ...values))
 }
 
-const setEntitySyncedIfUnchanged = async (table: SyncTable, uuid: string, expectedUpdatedAt: string | null) => {
-    const syncedAt = nowIso()
-    await executeWrite((db) =>
-        db.runAsync(
-            `UPDATE ${table}
-      SET sync_status = 'synced',
-          last_synced_at = ?,
-          updated_at = COALESCE(updated_at, ?)
-      WHERE uuid = ?
-        AND sync_status IN ${DIRTY_STATUSES}
-        AND ((? IS NULL AND updated_at IS NULL) OR updated_at = ?)`,
-            syncedAt,
-            syncedAt,
-            uuid,
-            expectedUpdatedAt,
-            expectedUpdatedAt
-        )
-    )
+const failureFromError = (error: unknown): SyncFailureReason => {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/network|fetch/i.test(message)) return { kind: 'network-error', message }
+    return { kind: 'remote-rejection', message }
 }
 
-const setEntityFailedIfUnchanged = async (table: SyncTable, uuid: string, expectedUpdatedAt: string | null) => {
-    await executeWrite((db) =>
-        db.runAsync(
-            `UPDATE ${table}
-      SET sync_status = 'failed'
-      WHERE uuid = ?
-        AND sync_status IN ${DIRTY_STATUSES}
-        AND ((? IS NULL AND updated_at IS NULL) OR updated_at = ?)`,
-            uuid,
-            expectedUpdatedAt,
-            expectedUpdatedAt
-        )
-    )
+type UpsertableTable = 'exercises' | 'workouts' | 'sets'
+
+const upsertRow = async (table: UpsertableTable, body: Record<string, unknown>) => {
+    await request<unknown>(table, {
+        method: 'POST',
+        query: { on_conflict: 'uuid' },
+        prefer: 'resolution=merge-duplicates',
+        body: {
+            ...body,
+            created_at: toIsoOrNow(body.created_at as string | null | undefined),
+            updated_at: toIsoOrNow(body.updated_at as string | null | undefined),
+            sync_status: 'dirty',
+        },
+    })
 }
 
-const pushExercises = async (userId: string): Promise<number> => {
-    const db = await getDb()
-    let failures = 0
-    const rows = await db.getAllAsync<ExerciseRow>(
-        `SELECT uuid, user_id, name, type, muscle_group, photo_uri, position, created_at, updated_at, deleted_at, sync_status
-     FROM exercises
-     WHERE sync_status IN ${DIRTY_STATUSES} AND user_id = ?
-     ORDER BY updated_at ASC`,
-        userId
-    )
-    for (const row of rows) {
-        try {
-            await request<unknown>('exercises', {
-                method: 'POST',
-                query: { on_conflict: 'uuid' },
-                prefer: 'resolution=merge-duplicates',
-                body: {
-                    uuid: row.uuid,
-                    user_id: userId,
-                    name: row.name,
-                    type: row.type,
-                    muscle_group: row.muscle_group,
-                    photo_uri: row.photo_uri,
-                    position: row.position,
-                    created_at: toIsoOrNow(row.created_at),
-                    updated_at: toIsoOrNow(row.updated_at),
-                    deleted_at: row.deleted_at,
-                    sync_status: 'dirty',
-                },
-            })
-            await setEntitySyncedIfUnchanged('exercises', row.uuid, row.updated_at ?? null)
-        } catch {
-            failures += 1
-            await setEntityFailedIfUnchanged('exercises', row.uuid, row.updated_at ?? null)
-        }
-    }
-    return failures
-}
+const pushExerciseRow = (snapshot: PrincipalSnapshot, row: ExerciseRow) =>
+    upsertRow('exercises', {
+        uuid: row.uuid,
+        user_id: snapshot.userId,
+        name: row.name,
+        type: row.type,
+        muscle_group: row.muscle_group,
+        photo_uri: row.photo_uri,
+        position: row.position,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        deleted_at: row.deleted_at,
+    })
 
-const pushWorkouts = async (userId: string): Promise<number> => {
-    const db = await getDb()
-    let failures = 0
-    const rows = await db.getAllAsync<WorkoutRow>(
-        `SELECT uuid, user_id, date, start_time, end_time, status, note, created_at, updated_at, deleted_at, sync_status
-     FROM workouts
-     WHERE sync_status IN ${DIRTY_STATUSES} AND user_id = ?
-     ORDER BY updated_at ASC`,
-        userId
-    )
-    for (const row of rows) {
-        try {
-            await request<unknown>('workouts', {
-                method: 'POST',
-                query: { on_conflict: 'uuid' },
-                prefer: 'resolution=merge-duplicates',
-                body: {
-                    uuid: row.uuid,
-                    user_id: userId,
-                    date: row.date,
-                    start_time: row.start_time,
-                    end_time: row.end_time,
-                    status: row.status,
-                    note: row.note,
-                    created_at: toIsoOrNow(row.created_at),
-                    updated_at: toIsoOrNow(row.updated_at),
-                    deleted_at: row.deleted_at,
-                    sync_status: 'dirty',
-                },
-            })
-            await setEntitySyncedIfUnchanged('workouts', row.uuid, row.updated_at ?? null)
-        } catch {
-            failures += 1
-            await setEntityFailedIfUnchanged('workouts', row.uuid, row.updated_at ?? null)
-        }
-    }
-    return failures
-}
+const pushWorkoutRow = (snapshot: PrincipalSnapshot, row: WorkoutRow) =>
+    upsertRow('workouts', {
+        uuid: row.uuid,
+        user_id: snapshot.userId,
+        date: row.date,
+        start_time: row.start_time,
+        end_time: row.end_time,
+        status: row.status,
+        note: row.note,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        deleted_at: row.deleted_at,
+    })
 
 const getRemoteIdByUuid = async (table: 'exercises' | 'workouts', uuid: string, cache: Map<string, number>) => {
     const cached = cache.get(uuid)
@@ -343,127 +250,83 @@ const getRemoteIdByUuid = async (table: 'exercises' | 'workouts', uuid: string, 
     return id
 }
 
-const pushSets = async (userId: string): Promise<number> => {
-    const db = await getDb()
-    let failures = 0
-    const rows = await db.getAllAsync<DirtySetRow>(
-        `SELECT
-      s.uuid,
-      s.user_id,
-      s.workout_id,
-      s.exercise_id,
-      s.weight,
-      s.reps,
-      s.distance,
-      s.duration,
-      s.rpe,
-      s.position,
-      s.sub_sets,
-      s.created_at,
-      s.updated_at,
-      s.deleted_at,
-      s.sync_status,
-      w.uuid as workout_uuid,
-      e.uuid as exercise_uuid
-    FROM sets s
-    JOIN workouts w ON w.id = s.workout_id
-    JOIN exercises e ON e.id = s.exercise_id
-    WHERE s.sync_status IN ${DIRTY_STATUSES}
-      AND s.user_id = ?
-      AND w.user_id = ?
-      AND e.user_id = ?
-    ORDER BY s.updated_at ASC`,
-        userId,
-        userId,
-        userId
-    )
-
-    const workoutIdCache = new Map<string, number>()
-    const exerciseIdCache = new Map<string, number>()
-
-    for (const row of rows) {
-        try {
-            const [remoteWorkoutId, remoteExerciseId] = await Promise.all([
-                getRemoteIdByUuid('workouts', row.workout_uuid, workoutIdCache),
-                getRemoteIdByUuid('exercises', row.exercise_uuid, exerciseIdCache),
-            ])
-            if (!remoteWorkoutId || !remoteExerciseId) {
-                failures += 1
-                await setEntityFailedIfUnchanged('sets', row.uuid, row.updated_at ?? null)
-                continue
-            }
-
-            await request<unknown>('sets', {
-                method: 'POST',
-                query: { on_conflict: 'uuid' },
-                prefer: 'resolution=merge-duplicates',
-                body: {
-                    uuid: row.uuid,
-                    user_id: userId,
-                    workout_id: remoteWorkoutId,
-                    exercise_id: remoteExerciseId,
-                    weight: row.weight,
-                    reps: row.reps,
-                    distance: row.distance,
-                    duration: row.duration,
-                    rpe: row.rpe,
-                    position: row.position,
-                    sub_sets: row.sub_sets,
-                    created_at: toIsoOrNow(row.created_at),
-                    updated_at: toIsoOrNow(row.updated_at),
-                    deleted_at: row.deleted_at,
-                    sync_status: 'dirty',
-                },
-            })
-            await setEntitySyncedIfUnchanged('sets', row.uuid, row.updated_at ?? null)
-        } catch {
-            failures += 1
-            await setEntityFailedIfUnchanged('sets', row.uuid, row.updated_at ?? null)
+const pushSetRow = async (
+    snapshot: PrincipalSnapshot,
+    row: SetRowWithRefs,
+    workoutIdCache: Map<string, number>,
+    exerciseIdCache: Map<string, number>
+): Promise<SyncFailureReason | null> => {
+    const [remoteWorkoutId, remoteExerciseId] = await Promise.all([
+        getRemoteIdByUuid('workouts', row.workout_uuid, workoutIdCache),
+        getRemoteIdByUuid('exercises', row.exercise_uuid, exerciseIdCache),
+    ])
+    if (!remoteWorkoutId || !remoteExerciseId) {
+        return {
+            kind: 'missing-parent',
+            message: `set ${row.uuid} missing remote parent (workout=${!!remoteWorkoutId} exercise=${!!remoteExerciseId})`,
         }
     }
-    return failures
+    await upsertRow('sets', {
+        uuid: row.uuid,
+        user_id: snapshot.userId,
+        workout_id: remoteWorkoutId,
+        exercise_id: remoteExerciseId,
+        weight: row.weight,
+        reps: row.reps,
+        distance: row.distance,
+        duration: row.duration,
+        rpe: row.rpe,
+        position: row.position,
+        sub_sets: row.sub_sets,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        deleted_at: row.deleted_at,
+    })
+    return null
 }
 
-const pushDeletions = async (userId: string): Promise<number> => {
-    const db = await getDb()
-    let failures = 0
-    const tombstones = await db.getAllAsync<TombstoneRow>(
-        `SELECT id, entity_type, entity_uuid, user_id, deleted_at
-     FROM deletion_tombstones
-     WHERE sync_status IN ${DIRTY_STATUSES}
-       AND user_id = ?
-     ORDER BY deleted_at ASC`,
-        userId
-    )
+const pushTombstone = async (snapshot: PrincipalSnapshot, row: Extract<OutboxRow, { kind: 'tombstone' }>) => {
+    if (!snapshot.userId) {
+        throw new Error('Cannot push tombstone without an account principal.')
+    }
+    await request<unknown>(tableOf(row.entityType), {
+        method: 'PATCH',
+        query: { uuid: `eq.${row.uuid}`, user_id: `eq.${snapshot.userId}` },
+        body: {
+            deleted_at: row.deletedAt,
+            updated_at: row.deletedAt,
+            sync_status: 'dirty',
+        },
+    })
+}
 
-    for (const tombstone of tombstones) {
-        const targetTable = tableByEntityType[tombstone.entity_type]
+const makePushFn = (snapshot: PrincipalSnapshot) => {
+    const workoutIdCache = new Map<string, number>()
+    const exerciseIdCache = new Map<string, number>()
+    return async (row: OutboxRow): Promise<PushOutcome> => {
         try {
-            await request<unknown>(targetTable, {
-                method: 'PATCH',
-                query: { uuid: `eq.${tombstone.entity_uuid}`, user_id: `eq.${userId}` },
-                body: {
-                    deleted_at: tombstone.deleted_at,
-                    updated_at: tombstone.deleted_at,
-                    sync_status: 'dirty',
-                },
-            })
-
-            await executeWrite((innerDb) =>
-                innerDb.runAsync(`UPDATE deletion_tombstones SET sync_status = 'synced' WHERE id = ?`, tombstone.id)
-            )
-        } catch {
-            failures += 1
-            await executeWrite((innerDb) =>
-                innerDb.runAsync(`UPDATE deletion_tombstones SET sync_status = 'failed' WHERE id = ?`, tombstone.id)
-            )
+            if (row.kind === 'tombstone') {
+                await pushTombstone(snapshot, row)
+                return { kind: 'ack' }
+            }
+            if (row.entityType === 'exercise') {
+                await pushExerciseRow(snapshot, row.row)
+                return { kind: 'ack' }
+            }
+            if (row.entityType === 'workout') {
+                await pushWorkoutRow(snapshot, row.row)
+                return { kind: 'ack' }
+            }
+            const reason = await pushSetRow(snapshot, row.row, workoutIdCache, exerciseIdCache)
+            return reason ? { kind: 'fail', reason } : { kind: 'ack' }
+        } catch (error) {
+            return { kind: 'fail', reason: failureFromError(error) }
         }
     }
-    return failures
 }
 
 const pullExercises = async (userId: string) => {
-    const remote = await request<ExerciseRow[]>('exercises', {
+    const remote = await request<RemoteSimpleRow[]>('exercises', {
         query: { select: '*', user_id: `eq.${userId}`, deleted_at: 'is.null', order: 'updated_at.asc' },
     })
 
@@ -483,11 +346,11 @@ const pullExercises = async (userId: string) => {
                deleted_at = NULL, sync_status = 'synced', last_synced_at = ?
            WHERE uuid = ?`,
                     userId,
-                    row.name,
-                    row.type,
-                    row.muscle_group,
-                    row.photo_uri,
-                    row.position,
+                    row.name ?? null,
+                    row.type ?? 'weight',
+                    row.muscle_group ?? null,
+                    row.photo_uri ?? null,
+                    row.position ?? 0,
                     toIsoOrNow(row.created_at),
                     toIsoOrNow(row.updated_at),
                     nowIso(),
@@ -500,11 +363,11 @@ const pullExercises = async (userId: string) => {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced', ?)`,
                     row.uuid,
                     userId,
-                    row.name,
-                    row.type,
-                    row.muscle_group,
-                    row.photo_uri,
-                    row.position,
+                    row.name ?? null,
+                    row.type ?? 'weight',
+                    row.muscle_group ?? null,
+                    row.photo_uri ?? null,
+                    row.position ?? 0,
                     toIsoOrNow(row.created_at),
                     toIsoOrNow(row.updated_at),
                     nowIso()
@@ -531,7 +394,7 @@ const pullExercises = async (userId: string) => {
 }
 
 const pullWorkouts = async (userId: string) => {
-    const remote = await request<WorkoutRow[]>('workouts', {
+    const remote = await request<RemoteSimpleRow[]>('workouts', {
         query: { select: '*', user_id: `eq.${userId}`, deleted_at: 'is.null', order: 'updated_at.asc' },
     })
 
@@ -551,11 +414,11 @@ const pullWorkouts = async (userId: string) => {
                created_at = ?, updated_at = ?, deleted_at = NULL, sync_status = 'synced', last_synced_at = ?
            WHERE uuid = ?`,
                     userId,
-                    row.date,
-                    row.start_time,
-                    row.end_time,
-                    row.status,
-                    row.note,
+                    row.date ?? null,
+                    row.start_time ?? null,
+                    row.end_time ?? null,
+                    row.status ?? 'finished',
+                    row.note ?? null,
                     toIsoOrNow(row.created_at),
                     toIsoOrNow(row.updated_at),
                     nowIso(),
@@ -568,11 +431,11 @@ const pullWorkouts = async (userId: string) => {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced', ?)`,
                     row.uuid,
                     userId,
-                    row.date,
-                    row.start_time,
-                    row.end_time,
-                    row.status,
-                    row.note,
+                    row.date ?? null,
+                    row.start_time ?? null,
+                    row.end_time ?? null,
+                    row.status ?? 'finished',
+                    row.note ?? null,
                     toIsoOrNow(row.created_at),
                     toIsoOrNow(row.updated_at),
                     nowIso()
@@ -695,11 +558,19 @@ const pullSets = async (userId: string) => {
     }
 }
 
+const livePrincipalFromSession = (): LivePrincipal => {
+    const session = getSupabaseSession()
+    return { userId: session?.userId ?? null, remote: shouldUseRemoteSync() }
+}
+
 export const runSync = async () => {
     if (!shouldUseRemoteSync()) return
-    const session = getSupabaseSession()
+    const live = livePrincipalFromSession()
     const config = getSupabaseConfig()
-    if (!config || !session?.userId) return
+    if (!config || !live.userId) return
+
+    const snapshot = capturePrincipalSnapshot(live)
+    if (snapshot.mode !== 'account' || !snapshot.userId) return
 
     if (currentRun) return currentRun
     currentRun = (async () => {
@@ -707,30 +578,38 @@ export const runSync = async () => {
         await updateSyncState({ is_syncing: 1, last_attempt_at: startedAt, last_error: null })
 
         try {
-            const pushFailures =
-                (await pushExercises(session.userId)) +
-                (await pushWorkouts(session.userId)) +
-                (await pushSets(session.userId)) +
-                (await pushDeletions(session.userId))
+            const db = await getDb()
+            const outbox = createOutbox(db, executeWrite)
+            const { aborted, failed } = await drainOutbox(
+                outbox,
+                snapshot,
+                makePushFn(snapshot),
+                livePrincipalFromSession
+            )
 
-            await pullExercises(session.userId)
-            await pullWorkouts(session.userId)
-            await pullSets(session.userId)
+            if (!aborted) {
+                await pullExercises(snapshot.userId as string)
+                await pullWorkouts(snapshot.userId as string)
+                await pullSets(snapshot.userId as string)
+            }
 
-            if (pushFailures > 0) {
-                throw new Error(`Sync completed with ${pushFailures} failed push operations.`)
+            if (failed > 0) {
+                throw new Error(`Sync completed with ${failed} failed push operations.`)
+            }
+            if (aborted) {
+                throw new Error('Sync aborted: principal changed mid-cycle.')
             }
 
             await updateSyncState({
                 is_syncing: 0,
-                outbox_size: await getOutboxSize(session.userId),
+                outbox_size: await getOutboxSize(snapshot.userId as string),
                 last_success_at: nowIso(),
                 last_error: null,
             })
         } catch (error) {
             await updateSyncState({
                 is_syncing: 0,
-                outbox_size: await getOutboxSize(session.userId),
+                outbox_size: await getOutboxSize(snapshot.userId as string),
                 last_error: error instanceof Error ? error.message : String(error),
             })
             throw error
@@ -751,7 +630,6 @@ export const getSyncState = async (): Promise<SyncState> => {
     if (row) {
         return {
             ...row,
-            // Always report live outbox for current account scope.
             outbox_size: scopedOutboxSize,
         }
     }
