@@ -15,3 +15,7 @@ Canonical label vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `re
 ### Domain docs
 
 Single-context repo: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Working on an issue
+
+When the user (or an orchestrating loop) asks you to work on a `ready-for-agent` issue, follow the conventions in `.claude/work-on-issue.md`.
