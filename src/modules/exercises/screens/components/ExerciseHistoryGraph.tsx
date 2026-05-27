@@ -1,100 +1,101 @@
 import { Exercise } from '@/src/db/exercises'
-import { ExerciseHistory } from '@/src/db/workouts'
 import { Spacing } from '@/src/constants/Spacing'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import {
+    ExerciseTypeMetadata,
+    getSetMetricValue,
+    type PrimaryMetric,
+} from '@/src/modules/exercises/ExerciseTypeMetadata'
+import type { BestSetEntry } from '@/src/modules/exercises/ExerciseStats'
 import { formatDuration } from '@/src/utils/formatters'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
 
 interface ExerciseHistoryGraphProps {
     exercise: Exercise
-    data: ExerciseHistory[]
+    data: BestSetEntry[]
 }
 
-type Metric = 'weight' | 'reps' | 'distance' | 'duration'
+const metricLabelKey: Record<PrimaryMetric, string> = {
+    weight: 'weight',
+    reps: 'reps',
+    distance: 'meters',
+    duration: 'time',
+}
 
-export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistoryGraphProps) => {
+export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphProps) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
-    const [selectedMetric, setSelectedMetric] = useState<Metric>('weight')
-
+    const adapter = ExerciseTypeMetadata.for(exercise.type)
+    const [selectedMetric, setSelectedMetric] = useState<PrimaryMetric>(adapter.primaryMetric)
     const [graphWidth, setGraphWidth] = useState(0)
 
-    const data = useMemo(() => {
-        return rawData
-    }, [rawData])
+    const toggleMetrics = useMemo<PrimaryMetric[]>(() => {
+        const metrics: PrimaryMetric[] = [adapter.primaryMetric]
+        if (adapter.secondaryMetric) metrics.push(adapter.secondaryMetric)
+        return metrics
+    }, [adapter])
 
-    useEffect(() => {
-        if (exercise.type === 'bodyweight') {
-            setSelectedMetric('reps')
-        } else if (exercise.type === 'bodyweight_timer') {
-            setSelectedMetric('duration')
-        } else if (exercise.type === 'cardio') {
-            setSelectedMetric('distance')
-        } else {
-            setSelectedMetric('weight')
-        }
-    }, [exercise.type])
+    const formatForMetric = useCallback(
+        (metric: PrimaryMetric, value: number) => {
+            if (metric === adapter.primaryMetric) return adapter.format(value)
+            if (metric === 'duration') return formatDuration(value)
+            if (metric === 'reps') return Math.round(value).toString()
+            return value.toFixed(2)
+        },
+        [adapter]
+    )
+
+    const unitForMetric = useCallback(
+        (metric: PrimaryMetric): string => {
+            if (metric === adapter.primaryMetric) return adapter.unit
+            if (metric === 'reps') return 'reps'
+            if (metric === 'weight') return 'kg'
+            if (metric === 'distance') return 'm'
+            return ''
+        },
+        [adapter]
+    )
 
     const processedData = useMemo(() => {
         if (!data.length) return []
 
-        let getValue = (h: ExerciseHistory) => h.max_weight || 0
+        const primary = selectedMetric
+        const showSecondary =
+            selectedMetric === adapter.primaryMetric && adapter.secondaryMetric !== null
+        const secondary = showSecondary ? adapter.secondaryMetric : null
 
-        switch (selectedMetric) {
-            case 'weight':
-                getValue = (h) => h.max_weight || 0
-                break
-            case 'reps':
-                getValue = (h) => h.max_reps || 0
-                break
-            case 'distance':
-                getValue = (h) => h.max_distance || 0
-                break
-            case 'duration':
-                getValue = (h) => h.max_duration || 0
-                break
-        }
-
-        return data.map((h) => {
-            const d = new Date(h.date)
-            const val = getValue(h)
-            let displayVal = val.toString()
-
-            if (selectedMetric === 'duration') {
-                displayVal = formatDuration(val)
-            } else if (selectedMetric === 'distance' || selectedMetric === 'weight') {
-                displayVal = val.toFixed(2)
+        return data.map(({ date, set }) => {
+            const value = getSetMetricValue(set, primary)
+            const primaryLabel = formatForMetric(primary, value)
+            let dataPointText = primaryLabel
+            if (secondary) {
+                const secondaryLabel = formatForMetric(secondary, getSetMetricValue(set, secondary))
+                dataPointText = `${primaryLabel} × ${secondaryLabel}`
             }
-
+            const d = new Date(date)
             return {
-                value: val,
+                value,
                 label: `${d.getDate()}/${d.getMonth() + 1}`,
-                dataPointText: displayVal,
+                dataPointText,
             }
         })
-    }, [selectedMetric, data])
+    }, [data, selectedMetric, adapter, formatForMetric])
 
     const stats = useMemo(() => {
         if (!processedData.length) return null
         const values = processedData.map((d) => d.value)
         const max = Math.max(...values)
         const avg = values.reduce((a, b) => a + b, 0) / values.length
-
-        const format = (val: number) => {
-            if (selectedMetric === 'duration') return formatDuration(val)
-            if (selectedMetric === 'distance') return `${val.toFixed(2)}m`
-            if (selectedMetric === 'weight') return `${val.toFixed(2)}kg`
-            return Math.round(val).toString()
-        }
-
+        const unit = unitForMetric(selectedMetric)
+        const withUnit = (formatted: string) => (unit ? `${formatted}${unit === 'reps' ? '' : unit}` : formatted)
         return {
-            max: format(max),
-            avg: format(avg),
+            max: withUnit(formatForMetric(selectedMetric, max)),
+            avg: withUnit(formatForMetric(selectedMetric, avg)),
         }
-    }, [processedData, selectedMetric])
+    }, [processedData, selectedMetric, formatForMetric, unitForMetric])
 
     const maxValue = processedData.length ? Math.max(...processedData.map((d) => d.value)) : 0
 
@@ -126,8 +127,9 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
         }
     })()
 
-    const renderToggle = (metric: Metric, label: string) => (
+    const renderToggle = (metric: PrimaryMetric) => (
         <TouchableOpacity
+            key={metric}
             onPress={() => setSelectedMetric(metric)}
             style={[
                 styles.toggleButton,
@@ -141,7 +143,7 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
                     selectedMetric === metric && { color: theme.onPrimary },
                 ]}
             >
-                {label}
+                {t(metricLabelKey[metric])}
             </Text>
         </TouchableOpacity>
     )
@@ -150,24 +152,11 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={[styles.title, { color: theme.text }]}>{t('progress')}</Text>
-                <View style={[styles.toggleGroup, { backgroundColor: theme.background }]}>
-                    {exercise.type === 'cardio' ? (
-                        <>
-                            {renderToggle('distance', t('meters'))}
-                            {renderToggle('duration', t('time'))}
-                        </>
-                    ) : exercise.type === 'bodyweight_timer' ? (
-                        <>
-                            {renderToggle('weight', t('weight'))}
-                            {renderToggle('duration', t('time'))}
-                        </>
-                    ) : (
-                        <>
-                            {renderToggle('weight', t('weight'))}
-                            {renderToggle('reps', t('reps'))}
-                        </>
-                    )}
-                </View>
+                {toggleMetrics.length > 1 && (
+                    <View style={[styles.toggleGroup, { backgroundColor: theme.background }]}>
+                        {toggleMetrics.map(renderToggle)}
+                    </View>
+                )}
             </View>
 
             {stats && (
