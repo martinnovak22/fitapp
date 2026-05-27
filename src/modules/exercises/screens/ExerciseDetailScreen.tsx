@@ -1,7 +1,7 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { getRepositories } from '@/src/data/repositories'
 import { Exercise } from '@/src/db/exercises'
-import { ExerciseHistory } from '@/src/db/workouts'
+import { ExerciseStats, type BestSetEntry } from '@/src/modules/exercises/ExerciseStats'
 import { Card } from '@/src/modules/core/components/Card'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -20,11 +20,11 @@ import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 're
 import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph'
 
 export default function ExerciseDetailScreen() {
-    const { exercises: exerciseRepo, workouts: workoutRepo } = getRepositories()
+    const { exercises: exerciseRepo } = getRepositories()
     const { t } = useTranslation()
     const { id } = useLocalSearchParams()
     const [exercise, setExercise] = useState<Exercise | null>(null)
-    const [historyData, setHistoryData] = useState<ExerciseHistory[]>([])
+    const [historyData, setHistoryData] = useState<BestSetEntry[]>([])
     const [showImageFullScreen, setShowImageFullScreen] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
@@ -38,7 +38,7 @@ export default function ExerciseDetailScreen() {
             setHistoryLoading(true)
             setHistoryError(null)
             try {
-                const data = await workoutRepo.getExerciseHistory(exerciseId)
+                const data = await ExerciseStats.bestSetPerSession(exerciseId)
                 setHistoryData(data)
             } catch (error) {
                 console.error('Failed to load exercise history:', error)
@@ -48,7 +48,7 @@ export default function ExerciseDetailScreen() {
                 setHistoryLoading(false)
             }
         },
-        [t, workoutRepo]
+        [t]
     )
 
     const loadData = useCallback(async () => {
