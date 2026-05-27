@@ -24,7 +24,7 @@ Conventions for any agent (or human) implementing a ready-for-agent issue in thi
 ## Branch and commit conventions
 
 - Branch name: `feat/issue-<N>-<short-slug>`. Example: `feat/issue-3-principal-transition`.
-- Commits: present-tense imperative subject line, body explains the *why*. Don't bury the rationale in the PR description if it belongs in the commit.
+- Commits: follow `.claude/commit-style.md` exactly — imperative lowercase title, bulleted body, blank line between topic shifts, no `Co-Authored-By` trailer.
 - Never amend a commit after pushing unless the user explicitly asks.
 - Never use `git push --force` on a shared branch without asking.
 
