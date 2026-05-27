@@ -1,5 +1,5 @@
 import { Exercise, ExerciseRepository } from '@/src/db/exercises'
-import { ExerciseHistory, SetData, SetWithExerciseName, Workout, WorkoutRepository } from '@/src/db/workouts'
+import { SetData, SetWithExerciseName, Workout, WorkoutRepository } from '@/src/db/workouts'
 
 export interface ExerciseRepositoryPort {
     getAll: () => Promise<Exercise[]>
@@ -25,7 +25,6 @@ export interface WorkoutRepositoryPort {
     deleteSet: (setId: number) => Promise<void>
     updateSetPosition: (setId: number, position: number) => Promise<void>
     getSets: (workoutId: number) => Promise<SetWithExerciseName[]>
-    getExerciseHistory: (exerciseId: number) => Promise<ExerciseHistory[]>
     getWorkoutCountForMonth: (month: string) => Promise<number>
     getAvgWorkoutDuration: (month: string) => Promise<number>
     updateTiming: (id: number, date: string, startTime: string, endTime?: string) => Promise<void>
