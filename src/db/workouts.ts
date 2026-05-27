@@ -54,14 +54,6 @@ export interface SetData {
     sub_sets?: string // JSON string
 }
 
-export interface ExerciseHistory {
-    date: string
-    max_weight: number
-    max_reps: number
-    max_distance: number
-    max_duration: number
-}
-
 export interface SetWithExerciseName extends Set {
     exercise_name: string
 }
@@ -319,33 +311,6 @@ export const WorkoutRepository = {
             workoutId,
             ...setScope.params,
             ...exerciseScope.params,
-            ...workoutScope.params
-        )
-    },
-
-    async getExerciseHistory(exerciseId: number): Promise<ExerciseHistory[]> {
-        const db = await getDb()
-        const setScope = buildPrincipalWhereClause('s.user_id')
-        const workoutScope = buildPrincipalWhereClause('w.user_id')
-        return await db.getAllAsync<ExerciseHistory>(
-            `SELECT
-                w.date,
-                MAX(s.weight) as max_weight,
-                MAX(s.reps) as max_reps,
-                MAX(s.distance) as max_distance,
-                MAX(s.duration) as max_duration
-             FROM sets s
-             JOIN workouts w ON s.workout_id = w.id
-             WHERE s.exercise_id = ?
-               AND w.status = 'finished'
-               AND s.deleted_at IS NULL
-               AND w.deleted_at IS NULL
-               AND ${setScope.clause}
-               AND ${workoutScope.clause}
-             GROUP BY w.date
-             ORDER BY w.date ASC`,
-            exerciseId,
-            ...setScope.params,
             ...workoutScope.params
         )
     },
