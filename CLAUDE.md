@@ -19,3 +19,7 @@ Single-context repo: one `CONTEXT.md` and `docs/adr/` at the repo root. See `doc
 ### Working on an issue
 
 When the user (or an orchestrating loop) asks you to work on a `ready-for-agent` issue, follow the conventions in `.claude/work-on-issue.md`.
+
+### Commit messages
+
+Follow the format in `.claude/commit-style.md`: imperative lowercase title, bulleted body, blank line between topic shifts, no `Co-Authored-By` trailer.
