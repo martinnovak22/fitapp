@@ -204,3 +204,116 @@ describe('ExerciseStats.bestSetPerSession', () => {
         expect(series).toEqual([])
     })
 })
+
+const exerciseRow = (id: number, type: 'weight' | 'bodyweight' | 'bodyweight_timer' | 'cardio', name: string) => ({
+    id,
+    name,
+    type,
+    position: 0,
+})
+
+describe('ExerciseStats.headlineStats', () => {
+    it('returns the all-time max in the primary metric per exercise type', async () => {
+        const weightId = await seedExercise('BenchHL', 'weight')
+        const bodyId = await seedExercise('PullUpsHL', 'bodyweight')
+        const cardioId = await seedExercise('RunHL', 'cardio')
+        const timerId = await seedExercise('PlankHL', 'bodyweight_timer')
+
+        const wo1 = await seedWorkout('2026-02-01')
+        const wo2 = await seedWorkout('2026-02-02')
+        await seedSet(wo1, weightId, 0, { weight: 80, reps: 8 })
+        await seedSet(wo2, weightId, 0, { weight: 120, reps: 3 })
+        await seedSet(wo1, bodyId, 0, { reps: 12 })
+        await seedSet(wo2, bodyId, 0, { reps: 20 })
+        await seedSet(wo1, cardioId, 0, { distance: 3000, duration: 18 })
+        await seedSet(wo2, cardioId, 0, { distance: 5000, duration: 25 })
+        await seedSet(wo1, timerId, 0, { duration: 1 })
+        await seedSet(wo2, timerId, 0, { duration: 2 })
+
+        const stats = await ExerciseStats.headlineStats([
+            exerciseRow(weightId, 'weight', 'BenchHL'),
+            exerciseRow(bodyId, 'bodyweight', 'PullUpsHL'),
+            exerciseRow(cardioId, 'cardio', 'RunHL'),
+            exerciseRow(timerId, 'bodyweight_timer', 'PlankHL'),
+        ])
+
+        expect(stats.get(weightId)?.value).toBe(120)
+        expect(stats.get(weightId)?.formatted).toBe('120.00 kg')
+        expect(stats.get(bodyId)?.value).toBe(20)
+        expect(stats.get(bodyId)?.formatted).toBe('20 reps')
+        expect(stats.get(cardioId)?.value).toBe(5000)
+        expect(stats.get(cardioId)?.formatted).toBe('5000.00 m')
+        expect(stats.get(timerId)?.value).toBe(2)
+        expect(stats.get(timerId)?.formatted).toBe('2:00')
+    })
+
+    it('returns null for exercises with no history', async () => {
+        const id = await seedExercise('EmptyHL', 'weight')
+
+        const stats = await ExerciseStats.headlineStats([exerciseRow(id, 'weight', 'EmptyHL')])
+
+        expect(stats.has(id)).toBe(true)
+        expect(stats.get(id)).toBeNull()
+    })
+
+    it('returns one entry per requested exercise id', async () => {
+        const a = await seedExercise('Aex', 'weight')
+        const b = await seedExercise('Bex', 'weight')
+        const c = await seedExercise('Cex', 'weight')
+        const wo = await seedWorkout('2026-02-03')
+        await seedSet(wo, a, 0, { weight: 50, reps: 5 })
+
+        const stats = await ExerciseStats.headlineStats([
+            exerciseRow(a, 'weight', 'Aex'),
+            exerciseRow(b, 'weight', 'Bex'),
+            exerciseRow(c, 'weight', 'Cex'),
+        ])
+
+        expect(Array.from(stats.keys()).sort()).toEqual([a, b, c].sort())
+        expect(stats.get(a)?.value).toBe(50)
+        expect(stats.get(b)).toBeNull()
+        expect(stats.get(c)).toBeNull()
+    })
+
+    it('issues a single round trip regardless of exercise count', async () => {
+        const a = await seedExercise('OneShotA', 'weight')
+        const b = await seedExercise('OneShotB', 'bodyweight')
+        const wo = await seedWorkout('2026-02-04')
+        await seedSet(wo, a, 0, { weight: 60, reps: 4 })
+        await seedSet(wo, b, 0, { reps: 10 })
+
+        const spy = vi.spyOn(db, 'getAllAsync')
+        await ExerciseStats.headlineStats([
+            exerciseRow(a, 'weight', 'OneShotA'),
+            exerciseRow(b, 'bodyweight', 'OneShotB'),
+        ])
+
+        expect(spy).toHaveBeenCalledTimes(1)
+        spy.mockRestore()
+    })
+
+    it('excludes soft-deleted sets, unfinished workouts, and other principals', async () => {
+        const id = await seedExercise('Scoped', 'weight')
+        const mineFinished = await seedWorkout('2026-02-05', { userId: 'user-1' })
+        const mineInProgress = await seedWorkout('2026-02-06', { status: 'in_progress', userId: 'user-1' })
+        const others = await seedWorkout('2026-02-07', { userId: 'user-2' })
+        await seedSet(mineFinished, id, 0, { weight: 70, reps: 5 })
+        await seedSet(mineFinished, id, 1, { weight: 999, reps: 1, deletedAt: '2026-02-08T00:00:00Z' })
+        await seedSet(mineInProgress, id, 0, { weight: 888, reps: 1 })
+        await seedSet(others, id, 0, { weight: 777, reps: 1, userId: 'user-2' })
+
+        const stats = await ExerciseStats.headlineStats([exerciseRow(id, 'weight', 'Scoped')])
+
+        expect(stats.get(id)?.value).toBe(70)
+    })
+
+    it('returns an empty map for an empty exercise list without querying', async () => {
+        const spy = vi.spyOn(db, 'getAllAsync')
+
+        const stats = await ExerciseStats.headlineStats([])
+
+        expect(stats.size).toBe(0)
+        expect(spy).not.toHaveBeenCalled()
+        spy.mockRestore()
+    })
+})
