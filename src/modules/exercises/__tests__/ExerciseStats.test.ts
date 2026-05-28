@@ -107,14 +107,26 @@ describe('ExerciseStats.bestSetPerSession', () => {
         expect(entry?.set.reps).toBe(5)
     })
 
-    it('picks the highest-rep set for bodyweight, ignoring weight', async () => {
+    it('picks the highest-rep set for unweighted bodyweight history', async () => {
         const exerciseId = await seedExercise('PullUps', 'bodyweight')
         const workoutId = await seedWorkout('2026-02-03')
-        await seedSet(workoutId, exerciseId, 0, { weight: 20, reps: 8 })
+        await seedSet(workoutId, exerciseId, 0, { weight: 0, reps: 8 })
         await seedSet(workoutId, exerciseId, 1, { weight: 0, reps: 15 })
 
         const [entry] = await ExerciseStats.bestSetPerSession(exerciseId)
 
+        expect(entry?.set.reps).toBe(15)
+    })
+
+    it('still picks the highest-rep set for bodyweight when some sets carry added load', async () => {
+        const exerciseId = await seedExercise('VestPullUps', 'bodyweight')
+        const workoutId = await seedWorkout('2026-02-04')
+        await seedSet(workoutId, exerciseId, 0, { weight: 0, reps: 15 })
+        await seedSet(workoutId, exerciseId, 1, { weight: 10, reps: 8 })
+
+        const [entry] = await ExerciseStats.bestSetPerSession(exerciseId)
+
+        // Reps is always the bodyweight axis; the vest set with fewer reps does not win.
         expect(entry?.set.reps).toBe(15)
     })
 
@@ -130,17 +142,23 @@ describe('ExerciseStats.bestSetPerSession', () => {
         expect(entry?.set.duration).toBe(120)
     })
 
-    it('picks the longest-distance set for cardio, ties broken by duration', async () => {
+    it('picks the longest-distance set for distance-dominant cardio, ties broken by duration', async () => {
         const exerciseId = await seedExercise('Run', 'cardio')
-        const workoutId = await seedWorkout('2026-02-05')
-        await seedSet(workoutId, exerciseId, 0, { distance: 5000, duration: 25 })
-        await seedSet(workoutId, exerciseId, 1, { distance: 5000, duration: 30 })
-        await seedSet(workoutId, exerciseId, 2, { distance: 4000, duration: 40 })
+        // Distance varies wildly across sessions, duration tracks it — distance is dominant.
+        const wo1 = await seedWorkout('2026-02-05')
+        const wo2 = await seedWorkout('2026-02-12')
+        const wo3 = await seedWorkout('2026-02-19')
+        await seedSet(wo1, exerciseId, 0, { distance: 1000, duration: 10 })
+        await seedSet(wo2, exerciseId, 0, { distance: 5000, duration: 11 })
+        await seedSet(wo3, exerciseId, 0, { distance: 9000, duration: 12 })
+        // Tie-break case within the heaviest-distance session.
+        await seedSet(wo3, exerciseId, 1, { distance: 9000, duration: 13 })
 
-        const [entry] = await ExerciseStats.bestSetPerSession(exerciseId)
+        const series = await ExerciseStats.bestSetPerSession(exerciseId)
+        const best = series.find((e) => e.date === '2026-02-19')
 
-        expect(entry?.set.distance).toBe(5000)
-        expect(entry?.set.duration).toBe(30)
+        expect(best?.set.distance).toBe(9000)
+        expect(best?.set.duration).toBe(13)
     })
 
     it('returns one entry per date in ascending order across sessions', async () => {
@@ -242,7 +260,7 @@ describe('ExerciseStats.headlineStats', () => {
         expect(stats.get(bodyId)?.value).toBe(20)
         expect(stats.get(bodyId)?.formatted).toBe('20 reps')
         expect(stats.get(cardioId)?.value).toBe(5000)
-        expect(stats.get(cardioId)?.formatted).toBe('5000.00 m')
+        expect(stats.get(cardioId)?.formatted).toBe('5.0km')
         expect(stats.get(timerId)?.value).toBe(2)
         expect(stats.get(timerId)?.formatted).toBe('2:00')
     })
@@ -319,7 +337,7 @@ describe('ExerciseStats.headlineStats', () => {
 })
 
 describe('ExerciseStats.sessionSummary', () => {
-    it('returns max and avg of best-set-per-session for the primary metric', async () => {
+    it('returns max and avg of best-set-per-session for the dominant metric', async () => {
         const exerciseId = await seedExercise('BenchSummary', 'weight')
         const wo1 = await seedWorkout('2026-02-01')
         const wo2 = await seedWorkout('2026-02-02')
@@ -331,36 +349,39 @@ describe('ExerciseStats.sessionSummary', () => {
 
         const summary = await ExerciseStats.sessionSummary(exerciseId)
 
-        expect(summary?.weight?.max).toBe(110)
-        expect(summary?.weight?.avg).toBeCloseTo((100 + 90 + 110) / 3)
+        expect(summary?.dominantMetric).toBe('weight')
+        expect(summary?.max).toBe(110)
+        expect(summary?.avg).toBeCloseTo((100 + 90 + 110) / 3)
     })
 
-    it('includes the secondary metric for cross-referenced types', async () => {
-        const exerciseId = await seedExercise('BenchSecondary', 'weight')
-        const wo1 = await seedWorkout('2026-03-01')
-        const wo2 = await seedWorkout('2026-03-02')
-        await seedSet(wo1, exerciseId, 0, { weight: 80, reps: 10 })
-        await seedSet(wo1, exerciseId, 1, { weight: 100, reps: 4 })
-        await seedSet(wo2, exerciseId, 0, { weight: 100, reps: 8 })
-
-        const summary = await ExerciseStats.sessionSummary(exerciseId)
-
-        // Reps come from the best (heaviest) set of each session: 4 then 8.
-        expect(summary?.reps?.max).toBe(8)
-        expect(summary?.reps?.avg).toBeCloseTo((4 + 8) / 2)
-    })
-
-    it('omits secondary metric when the exercise type has none', async () => {
+    it('reports reps as dominant for bodyweight with no added weight', async () => {
         const exerciseId = await seedExercise('PullUpsSummary', 'bodyweight')
         const wo = await seedWorkout('2026-04-01')
         await seedSet(wo, exerciseId, 0, { reps: 12 })
 
         const summary = await ExerciseStats.sessionSummary(exerciseId)
 
-        expect(summary?.reps).toEqual({ max: 12, avg: 12 })
-        expect(summary?.weight).toBeUndefined()
-        expect(summary?.distance).toBeUndefined()
-        expect(summary?.duration).toBeUndefined()
+        expect(summary?.dominantMetric).toBe('reps')
+        expect(summary?.max).toBe(12)
+        expect(summary?.avg).toBe(12)
+    })
+
+    it('treats cardio with bigger duration variance as duration-dominant and reports best as shortest time', async () => {
+        const exerciseId = await seedExercise('Warmup1km', 'cardio')
+        const wo1 = await seedWorkout('2026-06-01')
+        const wo2 = await seedWorkout('2026-06-02')
+        const wo3 = await seedWorkout('2026-06-03')
+        // Constant ~1km distance, varying durations — fastest run is the best.
+        await seedSet(wo1, exerciseId, 0, { distance: 1000, duration: 6 })
+        await seedSet(wo2, exerciseId, 0, { distance: 1000, duration: 5 })
+        await seedSet(wo3, exerciseId, 0, { distance: 1000, duration: 7 })
+
+        const summary = await ExerciseStats.sessionSummary(exerciseId)
+
+        expect(summary?.dominantMetric).toBe('duration')
+        expect(summary?.max).toBe(5)
+        expect(summary?.avg).toBeCloseTo((5 + 6 + 7) / 3)
+        expect(summary?.contextAvgDistance).toBe(1000)
     })
 
     it('returns null when the exercise has no history', async () => {
@@ -383,7 +404,95 @@ describe('ExerciseStats.sessionSummary', () => {
 
         const summary = await ExerciseStats.sessionSummary(exerciseId)
 
-        expect(summary?.weight?.max).toBe(70)
-        expect(summary?.weight?.avg).toBe(70)
+        expect(summary?.max).toBe(70)
+        expect(summary?.avg).toBe(70)
+    })
+})
+
+describe('ExerciseStats.dominantMetric', () => {
+    it('returns weight for weight-type exercises', async () => {
+        const exerciseId = await seedExercise('BenchDom', 'weight')
+        const wo = await seedWorkout('2026-02-01')
+        await seedSet(wo, exerciseId, 0, { weight: 100, reps: 5 })
+
+        expect(await ExerciseStats.dominantMetric(exerciseId)).toBe('weight')
+    })
+
+    it('returns reps for unweighted bodyweight history', async () => {
+        const exerciseId = await seedExercise('PullUpsDom', 'bodyweight')
+        const wo = await seedWorkout('2026-02-02')
+        await seedSet(wo, exerciseId, 0, { reps: 12 })
+
+        expect(await ExerciseStats.dominantMetric(exerciseId)).toBe('reps')
+    })
+
+    it('stays on reps for bodyweight even when sets carry added load (vest or assistance)', async () => {
+        const vest = await seedExercise('VestPullUps', 'bodyweight')
+        const assisted = await seedExercise('AssistedPullUps', 'bodyweight')
+        const wo = await seedWorkout('2026-02-03')
+        await seedSet(wo, vest, 0, { weight: 10, reps: 8 })
+        await seedSet(wo, vest, 1, { weight: 0, reps: 12 })
+        await seedSet(wo, assisted, 0, { weight: -20, reps: 8 })
+        await seedSet(wo, assisted, 1, { weight: -10, reps: 6 })
+
+        expect(await ExerciseStats.dominantMetric(vest)).toBe('reps')
+        expect(await ExerciseStats.dominantMetric(assisted)).toBe('reps')
+    })
+
+    it('returns duration for unweighted bodyweight_timer history', async () => {
+        const exerciseId = await seedExercise('PlankDom', 'bodyweight_timer')
+        const wo = await seedWorkout('2026-02-04')
+        await seedSet(wo, exerciseId, 0, { duration: 2 })
+
+        expect(await ExerciseStats.dominantMetric(exerciseId)).toBe('duration')
+    })
+
+    it('stays on duration for bodyweight_timer even when sets carry vest load', async () => {
+        const exerciseId = await seedExercise('WeightedPlank', 'bodyweight_timer')
+        const wo = await seedWorkout('2026-02-05')
+        await seedSet(wo, exerciseId, 0, { duration: 2 })
+        await seedSet(wo, exerciseId, 1, { weight: 10, duration: 1.5 })
+
+        expect(await ExerciseStats.dominantMetric(exerciseId)).toBe('duration')
+    })
+
+    it('returns distance for cardio with higher distance variance', async () => {
+        const exerciseId = await seedExercise('LongRun', 'cardio')
+        const wo1 = await seedWorkout('2026-02-06')
+        const wo2 = await seedWorkout('2026-02-07')
+        const wo3 = await seedWorkout('2026-02-08')
+        await seedSet(wo1, exerciseId, 0, { distance: 3000, duration: 20 })
+        await seedSet(wo2, exerciseId, 0, { distance: 5000, duration: 21 })
+        await seedSet(wo3, exerciseId, 0, { distance: 8000, duration: 22 })
+
+        expect(await ExerciseStats.dominantMetric(exerciseId)).toBe('distance')
+    })
+
+    it('returns duration for cardio with higher duration variance', async () => {
+        const exerciseId = await seedExercise('FixedWarmup', 'cardio')
+        const wo1 = await seedWorkout('2026-02-09')
+        const wo2 = await seedWorkout('2026-02-10')
+        const wo3 = await seedWorkout('2026-02-11')
+        await seedSet(wo1, exerciseId, 0, { distance: 1000, duration: 5 })
+        await seedSet(wo2, exerciseId, 0, { distance: 1000, duration: 6 })
+        await seedSet(wo3, exerciseId, 0, { distance: 1000, duration: 8 })
+
+        expect(await ExerciseStats.dominantMetric(exerciseId)).toBe('duration')
+    })
+
+    it('falls back to the type default when history is empty', async () => {
+        const weight = await seedExercise('FallbackWeight', 'weight')
+        const body = await seedExercise('FallbackBody', 'bodyweight')
+        const timer = await seedExercise('FallbackTimer', 'bodyweight_timer')
+        const cardio = await seedExercise('FallbackCardio', 'cardio')
+
+        expect(await ExerciseStats.dominantMetric(weight)).toBe('weight')
+        expect(await ExerciseStats.dominantMetric(body)).toBe('reps')
+        expect(await ExerciseStats.dominantMetric(timer)).toBe('duration')
+        expect(await ExerciseStats.dominantMetric(cardio)).toBe('distance')
+    })
+
+    it('returns null for a missing exercise', async () => {
+        expect(await ExerciseStats.dominantMetric(99999)).toBeNull()
     })
 })

@@ -3,8 +3,9 @@ import { getDb } from '@/src/db/client'
 import { type Exercise, ExerciseRepository, type ExerciseType } from '@/src/db/exercises'
 import type { Set } from '@/src/db/workouts'
 import {
-    type ExerciseTypeAdapter,
+    bestSetComparatorFor,
     ExerciseTypeMetadata,
+    formatHeadlineStat,
     getSetMetricValue,
     type PrimaryMetric,
 } from './ExerciseTypeMetadata'
@@ -19,12 +20,46 @@ export interface HeadlineStat {
     formatted: string
 }
 
-export interface MetricSummary {
+export interface SessionSummary {
+    dominantMetric: PrimaryMetric
     max: number
     avg: number
+    // For cardio when duration is dominant we expose the held-constant context
+    // (avg distance across sessions) so the graph header can label it.
+    contextAvgDistance?: number
 }
 
-export type SessionSummary = Partial<Record<PrimaryMetric, MetricSummary>>
+const coefficientOfVariation = (values: number[]): number => {
+    if (values.length === 0) return 0
+    const mean = values.reduce((a, b) => a + b, 0) / values.length
+    if (mean === 0) return 0
+    const variance =
+        values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length
+    return Math.sqrt(variance) / mean
+}
+
+export const computeDominantMetric = (
+    type: ExerciseType,
+    sets: Pick<Set, 'weight' | 'reps' | 'distance' | 'duration'>[]
+): PrimaryMetric => {
+    switch (type) {
+        case 'weight':
+            return 'weight'
+        case 'bodyweight':
+            // Reps is always the main axis for bodyweight; any added load (vest = +,
+            // assistance = -) rides along as context on the label, never drives Y.
+            return 'reps'
+        case 'bodyweight_timer':
+            return 'duration'
+        case 'cardio': {
+            const distances = sets.map((s) => s.distance ?? 0)
+            const durations = sets.map((s) => s.duration ?? 0)
+            return coefficientOfVariation(durations) > coefficientOfVariation(distances)
+                ? 'duration'
+                : 'distance'
+        }
+    }
+}
 
 const fetchExerciseType = async (exerciseId: number): Promise<ExerciseType | null> => {
     const exercise = await ExerciseRepository.getById(exerciseId)
@@ -54,48 +89,65 @@ const fetchScopedSets = async (
     return rows.map(({ workout_date, ...set }) => ({ set: set as Set, date: workout_date }))
 }
 
-const collectBestSets = async (
-    exerciseId: number
-): Promise<{ adapter: ExerciseTypeAdapter; bestByDate: Map<string, Set> } | null> => {
+interface ExerciseHistory {
+    type: ExerciseType
+    dominantMetric: PrimaryMetric
+    bestByDate: Map<string, Set>
+}
+
+const collectHistory = async (exerciseId: number): Promise<ExerciseHistory | null> => {
     const type = await fetchExerciseType(exerciseId)
     if (!type) return null
-    const adapter = ExerciseTypeMetadata.for(type)
     const rows = await fetchScopedSets(exerciseId)
+    const dominantMetric = computeDominantMetric(
+        type,
+        rows.map((r) => r.set)
+    )
+    const comparator = bestSetComparatorFor(type, dominantMetric)
     const bestByDate = new Map<string, Set>()
     for (const { set, date } of rows) {
         const incumbent = bestByDate.get(date)
-        if (!incumbent || adapter.bestSetComparator(set, incumbent) < 0) {
+        if (!incumbent || comparator(set, incumbent) < 0) {
             bestByDate.set(date, set)
         }
     }
-    return { adapter, bestByDate }
+    return { type, dominantMetric, bestByDate }
 }
 
 export const ExerciseStats = {
+    async dominantMetric(exerciseId: number): Promise<PrimaryMetric | null> {
+        const history = await collectHistory(exerciseId)
+        return history?.dominantMetric ?? null
+    },
+
     async bestSetPerSession(exerciseId: number): Promise<BestSetEntry[]> {
-        const result = await collectBestSets(exerciseId)
-        if (!result) return []
-        return Array.from(result.bestByDate.entries())
+        const history = await collectHistory(exerciseId)
+        if (!history) return []
+        return Array.from(history.bestByDate.entries())
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([date, set]) => ({ date, set }))
     },
 
     async sessionSummary(exerciseId: number): Promise<SessionSummary | null> {
-        const result = await collectBestSets(exerciseId)
-        if (!result || result.bestByDate.size === 0) return null
-        const { adapter, bestByDate } = result
-
-        const metrics: PrimaryMetric[] = [adapter.primaryMetric]
-        if (adapter.secondaryMetric) metrics.push(adapter.secondaryMetric)
+        const history = await collectHistory(exerciseId)
+        if (!history || history.bestByDate.size === 0) return null
+        const { type, dominantMetric, bestByDate } = history
 
         const bestSets = Array.from(bestByDate.values())
-        const summary: SessionSummary = {}
-        for (const metric of metrics) {
-            const values = bestSets.map((s) => getSetMetricValue(s, metric))
-            summary[metric] = {
-                max: Math.max(...values),
-                avg: values.reduce((a, b) => a + b, 0) / values.length,
-            }
+        const values = bestSets.map((s) => getSetMetricValue(s, dominantMetric))
+        const sum = values.reduce((a, b) => a + b, 0)
+        // For duration-dominant cardio, "best" is the shortest time.
+        const max = ExerciseTypeMetadata.isBetterLower(type, dominantMetric)
+            ? Math.min(...values)
+            : Math.max(...values)
+        const summary: SessionSummary = {
+            dominantMetric,
+            max,
+            avg: sum / values.length,
+        }
+        if (type === 'cardio' && dominantMetric === 'duration') {
+            const distances = bestSets.map((s) => s.distance ?? 0)
+            summary.contextAvgDistance = distances.reduce((a, b) => a + b, 0) / distances.length
         }
         return summary
     },
@@ -124,29 +176,18 @@ export const ExerciseStats = {
             ...workoutScope.params
         )
 
-        const byExercise = new Map<number, Set>()
-        const adapterByExercise = new Map<number, ReturnType<typeof ExerciseTypeMetadata.for>>()
-        for (const exercise of exercises) {
-            adapterByExercise.set(exercise.id, ExerciseTypeMetadata.for(exercise.type))
-        }
-
-        for (const set of rows) {
-            const adapter = adapterByExercise.get(set.exercise_id)
-            if (!adapter) continue
-            const incumbent = byExercise.get(set.exercise_id)
-            if (!incumbent || adapter.bestSetComparator(set, incumbent) < 0) {
-                byExercise.set(set.exercise_id, set)
-            }
-        }
+        const setsByExercise = new Map<number, Set[]>()
+        for (const exercise of exercises) setsByExercise.set(exercise.id, [])
+        for (const set of rows) setsByExercise.get(set.exercise_id)?.push(set)
 
         for (const exercise of exercises) {
-            const best = byExercise.get(exercise.id)
-            if (!best) continue
-            const adapter = ExerciseTypeMetadata.for(exercise.type)
-            const value = getSetMetricValue(best, adapter.primaryMetric)
-            const formatted = adapter.unit
-                ? `${adapter.format(value)} ${adapter.unit}`
-                : adapter.format(value)
+            const exerciseSets = setsByExercise.get(exercise.id) ?? []
+            if (exerciseSets.length === 0) continue
+            const dominantMetric = computeDominantMetric(exercise.type, exerciseSets)
+            const comparator = bestSetComparatorFor(exercise.type, dominantMetric)
+            const best = exerciseSets.reduce((acc, s) => (comparator(s, acc) < 0 ? s : acc))
+            const value = getSetMetricValue(best, dominantMetric)
+            const formatted = formatHeadlineStat(exercise.type, dominantMetric, value)
             result.set(exercise.id, { value, formatted })
         }
 

@@ -3,95 +3,97 @@ import { Spacing } from '@/src/constants/Spacing'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import {
     ExerciseTypeMetadata,
+    formatCompactSetLabel,
+    formatHeadlineStat,
     getSetMetricValue,
     type PrimaryMetric,
 } from '@/src/modules/exercises/ExerciseTypeMetadata'
 import type { BestSetEntry, SessionSummary } from '@/src/modules/exercises/ExerciseStats'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
 
 interface ExerciseHistoryGraphProps {
     exercise: Exercise
     data: BestSetEntry[]
     summary: SessionSummary | null
+    dominantMetric: PrimaryMetric | null
 }
 
-const metricLabelKey: Record<PrimaryMetric, string> = {
-    weight: 'weight',
-    reps: 'reps',
-    distance: 'meters',
-    duration: 'time',
-}
-
-export const ExerciseHistoryGraph = ({ exercise, data, summary }: ExerciseHistoryGraphProps) => {
+export const ExerciseHistoryGraph = ({
+    exercise,
+    data,
+    summary,
+    dominantMetric,
+}: ExerciseHistoryGraphProps) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
-    const adapter = ExerciseTypeMetadata.for(exercise.type)
-    const [selectedMetric, setSelectedMetric] = useState<PrimaryMetric>(adapter.primaryMetric)
     const [graphWidth, setGraphWidth] = useState(0)
 
-    const toggleMetrics = useMemo<PrimaryMetric[]>(() => {
-        const metrics: PrimaryMetric[] = [adapter.primaryMetric]
-        if (adapter.secondaryMetric) metrics.push(adapter.secondaryMetric)
-        return metrics
-    }, [adapter])
+    const effectiveDominant: PrimaryMetric =
+        dominantMetric ?? ExerciseTypeMetadata.defaultDominantMetric(exercise.type)
+    const isInverted = ExerciseTypeMetadata.isBetterLower(exercise.type, effectiveDominant)
 
-    const selectedMetricAdapter = ExerciseTypeMetadata.forMetric(selectedMetric)
+    const rawValues = useMemo(
+        () => data.map(({ set }) => getSetMetricValue(set, effectiveDominant)),
+        [data, effectiveDominant]
+    )
+
+    // For inverted plots ("faster is better"), reflect each value around a reference
+    // ceiling so the smaller raw value sits higher on the chart.
+    const invertReference = useMemo(() => {
+        if (!isInverted || rawValues.length === 0) return 0
+        const maxRaw = Math.max(...rawValues)
+        return maxRaw * 1.05 || 1
+    }, [isInverted, rawValues])
 
     const processedData = useMemo(() => {
-        if (!data.length) return []
-
-        const primary = selectedMetric
-        const showSecondary =
-            selectedMetric === adapter.primaryMetric && adapter.secondaryMetric !== null
-        const secondary = showSecondary ? adapter.secondaryMetric : null
-
-        return data.map(({ date, set }) => {
-            const value = getSetMetricValue(set, primary)
-            const primaryLabel = ExerciseTypeMetadata.forMetric(primary).format(value)
-            let dataPointText = primaryLabel
-            if (secondary) {
-                const secondaryLabel = ExerciseTypeMetadata.forMetric(secondary).format(
-                    getSetMetricValue(set, secondary)
-                )
-                dataPointText = `${primaryLabel} × ${secondaryLabel}`
-            }
+        return data.map(({ date, set }, idx) => {
+            const raw = rawValues[idx] ?? 0
+            const value = isInverted ? invertReference - raw : raw
             const d = new Date(date)
             return {
                 value,
                 label: `${d.getDate()}/${d.getMonth() + 1}`,
-                dataPointText,
+                dataPointText: formatCompactSetLabel(exercise.type, effectiveDominant, set),
             }
         })
-    }, [data, selectedMetric, adapter])
+    }, [data, rawValues, isInverted, invertReference, exercise.type, effectiveDominant])
 
     const stats = useMemo(() => {
-        const metricSummary = summary?.[selectedMetric]
-        if (!metricSummary) return null
-        const { format, unit } = selectedMetricAdapter
-        const withUnit = (formatted: string) =>
-            unit && unit !== 'reps' ? `${formatted}${unit}` : formatted
+        if (!summary) return null
         return {
-            max: withUnit(format(metricSummary.max)),
-            avg: withUnit(format(metricSummary.avg)),
+            max: formatHeadlineStat(exercise.type, effectiveDominant, summary.max),
+            avg: formatHeadlineStat(exercise.type, effectiveDominant, summary.avg),
         }
-    }, [summary, selectedMetric, selectedMetricAdapter])
+    }, [summary, exercise.type, effectiveDominant])
 
-    const maxValue = processedData.length ? Math.max(...processedData.map((d) => d.value)) : 0
+    const contextLine = useMemo(() => {
+        if (!summary?.contextAvgDistance) return null
+        return `${t('avgDistance')} ${ExerciseTypeMetadata.formatAxisLabel(
+            'distance',
+            summary.contextAvgDistance
+        )}`
+    }, [summary, t])
+
+    const maxDisplay = processedData.length ? Math.max(...processedData.map((d) => d.value)) : 0
 
     const yAxisProps = (() => {
-        if (maxValue === 0) return { noOfSections: 4, maxValue: 100 }
+        if (maxDisplay === 0) return { noOfSections: 4, maxValue: 100 }
 
-        if (maxValue <= 10) {
-            return { noOfSections: maxValue, maxValue: maxValue, stepValue: 1 }
+        if (maxDisplay <= 10) {
+            return {
+                noOfSections: Math.max(1, Math.ceil(maxDisplay)),
+                maxValue: Math.ceil(maxDisplay),
+                stepValue: 1,
+            }
         }
         const sections = 4
-        let step = maxValue / sections
+        const step = maxDisplay / sections
 
         const magnitudes = [1, 2, 2.5, 5]
-        let power = Math.pow(10, Math.floor(Math.log10(step)))
+        const power = Math.pow(10, Math.floor(Math.log10(step)))
         let bestStep = power
 
         for (const m of magnitudes) {
@@ -109,35 +111,14 @@ export const ExerciseHistoryGraph = ({ exercise, data, summary }: ExerciseHistor
         }
     })()
 
-    const renderToggle = (metric: PrimaryMetric) => (
-        <TouchableOpacity
-            key={metric}
-            onPress={() => setSelectedMetric(metric)}
-            style={[
-                styles.toggleButton,
-                selectedMetric === metric && [styles.toggleButtonActive, { backgroundColor: theme.primary }],
-            ]}
-        >
-            <Text
-                style={[
-                    styles.toggleText,
-                    { color: theme.textSecondary },
-                    selectedMetric === metric && { color: theme.onPrimary },
-                ]}
-            >
-                {t(metricLabelKey[metric])}
-            </Text>
-        </TouchableOpacity>
-    )
-
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={[styles.title, { color: theme.text }]}>{t('progress')}</Text>
-                {toggleMetrics.length > 1 && (
-                    <View style={[styles.toggleGroup, { backgroundColor: theme.background }]}>
-                        {toggleMetrics.map(renderToggle)}
-                    </View>
+                {contextLine && (
+                    <Text style={[styles.context, { color: theme.textSecondary }]}>
+                        {contextLine}
+                    </Text>
                 )}
             </View>
 
@@ -163,7 +144,8 @@ export const ExerciseHistoryGraph = ({ exercise, data, summary }: ExerciseHistor
                         const yAxisLabelWidth = 60
                         const availableWidth = graphWidth - yAxisLabelWidth - 16
 
-                        const minSpacing = 60
+                        // Labels carry the full set ("2.4km·30:00"), so points need more breathing room.
+                        const minSpacing = 80
                         const initialSpacing = 30
                         const endSpacing = 30
 
@@ -204,11 +186,15 @@ export const ExerciseHistoryGraph = ({ exercise, data, summary }: ExerciseHistor
                                 rulesColor={theme.border}
                                 rulesType="dashed"
                                 isAnimated
+                                scrollToEnd
+                                scrollAnimation={false}
                                 yAxisLabelWidth={yAxisLabelWidth}
                                 yAxisLabelContainerStyle={{ width: yAxisLabelWidth, marginLeft: -10 }}
-                                formatYLabel={(val) =>
-                                    selectedMetricAdapter.formatAxisLabel(parseFloat(val))
-                                }
+                                formatYLabel={(val) => {
+                                    const display = parseFloat(val)
+                                    const raw = isInverted ? invertReference - display : display
+                                    return ExerciseTypeMetadata.formatAxisLabel(effectiveDominant, raw)
+                                }}
                                 pointerConfig={{
                                     activatePointersOnLongPress: true,
                                     pointerStripUptoDataPoint: true,
@@ -245,24 +231,9 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
     },
-
-    toggleGroup: {
-        flexDirection: 'row',
-        borderRadius: 10,
-        padding: Spacing.xs2,
-    },
-
-    toggleButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-    },
-    toggleButtonActive: {},
-    toggleText: {
+    context: {
         fontSize: 12,
-        fontWeight: '600',
     },
-
     statsRow: {
         flexDirection: 'row',
         marginBottom: 24,
@@ -277,7 +248,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginBottom: 4,
     },
-
     statValue: {
         fontSize: 16,
         fontWeight: '700',
@@ -288,7 +258,6 @@ const styles = StyleSheet.create({
         paddingTop: 20,
         borderTopWidth: 0.5,
     },
-
     axisText: {
         fontSize: 12,
     },
