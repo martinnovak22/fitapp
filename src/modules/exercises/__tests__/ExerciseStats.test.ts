@@ -317,3 +317,73 @@ describe('ExerciseStats.headlineStats', () => {
         spy.mockRestore()
     })
 })
+
+describe('ExerciseStats.sessionSummary', () => {
+    it('returns max and avg of best-set-per-session for the primary metric', async () => {
+        const exerciseId = await seedExercise('BenchSummary', 'weight')
+        const wo1 = await seedWorkout('2026-02-01')
+        const wo2 = await seedWorkout('2026-02-02')
+        const wo3 = await seedWorkout('2026-02-03')
+        await seedSet(wo1, exerciseId, 0, { weight: 80, reps: 5 })
+        await seedSet(wo1, exerciseId, 1, { weight: 100, reps: 5 })
+        await seedSet(wo2, exerciseId, 0, { weight: 90, reps: 3 })
+        await seedSet(wo3, exerciseId, 0, { weight: 110, reps: 2 })
+
+        const summary = await ExerciseStats.sessionSummary(exerciseId)
+
+        expect(summary?.weight?.max).toBe(110)
+        expect(summary?.weight?.avg).toBeCloseTo((100 + 90 + 110) / 3)
+    })
+
+    it('includes the secondary metric for cross-referenced types', async () => {
+        const exerciseId = await seedExercise('BenchSecondary', 'weight')
+        const wo1 = await seedWorkout('2026-03-01')
+        const wo2 = await seedWorkout('2026-03-02')
+        await seedSet(wo1, exerciseId, 0, { weight: 80, reps: 10 })
+        await seedSet(wo1, exerciseId, 1, { weight: 100, reps: 4 })
+        await seedSet(wo2, exerciseId, 0, { weight: 100, reps: 8 })
+
+        const summary = await ExerciseStats.sessionSummary(exerciseId)
+
+        // Reps come from the best (heaviest) set of each session: 4 then 8.
+        expect(summary?.reps?.max).toBe(8)
+        expect(summary?.reps?.avg).toBeCloseTo((4 + 8) / 2)
+    })
+
+    it('omits secondary metric when the exercise type has none', async () => {
+        const exerciseId = await seedExercise('PullUpsSummary', 'bodyweight')
+        const wo = await seedWorkout('2026-04-01')
+        await seedSet(wo, exerciseId, 0, { reps: 12 })
+
+        const summary = await ExerciseStats.sessionSummary(exerciseId)
+
+        expect(summary?.reps).toEqual({ max: 12, avg: 12 })
+        expect(summary?.weight).toBeUndefined()
+        expect(summary?.distance).toBeUndefined()
+        expect(summary?.duration).toBeUndefined()
+    })
+
+    it('returns null when the exercise has no history', async () => {
+        const exerciseId = await seedExercise('EmptySummary', 'weight')
+
+        const summary = await ExerciseStats.sessionSummary(exerciseId)
+
+        expect(summary).toBeNull()
+    })
+
+    it('excludes soft-deleted sets, unfinished workouts, and other principals', async () => {
+        const exerciseId = await seedExercise('ScopedSummary', 'weight')
+        const mineFinished = await seedWorkout('2026-05-01', { userId: 'user-1' })
+        const mineInProgress = await seedWorkout('2026-05-02', { status: 'in_progress', userId: 'user-1' })
+        const others = await seedWorkout('2026-05-03', { userId: 'user-2' })
+        await seedSet(mineFinished, exerciseId, 0, { weight: 70, reps: 5 })
+        await seedSet(mineFinished, exerciseId, 1, { weight: 999, reps: 1, deletedAt: '2026-05-04T00:00:00Z' })
+        await seedSet(mineInProgress, exerciseId, 0, { weight: 888, reps: 1 })
+        await seedSet(others, exerciseId, 0, { weight: 777, reps: 1, userId: 'user-2' })
+
+        const summary = await ExerciseStats.sessionSummary(exerciseId)
+
+        expect(summary?.weight?.max).toBe(70)
+        expect(summary?.weight?.avg).toBe(70)
+    })
+})

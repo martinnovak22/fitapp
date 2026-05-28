@@ -6,7 +6,7 @@ import {
     getSetMetricValue,
     type PrimaryMetric,
 } from '@/src/modules/exercises/ExerciseTypeMetadata'
-import type { BestSetEntry } from '@/src/modules/exercises/ExerciseStats'
+import type { BestSetEntry, SessionSummary } from '@/src/modules/exercises/ExerciseStats'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
@@ -15,6 +15,7 @@ import { LineChart } from 'react-native-gifted-charts'
 interface ExerciseHistoryGraphProps {
     exercise: Exercise
     data: BestSetEntry[]
+    summary: SessionSummary | null
 }
 
 const metricLabelKey: Record<PrimaryMetric, string> = {
@@ -24,7 +25,7 @@ const metricLabelKey: Record<PrimaryMetric, string> = {
     duration: 'time',
 }
 
-export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphProps) => {
+export const ExerciseHistoryGraph = ({ exercise, data, summary }: ExerciseHistoryGraphProps) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
     const adapter = ExerciseTypeMetadata.for(exercise.type)
@@ -67,18 +68,16 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
     }, [data, selectedMetric, adapter])
 
     const stats = useMemo(() => {
-        if (!processedData.length) return null
-        const values = processedData.map((d) => d.value)
-        const max = Math.max(...values)
-        const avg = values.reduce((a, b) => a + b, 0) / values.length
+        const metricSummary = summary?.[selectedMetric]
+        if (!metricSummary) return null
         const { format, unit } = selectedMetricAdapter
         const withUnit = (formatted: string) =>
             unit && unit !== 'reps' ? `${formatted}${unit}` : formatted
         return {
-            max: withUnit(format(max)),
-            avg: withUnit(format(avg)),
+            max: withUnit(format(metricSummary.max)),
+            avg: withUnit(format(metricSummary.avg)),
         }
-    }, [processedData, selectedMetricAdapter])
+    }, [summary, selectedMetric, selectedMetricAdapter])
 
     const maxValue = processedData.length ? Math.max(...processedData.map((d) => d.value)) : 0
 
