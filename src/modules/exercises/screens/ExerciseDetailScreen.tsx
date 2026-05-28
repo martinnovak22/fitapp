@@ -1,7 +1,11 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { getRepositories } from '@/src/data/repositories'
 import { Exercise } from '@/src/db/exercises'
-import { ExerciseStats, type BestSetEntry } from '@/src/modules/exercises/ExerciseStats'
+import {
+    ExerciseStats,
+    type BestSetEntry,
+    type SessionSummary,
+} from '@/src/modules/exercises/ExerciseStats'
 import { Card } from '@/src/modules/core/components/Card'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -25,6 +29,7 @@ export default function ExerciseDetailScreen() {
     const { id } = useLocalSearchParams()
     const [exercise, setExercise] = useState<Exercise | null>(null)
     const [historyData, setHistoryData] = useState<BestSetEntry[]>([])
+    const [historySummary, setHistorySummary] = useState<SessionSummary | null>(null)
     const [showImageFullScreen, setShowImageFullScreen] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
@@ -38,11 +43,16 @@ export default function ExerciseDetailScreen() {
             setHistoryLoading(true)
             setHistoryError(null)
             try {
-                const data = await ExerciseStats.bestSetPerSession(exerciseId)
+                const [data, summary] = await Promise.all([
+                    ExerciseStats.bestSetPerSession(exerciseId),
+                    ExerciseStats.sessionSummary(exerciseId),
+                ])
                 setHistoryData(data)
+                setHistorySummary(summary)
             } catch (error) {
                 console.error('Failed to load exercise history:', error)
                 setHistoryData([])
+                setHistorySummary(null)
                 setHistoryError(t('failedToLoadHistory'))
             } finally {
                 setHistoryLoading(false)
@@ -59,6 +69,7 @@ export default function ExerciseDetailScreen() {
             if (!id) {
                 setExercise(null)
                 setHistoryData([])
+                setHistorySummary(null)
                 setLoadError(t('failedToLoadExerciseDetails'))
                 return
             }
@@ -75,6 +86,7 @@ export default function ExerciseDetailScreen() {
             console.error('Failed to load exercise detail:', error)
             setExercise(null)
             setHistoryData([])
+            setHistorySummary(null)
             setLoadError(t('failedToLoadExerciseDetails'))
         } finally {
             setIsLoading(false)
@@ -210,7 +222,7 @@ export default function ExerciseDetailScreen() {
                         />
                     </View>
                 ) : historyData.length > 0 ? (
-                    <ExerciseHistoryGraph exercise={exercise} data={historyData} />
+                    <ExerciseHistoryGraph exercise={exercise} data={historyData} summary={historySummary} />
                 ) : (
                     <EmptyState
                         message={t('statsComingSoon')}
