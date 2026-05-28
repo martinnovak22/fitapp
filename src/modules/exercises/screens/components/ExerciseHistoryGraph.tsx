@@ -7,8 +7,7 @@ import {
     type PrimaryMetric,
 } from '@/src/modules/exercises/ExerciseTypeMetadata'
 import type { BestSetEntry } from '@/src/modules/exercises/ExerciseStats'
-import { formatDuration } from '@/src/utils/formatters'
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
@@ -38,26 +37,7 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
         return metrics
     }, [adapter])
 
-    const formatForMetric = useCallback(
-        (metric: PrimaryMetric, value: number) => {
-            if (metric === adapter.primaryMetric) return adapter.format(value)
-            if (metric === 'duration') return formatDuration(value)
-            if (metric === 'reps') return Math.round(value).toString()
-            return value.toFixed(2)
-        },
-        [adapter]
-    )
-
-    const unitForMetric = useCallback(
-        (metric: PrimaryMetric): string => {
-            if (metric === adapter.primaryMetric) return adapter.unit
-            if (metric === 'reps') return 'reps'
-            if (metric === 'weight') return 'kg'
-            if (metric === 'distance') return 'm'
-            return ''
-        },
-        [adapter]
-    )
+    const selectedMetricAdapter = ExerciseTypeMetadata.forMetric(selectedMetric)
 
     const processedData = useMemo(() => {
         if (!data.length) return []
@@ -69,10 +49,12 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
 
         return data.map(({ date, set }) => {
             const value = getSetMetricValue(set, primary)
-            const primaryLabel = formatForMetric(primary, value)
+            const primaryLabel = ExerciseTypeMetadata.forMetric(primary).format(value)
             let dataPointText = primaryLabel
             if (secondary) {
-                const secondaryLabel = formatForMetric(secondary, getSetMetricValue(set, secondary))
+                const secondaryLabel = ExerciseTypeMetadata.forMetric(secondary).format(
+                    getSetMetricValue(set, secondary)
+                )
                 dataPointText = `${primaryLabel} × ${secondaryLabel}`
             }
             const d = new Date(date)
@@ -82,20 +64,21 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
                 dataPointText,
             }
         })
-    }, [data, selectedMetric, adapter, formatForMetric])
+    }, [data, selectedMetric, adapter])
 
     const stats = useMemo(() => {
         if (!processedData.length) return null
         const values = processedData.map((d) => d.value)
         const max = Math.max(...values)
         const avg = values.reduce((a, b) => a + b, 0) / values.length
-        const unit = unitForMetric(selectedMetric)
-        const withUnit = (formatted: string) => (unit ? `${formatted}${unit === 'reps' ? '' : unit}` : formatted)
+        const { format, unit } = selectedMetricAdapter
+        const withUnit = (formatted: string) =>
+            unit && unit !== 'reps' ? `${formatted}${unit}` : formatted
         return {
-            max: withUnit(formatForMetric(selectedMetric, max)),
-            avg: withUnit(formatForMetric(selectedMetric, avg)),
+            max: withUnit(format(max)),
+            avg: withUnit(format(avg)),
         }
-    }, [processedData, selectedMetric, formatForMetric, unitForMetric])
+    }, [processedData, selectedMetricAdapter])
 
     const maxValue = processedData.length ? Math.max(...processedData.map((d) => d.value)) : 0
 
@@ -224,14 +207,9 @@ export const ExerciseHistoryGraph = ({ exercise, data }: ExerciseHistoryGraphPro
                                 isAnimated
                                 yAxisLabelWidth={yAxisLabelWidth}
                                 yAxisLabelContainerStyle={{ width: yAxisLabelWidth, marginLeft: -10 }}
-                                formatYLabel={(val) => {
-                                    const numericVal = parseFloat(val)
-                                    if (selectedMetric === 'duration') return formatDuration(numericVal)
-                                    if (selectedMetric === 'distance' && numericVal >= 1000)
-                                        return `${(numericVal / 1000).toFixed(2)}k`
-                                    if (selectedMetric === 'reps') return Math.round(numericVal).toString()
-                                    return numericVal.toFixed(2)
-                                }}
+                                formatYLabel={(val) =>
+                                    selectedMetricAdapter.formatAxisLabel(parseFloat(val))
+                                }
                                 pointerConfig={{
                                     activatePointersOnLongPress: true,
                                     pointerStripUptoDataPoint: true,

@@ -6,6 +6,12 @@ export type PrimaryMetric = 'weight' | 'reps' | 'distance' | 'duration'
 export type SecondaryMetric = PrimaryMetric | null
 export type MetricUnit = 'kg' | 'reps' | 'm' | ''
 
+export interface MetricAdapter {
+    unit: MetricUnit
+    format: (value: number) => string
+    formatAxisLabel: (value: number) => string
+}
+
 export interface ExerciseTypeAdapter {
     primaryMetric: PrimaryMetric
     secondaryMetric: SecondaryMetric
@@ -18,6 +24,30 @@ export interface ExerciseTypeAdapter {
 // matching Array.sort semantics — callers can `sets.sort(cmp)[0]` for "best."
 const formatNumeric = (decimals: number) => (value: number) => value.toFixed(decimals)
 const formatInteger = (value: number) => Math.round(value).toString()
+
+const metricAdapters: Record<PrimaryMetric, MetricAdapter> = {
+    weight: {
+        unit: 'kg',
+        format: formatNumeric(2),
+        formatAxisLabel: formatNumeric(2),
+    },
+    reps: {
+        unit: 'reps',
+        format: formatInteger,
+        formatAxisLabel: formatInteger,
+    },
+    distance: {
+        unit: 'm',
+        format: formatNumeric(2),
+        formatAxisLabel: (value) =>
+            value >= 1000 ? `${(value / 1000).toFixed(2)}k` : value.toFixed(2),
+    },
+    duration: {
+        unit: '',
+        format: formatDuration,
+        formatAxisLabel: formatDuration,
+    },
+}
 
 const compareBy = (
     a: Set,
@@ -36,49 +66,46 @@ const compareBy = (
     return 0
 }
 
-const weightAdapter: ExerciseTypeAdapter = {
-    primaryMetric: 'weight',
-    secondaryMetric: 'reps',
-    unit: 'kg',
-    format: formatNumeric(2),
-    bestSetComparator: (a, b) =>
-        compareBy(
-            a,
-            b,
-            (s) => s.weight ?? 0,
-            (s) => s.reps ?? 0
-        ),
+const typeAdapter = (
+    primaryMetric: PrimaryMetric,
+    secondaryMetric: SecondaryMetric,
+    bestSetComparator: ExerciseTypeAdapter['bestSetComparator']
+): ExerciseTypeAdapter => {
+    const primary = metricAdapters[primaryMetric]
+    return {
+        primaryMetric,
+        secondaryMetric,
+        unit: primary.unit,
+        format: primary.format,
+        bestSetComparator,
+    }
 }
 
-const bodyweightAdapter: ExerciseTypeAdapter = {
-    primaryMetric: 'reps',
-    secondaryMetric: null,
-    unit: 'reps',
-    format: formatInteger,
-    bestSetComparator: (a, b) => compareBy(a, b, (s) => s.reps ?? 0),
-}
+const weightAdapter = typeAdapter('weight', 'reps', (a, b) =>
+    compareBy(
+        a,
+        b,
+        (s) => s.weight ?? 0,
+        (s) => s.reps ?? 0
+    )
+)
 
-const bodyweightTimerAdapter: ExerciseTypeAdapter = {
-    primaryMetric: 'duration',
-    secondaryMetric: null,
-    unit: '',
-    format: formatDuration,
-    bestSetComparator: (a, b) => compareBy(a, b, (s) => s.duration ?? 0),
-}
+const bodyweightAdapter = typeAdapter('reps', null, (a, b) =>
+    compareBy(a, b, (s) => s.reps ?? 0)
+)
 
-const cardioAdapter: ExerciseTypeAdapter = {
-    primaryMetric: 'distance',
-    secondaryMetric: 'duration',
-    unit: 'm',
-    format: formatNumeric(2),
-    bestSetComparator: (a, b) =>
-        compareBy(
-            a,
-            b,
-            (s) => s.distance ?? 0,
-            (s) => s.duration ?? 0
-        ),
-}
+const bodyweightTimerAdapter = typeAdapter('duration', null, (a, b) =>
+    compareBy(a, b, (s) => s.duration ?? 0)
+)
+
+const cardioAdapter = typeAdapter('distance', 'duration', (a, b) =>
+    compareBy(
+        a,
+        b,
+        (s) => s.distance ?? 0,
+        (s) => s.duration ?? 0
+    )
+)
 
 const adapters: Record<ExerciseType, ExerciseTypeAdapter> = {
     weight: weightAdapter,
@@ -90,6 +117,9 @@ const adapters: Record<ExerciseType, ExerciseTypeAdapter> = {
 export const ExerciseTypeMetadata = {
     for(type: ExerciseType): ExerciseTypeAdapter {
         return adapters[type]
+    },
+    forMetric(metric: PrimaryMetric): MetricAdapter {
+        return metricAdapters[metric]
     },
 }
 
