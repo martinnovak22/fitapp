@@ -6,6 +6,7 @@ import {
     type BestSetEntry,
     type SessionSummary,
 } from '@/src/modules/exercises/ExerciseStats'
+import type { PrimaryMetric } from '@/src/modules/exercises/ExerciseTypeMetadata'
 import { Card } from '@/src/modules/core/components/Card'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -30,6 +31,7 @@ export default function ExerciseDetailScreen() {
     const [exercise, setExercise] = useState<Exercise | null>(null)
     const [historyData, setHistoryData] = useState<BestSetEntry[]>([])
     const [historySummary, setHistorySummary] = useState<SessionSummary | null>(null)
+    const [dominantMetric, setDominantMetric] = useState<PrimaryMetric | null>(null)
     const [showImageFullScreen, setShowImageFullScreen] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
@@ -43,16 +45,19 @@ export default function ExerciseDetailScreen() {
             setHistoryLoading(true)
             setHistoryError(null)
             try {
-                const [data, summary] = await Promise.all([
+                const [data, summary, dominant] = await Promise.all([
                     ExerciseStats.bestSetPerSession(exerciseId),
                     ExerciseStats.sessionSummary(exerciseId),
+                    ExerciseStats.dominantMetric(exerciseId),
                 ])
                 setHistoryData(data)
                 setHistorySummary(summary)
+                setDominantMetric(dominant)
             } catch (error) {
                 console.error('Failed to load exercise history:', error)
                 setHistoryData([])
                 setHistorySummary(null)
+                setDominantMetric(null)
                 setHistoryError(t('failedToLoadHistory'))
             } finally {
                 setHistoryLoading(false)
@@ -70,6 +75,7 @@ export default function ExerciseDetailScreen() {
                 setExercise(null)
                 setHistoryData([])
                 setHistorySummary(null)
+                setDominantMetric(null)
                 setLoadError(t('failedToLoadExerciseDetails'))
                 return
             }
@@ -222,7 +228,12 @@ export default function ExerciseDetailScreen() {
                         />
                     </View>
                 ) : historyData.length > 0 ? (
-                    <ExerciseHistoryGraph exercise={exercise} data={historyData} summary={historySummary} />
+                    <ExerciseHistoryGraph
+                        exercise={exercise}
+                        data={historyData}
+                        summary={historySummary}
+                        dominantMetric={dominantMetric}
+                    />
                 ) : (
                     <EmptyState
                         message={t('statsComingSoon')}

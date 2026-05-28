@@ -3,124 +3,28 @@ import type { Set } from '@/src/db/workouts'
 import { formatDuration } from '@/src/utils/formatters'
 
 export type PrimaryMetric = 'weight' | 'reps' | 'distance' | 'duration'
-export type SecondaryMetric = PrimaryMetric | null
 export type MetricUnit = 'kg' | 'reps' | 'm' | ''
 
-export interface MetricAdapter {
-    unit: MetricUnit
-    format: (value: number) => string
-    formatAxisLabel: (value: number) => string
+const formatCompactWeight = (value: number): string => {
+    const rounded = Math.round(value * 100) / 100
+    return rounded.toString()
 }
 
-export interface ExerciseTypeAdapter {
-    primaryMetric: PrimaryMetric
-    secondaryMetric: SecondaryMetric
-    unit: MetricUnit
-    format: (value: number) => string
-    bestSetComparator: (a: Set, b: Set) => number
+// Signed compact weight for the bodyweight context suffix: vest shows `+10`,
+// assistance shows `-20`. Caller drops this entirely when weight is zero.
+const formatSignedWeight = (value: number): string => {
+    const compact = formatCompactWeight(Math.abs(value))
+    return value < 0 ? `-${compact}` : `+${compact}`
 }
 
-// Comparator returns negative when `a` is better, positive when `b` is better,
-// matching Array.sort semantics — callers can `sets.sort(cmp)[0]` for "best."
-const formatNumeric = (decimals: number) => (value: number) => value.toFixed(decimals)
-const formatInteger = (value: number) => Math.round(value).toString()
+const formatCompactDistance = (meters: number): string =>
+    meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${Math.round(meters)}m`
 
-const metricAdapters: Record<PrimaryMetric, MetricAdapter> = {
-    weight: {
-        unit: 'kg',
-        format: formatNumeric(2),
-        formatAxisLabel: formatNumeric(2),
-    },
-    reps: {
-        unit: 'reps',
-        format: formatInteger,
-        formatAxisLabel: formatInteger,
-    },
-    distance: {
-        unit: 'm',
-        format: formatNumeric(2),
-        formatAxisLabel: (value) =>
-            value >= 1000 ? `${(value / 1000).toFixed(2)}k` : value.toFixed(2),
-    },
-    duration: {
-        unit: '',
-        format: formatDuration,
-        formatAxisLabel: formatDuration,
-    },
-}
-
-const compareBy = (
-    a: Set,
-    b: Set,
-    primary: (s: Set) => number,
-    secondary?: (s: Set) => number
-): number => {
-    const pa = primary(a)
-    const pb = primary(b)
-    if (pa !== pb) return pb - pa
-    if (secondary) {
-        const sa = secondary(a)
-        const sb = secondary(b)
-        if (sa !== sb) return sb - sa
-    }
-    return 0
-}
-
-const typeAdapter = (
-    primaryMetric: PrimaryMetric,
-    secondaryMetric: SecondaryMetric,
-    bestSetComparator: ExerciseTypeAdapter['bestSetComparator']
-): ExerciseTypeAdapter => {
-    const primary = metricAdapters[primaryMetric]
-    return {
-        primaryMetric,
-        secondaryMetric,
-        unit: primary.unit,
-        format: primary.format,
-        bestSetComparator,
-    }
-}
-
-const weightAdapter = typeAdapter('weight', 'reps', (a, b) =>
-    compareBy(
-        a,
-        b,
-        (s) => s.weight ?? 0,
-        (s) => s.reps ?? 0
-    )
-)
-
-const bodyweightAdapter = typeAdapter('reps', null, (a, b) =>
-    compareBy(a, b, (s) => s.reps ?? 0)
-)
-
-const bodyweightTimerAdapter = typeAdapter('duration', null, (a, b) =>
-    compareBy(a, b, (s) => s.duration ?? 0)
-)
-
-const cardioAdapter = typeAdapter('distance', 'duration', (a, b) =>
-    compareBy(
-        a,
-        b,
-        (s) => s.distance ?? 0,
-        (s) => s.duration ?? 0
-    )
-)
-
-const adapters: Record<ExerciseType, ExerciseTypeAdapter> = {
-    weight: weightAdapter,
-    bodyweight: bodyweightAdapter,
-    bodyweight_timer: bodyweightTimerAdapter,
-    cardio: cardioAdapter,
-}
-
-export const ExerciseTypeMetadata = {
-    for(type: ExerciseType): ExerciseTypeAdapter {
-        return adapters[type]
-    },
-    forMetric(metric: PrimaryMetric): MetricAdapter {
-        return metricAdapters[metric]
-    },
+const metricUnit: Record<PrimaryMetric, MetricUnit> = {
+    weight: 'kg',
+    reps: 'reps',
+    distance: 'm',
+    duration: '',
 }
 
 export const getSetMetricValue = (set: Set, metric: PrimaryMetric): number => {
@@ -134,4 +38,141 @@ export const getSetMetricValue = (set: Set, metric: PrimaryMetric): number => {
         case 'duration':
             return set.duration ?? 0
     }
+}
+
+// "Better is lower" only for cardio when the dominant metric is duration:
+// the run is at a fixed distance, so the fastest time wins.
+const betterIsLower = (type: ExerciseType, dominant: PrimaryMetric): boolean =>
+    type === 'cardio' && dominant === 'duration'
+
+const compareMetric = (
+    type: ExerciseType,
+    dominant: PrimaryMetric,
+    a: number,
+    b: number
+): number => (betterIsLower(type, dominant) ? a - b : b - a)
+
+const tiebreakerFor = (type: ExerciseType, dominant: PrimaryMetric): PrimaryMetric | null => {
+    if (dominant === 'weight') {
+        return type === 'bodyweight_timer' ? 'duration' : 'reps'
+    }
+    if (type === 'cardio' && dominant === 'distance') return 'duration'
+    return null
+}
+
+export const bestSetComparatorFor = (
+    type: ExerciseType,
+    dominant: PrimaryMetric
+): ((a: Set, b: Set) => number) => {
+    const secondary = tiebreakerFor(type, dominant)
+    return (a, b) => {
+        const primary = compareMetric(
+            type,
+            dominant,
+            getSetMetricValue(a, dominant),
+            getSetMetricValue(b, dominant)
+        )
+        if (primary !== 0) return primary
+        if (!secondary) return 0
+        // Tiebreakers always reward larger values (more reps, longer duration when at the
+        // same weight, longer duration when at the same distance).
+        return getSetMetricValue(b, secondary) - getSetMetricValue(a, secondary)
+    }
+}
+
+const formatRawMetric = (metric: PrimaryMetric, value: number): string => {
+    switch (metric) {
+        case 'weight':
+            return value.toFixed(2)
+        case 'reps':
+            return Math.round(value).toString()
+        case 'distance':
+            return value.toFixed(2)
+        case 'duration':
+            return formatDuration(value)
+    }
+}
+
+// Compact, single-string label that captures the whole set for one data point.
+// Driven by (exercise type, dominant metric) per the PRD's table.
+export const formatCompactSetLabel = (
+    type: ExerciseType,
+    dominant: PrimaryMetric,
+    set: Set
+): string => {
+    const weight = set.weight ?? 0
+    const reps = set.reps ?? 0
+    const distance = set.distance ?? 0
+    const duration = set.duration ?? 0
+
+    switch (type) {
+        case 'weight':
+            return `${formatCompactWeight(weight)}×${Math.round(reps)}`
+        case 'bodyweight':
+            return weight === 0
+                ? `${Math.round(reps)}`
+                : `${Math.round(reps)} (${formatSignedWeight(weight)})`
+        case 'bodyweight_timer':
+            return weight === 0
+                ? formatDuration(duration)
+                : `${formatDuration(duration)} (${formatSignedWeight(weight)})`
+        case 'cardio':
+            return `${formatCompactDistance(distance)}·${formatDuration(duration)}`
+    }
+}
+
+// Headline string for the picker / personal-best card. Single dominant value with its unit.
+export const formatHeadlineStat = (
+    _type: ExerciseType,
+    dominant: PrimaryMetric,
+    value: number
+): string => {
+    if (dominant === 'distance') return formatCompactDistance(value)
+    if (dominant === 'duration') return formatDuration(value)
+    const unit = metricUnit[dominant]
+    const formatted = formatRawMetric(dominant, value)
+    return unit ? `${formatted} ${unit}` : formatted
+}
+
+export const formatAxisLabel = (dominant: PrimaryMetric, value: number): string => {
+    switch (dominant) {
+        case 'weight':
+            return value.toFixed(0)
+        case 'reps':
+            return Math.round(value).toString()
+        case 'distance':
+            return formatCompactDistance(value)
+        case 'duration':
+            return formatDuration(value)
+    }
+}
+
+export interface ExerciseTypeAdapter {
+    type: ExerciseType
+    defaultDominantMetric: PrimaryMetric
+}
+
+const defaultDominantByType: Record<ExerciseType, PrimaryMetric> = {
+    weight: 'weight',
+    bodyweight: 'reps',
+    bodyweight_timer: 'duration',
+    cardio: 'distance',
+}
+
+export const ExerciseTypeMetadata = {
+    for(type: ExerciseType): ExerciseTypeAdapter {
+        return { type, defaultDominantMetric: defaultDominantByType[type] }
+    },
+    defaultDominantMetric(type: ExerciseType): PrimaryMetric {
+        return defaultDominantByType[type]
+    },
+    bestSetComparator(type: ExerciseType, dominant: PrimaryMetric) {
+        return bestSetComparatorFor(type, dominant)
+    },
+    formatCompactSetLabel,
+    formatHeadlineStat,
+    formatAxisLabel,
+    isBetterLower(type: ExerciseType, dominant: PrimaryMetric): boolean {
+        return betterIsLower(type, dominant)
+    },
 }
