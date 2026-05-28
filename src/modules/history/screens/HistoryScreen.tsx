@@ -9,7 +9,7 @@ import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useNavigation } from 'expo-router'
 import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
@@ -19,11 +19,21 @@ export default function HistoryScreen() {
     const { workouts: workoutRepo } = getRepositories()
     const { t, i18n } = useTranslation()
     const { theme } = useTheme()
+    const navigation = useNavigation()
     const [workouts, setWorkouts] = useState<Workout[]>([])
     const [initialLoading, setInitialLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
     const [refreshing, setRefreshing] = useState(false)
     const animatedItemIdsRef = useRef<Set<number>>(new Set())
+
+    useFocusEffect(
+        useCallback(() => {
+            navigation.getParent()?.setOptions({
+                headerLeft: () => null,
+                headerRight: () => null,
+            })
+        }, [navigation])
+    )
 
     const loadData = useCallback(
         async (showRefresh = false) => {

@@ -11,7 +11,7 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useNavigation } from 'expo-router'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
@@ -31,6 +31,27 @@ export default function CalendarScreen() {
     const { workouts: workoutRepo } = getRepositories()
     const { t, i18n } = useTranslation()
     const { theme } = useTheme()
+    const navigation = useNavigation()
+
+    useFocusEffect(
+        useCallback(() => {
+            navigation.getParent()?.setOptions({
+                headerTitle: t('calendar'),
+                headerLeft: () => (
+                    <TouchableOpacity
+                        onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/workout'))}
+                        style={styles.headerBack}
+                        accessibilityRole={'button'}
+                        accessibilityLabel={t('back')}
+                        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                    >
+                        <FontAwesome name={'chevron-left'} size={20} color={theme.text} />
+                    </TouchableOpacity>
+                ),
+                headerRight: () => null,
+            })
+        }, [navigation, theme, t])
+    )
     const [workouts, setWorkouts] = useState<Workout[]>([])
     const [markedDates, setMarkedDates] = useState<MarkedDates>({})
     const [selectedDate, setSelectedDate] = useState<string | null>(formatLocalDateYYYYMMDD())
@@ -289,7 +310,7 @@ export default function CalendarScreen() {
                             ) : workoutSets.length > 0 ? (
                                 workoutSets.map((item, index) => (
                                     <View
-                                        key={index}
+                                        key={index.toString()}
                                         style={[styles.summaryRow, { borderBottomColor: theme.inputBackground }]}
                                     >
                                         <Typography.Body style={[styles.summaryText, { color: theme.text }]}>
@@ -438,5 +459,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         gap: Spacing.md,
+    },
+    headerBack: {
+        paddingLeft: Spacing.md,
+        paddingRight: Spacing.sm,
+        minWidth: 44,
+        minHeight: 44,
+        justifyContent: 'center',
     },
 })

@@ -9,9 +9,9 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv'
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { router, useNavigation } from 'expo-router'
+import { router, useFocusEffect, useNavigation } from 'expo-router'
 import { TFunction } from 'i18next'
-import React, { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     ActivityIndicator,
@@ -151,36 +151,40 @@ export default function ExercisesListScreen() {
         })
     }, [isImporting, loadExercises])
 
-    useLayoutEffect(() => {
-        const hasExercises = exercises.length > 0
-        navigation.getParent()?.setOptions({
-            headerRight: () => (
-                <View style={{ flexDirection: 'row', gap: Spacing.md, marginRight: Spacing.md }}>
-                    <TouchableOpacity
-                        onPress={handleExportPress}
-                        disabled={!hasExercises || isImporting}
-                        style={{ opacity: hasExercises && !isImporting ? 1 : 0.3 }}
-                        accessibilityRole={'button'}
-                        accessibilityLabel={t('export')}
-                    >
-                        <FontAwesome name={'upload'} size={20} color={theme.primary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={handleImportPress}
-                        disabled={isImporting}
-                        accessibilityRole={'button'}
-                        accessibilityLabel={t('import')}
-                    >
-                        {isImporting ? (
-                            <ActivityIndicator size={"small"} color={theme.primary} />
-                        ) : (
-                            <FontAwesome name={'download'} size={20} color={theme.primary} />
-                        )}
-                    </TouchableOpacity>
-                </View>
-            ),
-        })
-    }, [navigation, exercises.length, theme.primary, handleExportPress, handleImportPress, isImporting, t])
+    useFocusEffect(
+        useCallback(() => {
+            const hasExercises = exercises.length > 0
+            navigation.getParent()?.setOptions({
+                headerTitle: t('exercises'),
+                headerLeft: () => null,
+                headerRight: () => (
+                    <View style={{ flexDirection: 'row', gap: Spacing.md, marginRight: Spacing.md }}>
+                        <TouchableOpacity
+                            onPress={handleExportPress}
+                            disabled={!hasExercises || isImporting}
+                            style={{ opacity: hasExercises && !isImporting ? 1 : 0.3 }}
+                            accessibilityRole={'button'}
+                            accessibilityLabel={t('export')}
+                        >
+                            <FontAwesome name={'upload'} size={20} color={theme.primary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={handleImportPress}
+                            disabled={isImporting}
+                            accessibilityRole={'button'}
+                            accessibilityLabel={t('import')}
+                        >
+                            {isImporting ? (
+                                <ActivityIndicator size={"small"} color={theme.primary} />
+                            ) : (
+                                <FontAwesome name={'download'} size={20} color={theme.primary} />
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                ),
+            })
+        }, [navigation, exercises.length, theme.primary, handleExportPress, handleImportPress, isImporting, t])
+    )
 
     const renderItem = useCallback(
         ({ item, index }: { item: Exercise; index: number }) => {
