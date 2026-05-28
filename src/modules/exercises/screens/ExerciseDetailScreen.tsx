@@ -11,22 +11,24 @@ import { Card } from '@/src/modules/core/components/Card'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
-import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader'
 import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { useIsFocused } from '@react-navigation/native'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 'react-native'
+import Animated, { FadeIn } from 'react-native-reanimated'
 import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph'
 
 export default function ExerciseDetailScreen() {
     const { exercises: exerciseRepo } = getRepositories()
     const { t } = useTranslation()
+    const navigation = useNavigation()
     const { id } = useLocalSearchParams()
     const [exercise, setExercise] = useState<Exercise | null>(null)
     const [historyData, setHistoryData] = useState<BestSetEntry[]>([])
@@ -105,6 +107,68 @@ export default function ExerciseDetailScreen() {
         }
     }, [isFocused, loadData])
 
+    const handleDelete = useCallback(() => {
+        showToast.confirm({
+            title: t('deleteExerciseTitle'),
+            message: t('deleteExerciseConfirm'),
+            icon: 'trash',
+            tone: 'danger',
+            action: {
+                label: t('delete'),
+                onPress: async () => {
+                    if (exercise) {
+                        await exerciseRepo.delete(exercise.id)
+                        router.replace('/(tabs)/exercises')
+                        showToast.success({
+                            title: t('exerciseDeleted'),
+                            message: t('exerciseRemoved'),
+                        })
+                    }
+                },
+            },
+        })
+    }, [exercise, exerciseRepo, t])
+
+    useFocusEffect(
+        useCallback(() => {
+            navigation.getParent()?.setOptions({
+                headerTitle: exercise?.name,
+                headerLeft: () => (
+                    <TouchableOpacity
+                        onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/exercises'))}
+                        style={styles.headerBack}
+                        accessibilityRole={'button'}
+                        accessibilityLabel={t('back')}
+                        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                    >
+                        <FontAwesome name={'chevron-left'} size={20} color={theme.text} />
+                    </TouchableOpacity>
+                ),
+                headerRight: () =>
+                    exercise ? (
+                        <Animated.View entering={FadeIn.duration(180)} style={styles.headerActions}>
+                            <TouchableOpacity
+                                onPress={() => router.push(`/(tabs)/exercises/edit/${exercise.id}`)}
+                                accessibilityRole={'button'}
+                                accessibilityLabel={t('edit')}
+                                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                            >
+                                <FontAwesome name={'pencil'} size={20} color={theme.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleDelete}
+                                accessibilityRole={'button'}
+                                accessibilityLabel={t('delete')}
+                                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                            >
+                                <FontAwesome name={'trash'} size={20} color={theme.error} />
+                            </TouchableOpacity>
+                        </Animated.View>
+                    ) : null,
+            })
+        }, [exercise, navigation, theme, t, handleDelete])
+    )
+
     if (isLoading && !exercise) {
         return (
             <ScreenLayout style={styles.centeredScreen}>
@@ -138,43 +202,11 @@ export default function ExerciseDetailScreen() {
         )
     }
 
-    const handleDelete = () => {
-        showToast.confirm({
-            title: t('deleteExerciseTitle'),
-            message: t('deleteExerciseConfirm'),
-            icon: 'trash',
-            tone: 'danger',
-            action: {
-                label: t('delete'),
-                onPress: async () => {
-                    if (exercise) {
-                        await exerciseRepo.delete(exercise.id)
-                        router.replace('/(tabs)/exercises')
-                        showToast.success({
-                            title: t('exerciseDeleted'),
-                            message: t('exerciseRemoved'),
-                        })
-                    }
-                },
-            },
-        })
-    }
-
     return (
         <ScrollScreenLayout
             style={{ paddingTop: 0 }}
             contentContainerStyle={{ paddingTop: 0, paddingBottom: Spacing.lg }}
             nestedScrollEnabled={true}
-            fixedHeader={
-                <ScreenHeader
-                    title={exercise.name}
-                    onDelete={handleDelete}
-                    rightAction={{
-                        label: t('edit'),
-                        onPress: () => router.push(`/(tabs)/exercises/edit/${exercise.id}`),
-                    }}
-                />
-            }
         >
             <Card style={{ marginTop: Spacing.md }}>
                 <View
@@ -285,5 +317,18 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
+    },
+    headerBack: {
+        paddingLeft: Spacing.md,
+        paddingRight: Spacing.sm,
+        minWidth: 44,
+        minHeight: 44,
+        justifyContent: 'center',
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        marginRight: Spacing.md,
     },
 })

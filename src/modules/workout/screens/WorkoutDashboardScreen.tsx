@@ -10,7 +10,7 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useNavigation } from 'expo-router'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native'
@@ -20,6 +20,18 @@ export default function WorkoutDashboardScreen() {
     const { workouts: workoutRepo } = getRepositories()
     const { t, i18n } = useTranslation()
     const { theme } = useTheme()
+    const navigation = useNavigation()
+
+    useFocusEffect(
+        useCallback(() => {
+            navigation.getParent()?.setOptions({
+                headerTitle: t('workout'),
+                headerLeft: () => null,
+                headerRight: () => null,
+            })
+        }, [navigation, t])
+    )
+
     const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null)
     const [allWorkouts, setAllWorkouts] = useState<Workout[]>([])
     const [refreshing, setRefreshing] = useState(false)

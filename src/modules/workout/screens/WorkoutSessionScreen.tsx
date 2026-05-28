@@ -4,19 +4,19 @@ import { SubSet, Set as WorkoutSet } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
-import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader'
 import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatLocalizedDate } from '@/src/utils/dateTime'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router, useFocusEffect, useNavigation } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import { Gesture } from 'react-native-gesture-handler'
 import { NestedReorderableList, ScrollViewContainer, reorderItems } from 'react-native-reorderable-list'
-import Animated, { FadeInDown } from 'react-native-reanimated'
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import { LogSetModal } from '../components/LogSetModal'
 import { WorkoutSetItem } from '../components/WorkoutSetItem'
 import { useWorkoutSession } from '../hooks/useWorkoutSession'
@@ -31,6 +31,7 @@ type WorkoutSessionScreenProps = {
 export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSessionScreenProps) {
     const { t, i18n } = useTranslation()
     const { theme } = useTheme()
+    const navigation = useNavigation()
     const {
         workout,
         exercises,
@@ -176,7 +177,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     const isFinishedWorkout = workout?.status === 'finished'
     const canEditHistoryWorkout = origin === 'history' && isFinishedWorkout
     const isReadOnly = isFinishedWorkout && !isHistoryEditMode
-    const canFinishWorkout = origin === 'workout' && !isFinishedWorkout
+    const canFinishWorkout = !isFinishedWorkout
 
     const openTimingModal = () => {
         if (!workout) return
@@ -215,6 +216,82 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         }
     }
 
+    const parentTabFallback = origin === 'history' ? '/(tabs)/history' : '/(tabs)/workout'
+
+    useFocusEffect(
+        useCallback(() => {
+            const rightAction = canEditHistoryWorkout
+                ? {
+                      icon: isHistoryEditMode ? ('check' as const) : ('pencil' as const),
+                      accessibilityLabel: isHistoryEditMode ? t('save') : t('edit'),
+                      onPress: () => setIsHistoryEditMode((prev) => !prev),
+                      disabled: false,
+                  }
+                : canFinishWorkout
+                ? {
+                      icon: 'flag-checkered' as const,
+                      accessibilityLabel: isFinishingWorkout ? t('saving') : t('finish'),
+                      onPress: finishWorkout,
+                      disabled: isFinishingWorkout,
+                  }
+                : null
+
+            navigation.getParent()?.setOptions({
+                headerLeft: () => (
+                    <TouchableOpacity
+                        onPress={() => (router.canGoBack() ? router.back() : router.replace(parentTabFallback as Parameters<typeof router.replace>[0]))}
+                        style={styles.headerBack}
+                        accessibilityRole={'button'}
+                        accessibilityLabel={t('back')}
+                        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                    >
+                        <FontAwesome name={'chevron-left'} size={20} color={theme.text} />
+                    </TouchableOpacity>
+                ),
+                headerRight: () =>
+                    workout ? (
+                        <Animated.View entering={FadeIn.duration(180)} style={styles.headerActions}>
+                            {rightAction && (
+                                <TouchableOpacity
+                                    onPress={rightAction.onPress}
+                                    disabled={rightAction.disabled}
+                                    style={rightAction.disabled && styles.headerButtonDisabled}
+                                    accessibilityRole={'button'}
+                                    accessibilityLabel={rightAction.accessibilityLabel}
+                                    hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                                >
+                                    <FontAwesome name={rightAction.icon} size={20} color={theme.primary} />
+                                </TouchableOpacity>
+                            )}
+                            {!isDeletingWorkout && (
+                                <TouchableOpacity
+                                    onPress={deleteWorkout}
+                                    accessibilityRole={'button'}
+                                    accessibilityLabel={t('delete')}
+                                    hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                                >
+                                    <FontAwesome name={'trash'} size={20} color={theme.error} />
+                                </TouchableOpacity>
+                            )}
+                        </Animated.View>
+                    ) : null,
+            })
+        }, [
+            navigation,
+            parentTabFallback,
+            workout,
+            canEditHistoryWorkout,
+            canFinishWorkout,
+            isHistoryEditMode,
+            isFinishingWorkout,
+            isDeletingWorkout,
+            finishWorkout,
+            deleteWorkout,
+            theme,
+            t,
+        ])
+    )
+
     if (loading && !workout) {
         return (
             <ScreenLayout style={styles.loadingContainer}>
@@ -237,30 +314,6 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             ScrollComponent={ScrollViewContainer}
             contentContainerStyle={styles.listContent}
             keyboardShouldPersistTaps="handled"
-            fixedHeader={
-                <ScreenHeader
-                    title={
-                        isReadOnly
-                            ? `${t('workout')} ${formatLocalizedDate(workout?.date || '', i18n.language, { year: 'numeric', month: 'short', day: 'numeric' })}`
-                            : t('activeSession')
-                    }
-                    onDelete={isDeletingWorkout ? undefined : deleteWorkout}
-                    rightAction={
-                        canEditHistoryWorkout
-                            ? {
-                                  label: isHistoryEditMode ? t('close') : t('edit'),
-                                  onPress: () => setIsHistoryEditMode((prev) => !prev),
-                              }
-                            : canFinishWorkout
-                            ? {
-                                  label: isFinishingWorkout ? t('saving') : t('finish'),
-                                  onPress: finishWorkout,
-                                  disabled: isFinishingWorkout,
-                              }
-                            : undefined
-                    }
-                />
-            }
             floatingElements={
                 <>
                     {!isReadOnly && (
@@ -521,5 +574,21 @@ const styles = StyleSheet.create({
     },
     modalSaveDisabled: {
         opacity: 0.5,
+    },
+    headerBack: {
+        paddingLeft: Spacing.md,
+        paddingRight: Spacing.sm,
+        minWidth: 44,
+        minHeight: 44,
+        justifyContent: 'center',
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        marginRight: Spacing.md,
+    },
+    headerButtonDisabled: {
+        opacity: 0.4,
     },
 })
