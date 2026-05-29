@@ -1,7 +1,12 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { getRepositories } from '@/src/data/repositories'
 import { Exercise } from '@/src/db/exercises'
-import { ExerciseHistory } from '@/src/db/workouts'
+import {
+    ExerciseStats,
+    type BestSetEntry,
+    type SessionSummary,
+} from '@/src/modules/exercises/ExerciseStats'
+import type { PrimaryMetric } from '@/src/modules/exercises/ExerciseTypeMetadata'
 import { Card } from '@/src/modules/core/components/Card'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -20,11 +25,13 @@ import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 're
 import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph'
 
 export default function ExerciseDetailScreen() {
-    const { exercises: exerciseRepo, workouts: workoutRepo } = getRepositories()
+    const { exercises: exerciseRepo } = getRepositories()
     const { t } = useTranslation()
     const { id } = useLocalSearchParams()
     const [exercise, setExercise] = useState<Exercise | null>(null)
-    const [historyData, setHistoryData] = useState<ExerciseHistory[]>([])
+    const [historyData, setHistoryData] = useState<BestSetEntry[]>([])
+    const [historySummary, setHistorySummary] = useState<SessionSummary | null>(null)
+    const [dominantMetric, setDominantMetric] = useState<PrimaryMetric | null>(null)
     const [showImageFullScreen, setShowImageFullScreen] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
@@ -38,17 +45,25 @@ export default function ExerciseDetailScreen() {
             setHistoryLoading(true)
             setHistoryError(null)
             try {
-                const data = await workoutRepo.getExerciseHistory(exerciseId)
+                const [data, summary, dominant] = await Promise.all([
+                    ExerciseStats.bestSetPerSession(exerciseId),
+                    ExerciseStats.sessionSummary(exerciseId),
+                    ExerciseStats.dominantMetric(exerciseId),
+                ])
                 setHistoryData(data)
+                setHistorySummary(summary)
+                setDominantMetric(dominant)
             } catch (error) {
                 console.error('Failed to load exercise history:', error)
                 setHistoryData([])
+                setHistorySummary(null)
+                setDominantMetric(null)
                 setHistoryError(t('failedToLoadHistory'))
             } finally {
                 setHistoryLoading(false)
             }
         },
-        [t, workoutRepo]
+        [t]
     )
 
     const loadData = useCallback(async () => {
@@ -59,6 +74,8 @@ export default function ExerciseDetailScreen() {
             if (!id) {
                 setExercise(null)
                 setHistoryData([])
+                setHistorySummary(null)
+                setDominantMetric(null)
                 setLoadError(t('failedToLoadExerciseDetails'))
                 return
             }
@@ -75,6 +92,7 @@ export default function ExerciseDetailScreen() {
             console.error('Failed to load exercise detail:', error)
             setExercise(null)
             setHistoryData([])
+            setHistorySummary(null)
             setLoadError(t('failedToLoadExerciseDetails'))
         } finally {
             setIsLoading(false)
@@ -210,7 +228,12 @@ export default function ExerciseDetailScreen() {
                         />
                     </View>
                 ) : historyData.length > 0 ? (
-                    <ExerciseHistoryGraph exercise={exercise} data={historyData} />
+                    <ExerciseHistoryGraph
+                        exercise={exercise}
+                        data={historyData}
+                        summary={historySummary}
+                        dominantMetric={dominantMetric}
+                    />
                 ) : (
                     <EmptyState
                         message={t('statsComingSoon')}

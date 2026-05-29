@@ -4,7 +4,7 @@ import { Exercise } from '@/src/db/exercises'
 import { SubSet } from '@/src/db/workouts'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { formatExerciseType } from '@/src/utils/formatters'
+import { ExercisePicker } from '@/src/modules/exercises/ExercisePicker'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,7 +26,6 @@ import { SetFormValues } from '../setPayload'
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window')
 const SHEET_MAX_HEIGHT = Math.min(DEVICE_HEIGHT * 0.9, 760)
-const EXERCISE_LIST_HEIGHT = Math.min(200, Math.floor(DEVICE_HEIGHT * 0.2))
 const PYRAMID_LIST_HEIGHT = Math.min(200, Math.floor(DEVICE_HEIGHT * 0.22))
 const UNIFIED_LAYOUT = LinearTransition.duration(200)
 const KEYBOARD_LIFT_FACTOR = 0.8
@@ -65,7 +64,6 @@ export const LogSetModal = ({
 
     const selectedExercise = exercises.find((exercise) => exercise.id === selectedExerciseId)
     const [isExpanded, setIsExpanded] = React.useState(false)
-    const [openCycle, setOpenCycle] = React.useState(0)
     const wasVisibleRef = React.useRef(false)
 
     const keyboardInset = useSharedValue(0)
@@ -83,7 +81,6 @@ export const LogSetModal = ({
         }
         if (!wasVisibleRef.current) {
             wasVisibleRef.current = true
-            setOpenCycle((value) => value + 1)
             sheetOpacity.value = 0
             sheetOffset.value = 32
             sheetOpacity.value = withTiming(1, { duration: 180 })
@@ -158,10 +155,11 @@ export const LogSetModal = ({
                                 <Animated.View entering={FadeIn.duration(160)}>
                                     <ExercisePicker
                                         exercises={exercises}
-                                        selectedExerciseId={selectedExerciseId}
-                                        setSelectedExerciseId={setSelectedExerciseId}
-                                        updateInput={updateInput}
-                                        openCycle={openCycle}
+                                        onPick={(exercise) => {
+                                            setSelectedExerciseId(exercise.id)
+                                            const fields = ['weight', 'reps', 'distance', 'durationMinutes', 'durationSeconds'] as const
+                                            fields.forEach((key) => updateInput(key, ''))
+                                        }}
                                     />
                                 </Animated.View>
                             )}
@@ -330,76 +328,6 @@ export const LogSetModal = ({
     )
 }
 
-type ExercisePickerProps = Pick<Props, 'exercises' | 'selectedExerciseId' | 'setSelectedExerciseId' | 'updateInput'> & {
-    openCycle: number
-}
-
-const ExercisePicker = ({ exercises, selectedExerciseId, setSelectedExerciseId, updateInput, openCycle }: ExercisePickerProps) => {
-    const { t } = useTranslation()
-    const { theme } = useTheme()
-    const scrollRef = React.useRef<ScrollView | null>(null)
-    const itemPositionsRef = React.useRef<Record<number, number>>({})
-    const scrolledOpenCycleRef = React.useRef<number>(-1)
-
-    const scrollToSelected = React.useCallback(() => {
-        if (!selectedExerciseId) return
-        const selectedY = itemPositionsRef.current[selectedExerciseId]
-        if (Number.isNaN(selectedY)) return
-
-        scrollRef.current?.scrollTo({ y: Math.max(0, selectedY - Spacing.sm), animated: false })
-        scrolledOpenCycleRef.current = openCycle
-    }, [openCycle, selectedExerciseId])
-
-    React.useEffect(() => {
-        if (scrolledOpenCycleRef.current === openCycle) return
-        const frame = requestAnimationFrame(() => {
-            scrollToSelected()
-        })
-        return () => cancelAnimationFrame(frame)
-    }, [openCycle, scrollToSelected])
-
-    return (
-            <ScrollView
-                ref={scrollRef}
-                style={[styles.exerciseList, { backgroundColor: theme.background }]}
-                onContentSizeChange={scrollToSelected}
-                showsVerticalScrollIndicator
-            >
-                {exercises.map((exercise) => (
-                    <TouchableOpacity
-                        key={exercise.id}
-                        onLayout={(event) => {
-                            itemPositionsRef.current[exercise.id] = event.nativeEvent.layout.y
-                        }}
-                        style={[
-                            styles.exerciseItem,
-                            { borderBottomColor: `${theme.border}20` },
-                            selectedExerciseId === exercise.id && [{ backgroundColor: theme.primary }],
-                        ]}
-                        onPress={() => {
-                            setSelectedExerciseId(exercise.id)
-                            const fields = ['weight', 'reps', 'distance', 'durationMinutes', 'durationSeconds'] as const
-                            fields.forEach((key) => updateInput(key, ''))
-                        }}
-                    >
-                        <Text style={[styles.exerciseItemText, { color: theme.text }, selectedExerciseId === exercise.id && styles.exerciseItemActiveText]}>
-                            {exercise.name}
-                        </Text>
-                        <Text
-                            style={[
-                                styles.exerciseItemSubtext,
-                                { color: theme.textSecondary },
-                                selectedExerciseId === exercise.id && styles.exerciseItemActiveSubtext,
-                            ]}
-                        >
-                            {t(formatExerciseType(exercise.type))}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
-    )
-}
-
 const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { selectedExercise?: Exercise; inputValues: Props['inputValues']; updateInput: Props['updateInput'] }) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
@@ -564,28 +492,6 @@ const styles = StyleSheet.create({
     },
     sheetTitle: {
         marginBottom: 0,
-    },
-    exerciseList: {
-        height: EXERCISE_LIST_HEIGHT,
-        borderRadius: 10,
-        marginVertical: Spacing.sm,
-    },
-    exerciseItem: {
-        padding: Spacing.md,
-        borderBottomWidth: 1,
-    },
-    exerciseItemText: {
-        fontWeight: '600',
-    },
-    exerciseItemActiveText: {
-        color: 'white',
-    },
-    exerciseItemSubtext: {
-        fontSize: 10,
-        marginTop: Spacing.xs,
-    },
-    exerciseItemActiveSubtext: {
-        color: 'rgba(255,255,255,0.78)',
     },
     inputsSection: {
         marginTop: Spacing.sm,

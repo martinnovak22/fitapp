@@ -1,114 +1,99 @@
 import { Exercise } from '@/src/db/exercises'
-import { ExerciseHistory } from '@/src/db/workouts'
 import { Spacing } from '@/src/constants/Spacing'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { formatDuration } from '@/src/utils/formatters'
-import React, { useEffect, useMemo, useState } from 'react'
+import {
+    ExerciseTypeMetadata,
+    formatCompactSetLabel,
+    formatHeadlineStat,
+    getSetMetricValue,
+    type PrimaryMetric,
+} from '@/src/modules/exercises/ExerciseTypeMetadata'
+import type { BestSetEntry, SessionSummary } from '@/src/modules/exercises/ExerciseStats'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
 
 interface ExerciseHistoryGraphProps {
     exercise: Exercise
-    data: ExerciseHistory[]
+    data: BestSetEntry[]
+    summary: SessionSummary | null
+    dominantMetric: PrimaryMetric | null
 }
 
-type Metric = 'weight' | 'reps' | 'distance' | 'duration'
-
-export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistoryGraphProps) => {
+export const ExerciseHistoryGraph = ({
+    exercise,
+    data,
+    summary,
+    dominantMetric,
+}: ExerciseHistoryGraphProps) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
-    const [selectedMetric, setSelectedMetric] = useState<Metric>('weight')
-
     const [graphWidth, setGraphWidth] = useState(0)
 
-    const data = useMemo(() => {
-        return rawData
-    }, [rawData])
+    const effectiveDominant: PrimaryMetric =
+        dominantMetric ?? ExerciseTypeMetadata.defaultDominantMetric(exercise.type)
+    const isInverted = ExerciseTypeMetadata.isBetterLower(exercise.type, effectiveDominant)
 
-    useEffect(() => {
-        if (exercise.type === 'bodyweight') {
-            setSelectedMetric('reps')
-        } else if (exercise.type === 'bodyweight_timer') {
-            setSelectedMetric('duration')
-        } else if (exercise.type === 'cardio') {
-            setSelectedMetric('distance')
-        } else {
-            setSelectedMetric('weight')
-        }
-    }, [exercise.type])
+    const rawValues = useMemo(
+        () => data.map(({ set }) => getSetMetricValue(set, effectiveDominant)),
+        [data, effectiveDominant]
+    )
+
+    // For inverted plots ("faster is better"), reflect each value around a reference
+    // ceiling so the smaller raw value sits higher on the chart.
+    const invertReference = useMemo(() => {
+        if (!isInverted || rawValues.length === 0) return 0
+        const maxRaw = Math.max(...rawValues)
+        return maxRaw * 1.05 || 1
+    }, [isInverted, rawValues])
 
     const processedData = useMemo(() => {
-        if (!data.length) return []
-
-        let getValue = (h: ExerciseHistory) => h.max_weight || 0
-
-        switch (selectedMetric) {
-            case 'weight':
-                getValue = (h) => h.max_weight || 0
-                break
-            case 'reps':
-                getValue = (h) => h.max_reps || 0
-                break
-            case 'distance':
-                getValue = (h) => h.max_distance || 0
-                break
-            case 'duration':
-                getValue = (h) => h.max_duration || 0
-                break
-        }
-
-        return data.map((h) => {
-            const d = new Date(h.date)
-            const val = getValue(h)
-            let displayVal = val.toString()
-
-            if (selectedMetric === 'duration') {
-                displayVal = formatDuration(val)
-            } else if (selectedMetric === 'distance' || selectedMetric === 'weight') {
-                displayVal = val.toFixed(2)
-            }
-
+        return data.map(({ date, set }, idx) => {
+            const raw = rawValues[idx] ?? 0
+            const value = isInverted ? invertReference - raw : raw
+            const d = new Date(date)
             return {
-                value: val,
+                value,
                 label: `${d.getDate()}/${d.getMonth() + 1}`,
-                dataPointText: displayVal,
+                dataPointText: formatCompactSetLabel(exercise.type, effectiveDominant, set),
             }
         })
-    }, [selectedMetric, data])
+    }, [data, rawValues, isInverted, invertReference, exercise.type, effectiveDominant])
 
     const stats = useMemo(() => {
-        if (!processedData.length) return null
-        const values = processedData.map((d) => d.value)
-        const max = Math.max(...values)
-        const avg = values.reduce((a, b) => a + b, 0) / values.length
-
-        const format = (val: number) => {
-            if (selectedMetric === 'duration') return formatDuration(val)
-            if (selectedMetric === 'distance') return `${val.toFixed(2)}m`
-            if (selectedMetric === 'weight') return `${val.toFixed(2)}kg`
-            return Math.round(val).toString()
-        }
-
+        if (!summary) return null
         return {
-            max: format(max),
-            avg: format(avg),
+            max: formatHeadlineStat(exercise.type, effectiveDominant, summary.max),
+            avg: formatHeadlineStat(exercise.type, effectiveDominant, summary.avg),
         }
-    }, [processedData, selectedMetric])
+    }, [summary, exercise.type, effectiveDominant])
 
-    const maxValue = processedData.length ? Math.max(...processedData.map((d) => d.value)) : 0
+    const contextLine = useMemo(() => {
+        if (!summary?.contextAvgDistance) return null
+        return `${t('avgDistance')} ${ExerciseTypeMetadata.formatAxisLabel(
+            'distance',
+            summary.contextAvgDistance
+        )}`
+    }, [summary, t])
+
+    const maxDisplay = processedData.length ? Math.max(...processedData.map((d) => d.value)) : 0
 
     const yAxisProps = (() => {
-        if (maxValue === 0) return { noOfSections: 4, maxValue: 100 }
+        if (maxDisplay === 0) return { noOfSections: 4, maxValue: 100 }
 
-        if (maxValue <= 10) {
-            return { noOfSections: maxValue, maxValue: maxValue, stepValue: 1 }
+        if (maxDisplay <= 10) {
+            return {
+                noOfSections: Math.max(1, Math.ceil(maxDisplay)),
+                maxValue: Math.ceil(maxDisplay),
+                stepValue: 1,
+            }
         }
         const sections = 4
-        let step = maxValue / sections
+        const step = maxDisplay / sections
 
         const magnitudes = [1, 2, 2.5, 5]
-        let power = Math.pow(10, Math.floor(Math.log10(step)))
+        const power = Math.pow(10, Math.floor(Math.log10(step)))
         let bestStep = power
 
         for (const m of magnitudes) {
@@ -126,48 +111,15 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
         }
     })()
 
-    const renderToggle = (metric: Metric, label: string) => (
-        <TouchableOpacity
-            onPress={() => setSelectedMetric(metric)}
-            style={[
-                styles.toggleButton,
-                selectedMetric === metric && [styles.toggleButtonActive, { backgroundColor: theme.primary }],
-            ]}
-        >
-            <Text
-                style={[
-                    styles.toggleText,
-                    { color: theme.textSecondary },
-                    selectedMetric === metric && { color: theme.onPrimary },
-                ]}
-            >
-                {label}
-            </Text>
-        </TouchableOpacity>
-    )
-
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={[styles.title, { color: theme.text }]}>{t('progress')}</Text>
-                <View style={[styles.toggleGroup, { backgroundColor: theme.background }]}>
-                    {exercise.type === 'cardio' ? (
-                        <>
-                            {renderToggle('distance', t('meters'))}
-                            {renderToggle('duration', t('time'))}
-                        </>
-                    ) : exercise.type === 'bodyweight_timer' ? (
-                        <>
-                            {renderToggle('weight', t('weight'))}
-                            {renderToggle('duration', t('time'))}
-                        </>
-                    ) : (
-                        <>
-                            {renderToggle('weight', t('weight'))}
-                            {renderToggle('reps', t('reps'))}
-                        </>
-                    )}
-                </View>
+                {contextLine && (
+                    <Text style={[styles.context, { color: theme.textSecondary }]}>
+                        {contextLine}
+                    </Text>
+                )}
             </View>
 
             {stats && (
@@ -192,7 +144,8 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
                         const yAxisLabelWidth = 60
                         const availableWidth = graphWidth - yAxisLabelWidth - 16
 
-                        const minSpacing = 60
+                        // Labels carry the full set ("2.4km·30:00"), so points need more breathing room.
+                        const minSpacing = 80
                         const initialSpacing = 30
                         const endSpacing = 30
 
@@ -233,15 +186,14 @@ export const ExerciseHistoryGraph = ({ exercise, data: rawData }: ExerciseHistor
                                 rulesColor={theme.border}
                                 rulesType="dashed"
                                 isAnimated
+                                scrollToEnd
+                                scrollAnimation={false}
                                 yAxisLabelWidth={yAxisLabelWidth}
                                 yAxisLabelContainerStyle={{ width: yAxisLabelWidth, marginLeft: -10 }}
                                 formatYLabel={(val) => {
-                                    const numericVal = parseFloat(val)
-                                    if (selectedMetric === 'duration') return formatDuration(numericVal)
-                                    if (selectedMetric === 'distance' && numericVal >= 1000)
-                                        return `${(numericVal / 1000).toFixed(2)}k`
-                                    if (selectedMetric === 'reps') return Math.round(numericVal).toString()
-                                    return numericVal.toFixed(2)
+                                    const display = parseFloat(val)
+                                    const raw = isInverted ? invertReference - display : display
+                                    return ExerciseTypeMetadata.formatAxisLabel(effectiveDominant, raw)
                                 }}
                                 pointerConfig={{
                                     activatePointersOnLongPress: true,
@@ -279,24 +231,9 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
     },
-
-    toggleGroup: {
-        flexDirection: 'row',
-        borderRadius: 10,
-        padding: Spacing.xs2,
-    },
-
-    toggleButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-    },
-    toggleButtonActive: {},
-    toggleText: {
+    context: {
         fontSize: 12,
-        fontWeight: '600',
     },
-
     statsRow: {
         flexDirection: 'row',
         marginBottom: 24,
@@ -311,7 +248,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginBottom: 4,
     },
-
     statValue: {
         fontSize: 16,
         fontWeight: '700',
@@ -322,7 +258,6 @@ const styles = StyleSheet.create({
         paddingTop: 20,
         borderTopWidth: 0.5,
     },
-
     axisText: {
         fontSize: 12,
     },
