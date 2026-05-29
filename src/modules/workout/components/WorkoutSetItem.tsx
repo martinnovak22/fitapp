@@ -21,8 +21,13 @@ interface Props<T extends WorkoutSet = WorkoutSet> {
 /**
  * Renders an individual workout set item within a session.
  * Follows the renderItem pattern from DraggableFlatList.
+ *
+ * Wrapped in `React.memo` so unrelated parent re-renders (timer ticks, modal
+ * open/close, in-flight saves) do not re-render every row. Drag/active state
+ * is read from `useReorderableDrag`/`useIsActive` context, which still
+ * updates the row when its own identity changes.
  */
-export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
+function WorkoutSetItemInner<T extends WorkoutSet = WorkoutSet>({
     set,
     index,
     isReadOnly,
@@ -116,6 +121,8 @@ export function WorkoutSetItem<T extends WorkoutSet = WorkoutSet>({
         </View>
     )
 }
+
+export const WorkoutSetItem = React.memo(WorkoutSetItemInner) as typeof WorkoutSetItemInner
 
 const styles = StyleSheet.create({
     card: {
