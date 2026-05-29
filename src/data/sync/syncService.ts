@@ -12,6 +12,7 @@ import { createRemoteIdResolver } from './RemoteIdResolver'
 import { createRemoteWriter } from './RemoteWriter'
 import { makePushFn, preloadSetParents } from './PushPipeline'
 import { syncStatusStore, type SyncFailure } from './SyncStatus'
+import { invalidateExercisesCache } from '@/src/data/exercisesCache'
 
 type SyncState = {
     is_syncing: number
@@ -466,6 +467,10 @@ export const runSync = async () => {
 
             if (!aborted) {
                 await pullExercises(snapshot.userId as string)
+                // Sync pull writes exercises directly via raw SQL, bypassing
+                // the cached repository wrapper. Invalidate explicitly so the
+                // next read reflects server changes.
+                invalidateExercisesCache()
                 await pullWorkouts(snapshot.userId as string)
                 await pullSets(snapshot.userId as string)
             }
