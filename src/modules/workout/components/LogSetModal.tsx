@@ -160,7 +160,6 @@ export const LogSetModal = ({
                                             const fields = ['weight', 'reps', 'distance', 'durationMinutes', 'durationSeconds'] as const
                                             fields.forEach((key) => updateInput(key, ''))
                                         }}
-                                        onClose={onClose}
                                     />
                                 </Animated.View>
                             )}

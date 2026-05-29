@@ -10,7 +10,6 @@ import { ExerciseStats, type HeadlineStat } from './ExerciseStats'
 type Props = {
     exercises: Exercise[]
     onPick: (exercise: Exercise) => void
-    onClose: () => void
 }
 
 const ROW_HEIGHT = 64
