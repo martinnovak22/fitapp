@@ -6,7 +6,7 @@ import { executeWriteTransaction } from '@/src/db/writeQueue'
 import { nowIso } from '@/src/db/sync'
 import { createOutbox, DIRTY_STATUSES } from './Outbox'
 import { capturePrincipalSnapshot, type LivePrincipal } from './PrincipalSnapshot'
-import { drainOutbox } from './SyncCycle'
+import { drainOutbox, type CycleResult } from './SyncCycle'
 import type { RemoteAdapter } from './RemoteAdapter'
 import { createRemoteIdResolver } from './RemoteIdResolver'
 import { createRemoteWriter } from './RemoteWriter'
@@ -62,7 +62,23 @@ type RemoteSimpleRow = {
     deleted_at: string | null
 }
 
-let currentRun: Promise<void> | null = null
+export type SyncCycleResult = {
+    skipped: boolean
+    pushed: number
+    pulled: number
+    failed: number
+    aborted: boolean
+}
+
+const IDLE_RESULT: SyncCycleResult = {
+    skipped: true,
+    pushed: 0,
+    pulled: 0,
+    failed: 0,
+    aborted: false,
+}
+
+let currentRun: Promise<SyncCycleResult> | null = null
 
 const toIsoOrNow = (value?: string | null) => value ?? nowIso()
 
@@ -198,11 +214,61 @@ const createSupabaseHttpAdapter = (): RemoteAdapter => ({
 })
 
 
-const pullExercises = async (userId: string) => {
+// In-memory pull cursors per userId. Tracks the max updated_at / deleted_at we
+// have seen so subsequent pulls can request only rows that have advanced past
+// it. Cold-start (process restart) falls back to a full pull, which is
+// acceptable: the scheduler only relies on the cursor for cheap-exit detection
+// of idle cycles, not for correctness.
+type PullCursors = {
+    exercisesUpdated: string | null
+    exercisesDeleted: string | null
+    workoutsUpdated: string | null
+    workoutsDeleted: string | null
+    setsUpdated: string | null
+    setsDeleted: string | null
+}
+
+const EMPTY_CURSORS: PullCursors = {
+    exercisesUpdated: null,
+    exercisesDeleted: null,
+    workoutsUpdated: null,
+    workoutsDeleted: null,
+    setsUpdated: null,
+    setsDeleted: null,
+}
+
+const pullCursorsByUser = new Map<string, PullCursors>()
+
+const getCursors = (userId: string): PullCursors =>
+    pullCursorsByUser.get(userId) ?? { ...EMPTY_CURSORS }
+
+const setCursors = (userId: string, cursors: PullCursors) => {
+    pullCursorsByUser.set(userId, cursors)
+}
+
+export const resetPullCursorsForTest = () => {
+    pullCursorsByUser.clear()
+}
+
+const maxIso = (a: string | null, b: string | null | undefined) => {
+    if (!a) return b ?? null
+    if (!b) return a
+    return parseIsoMillis(a) >= parseIsoMillis(b) ? a : b
+}
+
+const pullExercises = async (userId: string): Promise<number> => {
+    const cursors = getCursors(userId)
     const remote = await request<RemoteSimpleRow[]>('exercises', {
-        query: { select: '*', user_id: `eq.${userId}`, deleted_at: 'is.null', order: 'updated_at.asc' },
+        query: {
+            select: '*',
+            user_id: `eq.${userId}`,
+            deleted_at: 'is.null',
+            order: 'updated_at.asc',
+            ...(cursors.exercisesUpdated ? { updated_at: `gt.${cursors.exercisesUpdated}` } : {}),
+        },
     })
 
+    let nextUpdated = cursors.exercisesUpdated
     for (const row of remote) {
         await executeWriteTransaction(async (innerDb) => {
             const local = await innerDb.getFirstAsync<{ id: number; updated_at: string | null; sync_status: string }>(
@@ -247,11 +313,17 @@ const pullExercises = async (userId: string) => {
                 )
             }
         })
+        nextUpdated = maxIso(nextUpdated, row.updated_at)
     }
 
     const deleted = await request<DeletedRow[]>('exercises', {
-        query: { select: 'uuid,deleted_at', user_id: `eq.${userId}`, deleted_at: 'not.is.null' },
+        query: {
+            select: 'uuid,deleted_at',
+            user_id: `eq.${userId}`,
+            deleted_at: cursors.exercisesDeleted ? `gt.${cursors.exercisesDeleted}` : 'not.is.null',
+        },
     })
+    let nextDeleted = cursors.exercisesDeleted
     for (const row of deleted) {
         await executeWriteTransaction(async (innerDb) => {
             const local = await innerDb.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
@@ -263,14 +335,31 @@ const pullExercises = async (userId: string) => {
             if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) return
             await innerDb.runAsync('DELETE FROM exercises WHERE uuid = ?', row.uuid)
         })
+        nextDeleted = maxIso(nextDeleted, row.deleted_at)
     }
-}
 
-const pullWorkouts = async (userId: string) => {
-    const remote = await request<RemoteSimpleRow[]>('workouts', {
-        query: { select: '*', user_id: `eq.${userId}`, deleted_at: 'is.null', order: 'updated_at.asc' },
+    setCursors(userId, {
+        ...cursors,
+        exercisesUpdated: nextUpdated,
+        exercisesDeleted: nextDeleted,
     })
 
+    return remote.length + deleted.length
+}
+
+const pullWorkouts = async (userId: string): Promise<number> => {
+    const cursors = getCursors(userId)
+    const remote = await request<RemoteSimpleRow[]>('workouts', {
+        query: {
+            select: '*',
+            user_id: `eq.${userId}`,
+            deleted_at: 'is.null',
+            order: 'updated_at.asc',
+            ...(cursors.workoutsUpdated ? { updated_at: `gt.${cursors.workoutsUpdated}` } : {}),
+        },
+    })
+
+    let nextUpdated = cursors.workoutsUpdated
     for (const row of remote) {
         await executeWriteTransaction(async (db) => {
             const local = await db.getFirstAsync<{ id: number; updated_at: string | null; sync_status: string }>(
@@ -315,11 +404,17 @@ const pullWorkouts = async (userId: string) => {
                 )
             }
         })
+        nextUpdated = maxIso(nextUpdated, row.updated_at)
     }
 
     const deleted = await request<DeletedRow[]>('workouts', {
-        query: { select: 'uuid,deleted_at', user_id: `eq.${userId}`, deleted_at: 'not.is.null' },
+        query: {
+            select: 'uuid,deleted_at',
+            user_id: `eq.${userId}`,
+            deleted_at: cursors.workoutsDeleted ? `gt.${cursors.workoutsDeleted}` : 'not.is.null',
+        },
     })
+    let nextDeleted = cursors.workoutsDeleted
     for (const row of deleted) {
         await executeWriteTransaction(async (db) => {
             const local = await db.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
@@ -331,7 +426,16 @@ const pullWorkouts = async (userId: string) => {
             if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) return
             await db.runAsync('DELETE FROM workouts WHERE uuid = ?', row.uuid)
         })
+        nextDeleted = maxIso(nextDeleted, row.deleted_at)
     }
+
+    setCursors(userId, {
+        ...cursors,
+        workoutsUpdated: nextUpdated,
+        workoutsDeleted: nextDeleted,
+    })
+
+    return remote.length + deleted.length
 }
 
 const toSingleRef = (value: { uuid: string } | { uuid: string }[] | null | undefined) => {
@@ -340,17 +444,21 @@ const toSingleRef = (value: { uuid: string } | { uuid: string }[] | null | undef
     return value
 }
 
-const pullSets = async (userId: string) => {
+const pullSets = async (userId: string): Promise<number> => {
+    const cursors = getCursors(userId)
     const remote = await request<RemoteSetWithRefs[]>('sets', {
         query: {
             select: 'uuid,user_id,weight,reps,distance,duration,rpe,position,sub_sets,created_at,updated_at,deleted_at,workouts(uuid),exercises(uuid)',
             user_id: `eq.${userId}`,
             deleted_at: 'is.null',
             order: 'updated_at.asc',
+            ...(cursors.setsUpdated ? { updated_at: `gt.${cursors.setsUpdated}` } : {}),
         },
     })
 
+    let nextUpdated = cursors.setsUpdated
     for (const row of remote) {
+        nextUpdated = maxIso(nextUpdated, row.updated_at)
         const workoutUuid = toSingleRef(row.workouts)?.uuid
         const exerciseUuid = toSingleRef(row.exercises)?.uuid
         if (!workoutUuid || !exerciseUuid) continue
@@ -415,8 +523,13 @@ const pullSets = async (userId: string) => {
     }
 
     const deleted = await request<DeletedRow[]>('sets', {
-        query: { select: 'uuid,deleted_at', user_id: `eq.${userId}`, deleted_at: 'not.is.null' },
+        query: {
+            select: 'uuid,deleted_at',
+            user_id: `eq.${userId}`,
+            deleted_at: cursors.setsDeleted ? `gt.${cursors.setsDeleted}` : 'not.is.null',
+        },
     })
+    let nextDeleted = cursors.setsDeleted
     for (const row of deleted) {
         await executeWriteTransaction(async (db) => {
             const local = await db.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
@@ -428,7 +541,16 @@ const pullSets = async (userId: string) => {
             if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) return
             await db.runAsync('DELETE FROM sets WHERE uuid = ?', row.uuid)
         })
+        nextDeleted = maxIso(nextDeleted, row.deleted_at)
     }
+
+    setCursors(userId, {
+        ...cursors,
+        setsUpdated: nextUpdated,
+        setsDeleted: nextDeleted,
+    })
+
+    return remote.length + deleted.length
 }
 
 const livePrincipalFromSession = (): LivePrincipal => {
@@ -436,43 +558,61 @@ const livePrincipalFromSession = (): LivePrincipal => {
     return { userId: session?.userId ?? null, remote: shouldUseRemoteSync() }
 }
 
-export const runSync = async () => {
-    if (!shouldUseRemoteSync()) return
+export const runSync = async (): Promise<SyncCycleResult> => {
+    if (!shouldUseRemoteSync()) return IDLE_RESULT
     const live = livePrincipalFromSession()
     const config = getSupabaseConfig()
-    if (!config || !live.userId) return
+    if (!config || !live.userId) return IDLE_RESULT
 
     const snapshot = capturePrincipalSnapshot(live)
-    if (snapshot.mode !== 'account' || !snapshot.userId) return
+    if (snapshot.mode !== 'account' || !snapshot.userId) return IDLE_RESULT
 
     if (currentRun) return currentRun
-    currentRun = (async () => {
+    currentRun = (async (): Promise<SyncCycleResult> => {
         const startedAt = nowIso()
         syncStatusStore.set({ kind: 'running' })
         await updateSyncState({ is_syncing: 1, last_attempt_at: startedAt, last_error: null })
 
         try {
             const db = await getDb()
-            const outbox = createOutbox(db, executeWriteTransaction)
-            const adapter = createSupabaseHttpAdapter()
-            const writer = createRemoteWriter(adapter)
-            const resolver = createRemoteIdResolver(adapter)
-            const { aborted, failed, failures } = await drainOutbox(
-                outbox,
-                snapshot,
-                makePushFn(snapshot, writer, resolver),
-                livePrincipalFromSession,
-                (batch) => preloadSetParents(resolver, batch)
-            )
+            // Short-circuit the push half of the cycle when the outbox is
+            // empty. Avoids creating the adapter, resolver, and write
+            // transactions for `drainOutbox` — the cheap exit path described
+            // in issue #26.
+            const outboxSizeBefore = await getOutboxSize(snapshot.userId as string)
+            let aborted = false
+            let failed = 0
+            let failures: CycleResult['failures'] = []
+            let pushed = 0
 
+            if (outboxSizeBefore > 0) {
+                const outbox = createOutbox(db, executeWriteTransaction)
+                const adapter = createSupabaseHttpAdapter()
+                const writer = createRemoteWriter(adapter)
+                const resolver = createRemoteIdResolver(adapter)
+                const result = await drainOutbox(
+                    outbox,
+                    snapshot,
+                    makePushFn(snapshot, writer, resolver),
+                    livePrincipalFromSession,
+                    (batch) => preloadSetParents(resolver, batch)
+                )
+                aborted = result.aborted
+                failed = result.failed
+                failures = result.failures
+                pushed = result.acked
+            }
+
+            let pulled = 0
             if (!aborted) {
-                await pullExercises(snapshot.userId as string)
+                const exPulled = await pullExercises(snapshot.userId as string)
                 // Sync pull writes exercises directly via raw SQL, bypassing
                 // the cached repository wrapper. Invalidate explicitly so the
                 // next read reflects server changes.
-                invalidateExercisesCache()
-                await pullWorkouts(snapshot.userId as string)
-                await pullSets(snapshot.userId as string)
+                if (exPulled > 0) invalidateExercisesCache()
+                const wkPulled = await pullWorkouts(snapshot.userId as string)
+                const stPulled = await pullSets(snapshot.userId as string)
+                pulled = exPulled + wkPulled + stPulled
             }
 
             if (failed > 0 || aborted) {
@@ -497,7 +637,7 @@ export const runSync = async () => {
                         ? 'Sync aborted: principal changed mid-cycle.'
                         : `Sync completed with ${failed} failed push operations.`,
                 })
-                return
+                return { skipped: false, pushed, pulled, failed, aborted }
             }
 
             syncStatusStore.set({ kind: 'idle' })
@@ -507,6 +647,7 @@ export const runSync = async () => {
                 last_success_at: nowIso(),
                 last_error: null,
             })
+            return { skipped: false, pushed, pulled, failed: 0, aborted: false }
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error)
             syncStatusStore.set({
@@ -519,6 +660,7 @@ export const runSync = async () => {
                 outbox_size: await getOutboxSize(snapshot.userId as string),
                 last_error: message,
             })
+            return { skipped: false, pushed: 0, pulled: 0, failed: 1, aborted: false }
         } finally {
             currentRun = null
         }
