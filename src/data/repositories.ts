@@ -1,5 +1,6 @@
 import { Exercise, ExerciseRepository } from '@/src/db/exercises'
 import { SetData, SetWithExerciseName, Workout, WorkoutRepository } from '@/src/db/workouts'
+import { createCachedExerciseRepository } from '@/src/data/exercisesCache'
 
 export interface ExerciseRepositoryPort {
     getAll: () => Promise<Exercise[]>
@@ -36,7 +37,7 @@ export interface DataRepositories {
 }
 
 const localRepositories: DataRepositories = {
-    exercises: ExerciseRepository,
+    exercises: createCachedExerciseRepository(ExerciseRepository),
     workouts: WorkoutRepository,
 }
 
