@@ -12,8 +12,22 @@ let principalState: PrincipalState = {
     userId: null,
 }
 
+type PrincipalChangeListener = (next: PrincipalState, previous: PrincipalState) => void
+
+const principalChangeListeners = new Set<PrincipalChangeListener>()
+
+export const onPrincipalChange = (listener: PrincipalChangeListener): (() => void) => {
+    principalChangeListeners.add(listener)
+    return () => {
+        principalChangeListeners.delete(listener)
+    }
+}
+
 export const setActivePrincipal = (next: PrincipalState) => {
+    const previous = principalState
     principalState = next
+    if (previous.mode === next.mode && previous.userId === next.userId) return
+    for (const listener of principalChangeListeners) listener(next, previous)
 }
 
 export const getActivePrincipal = (): PrincipalState => principalState
