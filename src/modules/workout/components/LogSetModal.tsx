@@ -11,10 +11,11 @@ import { useTranslation } from 'react-i18next'
 import {
     ActivityIndicator,
     Dimensions,
+    FlatList,
     Keyboard,
+    type ListRenderItem,
     Modal,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -116,23 +117,76 @@ export const LogSetModal = ({
         transform: [{ translateY: sheetOffset.value - keyboardInset.value }],
     }))
 
-    const addSubSet = () => {
+    // Stable identity-based keys for sub-set rows. Keys live alongside `subSets`
+    // (which is owned by the parent) so that adding/removing in the middle of the
+    // list does not move TextInput focus to a neighbouring row.
+    const keyCounter = React.useRef(0)
+    const generateKey = React.useCallback(() => {
+        keyCounter.current += 1
+        return `subset-${keyCounter.current}`
+    }, [])
+    const [subSetKeys, setSubSetKeys] = React.useState<string[]>(() => subSets.map(() => generateKey()))
+
+    // Resync keys when the externally-owned `subSets` length changes from outside
+    // (modal opened for edit, reset on save). Internal add/remove keep keys in
+    // step with subSets eagerly, so we only need to top-up / truncate here.
+    React.useEffect(() => {
+        setSubSetKeys((prev) => {
+            if (prev.length === subSets.length) return prev
+            if (prev.length < subSets.length) {
+                const next = prev.slice()
+                while (next.length < subSets.length) next.push(generateKey())
+                return next
+            }
+            return prev.slice(0, subSets.length)
+        })
+    }, [subSets.length, generateKey])
+
+    const addSubSet = React.useCallback(() => {
+        const newKey = generateKey()
+        setSubSetKeys((prev) => [...prev, newKey])
         setSubSets((prev) => [...prev, { weight: 0, reps: 0 }])
         setIsExpanded(true)
-    }
+    }, [generateKey, setSubSets])
 
-    const updateSubSet = (index: number, field: keyof SubSet, value: string) => {
-        const num = parseFloat(value.replace(',', '.')) || 0
-        setSubSets((prev) => {
-            const next = [...prev]
-            next[index] = { ...next[index], [field]: num }
-            return next
-        })
-    }
+    const updateSubSet = React.useCallback(
+        (index: number, field: keyof SubSet, value: string) => {
+            const num = parseFloat(value.replace(',', '.')) || 0
+            setSubSets((prev) => {
+                const next = [...prev]
+                next[index] = { ...next[index], [field]: num }
+                return next
+            })
+        },
+        [setSubSets],
+    )
 
-    const removeSubSet = (index: number) => {
-        setSubSets((prev) => prev.filter((_, i) => i !== index))
-    }
+    const removeSubSet = React.useCallback(
+        (index: number) => {
+            setSubSetKeys((prev) => prev.filter((_, i) => i !== index))
+            setSubSets((prev) => prev.filter((_, i) => i !== index))
+        },
+        [setSubSets],
+    )
+
+    const subSetItems = React.useMemo(
+        () => subSets.map((subSet, idx) => ({ key: subSetKeys[idx] ?? `subset-fallback-${idx}`, subSet, index: idx })),
+        [subSets, subSetKeys],
+    )
+
+    const renderSubSetRow: ListRenderItem<{ key: string; subSet: SubSet; index: number }> = React.useCallback(
+        ({ item }) => (
+            <SubSetRow
+                index={item.index}
+                subSet={item.subSet}
+                theme={theme}
+                t={t}
+                onChange={updateSubSet}
+                onRemove={removeSubSet}
+            />
+        ),
+        [theme, t, updateSubSet, removeSubSet],
+    )
 
     return (
         <Modal animationType={'none'} transparent visible={visible} onRequestClose={onClose}>
@@ -210,13 +264,16 @@ export const LogSetModal = ({
                                                     entering={FadeIn.duration(160)}
                                                     style={styles.pyramidListWrap}
                                                 >
-                                                    <ScrollView
+                                                    <FlatList
+                                                        data={subSetItems}
+                                                        keyExtractor={(item) => item.key}
+                                                        renderItem={renderSubSetRow}
                                                         style={[styles.pyramidList, { backgroundColor: theme.background }]}
-                                                        contentContainerStyle={subSets.length === 0 ? styles.emptySubsetsContainer : undefined}
+                                                        contentContainerStyle={subSetItems.length === 0 ? styles.emptySubsetsContainer : undefined}
                                                         keyboardShouldPersistTaps={'handled'}
                                                         showsVerticalScrollIndicator
-                                                    >
-                                                        {subSets.length === 0 ? (
+                                                        removeClippedSubviews={false}
+                                                        ListEmptyComponent={(
                                                             <View style={styles.emptySubsets}>
                                                                 <FontAwesome
                                                                     name={'list'}
@@ -226,54 +283,8 @@ export const LogSetModal = ({
                                                                 />
                                                                 <Text style={[styles.emptySubsetsText, { color: theme.textSecondary }]}>{t('noDropSets')}</Text>
                                                             </View>
-                                                        ) : (
-                                                            subSets.map((subSet, idx) => (
-                                                                <View key={idx} style={[styles.subSetRow, { borderBottomColor: theme.inputBackground }]}>
-                                                                    <View style={styles.subSetIndexContainer}>
-                                                                        <Text style={[styles.subSetIndex, { color: theme.textSecondary }]}>#{idx + 1}</Text>
-                                                                    </View>
-
-                                                                    <View style={styles.subSetInputGroup}>
-                                                                        <TextInput
-                                                                            style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.inputBackground }]}
-                                                                            keyboardType={'numeric'}
-                                                                            multiline={false}
-                                                                            numberOfLines={1}
-                                                                            placeholder={t('weight').toLowerCase()}
-                                                                            placeholderTextColor={theme.textSecondary}
-                                                                            defaultValue={subSet.weight && subSet.weight > 0 ? subSet.weight.toString() : ''}
-                                                                            onChangeText={(value) => updateSubSet(idx, 'weight', value)}
-                                                                            underlineColorAndroid={'transparent'}
-                                                                            selectionColor={theme.primary}
-                                                                            scrollEnabled={false}
-                                                                            returnKeyType={'next'}
-                                                                            accessibilityLabel={`${t('drop')} ${idx + 1} ${t('weight')}`}
-                                                                        />
-                                                                        <Text style={[styles.subSetX, { color: theme.textSecondary }]}>×</Text>
-                                                                        <TextInput
-                                                                            style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.inputBackground }]}
-                                                                            keyboardType={'numeric'}
-                                                                            multiline={false}
-                                                                            numberOfLines={1}
-                                                                            placeholder={t('reps').toLowerCase()}
-                                                                            placeholderTextColor={theme.textSecondary}
-                                                                            defaultValue={subSet.reps && subSet.reps > 0 ? subSet.reps.toString() : ''}
-                                                                            onChangeText={(value) => updateSubSet(idx, 'reps', value)}
-                                                                            underlineColorAndroid={'transparent'}
-                                                                            selectionColor={theme.primary}
-                                                                            scrollEnabled={false}
-                                                                            returnKeyType={'done'}
-                                                                            accessibilityLabel={`${t('drop')} ${idx + 1} ${t('reps')}`}
-                                                                        />
-                                                                    </View>
-
-                                                                    <TouchableOpacity onPress={() => removeSubSet(idx)} style={styles.removeSubSet}>
-                                                                        <FontAwesome name={'minus-circle'} size={18} color={theme.error} />
-                                                                    </TouchableOpacity>
-                                                                </View>
-                                                            ))
                                                         )}
-                                                    </ScrollView>
+                                                    />
                                                 </Animated.View>
                                             )}
                                         </Animated.View>
@@ -327,6 +338,67 @@ export const LogSetModal = ({
         </Modal>
     )
 }
+
+type SubSetRowProps = {
+    index: number
+    subSet: SubSet
+    theme: ReturnType<typeof useTheme>['theme']
+    t: ReturnType<typeof useTranslation>['t']
+    onChange: (index: number, field: keyof SubSet, value: string) => void
+    onRemove: (index: number) => void
+}
+
+const SubSetRow = React.memo(function SubSetRow({ index, subSet, theme, t, onChange, onRemove }: SubSetRowProps) {
+    const handleWeightChange = React.useCallback((value: string) => onChange(index, 'weight', value), [index, onChange])
+    const handleRepsChange = React.useCallback((value: string) => onChange(index, 'reps', value), [index, onChange])
+    const handleRemove = React.useCallback(() => onRemove(index), [index, onRemove])
+
+    return (
+        <View style={[styles.subSetRow, { borderBottomColor: theme.inputBackground }]}>
+            <View style={styles.subSetIndexContainer}>
+                <Text style={[styles.subSetIndex, { color: theme.textSecondary }]}>#{index + 1}</Text>
+            </View>
+
+            <View style={styles.subSetInputGroup}>
+                <TextInput
+                    style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.inputBackground }]}
+                    keyboardType={'numeric'}
+                    multiline={false}
+                    numberOfLines={1}
+                    placeholder={t('weight').toLowerCase()}
+                    placeholderTextColor={theme.textSecondary}
+                    defaultValue={subSet.weight && subSet.weight > 0 ? subSet.weight.toString() : ''}
+                    onChangeText={handleWeightChange}
+                    underlineColorAndroid={'transparent'}
+                    selectionColor={theme.primary}
+                    scrollEnabled={false}
+                    returnKeyType={'next'}
+                    accessibilityLabel={`${t('drop')} ${index + 1} ${t('weight')}`}
+                />
+                <Text style={[styles.subSetX, { color: theme.textSecondary }]}>×</Text>
+                <TextInput
+                    style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.inputBackground }]}
+                    keyboardType={'numeric'}
+                    multiline={false}
+                    numberOfLines={1}
+                    placeholder={t('reps').toLowerCase()}
+                    placeholderTextColor={theme.textSecondary}
+                    defaultValue={subSet.reps && subSet.reps > 0 ? subSet.reps.toString() : ''}
+                    onChangeText={handleRepsChange}
+                    underlineColorAndroid={'transparent'}
+                    selectionColor={theme.primary}
+                    scrollEnabled={false}
+                    returnKeyType={'done'}
+                    accessibilityLabel={`${t('drop')} ${index + 1} ${t('reps')}`}
+                />
+            </View>
+
+            <TouchableOpacity onPress={handleRemove} style={styles.removeSubSet}>
+                <FontAwesome name={'minus-circle'} size={18} color={theme.error} />
+            </TouchableOpacity>
+        </View>
+    )
+})
 
 const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { selectedExercise?: Exercise; inputValues: Props['inputValues']; updateInput: Props['updateInput'] }) => {
     const { t } = useTranslation()
