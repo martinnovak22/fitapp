@@ -2,17 +2,15 @@ import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { getRepositories } from '@/src/data/repositories'
 import { ExerciseType } from '@/src/db/exercises'
-import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
-import { ScreenHeader } from '@/src/modules/core/components/ScreenHeader'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as ImagePicker from 'expo-image-picker'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
@@ -28,6 +26,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     const { exercises: exerciseRepo } = getRepositories()
     const { t } = useTranslation()
     const { theme } = useTheme()
+    const navigation = useNavigation()
     const { id } = useLocalSearchParams<{ id?: string }>()
     const resolvedExerciseId = exerciseId ?? (id ? Number(id) : undefined)
     const isEditing = mode === 'edit' || resolvedExerciseId !== undefined
@@ -105,7 +104,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
         return dest
     }
 
-    const handleSave = async () => {
+    const handleSave = useCallback(async () => {
         if (!name.trim()) {
             setNameError(t('enterName'))
             nameInputRef.current?.focus()
@@ -151,9 +150,9 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [name, muscle, type, photoUri, isEditing, resolvedExerciseId, exerciseRepo, t])
 
-    const handleDelete = () => {
+    const handleDelete = useCallback(() => {
         showToast.confirm({
             title: t('deleteExerciseTitle'),
             message: t('deleteExerciseWarning'),
@@ -173,17 +172,54 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                 },
             },
         })
-    }
+    }, [resolvedExerciseId, exerciseRepo, t])
+
+    const canSave = name.trim().length > 0 && !isLoading
+    useFocusEffect(
+        useCallback(() => {
+            navigation.getParent()?.setOptions({
+                headerTitle: t('exerciseTitle'),
+                headerLeft: () => (
+                    <TouchableOpacity
+                        onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/exercises'))}
+                        style={styles.headerBack}
+                        accessibilityRole={'button'}
+                        accessibilityLabel={t('back')}
+                        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                    >
+                        <FontAwesome name={'chevron-left'} size={20} color={theme.text} />
+                    </TouchableOpacity>
+                ),
+                headerRight: () => (
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity
+                            onPress={handleSave}
+                            disabled={!canSave}
+                            style={!canSave && styles.headerButtonDisabled}
+                            accessibilityRole={'button'}
+                            accessibilityLabel={isLoading ? t('saving') : t('save')}
+                            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                        >
+                            <FontAwesome name={'check'} size={20} color={theme.primary} />
+                        </TouchableOpacity>
+                        {isEditing && (
+                            <TouchableOpacity
+                                onPress={handleDelete}
+                                accessibilityRole={'button'}
+                                accessibilityLabel={t('delete')}
+                                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                            >
+                                <FontAwesome name={'trash'} size={20} color={theme.error} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                ),
+            })
+        }, [navigation, isEditing, theme, t, handleDelete, handleSave, canSave, isLoading])
+    )
 
     return (
-        <ScrollScreenLayout
-            fixedHeader={
-                <ScreenHeader
-                    title={isEditing ? t('editExercise') : t('addExercise')}
-                    onDelete={isEditing ? handleDelete : undefined}
-                />
-            }
-        >
+        <ScrollScreenLayout>
             <Card style={{ padding: 0, overflow: 'hidden' }}>
                 <Animated.View layout={LinearTransition.duration(300)} style={{ padding: Spacing.md }}>
                     <Typography.Subtitle style={{ marginBottom: Spacing.md }}>
@@ -395,17 +431,6 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                             </TouchableOpacity>
                         )}
                     </Animated.View>
-
-                    <Animated.View layout={LinearTransition.duration(300)}>
-                        <Button
-                            label={isLoading ? t('loading') : isEditing ? t('saveChanges') : t('createExercise')}
-                            onPress={handleSave}
-                            isLoading={isLoading}
-                            disabled={!name.trim()}
-                            style={{ marginTop: Spacing.lg }}
-                            accessibilityLabel={isEditing ? t('saveChanges') : t('createExercise')}
-                        />
-                    </Animated.View>
                 </Animated.View>
                 {photoUri && (
                     <FullScreenImageModal
@@ -507,5 +532,21 @@ const styles = StyleSheet.create({
     },
     subToggleTextActive: {
         fontWeight: 'bold',
+    },
+    headerBack: {
+        paddingLeft: Spacing.md,
+        paddingRight: Spacing.sm,
+        minWidth: 44,
+        minHeight: 44,
+        justifyContent: 'center',
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        marginRight: Spacing.md,
+    },
+    headerButtonDisabled: {
+        opacity: 0.4,
     },
 })

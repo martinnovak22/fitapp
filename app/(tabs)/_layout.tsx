@@ -54,12 +54,6 @@ export default function TabLayout() {
             />
             <Tabs.Screen
                 name="history"
-                listeners={({ navigation }) => ({
-                    tabPress: (e) => {
-                        e.preventDefault()
-                        navigation.navigate('history', { screen: 'index' })
-                    },
-                })}
                 options={{
                     title: t('history'),
                     tabBarIcon: ({ color }) => <TabBarIcon name="history" color={color} />,
