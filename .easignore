@@ -1,0 +1,54 @@
+# Mirrors .gitignore but keeps .env so EAS local builds can read EXPO_PUBLIC_* vars.
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files (keep .env — needed for EXPO_PUBLIC_* at bundle time)
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+.yarn/install-state.gz
+.yarn/cache
+.yarn/unplugged
+.vscode
+.idea
+
+build*
+
+imports/
+*apk
+
+.claude/scheduled_tasks.lock
