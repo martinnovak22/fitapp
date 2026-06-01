@@ -18,6 +18,9 @@ export const Colors = {
         inputBackgroundActive: 'rgba(255,255,255,0.1)',
         overlayScrim: 'rgba(0,0,0,0.8)',
         overlayBackdrop: 'rgba(0,0,0,0.85)',
+        overlayScrimLight: 'rgba(0,0,0,0.4)',
+        overlayChip: 'rgba(0,0,0,0.6)',
+        hairline: 'rgba(255,255,255,0.08)',
     },
     light: {
         background: '#F8F9FA',
@@ -38,6 +41,9 @@ export const Colors = {
         inputBackgroundActive: 'rgba(0,0,0,0.1)',
         overlayScrim: 'rgba(0,0,0,0.8)',
         overlayBackdrop: 'rgba(0,0,0,0.85)',
+        overlayScrimLight: 'rgba(0,0,0,0.4)',
+        overlayChip: 'rgba(0,0,0,0.6)',
+        hairline: 'rgba(255,255,255,0.08)',
     },
 }
 
