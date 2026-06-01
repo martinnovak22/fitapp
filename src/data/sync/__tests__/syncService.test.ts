@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestDb, getTestDb, resetTestDb, useTestDb, type TestDb } from '@/src/test/setupTestDb'
+import { setActivePrincipal } from '@/src/data/principal'
 
 vi.mock('@/src/db/client', () => ({
     getDb: async () => getTestDb(),
@@ -99,5 +100,51 @@ describe('runSync — issue #26 cheap-exit and cursor', () => {
             (c) => c.url.includes('/exercises?') && c.url.includes('deleted_at=is.null')
         )
         expect(exercisesPull?.url).toContain('updated_at=gt.2026-02-01T00%3A00%3A00Z')
+    })
+
+    it('clears the pull cursor on a principal change so the next pull starts from scratch', async () => {
+        let exCallCount = 0
+        mockFetch((call) => {
+            if (call.url.includes('/exercises?') && call.method === 'GET' && !call.url.includes('deleted_at=not')) {
+                exCallCount += 1
+                if (exCallCount === 1) {
+                    return {
+                        body: [
+                            {
+                                uuid: 'ex-a',
+                                user_id: userId,
+                                name: 'Bench',
+                                type: 'weight',
+                                muscle_group: null,
+                                photo_uri: null,
+                                position: 0,
+                                created_at: '2026-02-01T00:00:00Z',
+                                updated_at: '2026-02-01T00:00:00Z',
+                                deleted_at: null,
+                            },
+                        ],
+                    }
+                }
+            }
+            return { body: [] }
+        })
+
+        // First cycle advances the cursor to 2026-02-01.
+        await runSync()
+
+        // A principal transition (here, an account switch) must wipe the
+        // in-memory cursor so the following cycle re-pulls from the beginning
+        // rather than skipping rows behind the stale watermark.
+        setActivePrincipal({ mode: 'account', userId: 'user-2' })
+
+        const callsBefore = fetchCalls.length
+        await runSync()
+
+        const secondCycleCalls = fetchCalls.slice(callsBefore)
+        const exercisesPull = secondCycleCalls.find(
+            (c) => c.url.includes('/exercises?') && c.url.includes('deleted_at=is.null')
+        )
+        expect(exercisesPull).toBeDefined()
+        expect(exercisesPull?.url).not.toContain('updated_at=gt')
     })
 })
