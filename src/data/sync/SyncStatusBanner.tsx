@@ -1,7 +1,8 @@
 import { Radius } from '@/src/constants/Radius'
+import { Button } from '@/src/modules/core/components/Button'
 import { Typography } from '@/src/modules/core/components/Typography'
 import React, { useCallback } from 'react'
-import { Pressable, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { useSync } from './SyncProvider'
 
 export const SyncStatusBanner: React.FC = () => {
@@ -25,16 +26,15 @@ export const SyncStatusBanner: React.FC = () => {
             <Typography.Label size="xs" style={styles.message} numberOfLines={2}>
                 {summary}
             </Typography.Label>
-            <Pressable
+            <Button
+                label="Retry"
                 onPress={handleRetry}
-                accessibilityRole="button"
                 accessibilityLabel="Retry sync"
+                variant="text"
+                size="sm"
                 style={styles.retry}
-            >
-                <Typography.Label size="xs" weight="semibold" style={styles.retryText}>
-                    Retry
-                </Typography.Label>
-            </Pressable>
+                labelStyle={styles.retryText}
+            />
         </View>
     )
 }

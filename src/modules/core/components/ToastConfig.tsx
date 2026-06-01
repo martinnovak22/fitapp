@@ -5,8 +5,9 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import i18n from '@/src/modules/core/utils/i18n'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React, { ComponentProps } from 'react'
-import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import Toast, { ToastConfig, ToastConfigParams } from 'react-native-toast-message'
+import { Button } from './Button'
 import { Typography } from './Typography'
 
 export type ToastIcon = ComponentProps<typeof FontAwesome>['name']
@@ -57,24 +58,22 @@ const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action, cance
                 <View style={[styles.actionRow, { borderTopColor: theme.border + '15' }]}>
                     <View style={styles.buttonContainer}>
                         {cancelAction && (
-                            <TouchableOpacity
-                                style={[styles.actionButton, styles.cancelButton, { backgroundColor: 'transparent' }]}
+                            <Button
+                                label={cancelAction.label}
                                 onPress={cancelAction.onPress}
-                            >
-                                <Typography.Meta style={[styles.cancelText, { color: theme.textSecondary }]}>
-                                    {cancelAction.label}
-                                </Typography.Meta>
-                            </TouchableOpacity>
+                                variant="text"
+                                size="sm"
+                                labelStyle={[styles.cancelText, { color: theme.textSecondary }]}
+                            />
                         )}
                         {action && (
-                            <TouchableOpacity
-                                style={[styles.actionButton, { backgroundColor: primaryActionColor + '20' }]}
+                            <Button
+                                label={action.label}
                                 onPress={action.onPress}
-                            >
-                                <Typography.Meta style={[styles.actionText, { color: primaryActionColor }]}>
-                                    {action.label}
-                                </Typography.Meta>
-                            </TouchableOpacity>
+                                variant="text"
+                                size="sm"
+                                labelStyle={[styles.actionText, { color: primaryActionColor }]}
+                            />
                         )}
                     </View>
                 </View>
@@ -189,17 +188,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'flex-end',
         alignItems: 'center',
-    },
-    actionButton: {
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.md,
-        borderRadius: Radius.sm,
-        marginLeft: Spacing.sm,
-    },
-
-    cancelButton: {
-        backgroundColor: 'transparent',
-        paddingHorizontal: Spacing.sm,
+        gap: Spacing.sm,
     },
     actionText: {
         fontWeight: FontWeight.bold,
