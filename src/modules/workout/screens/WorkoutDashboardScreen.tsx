@@ -241,9 +241,7 @@ export default function WorkoutDashboardScreen() {
             <Animated.View entering={FadeInDown.delay(140).duration(360)}>
                 <Card style={[layoutStyles.activeCard, { borderLeftColor: theme.primary }]}>
                     <View style={layoutStyles.activeHeader}>
-                        <Typography.Subtitle
-                            style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text, marginBottom: 0 }}
-                        >
+                        <Typography.Subtitle size="md" weight="bold">
                             {activeWorkout ? t('activeSession') : t('workout')}
                         </Typography.Subtitle>
                         {activeWorkout && (

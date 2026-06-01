@@ -1,7 +1,7 @@
 import { Radius } from '@/src/constants/Radius'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
+import { Typography } from '@/src/modules/core/components/Typography'
 import React, { useCallback } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import { useSync } from './SyncProvider'
 
 export const SyncStatusBanner: React.FC = () => {
@@ -22,16 +22,18 @@ export const SyncStatusBanner: React.FC = () => {
 
     return (
         <View style={styles.banner} accessibilityRole="alert">
-            <Text style={styles.message} numberOfLines={2}>
+            <Typography.Label size="xs" style={styles.message} numberOfLines={2}>
                 {summary}
-            </Text>
+            </Typography.Label>
             <Pressable
                 onPress={handleRetry}
                 accessibilityRole="button"
                 accessibilityLabel="Retry sync"
                 style={styles.retry}
             >
-                <Text style={styles.retryText}>Retry</Text>
+                <Typography.Label size="xs" weight="semibold" style={styles.retryText}>
+                    Retry
+                </Typography.Label>
             </Pressable>
         </View>
     )
@@ -49,8 +51,6 @@ const styles = StyleSheet.create({
     message: {
         flex: 1,
         color: 'white',
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.medium,
     },
     retry: {
         paddingVertical: 6,
@@ -60,7 +60,5 @@ const styles = StyleSheet.create({
     },
     retryText: {
         color: 'white',
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.semibold,
     },
 })

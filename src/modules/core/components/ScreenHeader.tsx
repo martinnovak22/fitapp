@@ -1,11 +1,10 @@
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { GlobalStyles } from '@/src/constants/Styles'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import { Typography } from './Typography'
 import { useTheme } from '../hooks/useTheme'
 
 interface ScreenHeaderProps {
@@ -23,9 +22,9 @@ export const ScreenHeader = ({ title, onDelete, rightAction }: ScreenHeaderProps
     const { t } = useTranslation()
     return (
         <View style={styles.container}>
-            <Text style={[GlobalStyles.title, { color: theme.text, flex: 1, marginBottom: 0 }]} numberOfLines={1}>
+            <Typography.Title style={styles.title} numberOfLines={1}>
                 {title}
-            </Text>
+            </Typography.Title>
 
             <View style={styles.actions}>
                 {rightAction && (
@@ -42,9 +41,9 @@ export const ScreenHeader = ({ title, onDelete, rightAction }: ScreenHeaderProps
                         accessibilityState={rightAction.disabled ? { disabled: true } : undefined}
                         hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                     >
-                        <Text style={[styles.actionText, { color: theme.onPrimary }]} allowFontScaling={true}>
+                        <Typography.Body weight="bold" color="onPrimary">
                             {rightAction.label}
-                        </Text>
+                        </Typography.Body>
                     </TouchableOpacity>
                 )}
 
@@ -72,6 +71,9 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.md,
         gap: Spacing.md,
     },
+    title: {
+        flex: 1,
+    },
     actions: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -93,9 +95,5 @@ const styles = StyleSheet.create({
     },
     disabledAction: {
         opacity: 0.6,
-    },
-    actionText: {
-        fontWeight: FontWeight.bold,
-        fontSize: FontSize.md,
     },
 })

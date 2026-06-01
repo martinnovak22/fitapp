@@ -1,10 +1,9 @@
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { GlobalStyles } from '@/src/constants/Styles'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
-import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native'
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native'
+import { Typography } from './Typography'
 import { useTheme } from '../hooks/useTheme'
 
 interface EmptyStateProps {
@@ -26,8 +25,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ message, subMessage, ico
             ]}
         >
             {icon && <FontAwesome name={icon} size={Spacing.xl2} color={theme.textSecondary} style={styles.icon} />}
-            <Text style={[styles.message, { color: theme.textSecondary }]}>{message}</Text>
-            {subMessage && <Text style={[styles.subMessage, { color: theme.textSecondary }]}>{subMessage}</Text>}
+            <Typography.Body weight="medium" color="textSecondary" style={styles.message}>
+                {message}
+            </Typography.Body>
+            {subMessage && (
+                <Typography.Meta color="textSecondary" style={styles.subMessage}>
+                    {subMessage}
+                </Typography.Meta>
+            )}
         </View>
     )
 }
@@ -45,13 +50,9 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md,
     },
     message: {
-        ...GlobalStyles.text,
         textAlign: 'center',
-        fontWeight: FontWeight.medium,
     },
     subMessage: {
-        ...GlobalStyles.text,
-        fontSize: FontSize.xs,
         textAlign: 'center',
         marginTop: Spacing.xs,
         opacity: 0.7,

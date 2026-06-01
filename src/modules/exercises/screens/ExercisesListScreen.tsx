@@ -2,11 +2,11 @@ import { ThemeType } from '@/src/constants/Colors'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { Exercise } from '@/src/db/exercises'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv'
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
@@ -22,7 +22,6 @@ import {
     Platform,
     Pressable,
     StyleSheet,
-    Text,
     TouchableOpacity,
     View,
 } from 'react-native'
@@ -96,11 +95,13 @@ const ExerciseListItem = React.memo(
                             </View>
                         )}
                         <View style={styles.content}>
-                            <Text style={[GlobalStyles.text, styles.title, { color: theme.text }]}>{item.name}</Text>
-                            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                            <Typography.Body weight="bold" style={styles.title}>
+                                {item.name}
+                            </Typography.Body>
+                            <Typography.Meta style={styles.subtitle}>
                                 {item.muscle_group ? `${formatMuscleGroup(item.muscle_group)} • ` : ''}
                                 {t(formatExerciseType(item.type))}
-                            </Text>
+                            </Typography.Meta>
                         </View>
                     </TouchableOpacity>
 
@@ -230,7 +231,9 @@ export default function ExercisesListScreen() {
             {isReordering && (
                 <View style={styles.reorderOverlay}>
                     <ActivityIndicator size={"small"} color={theme.primary} />
-                    <Text style={[styles.reorderOverlayText, { color: theme.text }]}>{t('saving')}</Text>
+                    <Typography.Meta weight="semibold" color="text">
+                        {t('saving')}
+                    </Typography.Meta>
                 </View>
             )}
             <TouchableOpacity
@@ -253,7 +256,9 @@ export default function ExercisesListScreen() {
                     <View />
                 </Pressable>
                 <View style={[styles.sheetContainer, { backgroundColor: theme.card }]}>
-                    <Text style={[styles.sheetTitle, { color: theme.text }]}>{t('chooseExportAction')}</Text>
+                    <Typography.Body weight="bold" style={styles.sheetTitle}>
+                        {t('chooseExportAction')}
+                    </Typography.Body>
 
                     <TouchableOpacity
                         style={[
@@ -265,7 +270,9 @@ export default function ExercisesListScreen() {
                         accessibilityLabel={t('shareFile')}
                     >
                         <FontAwesome name={'share-alt'} size={18} color={theme.primary} />
-                        <Text style={[styles.sheetActionText, { color: theme.text }]}>{t('shareFile')}</Text>
+                        <Typography.Label weight="semibold" color="text">
+                            {t('shareFile')}
+                        </Typography.Label>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -278,7 +285,9 @@ export default function ExercisesListScreen() {
                         accessibilityLabel={t('saveToPhone')}
                     >
                         <FontAwesome name={'download'} size={18} color={theme.primary} />
-                        <Text style={[styles.sheetActionText, { color: theme.text }]}>{t('saveToPhone')}</Text>
+                        <Typography.Label weight="semibold" color="text">
+                            {t('saveToPhone')}
+                        </Typography.Label>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -287,7 +296,7 @@ export default function ExercisesListScreen() {
                         accessibilityRole={'button'}
                         accessibilityLabel={t('cancel')}
                     >
-                        <Text style={[styles.sheetCancelText, { color: theme.textSecondary }]}>{t('cancel')}</Text>
+                        <Typography.Label weight="semibold">{t('cancel')}</Typography.Label>
                     </TouchableOpacity>
                 </View>
             </Modal>
@@ -298,7 +307,9 @@ export default function ExercisesListScreen() {
                         style={[styles.importOverlayCard, { backgroundColor: theme.card, borderColor: theme.border }]}
                     >
                         <ActivityIndicator size={"large"} color={theme.primary} />
-                        <Text style={[styles.importOverlayText, { color: theme.text }]}>{t('importInProgress')}</Text>
+                        <Typography.Label weight="semibold" color="text" style={styles.importOverlayText}>
+                            {t('importInProgress')}
+                        </Typography.Label>
                     </View>
                 </View>
             </Modal>
@@ -327,12 +338,9 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     title: {
-        fontWeight: FontWeight.bold,
-        fontSize: FontSize.md,
         lineHeight: 20,
     },
     subtitle: {
-        fontSize: FontSize.xs,
         lineHeight: 18,
     },
     thumbnail: {
@@ -363,8 +371,6 @@ const styles = StyleSheet.create({
         borderTopRightRadius: Radius.lg,
     },
     sheetTitle: {
-        fontSize: FontSize.md,
-        fontWeight: FontWeight.bold,
         marginBottom: Spacing.md,
     },
     sheetActionButton: {
@@ -377,20 +383,12 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         marginBottom: Spacing.sm,
     },
-    sheetActionText: {
-        fontSize: FontSize.sm,
-        fontWeight: FontWeight.semibold,
-    },
     sheetCancelButton: {
         marginTop: Spacing.xs,
         paddingVertical: Spacing.md,
         alignItems: 'center',
         borderRadius: Radius.md,
         borderWidth: 1,
-    },
-    sheetCancelText: {
-        fontSize: FontSize.sm,
-        fontWeight: FontWeight.semibold,
     },
     importOverlay: {
         flex: 1,
@@ -409,8 +407,6 @@ const styles = StyleSheet.create({
         gap: Spacing.sm,
     },
     importOverlayText: {
-        fontSize: FontSize.sm,
-        fontWeight: FontWeight.semibold,
         textAlign: 'center',
     },
     reorderOverlay: {
@@ -424,9 +420,5 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.sm,
         borderRadius: Radius.pill,
         backgroundColor: '#00000099',
-    },
-    reorderOverlayText: {
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.semibold,
     },
 })

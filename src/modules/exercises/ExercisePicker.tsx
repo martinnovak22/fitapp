@@ -1,12 +1,12 @@
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
 import type { Exercise } from '@/src/db/exercises'
+import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { formatExerciseType } from '@/src/utils/formatters'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { FlatList, type ListRenderItem, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { FlatList, type ListRenderItem, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { ExerciseStats, type HeadlineStat } from './ExerciseStats'
 
 type Props = {
@@ -43,16 +43,16 @@ export const ExercisePicker = ({ exercises, onPick }: Props) => {
                     accessibilityLabel={item.name}
                 >
                     <View style={styles.rowText}>
-                        <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
+                        <Typography.Body weight="semibold" numberOfLines={1}>
                             {item.name}
-                        </Text>
-                        <Text style={[styles.subtext, { color: theme.textSecondary }]} numberOfLines={1}>
+                        </Typography.Body>
+                        <Typography.Meta style={styles.subtext} numberOfLines={1}>
                             {t(formatExerciseType(item.type))}
-                        </Text>
+                        </Typography.Meta>
                     </View>
-                    <Text style={[styles.stat, { color: theme.text }]} numberOfLines={1}>
+                    <Typography.Label weight="bold" color="text" style={styles.stat} numberOfLines={1}>
                         {stat ? stat.formatted : EMPTY_PLACEHOLDER}
-                    </Text>
+                    </Typography.Label>
                 </TouchableOpacity>
             )
         },
@@ -92,17 +92,10 @@ const styles = StyleSheet.create({
         flex: 1,
         minWidth: 0,
     },
-    name: {
-        fontSize: FontSize.md,
-        fontWeight: FontWeight.semibold,
-    },
     subtext: {
-        fontSize: FontSize.xs,
         marginTop: 2,
     },
     stat: {
-        fontSize: FontSize.sm,
-        fontWeight: FontWeight.bold,
         textAlign: 'right',
     },
 })

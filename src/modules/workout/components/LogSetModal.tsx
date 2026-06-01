@@ -202,9 +202,7 @@ export const LogSetModal = ({
                         <View style={[styles.grabber, { backgroundColor: `${theme.textSecondary}66` }]} />
                     </View>
 
-                    <Text style={[GlobalStyles.title, styles.sheetTitle, { color: theme.text }]}>
-                        {editingSetId ? t('editSet') : t('inputSet')}
-                    </Text>
+                    <Typography.Title>{editingSetId ? t('editSet') : t('inputSet')}</Typography.Title>
 
                         <Animated.View layout={UNIFIED_LAYOUT}>
                             {!editingSetId && (
@@ -242,9 +240,9 @@ export const LogSetModal = ({
                                                     style={styles.pyramidTitleContainer}
                                                     activeOpacity={0.7}
                                                 >
-                                                    <Text style={[styles.pyramidTitle, { color: theme.textSecondary }]}>
+                                                    <Typography.Meta weight="heavy" style={styles.pyramidTitle}>
                                                         {t('pyramidSet')} {subSets.length > 0 ? `(${subSets.length})` : ''}
-                                                    </Text>
+                                                    </Typography.Meta>
                                                     <FontAwesome
                                                         name={isExpanded ? 'chevron-up' : 'chevron-down'}
                                                         size={10}
@@ -283,7 +281,7 @@ export const LogSetModal = ({
                                                                     color={theme.textSecondary}
                                                                     style={styles.emptySubsetsIcon}
                                                                 />
-                                                                <Text style={[styles.emptySubsetsText, { color: theme.textSecondary }]}>{t('noDropSets')}</Text>
+                                                                <Typography.Meta weight="semibold" style={styles.emptySubsetsText}>{t('noDropSets')}</Typography.Meta>
                                                             </View>
                                                         )}
                                                     />
@@ -308,7 +306,7 @@ export const LogSetModal = ({
                         <View style={styles.footer}>
                             <View>
                                 <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
-                                    <Text style={[{ color: theme.error }]}>{t('cancel')}</Text>
+                                    <Typography.Body color="error">{t('cancel')}</Typography.Body>
                                 </TouchableOpacity>
                             </View>
 
@@ -358,7 +356,9 @@ const SubSetRow = React.memo(function SubSetRow({ index, subSet, theme, t, onCha
     return (
         <View style={[styles.subSetRow, { borderBottomColor: theme.inputBackground }]}>
             <View style={styles.subSetIndexContainer}>
-                <Text style={[styles.subSetIndex, { color: theme.textSecondary }]}>#{index + 1}</Text>
+                <Typography.Meta weight="bold" style={styles.subSetIndex}>
+                    #{index + 1}
+                </Typography.Meta>
             </View>
 
             <View style={styles.subSetInputGroup}>
@@ -377,7 +377,7 @@ const SubSetRow = React.memo(function SubSetRow({ index, subSet, theme, t, onCha
                     returnKeyType={'next'}
                     accessibilityLabel={`${t('drop')} ${index + 1} ${t('weight')}`}
                 />
-                <Text style={[styles.subSetX, { color: theme.textSecondary }]}>×</Text>
+                <Typography.Meta style={styles.subSetX}>×</Typography.Meta>
                 <TextInput
                     style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.inputBackground }]}
                     keyboardType={'numeric'}
@@ -564,9 +564,6 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: Radius.pill,
     },
-    sheetTitle: {
-        marginBottom: 0,
-    },
     inputsSection: {
         marginTop: Spacing.sm,
     },
@@ -606,8 +603,6 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.xs,
     },
     pyramidTitle: {
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.heavy,
         textTransform: 'uppercase',
     },
     pyramidChevron: {
@@ -642,8 +637,6 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     emptySubsetsText: {
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.semibold,
         opacity: 0.5,
     },
     subSetRow: {
@@ -658,8 +651,6 @@ const styles = StyleSheet.create({
         width: 24,
     },
     subSetIndex: {
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.bold,
         opacity: 0.6,
     },
     subSetInputGroup: {
@@ -679,7 +670,6 @@ const styles = StyleSheet.create({
         includeFontPadding: false,
     },
     subSetX: {
-        fontSize: FontSize.xs,
         opacity: 0.4,
     },
     removeSubSet: {

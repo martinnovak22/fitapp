@@ -1,13 +1,12 @@
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { GlobalStyles } from '@/src/constants/Styles'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { Set as WorkoutSet } from '@/src/db/workouts'
+import { Typography } from '@/src/modules/core/components/Typography'
 import { formatDuration } from '@/src/utils/formatters'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
 import { useTheme } from '../../core/hooks/useTheme'
 import { SET_BASE_HEIGHT, SUBSET_HEIGHT, calculateSetHeight, parseSubSets } from '../workoutUtils'
@@ -75,20 +74,22 @@ function WorkoutSetItemInner<T extends WorkoutSet = WorkoutSet>({
                     accessibilityHint={isReadOnly ? undefined : t('editSet')}
                 >
                     <View style={[styles.mainRow, { height: SET_BASE_HEIGHT }]}>
-                        <Text style={[styles.index, { color: theme.textSecondary }]}>#{index + 1}</Text>
-                        <Text style={[GlobalStyles.text, styles.detailsText, { color: theme.text }]}>
+                        <Typography.Meta weight="bold" style={styles.index}>
+                            #{index + 1}
+                        </Typography.Meta>
+                        <Typography.Label weight="bold" color="text" style={styles.detailsText}>
                             {renderSetDetails(set)}
-                        </Text>
+                        </Typography.Label>
                     </View>
 
                     {set.sub_sets &&
                         parseSubSets(set.sub_sets).map((ss, idx) => (
                             <View key={idx} style={styles.subSetRow}>
                                 <View style={[styles.indentLine, { backgroundColor: theme.primary }]} />
-                                <Text style={[styles.subSetText, { color: theme.textSecondary }]}>
+                                <Typography.Meta weight="semibold">
                                     {t('drop')} {idx + 1}: {ss.weight ?? 0}
                                     {t('kg')} × {ss.reps ?? 0} {t('repsShort')}
-                                </Text>
+                                </Typography.Meta>
                             </View>
                         ))}
                 </TouchableOpacity>
@@ -146,13 +147,9 @@ const styles = StyleSheet.create({
     },
     index: {
         width: 28,
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.bold,
     },
     detailsText: {
         flex: 1,
-        fontSize: FontSize.sm,
-        fontWeight: FontWeight.bold,
     },
     actions: {
         flexDirection: 'row',
@@ -174,9 +171,5 @@ const styles = StyleSheet.create({
         borderRadius: Radius.pill,
         marginRight: Spacing.sm,
         opacity: 0.8,
-    },
-    subSetText: {
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.semibold,
     },
 })

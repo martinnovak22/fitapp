@@ -1,8 +1,9 @@
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
+import { FontWeight } from '@/src/constants/Typography'
 import React from 'react'
-import { ActivityIndicator, StyleProp, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native'
+import { ActivityIndicator, StyleProp, StyleSheet, TextStyle, TouchableOpacity, ViewStyle } from 'react-native'
+import { Typography } from './Typography'
 import { useTheme } from '../hooks/useTheme'
 
 interface ButtonProps {
@@ -72,9 +73,7 @@ export const Button: React.FC<ButtonProps> = ({
             {isLoading ? (
                 <ActivityIndicator color={(labelStyles[1] as { color: string })?.color ?? theme.onPrimary} />
             ) : (
-                <Text style={[labelStyles, labelStyle]} allowFontScaling={true}>
-                    {label}
-                </Text>
+                <Typography.Body style={[labelStyles, labelStyle]}>{label}</Typography.Body>
             )}
         </TouchableOpacity>
     )
@@ -102,7 +101,6 @@ const styles = StyleSheet.create({
     dangerButton: {},
     primaryButtonText: {
         fontWeight: FontWeight.bold,
-        fontSize: FontSize.md,
     },
     secondaryButtonText: {
         fontWeight: FontWeight.semibold,
