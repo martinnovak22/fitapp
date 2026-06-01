@@ -229,7 +229,7 @@ export default function ExercisesListScreen() {
                 />
             )}
             {isReordering && (
-                <View style={styles.reorderOverlay}>
+                <View style={[styles.reorderOverlay, { backgroundColor: theme.overlayChip }]}>
                     <ActivityIndicator size={"small"} color={theme.primary} />
                     <Typography.Meta weight="semibold" color="text">
                         {t('saving')}
@@ -252,7 +252,10 @@ export default function ExercisesListScreen() {
                 animationType="fade"
                 onRequestClose={() => setShowAndroidExportSheet(false)}
             >
-                <Pressable style={styles.sheetBackdrop} onPress={() => setShowAndroidExportSheet(false)}>
+                <Pressable
+                    style={[styles.sheetBackdrop, { backgroundColor: theme.overlayScrimLight }]}
+                    onPress={() => setShowAndroidExportSheet(false)}
+                >
                     <View />
                 </Pressable>
                 <View style={[styles.sheetContainer, { backgroundColor: theme.card }]}>
@@ -286,7 +289,7 @@ export default function ExercisesListScreen() {
             </Modal>
 
             <Modal visible={isImporting} transparent animationType="fade" statusBarTranslucent>
-                <View style={styles.importOverlay}>
+                <View style={[styles.importOverlay, { backgroundColor: theme.overlayScrimLight }]}>
                     <View
                         style={[styles.importOverlayCard, { backgroundColor: theme.card, borderColor: theme.border }]}
                     >
@@ -344,7 +347,6 @@ const styles = StyleSheet.create({
     },
     sheetBackdrop: {
         flex: 1,
-        backgroundColor: '#00000066',
     },
     sheetContainer: {
         paddingHorizontal: Spacing.md,
@@ -365,7 +367,6 @@ const styles = StyleSheet.create({
     },
     importOverlay: {
         flex: 1,
-        backgroundColor: '#00000066',
         justifyContent: 'center',
         alignItems: 'center',
         padding: Spacing.lg,
@@ -392,6 +393,5 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.xs,
         paddingHorizontal: Spacing.sm,
         borderRadius: Radius.pill,
-        backgroundColor: '#00000099',
     },
 })

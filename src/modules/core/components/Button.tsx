@@ -51,7 +51,7 @@ export const Button: React.FC<ButtonProps> = ({
     const getButtonStyle = () => {
         switch (variant) {
             case 'secondary':
-                return [styles.secondaryButton, { backgroundColor: theme.inputBackground, borderColor: theme.border }]
+                return [{ backgroundColor: theme.inputBackground, borderColor: theme.border }]
             case 'outline':
                 return [styles.outlineButton, { borderColor: theme.primary }]
             case 'danger':
@@ -59,7 +59,7 @@ export const Button: React.FC<ButtonProps> = ({
             case 'text':
                 return [styles.textButton]
             default:
-                return [styles.primaryButton, { backgroundColor: theme.primary }]
+                return [{ backgroundColor: theme.primary, borderColor: theme.hairline }]
         }
     }
 
@@ -140,12 +140,6 @@ const styles = StyleSheet.create({
     iconOnly: {
         padding: Spacing.sm,
         borderRadius: Radius.sm,
-    },
-    primaryButton: {
-        borderColor: 'rgba(255,255,255,0.08)',
-    },
-    secondaryButton: {
-        borderColor: 'rgba(255,255,255,0.1)',
     },
     outlineButton: {
         backgroundColor: 'transparent',
