@@ -1,5 +1,6 @@
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
+import { FontWeight } from '@/src/constants/Typography'
 import {
     EMAIL_CONFIRMATION_REQUIRED_CODE,
     SupabaseAuthError,
@@ -21,7 +22,6 @@ import { router, useLocalSearchParams } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-    ActivityIndicator,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
@@ -285,30 +285,16 @@ export default function LoginScreen() {
                                 </View>
 
                                 <Animated.View entering={FadeInDown.delay(80).duration(220)}>
-                                    <Pressable
+                                    <Button
+                                        label={t('continueWithGoogle')}
+                                        leftIcon={'google'}
+                                        variant={'secondary'}
                                         onPress={submitGoogle}
+                                        isLoading={isGoogleSubmitting}
                                         disabled={isSubmitting || isGoogleSubmitting}
-                                        accessibilityRole={'button'}
-                                        accessibilityLabel={t('continueWithGoogle')}
-                                        style={[
-                                            styles.googleButton,
-                                            {
-                                                borderColor: theme.border,
-                                                backgroundColor: theme.inputBackground,
-                                            },
-                                            (isSubmitting || isGoogleSubmitting) && styles.googleButtonDisabled,
-                                        ]}
-                                    >
-                                        <View style={styles.googleButtonInner}>
-                                            <FontAwesome name={'google'} size={18} color={theme.text} />
-                                            <Typography.Body weight={'bold'}>
-                                                {t('continueWithGoogle')}
-                                            </Typography.Body>
-                                        </View>
-                                        {isGoogleSubmitting ? (
-                                            <ActivityIndicator size={'small'} color={theme.textSecondary} />
-                                        ) : null}
-                                    </Pressable>
+                                        labelStyle={styles.googleButtonText}
+                                        style={styles.googleButton}
+                                    />
                                 </Animated.View>
 
                                 <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
@@ -509,29 +495,27 @@ export default function LoginScreen() {
                                 <Animated.View entering={FadeInDown.delay(200).duration(220)}>
                                     <View style={styles.switchRow}>
                                         {isRemoteDataMode() ? (
-                                            <Pressable
+                                            <Button
+                                                label={t('continueAsGuest')}
                                                 onPress={async () => {
                                                     await continueAsGuest()
                                                     router.replace('/landing')
                                                 }}
-                                                hitSlop={8}
-                                            >
-                                                <Typography.Body color={'primary'} weight={'bold'}>
-                                                    {t('continueAsGuest')}
-                                                </Typography.Body>
-                                            </Pressable>
+                                                variant={'text'}
+                                                size={'sm'}
+                                                labelStyle={styles.switchButtonText}
+                                            />
                                         ) : null}
-                                        <Pressable
+                                        <Button
+                                            label={t(isSignUp ? 'signIn' : 'signUp')}
                                             onPress={() => {
                                                 setMode(isSignUp ? 'signin' : 'signup')
                                                 setErrorMessage(null)
                                             }}
-                                            hitSlop={8}
-                                        >
-                                            <Typography.Body color={'primary'} weight={'bold'}>
-                                                {t(isSignUp ? 'signIn' : 'signUp')}
-                                            </Typography.Body>
-                                        </Pressable>
+                                            variant={'text'}
+                                            size={'sm'}
+                                            labelStyle={styles.switchButtonText}
+                                        />
                                     </View>
                                 </Animated.View>
                             </Card>
@@ -578,24 +562,14 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     googleButton: {
-        borderWidth: 1,
-        borderRadius: Radius.sm,
         minHeight: 48,
-        paddingHorizontal: Spacing.md,
         marginBottom: Spacing.md,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
     },
-    googleButtonInner: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: Spacing.sm,
+    googleButtonText: {
+        fontWeight: FontWeight.bold,
     },
-    googleButtonDisabled: {
-        opacity: 0.5,
+    switchButtonText: {
+        fontWeight: FontWeight.bold,
     },
     dividerRow: {
         marginBottom: Spacing.sm,
