@@ -1,12 +1,17 @@
 import { Radius } from '@/src/constants/Radius'
+import { Spacing } from '@/src/constants/Spacing'
 import { Button } from '@/src/modules/core/components/Button'
 import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import React, { useCallback } from 'react'
 import { StyleSheet, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useSync } from './SyncProvider'
 
 export const SyncStatusBanner: React.FC = () => {
     const { status, triggerSync } = useSync()
+    const { theme } = useTheme()
+    const insets = useSafeAreaInsets()
     const observable = status.observable
 
     const handleRetry = useCallback(() => {
@@ -22,7 +27,13 @@ export const SyncStatusBanner: React.FC = () => {
             : `${observable.rows.length} rows failed to sync`
 
     return (
-        <View style={styles.banner} accessibilityRole="alert">
+        <View
+            style={[
+                styles.banner,
+                { backgroundColor: theme.errorSurface, paddingTop: insets.top + Spacing.sm },
+            ]}
+            accessibilityRole="alert"
+        >
             <Typography.Label size="xs" style={styles.message} numberOfLines={2}>
                 {summary}
             </Typography.Label>
@@ -41,12 +52,17 @@ export const SyncStatusBanner: React.FC = () => {
 
 const styles = StyleSheet.create({
     banner: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
+        elevation: 10,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#B0382F',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        gap: 12,
+        paddingHorizontal: Spacing.md,
+        paddingBottom: Spacing.sm,
+        gap: Spacing.sm,
     },
     message: {
         flex: 1,
