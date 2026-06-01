@@ -4,6 +4,7 @@ import { GlobalStyles } from '@/src/constants/Styles'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { Exercise } from '@/src/db/exercises'
 import { SubSet } from '@/src/db/workouts'
+import { Button } from '@/src/modules/core/components/Button'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { ExercisePicker } from '@/src/modules/exercises/ExercisePicker'
@@ -11,7 +12,6 @@ import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-    ActivityIndicator,
     Dimensions,
     FlatList,
     Keyboard,
@@ -304,33 +304,13 @@ export const LogSetModal = ({
                         ]}
                     >
                         <View style={styles.footer}>
-                            <View>
-                                <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
-                                    <Typography.Body color="error">{t('cancel')}</Typography.Body>
-                                </TouchableOpacity>
-                            </View>
-
-                            <View>
-                                <TouchableOpacity
-                                    onPress={onSave}
-                                    style={[styles.saveButton, { backgroundColor: theme.primary }, (!selectedExerciseId || isSaving) && styles.saveButtonDisabled]}
-                                    disabled={!selectedExerciseId || isSaving}
-                                    accessibilityRole={'button'}
-                                    accessibilityLabel={editingSetId ? t('update') : t('addSet')}
-                                    accessibilityState={{ disabled: !selectedExerciseId || isSaving }}
-                                >
-                                    {isSaving ? (
-                                        <Animated.View entering={FadeIn.duration(120)} style={styles.saveLoadingRow}>
-                                            <ActivityIndicator size={'small'} color={theme.onPrimary} />
-                                            <Text style={styles.saveText}>{t('saving')}</Text>
-                                        </Animated.View>
-                                    ) : (
-                                        <Animated.Text entering={FadeIn.duration(120)} style={styles.saveText}>
-                                            {editingSetId ? t('update') : t('addSet')}
-                                        </Animated.Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
+                            <Button label={t('cancel')} variant={'outline'} onPress={onClose} />
+                            <Button
+                                label={editingSetId ? t('update') : t('addSet')}
+                                onPress={onSave}
+                                isLoading={isSaving}
+                                disabled={!selectedExerciseId || isSaving}
+                            />
                         </View>
                     </View>
                 </Animated.View>
@@ -685,26 +665,5 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         paddingTop: Spacing.xs,
         zIndex: 2,
-    },
-    cancelButton: {
-        padding: Spacing.sm,
-        marginRight: Spacing.sm,
-    },
-    saveButton: {
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.lg,
-        borderRadius: Radius.sm,
-    },
-    saveButtonDisabled: {
-        opacity: 0.5,
-    },
-    saveText: {
-        color: 'white',
-        fontWeight: FontWeight.bold,
-    },
-    saveLoadingRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
     },
 })
