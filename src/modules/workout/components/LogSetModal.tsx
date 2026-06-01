@@ -375,9 +375,13 @@ const SubSetRow = React.memo(function SubSetRow({ index, subSet, theme, t, onCha
                 />
             </View>
 
-            <TouchableOpacity onPress={handleRemove} style={styles.removeSubSet}>
-                <FontAwesome name={'minus-circle'} size={18} color={theme.error} />
-            </TouchableOpacity>
+            <Button
+                leftIcon={'minus-circle'}
+                onPress={handleRemove}
+                variant={'text'}
+                accessibilityLabel={t('delete')}
+                labelStyle={{ color: theme.error }}
+            />
         </View>
     )
 })
@@ -651,9 +655,6 @@ const styles = StyleSheet.create({
     },
     subSetX: {
         opacity: 0.4,
-    },
-    removeSubSet: {
-        padding: Spacing.xs,
     },
     footer: {
         flexDirection: 'row',
