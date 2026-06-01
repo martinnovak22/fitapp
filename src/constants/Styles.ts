@@ -12,12 +12,10 @@ export const GlobalStyles = StyleSheet.create({
     title: {
         fontSize: FontSize.xxl,
         fontWeight: FontWeight.bold,
-        marginBottom: Spacing.md,
     },
     subtitle: {
         fontSize: FontSize.lg,
         fontWeight: FontWeight.semibold,
-        marginBottom: Spacing.sm,
     },
     card: {
         padding: Spacing.md,
