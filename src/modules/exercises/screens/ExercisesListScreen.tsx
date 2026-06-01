@@ -260,44 +260,28 @@ export default function ExercisesListScreen() {
                         {t('chooseExportAction')}
                     </Typography.Body>
 
-                    <TouchableOpacity
-                        style={[
-                            styles.sheetActionButton,
-                            { backgroundColor: theme.surface, borderColor: theme.border },
-                        ]}
-                        onPress={() => handleAndroidExportAction('share')}
-                        accessibilityRole={'button'}
-                        accessibilityLabel={t('shareFile')}
-                    >
-                        <FontAwesome name={'share-alt'} size={18} color={theme.primary} />
-                        <Typography.Label weight="semibold" color="text">
-                            {t('shareFile')}
-                        </Typography.Label>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[
-                            styles.sheetActionButton,
-                            { backgroundColor: theme.surface, borderColor: theme.border },
-                        ]}
-                        onPress={() => handleAndroidExportAction('save')}
-                        accessibilityRole={'button'}
-                        accessibilityLabel={t('saveToPhone')}
-                    >
-                        <FontAwesome name={'download'} size={18} color={theme.primary} />
-                        <Typography.Label weight="semibold" color="text">
-                            {t('saveToPhone')}
-                        </Typography.Label>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.sheetCancelButton, { borderColor: theme.border }]}
-                        onPress={() => setShowAndroidExportSheet(false)}
-                        accessibilityRole={'button'}
-                        accessibilityLabel={t('cancel')}
-                    >
-                        <Typography.Label weight="semibold">{t('cancel')}</Typography.Label>
-                    </TouchableOpacity>
+                    <View style={styles.sheetActions}>
+                        <Button
+                            label={t('shareFile')}
+                            leftIcon={'share-alt'}
+                            variant={'secondary'}
+                            onPress={() => handleAndroidExportAction('share')}
+                            style={styles.sheetButton}
+                        />
+                        <Button
+                            label={t('saveToPhone')}
+                            leftIcon={'download'}
+                            variant={'secondary'}
+                            onPress={() => handleAndroidExportAction('save')}
+                            style={styles.sheetButton}
+                        />
+                        <Button
+                            label={t('cancel')}
+                            variant={'outline'}
+                            onPress={() => setShowAndroidExportSheet(false)}
+                            style={styles.sheetButton}
+                        />
+                    </View>
                 </View>
             </Modal>
 
@@ -373,22 +357,11 @@ const styles = StyleSheet.create({
     sheetTitle: {
         marginBottom: Spacing.md,
     },
-    sheetActionButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    sheetActions: {
         gap: Spacing.sm,
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.md,
-        borderRadius: Radius.md,
-        borderWidth: 1,
-        marginBottom: Spacing.sm,
     },
-    sheetCancelButton: {
-        marginTop: Spacing.xs,
-        paddingVertical: Spacing.md,
-        alignItems: 'center',
-        borderRadius: Radius.md,
-        borderWidth: 1,
+    sheetButton: {
+        width: '100%',
     },
     importOverlay: {
         flex: 1,

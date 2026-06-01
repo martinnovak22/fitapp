@@ -446,18 +446,12 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                         </View>
 
                         <View style={styles.modalActions}>
-                            <TouchableOpacity onPress={() => setTimingModalVisible(false)} style={styles.modalCancel}>
-                                <Typography.Body style={{ color: theme.error }}>{t('cancel')}</Typography.Body>
-                            </TouchableOpacity>
-                            <TouchableOpacity
+                            <Button label={t('cancel')} variant={'outline'} onPress={() => setTimingModalVisible(false)} />
+                            <Button
+                                label={isSavingWorkoutTime ? t('saving') : t('saveChanges')}
                                 onPress={saveTiming}
-                                style={[styles.modalSave, { backgroundColor: theme.primary }, isSavingWorkoutTime && styles.modalSaveDisabled]}
                                 disabled={isSavingWorkoutTime}
-                            >
-                                <Typography.Body color={'onPrimary'} weight={'bold'}>
-                                    {isSavingWorkoutTime ? t('saving') : t('saveChanges')}
-                                </Typography.Body>
-                            </TouchableOpacity>
+                            />
                         </View>
                     </View>
                 </View>
@@ -569,18 +563,6 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         alignItems: 'center',
         gap: Spacing.sm,
-    },
-    modalCancel: {
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: Spacing.xs,
-    },
-    modalSave: {
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        borderRadius: Radius.sm,
-    },
-    modalSaveDisabled: {
-        opacity: 0.5,
     },
     headerBack: {
         paddingLeft: Spacing.md,
