@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import {
     EMAIL_CONFIRMATION_REQUIRED_CODE,
@@ -567,7 +568,7 @@ const styles = StyleSheet.create({
     },
     migrationRow: {
         borderWidth: 1,
-        borderRadius: 10,
+        borderRadius: Radius.sm,
         padding: Spacing.sm,
         flexDirection: 'row',
         alignItems: 'flex-start',
@@ -578,7 +579,7 @@ const styles = StyleSheet.create({
     },
     googleButton: {
         borderWidth: 1,
-        borderRadius: 10,
+        borderRadius: Radius.sm,
         minHeight: 48,
         paddingHorizontal: Spacing.md,
         marginBottom: Spacing.md,
@@ -608,7 +609,7 @@ const styles = StyleSheet.create({
     },
     input: {
         borderWidth: 1,
-        borderRadius: 10,
+        borderRadius: Radius.sm,
         minHeight: 48,
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,

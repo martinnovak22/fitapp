@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { getRepositories } from '@/src/data/repositories'
 import { Exercise } from '@/src/db/exercises'
@@ -308,7 +309,7 @@ const styles = StyleSheet.create({
     photoContainer: {
         width: '50%',
         height: 120,
-        borderRadius: 12,
+        borderRadius: Radius.md,
         overflow: 'hidden',
         borderWidth: 1,
     },

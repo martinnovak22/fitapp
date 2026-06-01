@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
     iconBadge: {
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: Radius.pill,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: Spacing.md,
@@ -192,7 +193,7 @@ const styles = StyleSheet.create({
     actionButton: {
         paddingVertical: Spacing.sm,
         paddingHorizontal: Spacing.md,
-        borderRadius: 8,
+        borderRadius: Radius.sm,
         marginLeft: Spacing.sm,
     },
 

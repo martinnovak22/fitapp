@@ -1,4 +1,5 @@
 import { Exercise } from '@/src/db/exercises'
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
     statItem: {
         flex: 1,
         padding: 12,
-        borderRadius: 12,
+        borderRadius: Radius.md,
     },
     statLabel: {
         fontSize: FontSize.xs,

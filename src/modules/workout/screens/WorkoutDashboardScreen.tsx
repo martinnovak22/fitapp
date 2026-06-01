@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
@@ -392,7 +393,7 @@ const layoutStyles = StyleSheet.create({
     dayBox: {
         width: 28,
         height: 28,
-        borderRadius: 8,
+        borderRadius: Radius.sm,
         marginBottom: Spacing.sm,
         justifyContent: 'center',
         alignItems: 'center',
@@ -415,13 +416,13 @@ const layoutStyles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: Spacing.sm,
         paddingVertical: Spacing.xs,
-        borderRadius: 12,
+        borderRadius: Radius.md,
     },
 
     liveDot: {
         width: 6,
         height: 6,
-        borderRadius: 3,
+        borderRadius: Radius.pill,
         marginRight: Spacing.sm,
     },
     activeContent: {

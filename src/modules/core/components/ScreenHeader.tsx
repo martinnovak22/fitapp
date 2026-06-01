@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
@@ -86,7 +87,7 @@ const styles = StyleSheet.create({
     textButton: {
         paddingVertical: 6,
         paddingHorizontal: Spacing.md,
-        borderRadius: Spacing.sm,
+        borderRadius: Radius.sm,
         minHeight: 44,
         justifyContent: 'center',
     },
