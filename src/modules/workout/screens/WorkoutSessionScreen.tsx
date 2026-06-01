@@ -350,7 +350,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                     <View style={styles.timingHeader}>
                         <Typography.Meta style={{ color: theme.textSecondary }}>{t('workoutTiming')}</Typography.Meta>
                         <TouchableOpacity onPress={openTimingModal} accessibilityRole={'button'}>
-                            <Typography.Meta style={{ color: theme.primary, fontWeight: '700' }}>{t('editTime')}</Typography.Meta>
+                            <Typography.Meta color={'primary'} weight={'bold'}>{t('editTime')}</Typography.Meta>
                         </TouchableOpacity>
                     </View>
                     <Typography.Body>{`${t('startedAt')}: ${formatLocalizedDate(
@@ -396,47 +396,53 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                     <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                         <Typography.Subtitle style={{ marginBottom: Spacing.md }}>{t('editTime')}</Typography.Subtitle>
 
-                        <Typography.Label>{t('workoutDate')}</Typography.Label>
-                        <TextInput
-                            value={timingDate}
-                            onChangeText={setTimingDate}
-                            placeholder={'YYYY-MM-DD'}
-                            placeholderTextColor={theme.textSecondary}
-                            style={[
-                                styles.modalInput,
-                                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
-                            ]}
-                            autoCapitalize={'none'}
-                            keyboardType={'numbers-and-punctuation'}
-                        />
+                        <View style={{ gap: Spacing.sm }}>
+                            <Typography.Label>{t('workoutDate')}</Typography.Label>
+                            <TextInput
+                                value={timingDate}
+                                onChangeText={setTimingDate}
+                                placeholder={'YYYY-MM-DD'}
+                                placeholderTextColor={theme.textSecondary}
+                                style={[
+                                    styles.modalInput,
+                                    { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                                ]}
+                                autoCapitalize={'none'}
+                                keyboardType={'numbers-and-punctuation'}
+                            />
+                        </View>
 
-                        <Typography.Label>{t('startTime')}</Typography.Label>
-                        <TextInput
-                            value={timingStartTime}
-                            onChangeText={setTimingStartTime}
-                            placeholder={'HH:mm'}
-                            placeholderTextColor={theme.textSecondary}
-                            style={[
-                                styles.modalInput,
-                                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
-                            ]}
-                            autoCapitalize={'none'}
-                            keyboardType={'numbers-and-punctuation'}
-                        />
+                        <View style={{ gap: Spacing.sm }}>
+                            <Typography.Label>{t('startTime')}</Typography.Label>
+                            <TextInput
+                                value={timingStartTime}
+                                onChangeText={setTimingStartTime}
+                                placeholder={'HH:mm'}
+                                placeholderTextColor={theme.textSecondary}
+                                style={[
+                                    styles.modalInput,
+                                    { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                                ]}
+                                autoCapitalize={'none'}
+                                keyboardType={'numbers-and-punctuation'}
+                            />
+                        </View>
 
-                        <Typography.Label>{t('endTime')}</Typography.Label>
-                        <TextInput
-                            value={timingEndTime}
-                            onChangeText={setTimingEndTime}
-                            placeholder={'HH:mm'}
-                            placeholderTextColor={theme.textSecondary}
-                            style={[
-                                styles.modalInput,
-                                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
-                            ]}
-                            autoCapitalize={'none'}
-                            keyboardType={'numbers-and-punctuation'}
-                        />
+                        <View style={{ gap: Spacing.sm }}>
+                            <Typography.Label>{t('endTime')}</Typography.Label>
+                            <TextInput
+                                value={timingEndTime}
+                                onChangeText={setTimingEndTime}
+                                placeholder={'HH:mm'}
+                                placeholderTextColor={theme.textSecondary}
+                                style={[
+                                    styles.modalInput,
+                                    { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                                ]}
+                                autoCapitalize={'none'}
+                                keyboardType={'numbers-and-punctuation'}
+                            />
+                        </View>
 
                         <View style={styles.modalActions}>
                             <TouchableOpacity onPress={() => setTimingModalVisible(false)} style={styles.modalCancel}>
@@ -447,7 +453,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                                 style={[styles.modalSave, { backgroundColor: theme.primary }, isSavingWorkoutTime && styles.modalSaveDisabled]}
                                 disabled={isSavingWorkoutTime}
                             >
-                                <Typography.Body style={{ color: theme.onPrimary, fontWeight: '700' }}>
+                                <Typography.Body color={'onPrimary'} weight={'bold'}>
                                     {isSavingWorkoutTime ? t('saving') : t('saveChanges')}
                                 </Typography.Body>
                             </TouchableOpacity>

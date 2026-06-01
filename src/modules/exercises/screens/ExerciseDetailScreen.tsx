@@ -218,11 +218,11 @@ export default function ExerciseDetailScreen() {
                     }}
                 >
                     <View style={{ flexDirection: 'column', gap: Spacing.md, justifyContent: 'space-between' }}>
-                        <View>
+                        <View style={{ gap: Spacing.sm }}>
                             <Typography.Label>{t('type')}</Typography.Label>
                             <Typography.Body>{t(formatExerciseType(exercise.type))}</Typography.Body>
                         </View>
-                        <View>
+                        <View style={{ gap: Spacing.sm }}>
                             <Typography.Label>{t('muscleGroup')}</Typography.Label>
                             <Typography.Body>
                                 {exercise.muscle_group ? formatMuscleGroup(exercise.muscle_group) : t('notSpecified')}

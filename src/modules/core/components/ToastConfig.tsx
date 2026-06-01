@@ -1,4 +1,5 @@
 import { Spacing } from '@/src/constants/Spacing'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import i18n from '@/src/modules/core/utils/i18n'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
@@ -164,13 +165,13 @@ const styles = StyleSheet.create({
         paddingTop: 2,
     },
     title: {
-        fontSize: 15,
-        fontWeight: '700',
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.bold,
         marginBottom: 1,
     },
 
     message: {
-        fontSize: 13,
+        fontSize: FontSize.xs,
         lineHeight: 18,
     },
 
@@ -200,12 +201,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.sm,
     },
     actionText: {
-        fontWeight: '700',
-        fontSize: 13,
+        fontWeight: FontWeight.bold,
+        fontSize: FontSize.xs,
     },
 
     cancelText: {
-        fontWeight: '600',
-        fontSize: 13,
+        fontWeight: FontWeight.semibold,
+        fontSize: FontSize.xs,
     },
 })

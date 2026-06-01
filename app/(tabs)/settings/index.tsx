@@ -1,4 +1,5 @@
 import { Spacing } from '@/src/constants/Spacing'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
@@ -43,7 +44,7 @@ export default function SettingsScreen() {
                         <React.Fragment key={lang.code}>
                             <TouchableOpacity style={styles.settingItem} onPress={() => i18n.changeLanguage(lang.code)}>
                                 <View style={styles.settingLeft}>
-                                    <Typography.Body style={{ fontSize: 20, marginRight: 12 }}>
+                                    <Typography.Body style={{ fontSize: FontSize.xl, marginRight: 12 }}>
                                         {lang.icon}
                                     </Typography.Body>
                                     <Typography.Body style={[styles.settingLabel, { color: theme.text }]}>
@@ -141,8 +142,8 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
     sectionTitle: {
-        fontSize: 14,
-        fontWeight: '800',
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.heavy,
         letterSpacing: 1.5,
         marginBottom: Spacing.sm + Spacing.xs,
         marginLeft: 4,
@@ -166,8 +167,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     settingLabel: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.semibold,
     },
     separator: {
         height: StyleSheet.hairlineWidth,

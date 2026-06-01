@@ -1,5 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { Set as WorkoutSet } from '@/src/db/workouts'
 import { formatDuration } from '@/src/utils/formatters'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
@@ -144,13 +145,13 @@ const styles = StyleSheet.create({
     },
     index: {
         width: 28,
-        fontSize: 10,
-        fontWeight: '700',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.bold,
     },
     detailsText: {
         flex: 1,
-        fontSize: 14,
-        fontWeight: '700',
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.bold,
     },
     actions: {
         flexDirection: 'row',
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
         opacity: 0.8,
     },
     subSetText: {
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.semibold,
     },
 })

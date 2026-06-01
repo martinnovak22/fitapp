@@ -1,4 +1,5 @@
 import { Spacing } from '@/src/constants/Spacing'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
 import { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
@@ -162,11 +163,11 @@ const styles = StyleSheet.create({
         paddingRight: Spacing.md,
     },
     workoutDate: {
-        fontWeight: 'bold',
-        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        fontSize: FontSize.md,
     },
     workoutTime: {
-        fontSize: 13,
+        fontSize: FontSize.xs,
     },
     workoutNote: {
         fontStyle: 'italic',

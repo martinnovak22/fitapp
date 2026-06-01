@@ -1,5 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
 import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native'
@@ -45,11 +46,11 @@ const styles = StyleSheet.create({
     message: {
         ...GlobalStyles.text,
         textAlign: 'center',
-        fontWeight: '500',
+        fontWeight: FontWeight.medium,
     },
     subMessage: {
         ...GlobalStyles.text,
-        fontSize: 12,
+        fontSize: FontSize.xs,
         textAlign: 'center',
         marginTop: Spacing.xs,
         opacity: 0.7,

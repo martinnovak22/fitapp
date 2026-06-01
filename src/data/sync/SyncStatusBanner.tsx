@@ -1,3 +1,4 @@
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import React, { useCallback } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSync } from './SyncProvider'
@@ -47,8 +48,8 @@ const styles = StyleSheet.create({
     message: {
         flex: 1,
         color: 'white',
-        fontSize: 13,
-        fontWeight: '500',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.medium,
     },
     retry: {
         paddingVertical: 6,
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
     },
     retryText: {
         color: 'white',
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.semibold,
     },
 })

@@ -1,5 +1,6 @@
 import { Exercise } from '@/src/db/exercises'
 import { Spacing } from '@/src/constants/Spacing'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import {
     ExerciseTypeMetadata,
@@ -228,11 +229,11 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     title: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: FontSize.lg,
+        fontWeight: FontWeight.bold,
     },
     context: {
-        fontSize: 12,
+        fontSize: FontSize.xs,
     },
     statsRow: {
         flexDirection: 'row',
@@ -245,12 +246,12 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     statLabel: {
-        fontSize: 12,
+        fontSize: FontSize.xs,
         marginBottom: 4,
     },
     statValue: {
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
     },
     graphWrapper: {
         width: '100%',
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
         borderTopWidth: 0.5,
     },
     axisText: {
-        fontSize: 12,
+        fontSize: FontSize.xs,
     },
     emptyState: {
         padding: Spacing.xl2,

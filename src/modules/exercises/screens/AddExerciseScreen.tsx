@@ -1,5 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
 import { ExerciseType } from '@/src/db/exercises'
 import { Card } from '@/src/modules/core/components/Card'
@@ -226,54 +227,58 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                         {t('exerciseDetails')}
                     </Typography.Subtitle>
 
-                    <Typography.Label>{t('name')}</Typography.Label>
-                    <TextInput
-                        ref={nameInputRef}
-                        placeholder={t('placeholderName')}
-                        placeholderTextColor={theme.textSecondary}
-                        style={[
-                            GlobalStyles.input,
-                            {
-                                color: theme.text,
-                                backgroundColor: theme.inputBackground,
-                                borderColor: nameError ? theme.error : theme.border,
-                            },
-                        ]}
-                        value={name}
-                        onChangeText={(value) => {
-                            setName(value)
-                            if (nameError) setNameError('')
-                        }}
-                        autoFocus={!isEditing}
-                        selectionColor={theme.primary}
-                        returnKeyType={'next'}
-                        blurOnSubmit={false}
-                        onSubmitEditing={() => muscleInputRef.current?.focus()}
-                        accessibilityLabel={t('name')}
-                        accessibilityHint={t('required')}
-                    />
+                    <View style={{ gap: Spacing.sm }}>
+                        <Typography.Label>{t('name')}</Typography.Label>
+                        <TextInput
+                            ref={nameInputRef}
+                            placeholder={t('placeholderName')}
+                            placeholderTextColor={theme.textSecondary}
+                            style={[
+                                GlobalStyles.input,
+                                {
+                                    color: theme.text,
+                                    backgroundColor: theme.inputBackground,
+                                    borderColor: nameError ? theme.error : theme.border,
+                                },
+                            ]}
+                            value={name}
+                            onChangeText={(value) => {
+                                setName(value)
+                                if (nameError) setNameError('')
+                            }}
+                            autoFocus={!isEditing}
+                            selectionColor={theme.primary}
+                            returnKeyType={'next'}
+                            blurOnSubmit={false}
+                            onSubmitEditing={() => muscleInputRef.current?.focus()}
+                            accessibilityLabel={t('name')}
+                            accessibilityHint={t('required')}
+                        />
+                    </View>
                     <View style={styles.helperTextSlot}>
                         <Typography.Meta style={{ color: nameError ? theme.error : 'transparent' }} numberOfLines={1}>
                             {nameError || ' '}
                         </Typography.Meta>
                     </View>
 
-                    <Typography.Label>{t('muscleGroup')}</Typography.Label>
-                    <TextInput
-                        ref={muscleInputRef}
-                        placeholder={t('placeholderMuscle')}
-                        placeholderTextColor={theme.textSecondary}
-                        style={[
-                            GlobalStyles.input,
-                            { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
-                        ]}
-                        value={muscle}
-                        onChangeText={setMuscle}
-                        selectionColor={theme.primary}
-                        returnKeyType={'done'}
-                        onSubmitEditing={handleSave}
-                        accessibilityLabel={t('muscleGroup')}
-                    />
+                    <View style={{ gap: Spacing.sm }}>
+                        <Typography.Label>{t('muscleGroup')}</Typography.Label>
+                        <TextInput
+                            ref={muscleInputRef}
+                            placeholder={t('placeholderMuscle')}
+                            placeholderTextColor={theme.textSecondary}
+                            style={[
+                                GlobalStyles.input,
+                                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                            ]}
+                            value={muscle}
+                            onChangeText={setMuscle}
+                            selectionColor={theme.primary}
+                            returnKeyType={'done'}
+                            onSubmitEditing={handleSave}
+                            accessibilityLabel={t('muscleGroup')}
+                        />
+                    </View>
 
                     <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>
                         {t('exerciseType')}
@@ -316,7 +321,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                     {/* Tracking Mode Toggle */}
                     {(type === 'bodyweight' || type === 'bodyweight_timer') && (
                         <Animated.View entering={FadeIn} layout={LinearTransition} style={{ marginTop: 20 }}>
-                            <Typography.Label style={{ fontSize: 12, marginBottom: 6 }}>
+                            <Typography.Label style={{ fontSize: FontSize.xs, marginBottom: 6 }}>
                                 {t('trackingMode')}
                             </Typography.Label>
                             <View style={[styles.subToggleContainer, { backgroundColor: theme.inputBackground }]}>
@@ -473,8 +478,8 @@ const styles = StyleSheet.create({
         gap: Spacing.sm,
     },
     addPhotoText: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.semibold,
     },
     photoWrapper: {
         width: '100%',
@@ -509,8 +514,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     typeButtonText: {
-        fontSize: 12,
-        fontWeight: '500',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.medium,
     },
     subToggleContainer: {
         flexDirection: 'row',
@@ -527,11 +532,11 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     subToggleText: {
-        fontSize: 12,
-        fontWeight: '500',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.medium,
     },
     subToggleTextActive: {
-        fontWeight: 'bold',
+        fontWeight: FontWeight.bold,
     },
     headerBack: {
         paddingLeft: Spacing.md,

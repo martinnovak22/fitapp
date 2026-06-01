@@ -1,74 +1,55 @@
-import { Spacing } from '@/src/constants/Spacing'
-import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontSizeToken, FontWeight, FontWeightToken } from '@/src/constants/Typography'
 import React from 'react'
 import { StyleProp, Text, TextStyle } from 'react-native'
+import { ThemeType } from '@/src/constants/Colors'
 import { useTheme } from '../hooks/useTheme'
+
+type ColorToken = keyof Pick<ThemeType, 'text' | 'textSecondary' | 'primary' | 'secondary' | 'error' | 'onPrimary'>
 
 interface TextProps {
     children: React.ReactNode
     style?: StyleProp<TextStyle>
     numberOfLines?: number
+    /** Override the variant's default size with a scale token. */
+    size?: FontSizeToken
+    /** Override the variant's default weight with a scale token. */
+    weight?: FontWeightToken
+    /** Override the variant's default color with a theme token. */
+    color?: ColorToken
+}
+
+interface VariantConfig {
+    size: FontSizeToken
+    weight: FontWeightToken
+    color: ColorToken
+}
+
+const makeVariant = (config: VariantConfig) => {
+    const Component = ({ children, style, numberOfLines, size, weight, color }: TextProps) => {
+        const { theme } = useTheme()
+        return (
+            <Text
+                style={[
+                    {
+                        fontSize: FontSize[size ?? config.size],
+                        fontWeight: FontWeight[weight ?? config.weight],
+                        color: theme[color ?? config.color],
+                    },
+                    style,
+                ]}
+                numberOfLines={numberOfLines}
+            >
+                {children}
+            </Text>
+        )
+    }
+    return Component
 }
 
 export const Typography = {
-    Title: ({ children, style, numberOfLines }: TextProps) => {
-        const { theme } = useTheme()
-        return (
-            <Text style={[GlobalStyles.title, { color: theme.text }, style]} numberOfLines={numberOfLines}>
-                {children}
-            </Text>
-        )
-    },
-    Subtitle: ({ children, style, numberOfLines }: TextProps) => {
-        const { theme } = useTheme()
-        return (
-            <Text style={[GlobalStyles.subtitle, { color: theme.text }, style]} numberOfLines={numberOfLines}>
-                {children}
-            </Text>
-        )
-    },
-    Label: ({ children, style, numberOfLines }: TextProps) => {
-        const { theme } = useTheme()
-        return (
-            <Text
-                style={[
-                    {
-                        color: theme.textSecondary,
-                        marginBottom: Spacing.sm,
-                        fontSize: 14,
-                        fontWeight: '500',
-                    },
-                    style,
-                ]}
-                numberOfLines={numberOfLines}
-            >
-                {children}
-            </Text>
-        )
-    },
-    Meta: ({ children, style, numberOfLines }: TextProps) => {
-        const { theme } = useTheme()
-        return (
-            <Text
-                style={[
-                    {
-                        color: theme.textSecondary,
-                        fontSize: 12,
-                    },
-                    style,
-                ]}
-                numberOfLines={numberOfLines}
-            >
-                {children}
-            </Text>
-        )
-    },
-    Body: ({ children, style, numberOfLines }: TextProps) => {
-        const { theme } = useTheme()
-        return (
-            <Text style={[GlobalStyles.text, { color: theme.text }, style]} numberOfLines={numberOfLines}>
-                {children}
-            </Text>
-        )
-    },
+    Title: makeVariant({ size: 'xxl', weight: 'bold', color: 'text' }),
+    Subtitle: makeVariant({ size: 'lg', weight: 'semibold', color: 'text' }),
+    Label: makeVariant({ size: 'sm', weight: 'medium', color: 'textSecondary' }),
+    Meta: makeVariant({ size: 'xs', weight: 'regular', color: 'textSecondary' }),
+    Body: makeVariant({ size: 'md', weight: 'regular', color: 'text' }),
 }

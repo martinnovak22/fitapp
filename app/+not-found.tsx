@@ -1,4 +1,5 @@
 import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize } from '@/src/constants/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { Link, Stack } from 'expo-router'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +28,6 @@ const styles = StyleSheet.create({
         paddingVertical: 15,
     },
     linkText: {
-        fontSize: 14,
+        fontSize: FontSize.sm,
     },
 })

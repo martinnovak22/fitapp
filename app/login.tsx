@@ -300,7 +300,7 @@ export default function LoginScreen() {
                                     >
                                         <View style={styles.googleButtonInner}>
                                             <FontAwesome name={'google'} size={18} color={theme.text} />
-                                            <Typography.Body style={{ color: theme.text, fontWeight: '700' }}>
+                                            <Typography.Body weight={'bold'}>
                                                 {t('continueWithGoogle')}
                                             </Typography.Body>
                                         </View>
@@ -318,7 +318,7 @@ export default function LoginScreen() {
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                                 </Animated.View>
 
-                                <Animated.View entering={FadeInDown.delay(120).duration(220)}>
+                                <Animated.View entering={FadeInDown.delay(120).duration(220)} style={{ gap: Spacing.sm }}>
                                     <Typography.Label>{t('email')}</Typography.Label>
                                     <TextInput
                                         ref={emailInputRef}
@@ -343,7 +343,7 @@ export default function LoginScreen() {
                                     />
                                 </Animated.View>
 
-                                <Animated.View entering={FadeInDown.delay(140).duration(220)}>
+                                <Animated.View entering={FadeInDown.delay(140).duration(220)} style={{ gap: Spacing.sm }}>
                                     <Typography.Label>{t('password')}</Typography.Label>
                                     <View style={styles.passwordInputContainer}>
                                         <TextInput
@@ -392,7 +392,7 @@ export default function LoginScreen() {
                                 </Animated.View>
 
                                 {isSignUp && (
-                                    <Animated.View layout={formLayoutTransition} entering={FadeInDown.duration(180)}>
+                                    <Animated.View layout={formLayoutTransition} entering={FadeInDown.duration(180)} style={{ gap: Spacing.sm }}>
                                         <Typography.Label>{t('confirmPassword')}</Typography.Label>
                                         <View style={styles.passwordInputContainer}>
                                             <TextInput
@@ -515,7 +515,7 @@ export default function LoginScreen() {
                                                 }}
                                                 hitSlop={8}
                                             >
-                                                <Typography.Body style={{ color: theme.primary, fontWeight: '700' }}>
+                                                <Typography.Body color={'primary'} weight={'bold'}>
                                                     {t('continueAsGuest')}
                                                 </Typography.Body>
                                             </Pressable>
@@ -527,7 +527,7 @@ export default function LoginScreen() {
                                             }}
                                             hitSlop={8}
                                         >
-                                            <Typography.Body style={{ color: theme.primary, fontWeight: '700' }}>
+                                            <Typography.Body color={'primary'} weight={'bold'}>
                                                 {t(isSignUp ? 'signIn' : 'signUp')}
                                             </Typography.Body>
                                         </Pressable>

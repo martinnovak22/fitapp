@@ -1,5 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
 import { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
@@ -377,12 +378,12 @@ const styles = StyleSheet.create({
     },
     workoutTime: {
         ...GlobalStyles.text,
-        fontWeight: 'bold',
-        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        fontSize: FontSize.sm,
     },
     workoutStatus: {
         ...GlobalStyles.text,
-        fontSize: 12,
+        fontSize: FontSize.xs,
         marginTop: 2,
     },
     workoutAction: {
@@ -392,8 +393,8 @@ const styles = StyleSheet.create({
     },
     viewSummaryText: {
         ...GlobalStyles.text,
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.semibold,
     },
     modalOverlay: {
         flex: 1,
@@ -418,7 +419,7 @@ const styles = StyleSheet.create({
     },
     modalDate: {
         ...GlobalStyles.text,
-        fontSize: 14,
+        fontSize: FontSize.sm,
         marginBottom: Spacing.lg,
     },
     summaryScroll: {
@@ -446,7 +447,7 @@ const styles = StyleSheet.create({
     },
     summaryCount: {
         ...GlobalStyles.text,
-        fontWeight: 'bold',
+        fontWeight: FontWeight.bold,
         marginLeft: Spacing.md,
     },
     emptySummary: {

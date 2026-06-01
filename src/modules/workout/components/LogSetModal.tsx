@@ -1,5 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { Exercise } from '@/src/db/exercises'
 import { SubSet } from '@/src/db/workouts'
 import { Typography } from '@/src/modules/core/components/Typography'
@@ -602,8 +603,8 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.xs,
     },
     pyramidTitle: {
-        fontSize: 12,
-        fontWeight: '800',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.heavy,
         textTransform: 'uppercase',
     },
     pyramidChevron: {
@@ -638,8 +639,8 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     emptySubsetsText: {
-        fontSize: 10,
-        fontWeight: '600',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.semibold,
         opacity: 0.5,
     },
     subSetRow: {
@@ -654,8 +655,8 @@ const styles = StyleSheet.create({
         width: 24,
     },
     subSetIndex: {
-        fontSize: 10,
-        fontWeight: 'bold',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.bold,
         opacity: 0.6,
     },
     subSetInputGroup: {
@@ -669,13 +670,13 @@ const styles = StyleSheet.create({
         height: 34,
         borderRadius: 6,
         textAlign: 'center',
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.semibold,
         paddingVertical: 0,
         includeFontPadding: false,
     },
     subSetX: {
-        fontSize: 12,
+        fontSize: FontSize.xs,
         opacity: 0.4,
     },
     removeSubSet: {
@@ -706,7 +707,7 @@ const styles = StyleSheet.create({
     },
     saveText: {
         color: 'white',
-        fontWeight: 'bold',
+        fontWeight: FontWeight.bold,
     },
     saveLoadingRow: {
         flexDirection: 'row',

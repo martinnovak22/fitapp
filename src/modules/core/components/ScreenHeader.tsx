@@ -1,5 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -93,7 +94,7 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
     actionText: {
-        fontWeight: 'bold',
-        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        fontSize: FontSize.md,
     },
 })
