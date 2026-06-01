@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
         gap: Spacing.md,
     },
     link: {
-        marginTop: 15,
-        paddingVertical: 15,
+        marginTop: Spacing.md,
+        paddingVertical: Spacing.md,
     },
 })

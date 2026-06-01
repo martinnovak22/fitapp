@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
     },
     subToggleButton: {
         flex: 1,
-        paddingVertical: 5,
+        paddingVertical: Spacing.xs,
         alignItems: 'center',
         borderRadius: Radius.sm,
     },
