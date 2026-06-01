@@ -13,6 +13,7 @@ import { createRemoteWriter } from './RemoteWriter'
 import { makePushFn, preloadSetParents } from './PushPipeline'
 import { syncStatusStore, type SyncFailure } from './SyncStatus'
 import { invalidateExercisesCache } from '@/src/data/exercisesCache'
+import { onPrincipalChange } from '@/src/data/principal'
 
 type SyncState = {
     is_syncing: number
@@ -246,9 +247,19 @@ const setCursors = (userId: string, cursors: PullCursors) => {
     pullCursorsByUser.set(userId, cursors)
 }
 
-export const resetPullCursorsForTest = () => {
+const resetPullCursors = () => {
     pullCursorsByUser.clear()
 }
+
+export const resetPullCursorsForTest = resetPullCursors
+
+// Pull cursors are an in-memory incremental watermark per user. A principal
+// transition (sign-in, sign-out, guest <-> account) means we're now syncing a
+// different scope — or local data was cleared underneath us — so the old
+// watermarks must not carry over, otherwise the next pull would skip rows.
+onPrincipalChange(() => {
+    resetPullCursors()
+})
 
 const maxIso = (a: string | null, b: string | null | undefined) => {
     if (!a) return b ?? null
