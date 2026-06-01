@@ -1,4 +1,5 @@
 import { ThemeType } from '@/src/constants/Colors'
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
     thumbnail: {
         width: 44,
         height: 44,
-        borderRadius: 8,
+        borderRadius: Radius.sm,
         marginRight: Spacing.md,
     },
     placeholderThumbnail: {
@@ -358,8 +359,8 @@ const styles = StyleSheet.create({
         paddingTop: Spacing.md,
         paddingBottom: Spacing.lg,
         borderTopWidth: 1,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        borderTopLeftRadius: Radius.lg,
+        borderTopRightRadius: Radius.lg,
     },
     sheetTitle: {
         fontSize: FontSize.md,
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
         gap: Spacing.sm,
         paddingVertical: Spacing.md,
         paddingHorizontal: Spacing.md,
-        borderRadius: 12,
+        borderRadius: Radius.md,
         borderWidth: 1,
         marginBottom: Spacing.sm,
     },
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
         marginTop: Spacing.xs,
         paddingVertical: Spacing.md,
         alignItems: 'center',
-        borderRadius: 12,
+        borderRadius: Radius.md,
         borderWidth: 1,
     },
     sheetCancelText: {
@@ -400,7 +401,7 @@ const styles = StyleSheet.create({
     },
     importOverlayCard: {
         minWidth: 220,
-        borderRadius: 14,
+        borderRadius: Radius.md,
         borderWidth: 1,
         paddingHorizontal: Spacing.lg,
         paddingVertical: Spacing.md,
@@ -421,7 +422,7 @@ const styles = StyleSheet.create({
         gap: Spacing.xs,
         paddingVertical: Spacing.xs,
         paddingHorizontal: Spacing.sm,
-        borderRadius: 999,
+        borderRadius: Radius.pill,
         backgroundColor: '#00000099',
     },
     reorderOverlayText: {

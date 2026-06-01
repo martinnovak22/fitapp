@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import type { Exercise } from '@/src/db/exercises'
@@ -75,7 +76,7 @@ export const ExercisePicker = ({ exercises, onPick }: Props) => {
 
 const styles = StyleSheet.create({
     list: {
-        borderRadius: 10,
+        borderRadius: Radius.sm,
         marginVertical: Spacing.sm,
         maxHeight: ROW_HEIGHT * 4,
     },

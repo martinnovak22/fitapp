@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { SubSet, Set as WorkoutSet } from '@/src/db/workouts'
@@ -555,7 +556,7 @@ const styles = StyleSheet.create({
     },
     modalCard: {
         borderWidth: 1,
-        borderRadius: 12,
+        borderRadius: Radius.md,
         padding: Spacing.md,
     },
     modalInput: {
@@ -576,7 +577,7 @@ const styles = StyleSheet.create({
     modalSave: {
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,
-        borderRadius: Spacing.sm,
+        borderRadius: Radius.sm,
     },
     modalSaveDisabled: {
         opacity: 0.5,

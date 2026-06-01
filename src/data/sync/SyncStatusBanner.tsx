@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import React, { useCallback } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
@@ -54,7 +55,7 @@ const styles = StyleSheet.create({
     retry: {
         paddingVertical: 6,
         paddingHorizontal: 12,
-        borderRadius: 6,
+        borderRadius: Radius.sm,
         backgroundColor: 'rgba(255,255,255,0.18)',
     },
     retryText: {

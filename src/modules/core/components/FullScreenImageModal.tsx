@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
@@ -57,7 +58,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         width: 40,
         height: 40,
-        borderRadius: 100,
+        borderRadius: Radius.pill,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 10,

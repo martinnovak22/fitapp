@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native'
 import { Theme } from './Colors'
+import { Radius } from './Radius'
 import { Spacing } from './Spacing'
 import { FontSize, FontWeight } from './Typography'
 
@@ -29,7 +30,7 @@ export const GlobalStyles = StyleSheet.create({
     },
     input: {
         padding: Spacing.md,
-        borderRadius: 8,
+        borderRadius: Radius.sm,
         borderWidth: 1,
         marginBottom: Spacing.md,
     },

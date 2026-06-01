@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
@@ -470,7 +471,7 @@ const styles = StyleSheet.create({
     addPhotoButton: {
         width: '100%',
         height: 160,
-        borderRadius: 12,
+        borderRadius: Radius.md,
         borderWidth: 2,
         borderStyle: 'dashed',
         justifyContent: 'center',
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
     photoWrapper: {
         width: '100%',
         height: 160,
-        borderRadius: 12,
+        borderRadius: Radius.md,
         overflow: 'hidden',
         position: 'relative',
         borderWidth: 1,
@@ -500,7 +501,7 @@ const styles = StyleSheet.create({
         right: 8,
         width: 30,
         height: 30,
-        borderRadius: 100,
+        borderRadius: Radius.pill,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -509,7 +510,7 @@ const styles = StyleSheet.create({
         minWidth: '30%',
         paddingHorizontal: Spacing.sm,
         paddingVertical: Spacing.sm,
-        borderRadius: 8,
+        borderRadius: Radius.sm,
         borderWidth: 1,
         alignItems: 'center',
     },
@@ -519,14 +520,14 @@ const styles = StyleSheet.create({
     },
     subToggleContainer: {
         flexDirection: 'row',
-        borderRadius: 8,
+        borderRadius: Radius.sm,
         padding: 4,
     },
     subToggleButton: {
         flex: 1,
         paddingVertical: 5,
         alignItems: 'center',
-        borderRadius: 6,
+        borderRadius: Radius.sm,
     },
     subToggleButtonActive: {
         borderWidth: 1,

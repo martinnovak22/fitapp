@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
@@ -36,7 +37,7 @@ const styles = StyleSheet.create({
         padding: Spacing.xl2,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 12,
+        borderRadius: Radius.md,
         borderStyle: 'dashed',
         borderWidth: 1,
     },

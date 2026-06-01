@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { Button } from '@/src/modules/core/components/Button'
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
     iconContainer: {
         width: 36,
         height: 36,
-        borderRadius: 22,
+        borderRadius: Radius.pill,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: Spacing.sm + Spacing.xs,

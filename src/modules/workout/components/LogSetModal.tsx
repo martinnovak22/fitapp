@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
@@ -542,8 +543,8 @@ const styles = StyleSheet.create({
     sheet: {
         width: '100%',
         maxHeight: SHEET_MAX_HEIGHT,
-        borderTopLeftRadius: 22,
-        borderTopRightRadius: 22,
+        borderTopLeftRadius: Radius.lg,
+        borderTopRightRadius: Radius.lg,
         overflow: 'hidden',
         paddingHorizontal: Spacing.lg,
         paddingTop: Spacing.md,
@@ -561,7 +562,7 @@ const styles = StyleSheet.create({
     grabber: {
         width: 42,
         height: 4,
-        borderRadius: 4,
+        borderRadius: Radius.pill,
     },
     sheetTitle: {
         marginBottom: 0,
@@ -616,7 +617,7 @@ const styles = StyleSheet.create({
     addDropButton: {
         paddingHorizontal: Spacing.sm,
         paddingVertical: Spacing.xs,
-        borderRadius: 8,
+        borderRadius: Radius.sm,
     },
     pyramidListWrap: {
         overflow: 'hidden',
@@ -624,7 +625,7 @@ const styles = StyleSheet.create({
     },
     pyramidList: {
         height: PYRAMID_LIST_HEIGHT,
-        borderRadius: 10,
+        borderRadius: Radius.sm,
     },
     emptySubsetsContainer: {
         flexGrow: 1,
@@ -670,7 +671,7 @@ const styles = StyleSheet.create({
     subSetInput: {
         flex: 1,
         height: 34,
-        borderRadius: 6,
+        borderRadius: Radius.sm,
         textAlign: 'center',
         fontSize: FontSize.xs,
         fontWeight: FontWeight.semibold,
@@ -702,7 +703,7 @@ const styles = StyleSheet.create({
     saveButton: {
         paddingVertical: Spacing.sm,
         paddingHorizontal: Spacing.lg,
-        borderRadius: 8,
+        borderRadius: Radius.sm,
     },
     saveButtonDisabled: {
         opacity: 0.5,

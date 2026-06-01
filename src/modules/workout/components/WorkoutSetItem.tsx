@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
@@ -170,7 +171,7 @@ const styles = StyleSheet.create({
     indentLine: {
         width: 2,
         height: '60%',
-        borderRadius: 1,
+        borderRadius: Radius.pill,
         marginRight: Spacing.sm,
         opacity: 0.8,
     },

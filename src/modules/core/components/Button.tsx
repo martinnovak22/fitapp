@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import React from 'react'
@@ -82,7 +83,7 @@ export const Button: React.FC<ButtonProps> = ({
 const styles = StyleSheet.create({
     baseButton: {
         padding: Spacing.md,
-        borderRadius: Spacing.sm,
+        borderRadius: Radius.sm,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
