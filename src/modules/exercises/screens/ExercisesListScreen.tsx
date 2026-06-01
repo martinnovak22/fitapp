@@ -1,6 +1,7 @@
 import { ThemeType } from '@/src/constants/Colors'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { Exercise } from '@/src/db/exercises'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -325,12 +326,12 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     title: {
-        fontWeight: 'bold',
-        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        fontSize: FontSize.md,
         lineHeight: 20,
     },
     subtitle: {
-        fontSize: 13,
+        fontSize: FontSize.xs,
         lineHeight: 18,
     },
     thumbnail: {
@@ -361,8 +362,8 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 20,
     },
     sheetTitle: {
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
         marginBottom: Spacing.md,
     },
     sheetActionButton: {
@@ -376,8 +377,8 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.sm,
     },
     sheetActionText: {
-        fontSize: 15,
-        fontWeight: '600',
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.semibold,
     },
     sheetCancelButton: {
         marginTop: Spacing.xs,
@@ -387,8 +388,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     sheetCancelText: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.semibold,
     },
     importOverlay: {
         flex: 1,
@@ -407,8 +408,8 @@ const styles = StyleSheet.create({
         gap: Spacing.sm,
     },
     importOverlayText: {
-        fontSize: 15,
-        fontWeight: '600',
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.semibold,
         textAlign: 'center',
     },
     reorderOverlay: {
@@ -424,7 +425,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#00000099',
     },
     reorderOverlayText: {
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.semibold,
     },
 })

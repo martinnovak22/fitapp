@@ -12,6 +12,7 @@ import Toast from 'react-native-toast-message'
 import { initializeDataLayer } from '../src/data/bootstrap'
 import { SyncProvider } from '../src/data/sync/SyncProvider'
 import { SyncStatusBanner } from '../src/data/sync/SyncStatusBanner'
+import { FontWeight } from '../src/constants/Typography'
 import { useDatabaseInit } from '../src/db/client'
 import { toastConfig } from '../src/modules/core/components/ToastConfig'
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../src/modules/core/hooks/useTheme'
@@ -88,7 +89,7 @@ function RootLayoutNav() {
                     },
                     headerTintColor: theme.text,
                     headerTitleStyle: {
-                        fontWeight: 'bold',
+                        fontWeight: FontWeight.bold,
                     },
                     contentStyle: {
                         backgroundColor: theme.background,

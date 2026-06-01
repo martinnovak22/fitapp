@@ -1,4 +1,5 @@
 import { Spacing } from '@/src/constants/Spacing'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import React from 'react'
 import { ActivityIndicator, StyleProp, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native'
 import { useTheme } from '../hooks/useTheme'
@@ -99,14 +100,14 @@ const styles = StyleSheet.create({
     },
     dangerButton: {},
     primaryButtonText: {
-        fontWeight: 'bold',
-        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        fontSize: FontSize.md,
     },
     secondaryButtonText: {
-        fontWeight: '600',
+        fontWeight: FontWeight.semibold,
     },
     outlineButtonText: {
-        fontWeight: 'bold',
+        fontWeight: FontWeight.bold,
     },
     disabled: {
         opacity: 0.5,

@@ -1,4 +1,5 @@
 import { Spacing } from '@/src/constants/Spacing'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import type { Exercise } from '@/src/db/exercises'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { formatExerciseType } from '@/src/utils/formatters'
@@ -91,16 +92,16 @@ const styles = StyleSheet.create({
         minWidth: 0,
     },
     name: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.semibold,
     },
     subtext: {
-        fontSize: 11,
+        fontSize: FontSize.xs,
         marginTop: 2,
     },
     stat: {
-        fontSize: 14,
-        fontWeight: '700',
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.bold,
         textAlign: 'right',
     },
 })
