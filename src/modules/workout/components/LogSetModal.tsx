@@ -576,6 +576,7 @@ const styles = StyleSheet.create({
     },
     fieldCell: {
         flex: 1,
+        gap: Spacing.sm,
     },
     fieldFull: {
         minWidth: '100%',
@@ -587,6 +588,7 @@ const styles = StyleSheet.create({
     },
     durationCell: {
         flex: 1,
+        gap: Spacing.sm,
     },
     pyramidSection: {
         paddingVertical: Spacing.sm,
