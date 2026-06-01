@@ -359,21 +359,16 @@ export default function LoginScreen() {
                                             ]}
                                         />
                                         {password.length > 0 ? (
-                                            <Pressable
-                                                style={styles.visibilityButton}
+                                            <Button
+                                                leftIcon={isPasswordVisible ? 'eye-slash' : 'eye'}
                                                 onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-                                                hitSlop={8}
-                                                accessibilityRole={'button'}
+                                                variant={'text'}
                                                 accessibilityLabel={
                                                     isPasswordVisible ? t('hidePassword') : t('showPassword')
                                                 }
-                                            >
-                                                <FontAwesome
-                                                    name={isPasswordVisible ? 'eye-slash' : 'eye'}
-                                                    size={18}
-                                                    color={theme.textSecondary}
-                                                />
-                                            </Pressable>
+                                                labelStyle={{ color: theme.textSecondary }}
+                                                style={styles.visibilityButton}
+                                            />
                                         ) : null}
                                     </View>
                                 </Animated.View>
@@ -404,23 +399,18 @@ export default function LoginScreen() {
                                                 ]}
                                             />
                                             {confirmPassword.length > 0 ? (
-                                                <Pressable
-                                                    style={styles.visibilityButton}
+                                                <Button
+                                                    leftIcon={isConfirmPasswordVisible ? 'eye-slash' : 'eye'}
                                                     onPress={() =>
                                                         setIsConfirmPasswordVisible(!isConfirmPasswordVisible)
                                                     }
-                                                    hitSlop={8}
-                                                    accessibilityRole={'button'}
+                                                    variant={'text'}
                                                     accessibilityLabel={
                                                         isConfirmPasswordVisible ? t('hidePassword') : t('showPassword')
                                                     }
-                                                >
-                                                    <FontAwesome
-                                                        name={isConfirmPasswordVisible ? 'eye-slash' : 'eye'}
-                                                        size={18}
-                                                        color={theme.textSecondary}
-                                                    />
-                                                </Pressable>
+                                                    labelStyle={{ color: theme.textSecondary }}
+                                                    style={styles.visibilityButton}
+                                                />
                                             ) : null}
                                         </View>
                                     </Animated.View>
@@ -546,9 +536,11 @@ const styles = StyleSheet.create({
     },
     title: {
         marginBottom: Spacing.xs,
+        textAlign: 'center',
     },
     subtitle: {
         marginBottom: Spacing.sm,
+        textAlign: 'center',
     },
     migrationRow: {
         borderWidth: 1,

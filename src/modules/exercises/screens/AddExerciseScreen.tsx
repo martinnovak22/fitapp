@@ -4,6 +4,7 @@ import { GlobalStyles } from '@/src/constants/Styles'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
 import { ExerciseType } from '@/src/db/exercises'
+import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
 import { Typography } from '@/src/modules/core/components/Typography'
@@ -408,14 +409,14 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                                 accessibilityLabel={t('photo')}
                             >
                                 <Image key={photoUri} source={{ uri: photoUri }} style={styles.photo} />
-                                <TouchableOpacity
-                                    style={[styles.removePhotoButton, { backgroundColor: theme.overlayScrim }]}
+                                <Button
+                                    leftIcon={'trash'}
                                     onPress={() => setPhotoUri(null)}
-                                    accessibilityRole={'button'}
+                                    variant={'text'}
                                     accessibilityLabel={t('delete')}
-                                >
-                                    <FontAwesome name={'trash'} size={20} color={theme.error} />
-                                </TouchableOpacity>
+                                    labelStyle={{ color: theme.error }}
+                                    style={[styles.removePhotoButton, { backgroundColor: theme.overlayScrim }]}
+                                />
                             </TouchableOpacity>
                         ) : (
                             <TouchableOpacity

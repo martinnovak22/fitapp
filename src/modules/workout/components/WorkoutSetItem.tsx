@@ -1,6 +1,7 @@
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { Set as WorkoutSet } from '@/src/db/workouts'
+import { Button } from '@/src/modules/core/components/Button'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { formatDuration } from '@/src/utils/formatters'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
@@ -96,15 +97,14 @@ function WorkoutSetItemInner<T extends WorkoutSet = WorkoutSet>({
 
                 <View style={[styles.actions, { gap: Spacing.sm, height: SET_BASE_HEIGHT }]}>
                     {!isReadOnly && !isActive && (
-                        <TouchableOpacity
+                        <Button
+                            leftIcon={'trash'}
                             onPress={() => onDelete(set.id)}
-                            style={styles.deleteButton}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            accessibilityRole={'button'}
+                            variant={'text'}
+                            size={'sm'}
                             accessibilityLabel={t('deleteSetTitle')}
-                        >
-                            <FontAwesome name={'trash'} size={14} color={theme.error} />
-                        </TouchableOpacity>
+                            labelStyle={{ color: theme.error }}
+                        />
                     )}
                     {!isReadOnly && (
                         <TouchableOpacity
@@ -154,9 +154,6 @@ const styles = StyleSheet.create({
     actions: {
         flexDirection: 'row',
         alignItems: 'center',
-    },
-    deleteButton: {
-        padding: Spacing.sm,
     },
     subSetRow: {
         height: SUBSET_HEIGHT,
