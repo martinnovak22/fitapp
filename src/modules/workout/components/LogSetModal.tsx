@@ -554,7 +554,7 @@ const styles = StyleSheet.create({
     dynamicFields: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        gap: Spacing.sm,
     },
     fieldCell: {
         flex: 1,
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
     durationRow: {
         flex: 2,
         flexDirection: 'row',
-        gap: 10,
+        gap: Spacing.sm,
     },
     durationCell: {
         flex: 1,
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
     },
     pyramidChevron: {
-        marginLeft: 6,
+        marginLeft: Spacing.xs,
         opacity: 0.5,
     },
     addDropButton: {
