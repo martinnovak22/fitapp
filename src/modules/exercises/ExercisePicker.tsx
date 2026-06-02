@@ -12,12 +12,13 @@ import { ExerciseStats, type HeadlineStat } from './ExerciseStats'
 type Props = {
     exercises: Exercise[]
     onPick: (exercise: Exercise) => void
+    selectedId?: number | null
 }
 
 const ROW_HEIGHT = 64
 const EMPTY_PLACEHOLDER = '—'
 
-export const ExercisePicker = ({ exercises, onPick }: Props) => {
+export const ExercisePicker = ({ exercises, onPick, selectedId }: Props) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
     const [stats, setStats] = React.useState<Map<number, HeadlineStat | null>>(() => new Map())
@@ -35,12 +36,21 @@ export const ExercisePicker = ({ exercises, onPick }: Props) => {
     const renderItem: ListRenderItem<Exercise> = React.useCallback(
         ({ item }) => {
             const stat = stats.get(item.id) ?? null
+            const isSelected = item.id === selectedId
             return (
                 <TouchableOpacity
                     onPress={() => onPick(item)}
-                    style={[styles.row, { borderBottomColor: `${theme.border}20` }]}
+                    style={[
+                        styles.row,
+                        { borderBottomColor: `${theme.border}20` },
+                        isSelected && {
+                            backgroundColor: theme.inputBackgroundActive,
+                            borderLeftColor: theme.primary,
+                        },
+                    ]}
                     accessibilityRole={'button'}
                     accessibilityLabel={item.name}
+                    accessibilityState={{ selected: isSelected }}
                 >
                     <View style={styles.rowText}>
                         <Typography.Body weight="semibold" numberOfLines={1}>
@@ -56,7 +66,7 @@ export const ExercisePicker = ({ exercises, onPick }: Props) => {
                 </TouchableOpacity>
             )
         },
-        [onPick, stats, t, theme]
+        [onPick, stats, t, theme, selectedId]
     )
 
     return (
@@ -86,6 +96,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: Spacing.md,
         borderBottomWidth: 1,
+        // Reserve the selected left-accent width up front so selecting a row
+        // never shifts its content horizontally.
+        borderLeftWidth: 3,
+        borderLeftColor: 'transparent',
         gap: Spacing.md,
     },
     rowText: {
