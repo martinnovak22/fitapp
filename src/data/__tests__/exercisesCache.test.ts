@@ -54,11 +54,7 @@ describe('exercisesCache', () => {
         await seedExercise('Bench')
         const spy = vi.spyOn(ExerciseRepository, 'getAll')
 
-        const [a, b, c] = await Promise.all([
-            loadExercisesCached(),
-            loadExercisesCached(),
-            loadExercisesCached(),
-        ])
+        const [a, b, c] = await Promise.all([loadExercisesCached(), loadExercisesCached(), loadExercisesCached()])
 
         expect(a).toEqual(b)
         expect(b).toEqual(c)

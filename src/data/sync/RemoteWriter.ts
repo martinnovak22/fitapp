@@ -4,18 +4,26 @@
 
 import type { SyncFailureReason } from './Outbox'
 import type { RemoteAdapter, RemoteRow, RemoteTable } from './RemoteAdapter'
+import { RemoteRequestError, isPermanentRejectionStatus } from './RemoteAdapter'
 
 export type RemoteWriteResult =
     | { uuid: string; kind: 'persisted'; id: number }
     | { uuid: string; kind: 'failed'; reason: SyncFailureReason }
 
-// Adapter contract: thrown errors represent transport failures (connection
-// reset, DNS, timeout, 5xx). Remote-rejection (4xx, empty body) is surfaced
-// through the structured return value, not via throw.
-const failureFromError = (error: unknown): SyncFailureReason => ({
-    kind: 'network-error',
-    message: error instanceof Error ? error.message : String(error),
-})
+// Adapter contract: thrown errors represent transport failures. A 4xx surfaces
+// as a RemoteRequestError and is classified permanent (the server refused the
+// data); everything else (5xx, connection reset, DNS, timeout) is transient.
+// The empty-body "unconfirmed persistence" case is handled separately in
+// upsert() and is treated as a soft remote-rejection.
+const failureFromError = (error: unknown): SyncFailureReason => {
+    if (error instanceof RemoteRequestError && isPermanentRejectionStatus(error.status)) {
+        return { kind: 'permanent-rejection', message: error.message }
+    }
+    return {
+        kind: 'network-error',
+        message: error instanceof Error ? error.message : String(error),
+    }
+}
 
 export type RemoteWriter = {
     upsert(table: RemoteTable, rows: RemoteRow[]): Promise<RemoteWriteResult[]>

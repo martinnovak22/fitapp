@@ -8,11 +8,13 @@ import { createOutbox, DIRTY_STATUSES } from './Outbox'
 import { capturePrincipalSnapshot, type LivePrincipal } from './PrincipalSnapshot'
 import { drainOutbox, type CycleResult } from './SyncCycle'
 import type { RemoteAdapter } from './RemoteAdapter'
+import { RemoteRequestError } from './RemoteAdapter'
 import { createRemoteIdResolver } from './RemoteIdResolver'
 import { createRemoteWriter } from './RemoteWriter'
 import { makePushFn, preloadSetParents } from './PushPipeline'
 import { syncStatusStore, type SyncFailure } from './SyncStatus'
 import { invalidateExercisesCache } from '@/src/data/exercisesCache'
+import { onPrincipalChange } from '@/src/data/principal'
 
 type SyncState = {
     is_syncing: number
@@ -20,6 +22,10 @@ type SyncState = {
     last_success_at: string | null
     last_attempt_at: string | null
     last_error: string | null
+    // Rows given up on (parked as 'blocked'). Surfaced as a quiet "couldn't
+    // sync" indicator, separate from the transient-failure banner. Derived at
+    // read time, not stored in the sync_state row.
+    blocked_size: number
 }
 
 type DeletedRow = {
@@ -130,14 +136,17 @@ const request = async <T>(
     if (!response.ok) {
         const normalized = text.toLowerCase()
         if (response.status === 401 && normalized.includes('jwt expired')) {
-            throw new Error('Sync auth expired. Please sign in again.')
+            throw new RemoteRequestError('Sync auth expired. Please sign in again.', 401)
         }
-        throw new Error(`Sync request failed (${table}): ${response.status} ${response.statusText} ${text}`)
+        throw new RemoteRequestError(
+            `Sync request failed (${table}): ${response.status} ${response.statusText} ${text}`,
+            response.status
+        )
     }
     return payload
 }
 
-const getOutboxSize = async (userId?: string) => {
+const countRowsByStatus = async (statusClause: string, userId?: string) => {
     const db = await getDb()
     const shouldScopeByUser = shouldUseRemoteSync() && !!userId
     const userScopeClause = shouldScopeByUser ? 'AND user_id = ?' : ''
@@ -146,13 +155,19 @@ const getOutboxSize = async (userId?: string) => {
     const counts = await Promise.all(
         tables.map((table) =>
             db.getFirstAsync<{ count: number }>(
-                `SELECT COUNT(*) as count FROM ${table} WHERE sync_status IN ${DIRTY_STATUSES} ${userScopeClause}`,
+                `SELECT COUNT(*) as count FROM ${table} WHERE sync_status ${statusClause} ${userScopeClause}`,
                 ...userScopeParams
             )
         )
     )
     return counts.reduce((sum, row) => sum + (row?.count ?? 0), 0)
 }
+
+// Rows awaiting a push attempt (dirty or retryable-failed).
+const getOutboxSize = (userId?: string) => countRowsByStatus(`IN ${DIRTY_STATUSES}`, userId)
+
+// Rows given up on after repeated/permanent failure.
+const getBlockedSize = (userId?: string) => countRowsByStatus(`= 'blocked'`, userId)
 
 const updateSyncState = async (partial: Partial<SyncState>) => {
     const updates: string[] = []
@@ -213,7 +228,6 @@ const createSupabaseHttpAdapter = (): RemoteAdapter => ({
     },
 })
 
-
 // In-memory pull cursors per userId. Tracks the max updated_at / deleted_at we
 // have seen so subsequent pulls can request only rows that have advanced past
 // it. Cold-start (process restart) falls back to a full pull, which is
@@ -239,16 +253,25 @@ const EMPTY_CURSORS: PullCursors = {
 
 const pullCursorsByUser = new Map<string, PullCursors>()
 
-const getCursors = (userId: string): PullCursors =>
-    pullCursorsByUser.get(userId) ?? { ...EMPTY_CURSORS }
+const getCursors = (userId: string): PullCursors => pullCursorsByUser.get(userId) ?? { ...EMPTY_CURSORS }
 
 const setCursors = (userId: string, cursors: PullCursors) => {
     pullCursorsByUser.set(userId, cursors)
 }
 
-export const resetPullCursorsForTest = () => {
+const resetPullCursors = () => {
     pullCursorsByUser.clear()
 }
+
+export const resetPullCursorsForTest = resetPullCursors
+
+// Pull cursors are an in-memory incremental watermark per user. A principal
+// transition (sign-in, sign-out, guest <-> account) means we're now syncing a
+// different scope — or local data was cleared underneath us — so the old
+// watermarks must not carry over, otherwise the next pull would skip rows.
+onPrincipalChange(() => {
+    resetPullCursors()
+})
 
 const maxIso = (a: string | null, b: string | null | undefined) => {
     if (!a) return b ?? null
@@ -581,7 +604,6 @@ export const runSync = async (): Promise<SyncCycleResult> => {
             // in issue #26.
             const outboxSizeBefore = await getOutboxSize(snapshot.userId as string)
             let aborted = false
-            let failed = 0
             let failures: CycleResult['failures'] = []
             let pushed = 0
 
@@ -598,10 +620,14 @@ export const runSync = async (): Promise<SyncCycleResult> => {
                     (batch) => preloadSetParents(resolver, batch)
                 )
                 aborted = result.aborted
-                failed = result.failed
                 failures = result.failures
                 pushed = result.acked
             }
+
+            // Only failures left to retry raise the banner. Rows parked as
+            // 'blocked' are terminal — they surface as a quiet count instead, so
+            // a poison row can't keep the banner stuck failed every cycle.
+            const retryableFailures = failures.filter((f) => !f.blocked)
 
             let pulled = 0
             if (!aborted) {
@@ -615,7 +641,7 @@ export const runSync = async (): Promise<SyncCycleResult> => {
                 pulled = exPulled + wkPulled + stPulled
             }
 
-            if (failed > 0 || aborted) {
+            if (retryableFailures.length > 0 || aborted) {
                 const rows: SyncFailure[] = aborted
                     ? [
                           {
@@ -624,7 +650,7 @@ export const runSync = async (): Promise<SyncCycleResult> => {
                               reason: { kind: 'principal-diverged', message: 'principal changed mid-cycle' },
                           },
                       ]
-                    : failures.map((f) => ({
+                    : retryableFailures.map((f) => ({
                           entityType: f.row.kind === 'tombstone' ? 'tombstone' : f.row.entityType,
                           uuid: f.row.uuid,
                           reason: f.reason,
@@ -635,9 +661,9 @@ export const runSync = async (): Promise<SyncCycleResult> => {
                     outbox_size: await getOutboxSize(snapshot.userId as string),
                     last_error: aborted
                         ? 'Sync aborted: principal changed mid-cycle.'
-                        : `Sync completed with ${failed} failed push operations.`,
+                        : `Sync completed with ${retryableFailures.length} failed push operations.`,
                 })
-                return { skipped: false, pushed, pulled, failed, aborted }
+                return { skipped: false, pushed, pulled, failed: retryableFailures.length, aborted }
             }
 
             syncStatusStore.set({ kind: 'idle' })
@@ -671,14 +697,17 @@ export const runSync = async (): Promise<SyncCycleResult> => {
 
 export const getSyncState = async (): Promise<SyncState> => {
     const db = await getDb()
-    const scopedOutboxSize = await getOutboxSize(getSupabaseSession()?.userId)
-    const row = await db.getFirstAsync<SyncState>(
+    const userId = getSupabaseSession()?.userId
+    const scopedOutboxSize = await getOutboxSize(userId)
+    const scopedBlockedSize = await getBlockedSize(userId)
+    const row = await db.getFirstAsync<Omit<SyncState, 'blocked_size'>>(
         'SELECT is_syncing, outbox_size, last_success_at, last_attempt_at, last_error FROM sync_state WHERE id = 1'
     )
     if (row) {
         return {
             ...row,
             outbox_size: scopedOutboxSize,
+            blocked_size: scopedBlockedSize,
         }
     }
 
@@ -688,5 +717,24 @@ export const getSyncState = async (): Promise<SyncState> => {
         last_attempt_at: null,
         last_success_at: null,
         last_error: null,
+        blocked_size: scopedBlockedSize,
     }
+}
+
+// Un-parks every blocked row (resets it to 'dirty' with a fresh attempt count)
+// so the next sync re-attempts it. Backs the user-facing "Try again" action.
+export const retryBlockedRows = async (): Promise<void> => {
+    const userId = getSupabaseSession()?.userId
+    const shouldScopeByUser = shouldUseRemoteSync() && !!userId
+    const userScopeClause = shouldScopeByUser ? 'AND user_id = ?' : ''
+    const userScopeParams = shouldScopeByUser ? [userId as string] : []
+    const tables = ['exercises', 'workouts', 'sets', 'deletion_tombstones'] as const
+    await executeWriteTransaction(async (db) => {
+        for (const table of tables) {
+            await db.runAsync(
+                `UPDATE ${table} SET sync_status = 'dirty', sync_attempts = 0 WHERE sync_status = 'blocked' ${userScopeClause}`,
+                ...userScopeParams
+            )
+        }
+    })
 }

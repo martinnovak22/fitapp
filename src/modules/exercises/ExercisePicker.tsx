@@ -1,21 +1,24 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import type { Exercise } from '@/src/db/exercises'
+import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { formatExerciseType } from '@/src/utils/formatters'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { FlatList, type ListRenderItem, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { FlatList, type ListRenderItem, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { ExerciseStats, type HeadlineStat } from './ExerciseStats'
 
 type Props = {
     exercises: Exercise[]
     onPick: (exercise: Exercise) => void
+    selectedId?: number | null
 }
 
 const ROW_HEIGHT = 64
 const EMPTY_PLACEHOLDER = '—'
 
-export const ExercisePicker = ({ exercises, onPick }: Props) => {
+export const ExercisePicker = ({ exercises, onPick, selectedId }: Props) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
     const [stats, setStats] = React.useState<Map<number, HeadlineStat | null>>(() => new Map())
@@ -33,28 +36,37 @@ export const ExercisePicker = ({ exercises, onPick }: Props) => {
     const renderItem: ListRenderItem<Exercise> = React.useCallback(
         ({ item }) => {
             const stat = stats.get(item.id) ?? null
+            const isSelected = item.id === selectedId
             return (
                 <TouchableOpacity
                     onPress={() => onPick(item)}
-                    style={[styles.row, { borderBottomColor: `${theme.border}20` }]}
+                    style={[
+                        styles.row,
+                        { borderBottomColor: `${theme.border}20` },
+                        isSelected && {
+                            backgroundColor: theme.inputBackgroundActive,
+                            borderLeftColor: theme.primary,
+                        },
+                    ]}
                     accessibilityRole={'button'}
                     accessibilityLabel={item.name}
+                    accessibilityState={{ selected: isSelected }}
                 >
                     <View style={styles.rowText}>
-                        <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
+                        <Typography.Body weight="semibold" numberOfLines={1}>
                             {item.name}
-                        </Text>
-                        <Text style={[styles.subtext, { color: theme.textSecondary }]} numberOfLines={1}>
+                        </Typography.Body>
+                        <Typography.Meta style={styles.subtext} numberOfLines={1}>
                             {t(formatExerciseType(item.type))}
-                        </Text>
+                        </Typography.Meta>
                     </View>
-                    <Text style={[styles.stat, { color: theme.text }]} numberOfLines={1}>
+                    <Typography.Label weight="bold" color="text" style={styles.stat} numberOfLines={1}>
                         {stat ? stat.formatted : EMPTY_PLACEHOLDER}
-                    </Text>
+                    </Typography.Label>
                 </TouchableOpacity>
             )
         },
-        [onPick, stats, t, theme]
+        [onPick, stats, t, theme, selectedId]
     )
 
     return (
@@ -74,7 +86,7 @@ export const ExercisePicker = ({ exercises, onPick }: Props) => {
 
 const styles = StyleSheet.create({
     list: {
-        borderRadius: 10,
+        borderRadius: Radius.sm,
         marginVertical: Spacing.sm,
         maxHeight: ROW_HEIGHT * 4,
     },
@@ -84,23 +96,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: Spacing.md,
         borderBottomWidth: 1,
+        // Reserve the selected left-accent width up front so selecting a row
+        // never shifts its content horizontally.
+        borderLeftWidth: 3,
+        borderLeftColor: 'transparent',
         gap: Spacing.md,
     },
     rowText: {
         flex: 1,
         minWidth: 0,
     },
-    name: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
     subtext: {
-        fontSize: 11,
         marginTop: 2,
     },
     stat: {
-        fontSize: 14,
-        fontWeight: '700',
         textAlign: 'right',
     },
 })

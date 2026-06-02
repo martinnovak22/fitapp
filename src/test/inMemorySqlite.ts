@@ -4,10 +4,7 @@ export type InMemorySqliteDb = {
     execAsync: (sql: string) => Promise<void>
     getAllAsync: <T = unknown>(sql: string, ...params: unknown[]) => Promise<T[]>
     getFirstAsync: <T = unknown>(sql: string, ...params: unknown[]) => Promise<T | null>
-    runAsync: (
-        sql: string,
-        ...params: unknown[]
-    ) => Promise<{ lastInsertRowId: number; changes: number }>
+    runAsync: (sql: string, ...params: unknown[]) => Promise<{ lastInsertRowId: number; changes: number }>
     withTransactionAsync: (fn: () => Promise<void>) => Promise<void>
     closeAsync: () => Promise<void>
 }

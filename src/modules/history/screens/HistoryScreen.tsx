@@ -1,4 +1,5 @@
 import { Spacing } from '@/src/constants/Spacing'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
 import { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
@@ -115,11 +116,11 @@ export default function HistoryScreen() {
         <ScreenLayout>
             {initialLoading ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size={"large"} color={theme.primary} />
+                    <ActivityIndicator size={'large'} color={theme.primary} />
                 </View>
             ) : loadError && workouts.length === 0 ? (
                 <View style={styles.loadingContainer}>
-                    <EmptyState message={loadError} icon={"exclamation-circle"} />
+                    <EmptyState message={loadError} icon={'exclamation-circle'} />
                     <Button label={t('retry')} onPress={onRefresh} style={{ marginTop: Spacing.md }} />
                 </View>
             ) : (
@@ -162,11 +163,11 @@ const styles = StyleSheet.create({
         paddingRight: Spacing.md,
     },
     workoutDate: {
-        fontWeight: 'bold',
-        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        fontSize: FontSize.md,
     },
     workoutTime: {
-        fontSize: 13,
+        fontSize: FontSize.xs,
     },
     workoutNote: {
         fontStyle: 'italic',

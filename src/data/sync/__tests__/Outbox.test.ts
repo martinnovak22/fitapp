@@ -6,7 +6,7 @@ vi.mock('@/src/db/client', () => ({
 }))
 
 const { executeWriteTransaction } = await import('@/src/db/writeQueue')
-const { createOutbox } = await import('../Outbox')
+const { createOutbox, MAX_SYNC_ATTEMPTS } = await import('../Outbox')
 const { capturePrincipalSnapshot } = await import('../PrincipalSnapshot')
 
 let db: TestDb
@@ -158,13 +158,74 @@ describe('Outbox.fail', () => {
         const batch = await outbox.nextBatch(snap)
 
         const reason = { kind: 'network-error', message: 'timed out' } as const
-        await outbox.fail(batch, reason)
+        const dispositions = await outbox.fail(batch, reason)
 
         const status = await getStatus('exercises', 'ex-1')
         expect(status?.sync_status).toBe('failed')
+        expect(dispositions).toEqual([{ uuid: 'ex-1', status: 'failed' }])
 
         // Reason shape is part of the public surface for the cycle/UI layer.
         expect(reason.kind).toBe('network-error')
         expect(reason.message).toBe('timed out')
+    })
+
+    const getAttempts = async (uuid: string) => {
+        const row = await db.getFirstAsync<{ sync_attempts: number }>(
+            `SELECT sync_attempts FROM exercises WHERE uuid = ?`,
+            uuid
+        )
+        return row?.sync_attempts ?? 0
+    }
+
+    it('parks a row as blocked immediately on a permanent rejection', async () => {
+        await insertExercise('ex-1', 'Bench')
+        const outbox = createOutbox(db as never, executeWriteTransaction)
+        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const batch = await outbox.nextBatch(snap)
+
+        const dispositions = await outbox.fail(batch, {
+            kind: 'permanent-rejection',
+            message: '422 invalid',
+        })
+
+        expect(dispositions).toEqual([{ uuid: 'ex-1', status: 'blocked' }])
+        expect((await getStatus('exercises', 'ex-1'))?.sync_status).toBe('blocked')
+        expect(await getAttempts('ex-1')).toBe(1)
+    })
+
+    it('retries a transient failure until MAX_SYNC_ATTEMPTS, then blocks it', async () => {
+        await insertExercise('ex-1', 'Bench')
+        const outbox = createOutbox(db as never, executeWriteTransaction)
+        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const reason = { kind: 'network-error', message: 'timed out' } as const
+
+        for (let i = 1; i < MAX_SYNC_ATTEMPTS; i++) {
+            // Re-draw the batch each cycle: a 'failed' row is still eligible.
+            const batch = await outbox.nextBatch(snap)
+            const [disp] = await outbox.fail(batch, reason)
+            expect(disp.status).toBe('failed')
+        }
+
+        // The MAX_SYNC_ATTEMPTS-th failure crosses the threshold.
+        const finalBatch = await outbox.nextBatch(snap)
+        const [finalDisp] = await outbox.fail(finalBatch, reason)
+        expect(finalDisp.status).toBe('blocked')
+        expect(await getAttempts('ex-1')).toBe(MAX_SYNC_ATTEMPTS)
+
+        // Blocked rows drop out of the outbox.
+        expect(await outbox.nextBatch(snap)).toHaveLength(0)
+    })
+
+    it('resets the attempt counter when a previously failed row finally acks', async () => {
+        await insertExercise('ex-1', 'Bench')
+        const outbox = createOutbox(db as never, executeWriteTransaction)
+        const snap = capturePrincipalSnapshot({ userId, remote: true })
+
+        await outbox.fail(await outbox.nextBatch(snap), { kind: 'network-error', message: 'blip' })
+        expect(await getAttempts('ex-1')).toBe(1)
+
+        await outbox.ack(await outbox.nextBatch(snap))
+        expect((await getStatus('exercises', 'ex-1'))?.sync_status).toBe('synced')
+        expect(await getAttempts('ex-1')).toBe(0)
     })
 })

@@ -45,12 +45,8 @@ export const getSetMetricValue = (set: Set, metric: PrimaryMetric): number => {
 const betterIsLower = (type: ExerciseType, dominant: PrimaryMetric): boolean =>
     type === 'cardio' && dominant === 'duration'
 
-const compareMetric = (
-    type: ExerciseType,
-    dominant: PrimaryMetric,
-    a: number,
-    b: number
-): number => (betterIsLower(type, dominant) ? a - b : b - a)
+const compareMetric = (type: ExerciseType, dominant: PrimaryMetric, a: number, b: number): number =>
+    betterIsLower(type, dominant) ? a - b : b - a
 
 const tiebreakerFor = (type: ExerciseType, dominant: PrimaryMetric): PrimaryMetric | null => {
     if (dominant === 'weight') {
@@ -60,18 +56,10 @@ const tiebreakerFor = (type: ExerciseType, dominant: PrimaryMetric): PrimaryMetr
     return null
 }
 
-export const bestSetComparatorFor = (
-    type: ExerciseType,
-    dominant: PrimaryMetric
-): ((a: Set, b: Set) => number) => {
+export const bestSetComparatorFor = (type: ExerciseType, dominant: PrimaryMetric): ((a: Set, b: Set) => number) => {
     const secondary = tiebreakerFor(type, dominant)
     return (a, b) => {
-        const primary = compareMetric(
-            type,
-            dominant,
-            getSetMetricValue(a, dominant),
-            getSetMetricValue(b, dominant)
-        )
+        const primary = compareMetric(type, dominant, getSetMetricValue(a, dominant), getSetMetricValue(b, dominant))
         if (primary !== 0) return primary
         if (!secondary) return 0
         // Tiebreakers always reward larger values (more reps, longer duration when at the
@@ -95,11 +83,7 @@ const formatRawMetric = (metric: PrimaryMetric, value: number): string => {
 
 // Compact, single-string label that captures the whole set for one data point.
 // Driven by (exercise type, dominant metric) per the PRD's table.
-export const formatCompactSetLabel = (
-    type: ExerciseType,
-    dominant: PrimaryMetric,
-    set: Set
-): string => {
+export const formatCompactSetLabel = (type: ExerciseType, dominant: PrimaryMetric, set: Set): string => {
     const weight = set.weight ?? 0
     const reps = set.reps ?? 0
     const distance = set.distance ?? 0
@@ -109,9 +93,7 @@ export const formatCompactSetLabel = (
         case 'weight':
             return `${formatCompactWeight(weight)}×${Math.round(reps)}`
         case 'bodyweight':
-            return weight === 0
-                ? `${Math.round(reps)}`
-                : `${Math.round(reps)} (${formatSignedWeight(weight)})`
+            return weight === 0 ? `${Math.round(reps)}` : `${Math.round(reps)} (${formatSignedWeight(weight)})`
         case 'bodyweight_timer':
             return weight === 0
                 ? formatDuration(duration)
@@ -122,11 +104,7 @@ export const formatCompactSetLabel = (
 }
 
 // Headline string for the picker / personal-best card. Single dominant value with its unit.
-export const formatHeadlineStat = (
-    _type: ExerciseType,
-    dominant: PrimaryMetric,
-    value: number
-): string => {
+export const formatHeadlineStat = (_type: ExerciseType, dominant: PrimaryMetric, value: number): string => {
     if (dominant === 'distance') return formatCompactDistance(value)
     if (dominant === 'duration') return formatDuration(value)
     const unit = metricUnit[dominant]

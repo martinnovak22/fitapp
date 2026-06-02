@@ -1,5 +1,6 @@
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
 import { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
@@ -139,7 +140,7 @@ export default function CalendarScreen() {
         return (
             <ScrollScreenLayout contentContainerStyle={styles.scrollContent} style={styles.container}>
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size={"large"} color={theme.primary} />
+                    <ActivityIndicator size={'large'} color={theme.primary} />
                 </View>
             </ScrollScreenLayout>
         )
@@ -149,7 +150,7 @@ export default function CalendarScreen() {
         return (
             <ScrollScreenLayout contentContainerStyle={styles.scrollContent} style={styles.container}>
                 <View style={styles.loadingContainer}>
-                    <EmptyState message={loadError} icon={"exclamation-circle"} />
+                    <EmptyState message={loadError} icon={'exclamation-circle'} />
                     <Button label={t('retry')} onPress={loadWorkouts} style={{ marginTop: Spacing.md }} />
                 </View>
             </ScrollScreenLayout>
@@ -305,7 +306,7 @@ export default function CalendarScreen() {
                         <ScrollView style={styles.summaryScroll} contentContainerStyle={styles.summaryScrollContent}>
                             {isLoadingSummary ? (
                                 <View style={styles.summaryLoading}>
-                                    <ActivityIndicator size={"small"} color={theme.primary} />
+                                    <ActivityIndicator size={'small'} color={theme.primary} />
                                 </View>
                             ) : workoutSets.length > 0 ? (
                                 workoutSets.map((item, index) => (
@@ -377,12 +378,12 @@ const styles = StyleSheet.create({
     },
     workoutTime: {
         ...GlobalStyles.text,
-        fontWeight: 'bold',
-        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        fontSize: FontSize.sm,
     },
     workoutStatus: {
         ...GlobalStyles.text,
-        fontSize: 12,
+        fontSize: FontSize.xs,
         marginTop: 2,
     },
     workoutAction: {
@@ -392,8 +393,8 @@ const styles = StyleSheet.create({
     },
     viewSummaryText: {
         ...GlobalStyles.text,
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.semibold,
     },
     modalOverlay: {
         flex: 1,
@@ -418,7 +419,7 @@ const styles = StyleSheet.create({
     },
     modalDate: {
         ...GlobalStyles.text,
-        fontSize: 14,
+        fontSize: FontSize.sm,
         marginBottom: Spacing.lg,
     },
     summaryScroll: {
@@ -446,7 +447,7 @@ const styles = StyleSheet.create({
     },
     summaryCount: {
         ...GlobalStyles.text,
-        fontWeight: 'bold',
+        fontWeight: FontWeight.bold,
         marginLeft: Spacing.md,
     },
     emptySummary: {

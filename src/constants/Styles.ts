@@ -1,6 +1,8 @@
 import { StyleSheet } from 'react-native'
 import { Theme } from './Colors'
+import { Radius } from './Radius'
 import { Spacing } from './Spacing'
+import { FontSize, FontWeight } from './Typography'
 
 export const GlobalStyles = StyleSheet.create({
     container: {
@@ -8,14 +10,12 @@ export const GlobalStyles = StyleSheet.create({
         paddingHorizontal: Spacing.md,
     },
     title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: Spacing.md,
+        fontSize: FontSize.xxl,
+        fontWeight: FontWeight.bold,
     },
     subtitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: Spacing.sm,
+        fontSize: FontSize.lg,
+        fontWeight: FontWeight.semibold,
     },
     card: {
         padding: Spacing.md,
@@ -24,11 +24,11 @@ export const GlobalStyles = StyleSheet.create({
         borderWidth: 1,
     },
     text: {
-        fontSize: 16,
+        fontSize: FontSize.md,
     },
     input: {
         padding: Spacing.md,
-        borderRadius: 8,
+        borderRadius: Radius.sm,
         borderWidth: 1,
         marginBottom: Spacing.md,
     },

@@ -1,4 +1,6 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
 import { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
@@ -131,7 +133,7 @@ export default function WorkoutDashboardScreen() {
         return (
             <ScrollScreenLayout>
                 <View style={layoutStyles.loadingContainer}>
-                    <ActivityIndicator size={"large"} color={theme.primary} />
+                    <ActivityIndicator size={'large'} color={theme.primary} />
                 </View>
             </ScrollScreenLayout>
         )
@@ -141,7 +143,7 @@ export default function WorkoutDashboardScreen() {
         return (
             <ScrollScreenLayout>
                 <View style={layoutStyles.loadingContainer}>
-                    <EmptyState message={loadError} icon={"exclamation-circle"} />
+                    <EmptyState message={loadError} icon={'exclamation-circle'} />
                     <Button label={t('retry')} onPress={loadData} style={{ marginTop: Spacing.md }} />
                 </View>
             </ScrollScreenLayout>
@@ -163,8 +165,8 @@ export default function WorkoutDashboardScreen() {
                         <View style={layoutStyles.heroStatItem}>
                             <Typography.Meta
                                 style={{
-                                    fontSize: 10,
-                                    fontWeight: '800',
+                                    fontSize: FontSize.xs,
+                                    fontWeight: FontWeight.heavy,
                                     color: theme.textSecondary,
                                     letterSpacing: 1,
                                     marginBottom: 4,
@@ -173,7 +175,7 @@ export default function WorkoutDashboardScreen() {
                                 {t('sessions').toUpperCase()}
                             </Typography.Meta>
                             <Typography.Subtitle style={layoutStyles.statValue}>🗓️ {stats.sessions}</Typography.Subtitle>
-                            <Typography.Meta style={{ fontSize: 10, color: theme.textSecondary }}>
+                            <Typography.Meta style={{ fontSize: FontSize.xs, color: theme.textSecondary }}>
                                 {t('completed')}
                             </Typography.Meta>
                         </View>
@@ -182,8 +184,8 @@ export default function WorkoutDashboardScreen() {
                         <View style={[layoutStyles.heroStatItem]}>
                             <Typography.Meta
                                 style={{
-                                    fontSize: 10,
-                                    fontWeight: '800',
+                                    fontSize: FontSize.xs,
+                                    fontWeight: FontWeight.heavy,
                                     color: theme.textSecondary,
                                     letterSpacing: 1,
                                     marginBottom: 4,
@@ -195,7 +197,7 @@ export default function WorkoutDashboardScreen() {
                                 ⏱️ {stats.avgDuration}
                                 {t('min')}
                             </Typography.Subtitle>
-                            <Typography.Meta style={{ fontSize: 10, color: theme.textSecondary }}>
+                            <Typography.Meta style={{ fontSize: FontSize.xs, color: theme.textSecondary }}>
                                 {t('perSession')}
                             </Typography.Meta>
                         </View>
@@ -204,7 +206,9 @@ export default function WorkoutDashboardScreen() {
                     <View style={[layoutStyles.heroDivider, { backgroundColor: theme.border + '15' }]} />
 
                     <View style={layoutStyles.headerRow}>
-                        <Typography.Subtitle style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>
+                        <Typography.Subtitle
+                            style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text }}
+                        >
                             {t('weeklyActivity')}
                         </Typography.Subtitle>
                         <FontAwesome name="chevron-right" size={12} color={theme.textSecondary} />
@@ -224,8 +228,8 @@ export default function WorkoutDashboardScreen() {
                                 </View>
                                 <Typography.Meta
                                     style={[
-                                        { fontSize: 11, color: theme.textSecondary },
-                                        day.workedOut && { color: theme.text, fontWeight: 'bold' },
+                                        { fontSize: FontSize.xs, color: theme.textSecondary },
+                                        day.workedOut && { color: theme.text, fontWeight: FontWeight.bold },
                                     ]}
                                 >
                                     {day.day}
@@ -239,9 +243,7 @@ export default function WorkoutDashboardScreen() {
             <Animated.View entering={FadeInDown.delay(140).duration(360)}>
                 <Card style={[layoutStyles.activeCard, { borderLeftColor: theme.primary }]}>
                     <View style={layoutStyles.activeHeader}>
-                        <Typography.Subtitle
-                            style={{ fontSize: 16, fontWeight: '700', color: theme.text, marginBottom: 0 }}
-                        >
+                        <Typography.Subtitle size="md" weight="bold">
                             {activeWorkout ? t('activeSession') : t('workout')}
                         </Typography.Subtitle>
                         {activeWorkout && (
@@ -249,8 +251,8 @@ export default function WorkoutDashboardScreen() {
                                 <View style={[layoutStyles.liveDot, { backgroundColor: theme.primary }]} />
                                 <Typography.Meta
                                     style={{
-                                        fontSize: 10,
-                                        fontWeight: 'bold',
+                                        fontSize: FontSize.xs,
+                                        fontWeight: FontWeight.bold,
                                         color: theme.primary,
                                         letterSpacing: 0.5,
                                     }}
@@ -267,14 +269,22 @@ export default function WorkoutDashboardScreen() {
                                 {t('startedAt')} {formatHourMinute(activeWorkout.start_time)}
                             </Typography.Body>
 
-                            <Button label={t('resumeSession')} onPress={handleStartWorkout} isLoading={isStartingWorkout} />
+                            <Button
+                                label={t('resumeSession')}
+                                onPress={handleStartWorkout}
+                                isLoading={isStartingWorkout}
+                            />
                         </View>
                     ) : (
                         <View style={layoutStyles.activeContent}>
                             <Typography.Body style={[layoutStyles.activePromo, { color: theme.textSecondary }]}>
                                 {t('readyToCrush')}
                             </Typography.Body>
-                            <Button label={t('startNewWorkout')} onPress={handleStartWorkout} isLoading={isStartingWorkout} />
+                            <Button
+                                label={t('startNewWorkout')}
+                                onPress={handleStartWorkout}
+                                isLoading={isStartingWorkout}
+                            />
                         </View>
                     )}
                 </Card>
@@ -368,8 +378,8 @@ const layoutStyles = StyleSheet.create({
     },
 
     statValue: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: FontSize.xl,
+        fontWeight: FontWeight.bold,
         marginBottom: Spacing.xs,
     },
     headerRow: {
@@ -391,7 +401,7 @@ const layoutStyles = StyleSheet.create({
     dayBox: {
         width: 28,
         height: 28,
-        borderRadius: 8,
+        borderRadius: Radius.sm,
         marginBottom: Spacing.sm,
         justifyContent: 'center',
         alignItems: 'center',
@@ -414,13 +424,13 @@ const layoutStyles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: Spacing.sm,
         paddingVertical: Spacing.xs,
-        borderRadius: 12,
+        borderRadius: Radius.md,
     },
 
     liveDot: {
         width: 6,
         height: 6,
-        borderRadius: 3,
+        borderRadius: Radius.pill,
         marginRight: Spacing.sm,
     },
     activeContent: {
@@ -431,7 +441,7 @@ const layoutStyles = StyleSheet.create({
     },
     activePromo: {
         marginBottom: Spacing.md,
-        fontSize: 15,
+        fontSize: FontSize.sm,
     },
     recentContainer: {
         rowGap: Spacing.md,
@@ -450,11 +460,11 @@ const layoutStyles = StyleSheet.create({
         paddingRight: Spacing.md,
     },
     recentTitle: {
-        fontWeight: '600',
-        fontSize: 15,
+        fontWeight: FontWeight.semibold,
+        fontSize: FontSize.sm,
     },
     recentMeta: {
-        fontSize: 12,
+        fontSize: FontSize.xs,
         marginTop: Spacing.xs,
     },
 })
