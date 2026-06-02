@@ -10,7 +10,12 @@ export type EntityTable = 'exercises' | 'workouts' | 'sets'
 
 export type SyncFailureKind =
     | 'network-error'
+    // Server returned 200 but did not confirm persistence (empty body). Soft /
+    // transient — worth retrying.
     | 'remote-rejection'
+    // Server actively refused the data with a 4xx. Permanent — retrying the
+    // same payload cannot succeed.
+    | 'permanent-rejection'
     | 'missing-parent'
     | 'principal-diverged'
     | 'unknown'
@@ -92,12 +97,31 @@ type SqliteLike = Pick<SQLite.SQLiteDatabase, 'getAllAsync' | 'runAsync'>
 
 type RunWrite = <T>(op: (db: SQLite.SQLiteDatabase) => Promise<T>) => Promise<T>
 
+// Result of recording a push failure: whether the row will be retried on a
+// later cycle ('failed') or has been given up on and parked ('blocked').
+export type FailStatus = 'failed' | 'blocked'
+
+export type FailDisposition = { uuid: string; status: FailStatus }
+
 export type Outbox = {
     nextBatch(snapshot: PrincipalSnapshot): Promise<OutboxRow[]>
     ack(rows: OutboxRow[]): Promise<void>
-    fail(rows: OutboxRow[], reason: SyncFailureReason): Promise<void>
+    fail(rows: OutboxRow[], reason: SyncFailureReason): Promise<FailDisposition[]>
 }
 
+// A transient failure (network, remote-rejection, missing-parent, unknown) is
+// retried up to this many times before being parked as 'blocked'. A
+// 'permanent-rejection' is the server refusing the data with a 4xx — retrying
+// cannot fix it, so it is parked on the first failure (see classifyFailure).
+export const MAX_SYNC_ATTEMPTS = 5
+
+export const classifyFailure = (reasonKind: SyncFailureKind, attempts: number): FailStatus => {
+    if (reasonKind === 'permanent-rejection') return 'blocked'
+    return attempts >= MAX_SYNC_ATTEMPTS ? 'blocked' : 'failed'
+}
+
+// Rows eligible for a push attempt. 'blocked' is intentionally excluded so a
+// parked row stops re-failing every cycle (and stops inflating the outbox size).
 export const DIRTY_STATUSES = `('dirty','failed')`
 
 export const tableOf = (entityType: OutboxEntityType): EntityTable =>
@@ -165,10 +189,13 @@ const updateEntityStatus = (
         )
     )
 
-const updateTombstoneStatus = (write: RunWrite, id: number, status: 'synced' | 'failed') =>
-    write((db) =>
-        db.runAsync(`UPDATE deletion_tombstones SET sync_status = ? WHERE id = ?`, status, id)
+const readAttempts = async (read: SqliteLike, table: EntityTable | 'deletion_tombstones', key: { column: string; value: string | number }) => {
+    const rows = await read.getAllAsync<{ sync_attempts: number | null }>(
+        `SELECT sync_attempts FROM ${table} WHERE ${key.column} = ?`,
+        key.value
     )
+    return rows[0]?.sync_attempts ?? 0
+}
 
 export const createOutbox = (read: SqliteLike, write: RunWrite): Outbox => ({
     async nextBatch(snapshot) {
@@ -233,24 +260,49 @@ export const createOutbox = (read: SqliteLike, write: RunWrite): Outbox => ({
     async ack(rows) {
         for (const row of rows) {
             if (row.kind === 'tombstone') {
-                await updateTombstoneStatus(write, row.tombstoneId, 'synced')
+                await write((db) =>
+                    db.runAsync(
+                        `UPDATE deletion_tombstones SET sync_status = 'synced', sync_attempts = 0 WHERE id = ?`,
+                        row.tombstoneId
+                    )
+                )
             } else {
-                await updateEntityStatus(write, row, `sync_status = 'synced', last_synced_at = ?`, [
-                    new Date().toISOString(),
-                ])
+                await updateEntityStatus(
+                    write,
+                    row,
+                    `sync_status = 'synced', sync_attempts = 0, last_synced_at = ?`,
+                    [new Date().toISOString()]
+                )
             }
         }
     },
 
-    async fail(rows, _reason) {
-        // The structured reason is surfaced to callers via the cycle's return
-        // value; durable persistence of the reason belongs to the SyncStatus slice.
+    // Records a failed push: bumps the attempt counter and parks the row as
+    // 'blocked' once the give-up policy fires (see classifyFailure). The
+    // structured reason itself is surfaced to callers via the cycle's return
+    // value; only the attempt count and terminal status are persisted here.
+    async fail(rows, reason) {
+        const dispositions: FailDisposition[] = []
         for (const row of rows) {
             if (row.kind === 'tombstone') {
-                await updateTombstoneStatus(write, row.tombstoneId, 'failed')
+                const attempts = (await readAttempts(read, 'deletion_tombstones', { column: 'id', value: row.tombstoneId })) + 1
+                const status = classifyFailure(reason.kind, attempts)
+                await write((db) =>
+                    db.runAsync(
+                        `UPDATE deletion_tombstones SET sync_status = ?, sync_attempts = ? WHERE id = ?`,
+                        status,
+                        attempts,
+                        row.tombstoneId
+                    )
+                )
+                dispositions.push({ uuid: row.uuid, status })
             } else {
-                await updateEntityStatus(write, row, `sync_status = 'failed'`, [])
+                const attempts = (await readAttempts(read, tableOf(row.entityType), { column: 'uuid', value: row.uuid })) + 1
+                const status = classifyFailure(reason.kind, attempts)
+                await updateEntityStatus(write, row, `sync_status = ?, sync_attempts = ?`, [status, attempts])
+                dispositions.push({ uuid: row.uuid, status })
             }
         }
+        return dispositions
     },
 })

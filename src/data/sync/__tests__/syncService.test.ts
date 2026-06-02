@@ -18,7 +18,8 @@ vi.mock('@/src/modules/auth/authMode', () => ({
     isRemoteDataMode: () => true,
 }))
 
-const { runSync, resetPullCursorsForTest } = await import('../syncService')
+const { runSync, resetPullCursorsForTest, getSyncState, retryBlockedRows } = await import('../syncService')
+const { syncStatusStore } = await import('../SyncStatus')
 
 let db: TestDb
 const userId = 'user-1'
@@ -44,7 +45,26 @@ beforeEach(async () => {
     useTestDb(db)
     fetchCalls.length = 0
     resetPullCursorsForTest()
+    syncStatusStore.set({ kind: 'idle' })
 })
+
+const insertDirtyExercise = async (uuid: string) => {
+    await db.runAsync(
+        `INSERT INTO exercises (uuid, user_id, name, type, sync_status, created_at, updated_at)
+        VALUES (?, ?, ?, 'weight', 'dirty', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+        uuid,
+        userId,
+        uuid
+    )
+}
+
+const localStatus = async (uuid: string) => {
+    const row = await db.getFirstAsync<{ sync_status: string }>(
+        'SELECT sync_status FROM exercises WHERE uuid = ?',
+        uuid
+    )
+    return row?.sync_status
+}
 
 describe('runSync — issue #26 cheap-exit and cursor', () => {
     it('skips the push stage entirely when outbox is empty and reports zero work', async () => {
@@ -146,5 +166,53 @@ describe('runSync — issue #26 cheap-exit and cursor', () => {
         )
         expect(exercisesPull).toBeDefined()
         expect(exercisesPull?.url).not.toContain('updated_at=gt')
+    })
+})
+
+describe('runSync — failure lifecycle (blocked / dead-letter)', () => {
+    const respond = (status: number) =>
+        mockFetch((call) => {
+            // The push upsert is the only POST; fail it with the given status.
+            if (call.method === 'POST') return { status, body: { message: 'nope' } }
+            return { body: [] }
+        })
+
+    it('blocks a row on a permanent (4xx) rejection without raising the banner', async () => {
+        await insertDirtyExercise('ex-bad')
+        respond(422)
+
+        await runSync()
+
+        // Parked, not retried; excluded from the outbox.
+        expect(await localStatus('ex-bad')).toBe('blocked')
+        // The big failed banner must NOT show for a blocked-only cycle.
+        expect(syncStatusStore.get().kind).toBe('idle')
+
+        const state = await getSyncState()
+        expect(state.blocked_size).toBe(1)
+        expect(state.outbox_size).toBe(0)
+    })
+
+    it('keeps a transient (5xx) failure retryable and raises the banner', async () => {
+        await insertDirtyExercise('ex-flaky')
+        respond(500)
+
+        await runSync()
+
+        expect(await localStatus('ex-flaky')).toBe('failed')
+        expect(syncStatusStore.get().kind).toBe('failed')
+        expect((await getSyncState()).blocked_size).toBe(0)
+    })
+
+    it('un-parks blocked rows on retryBlockedRows so the next sync re-attempts them', async () => {
+        await insertDirtyExercise('ex-bad')
+        respond(422)
+        await runSync()
+        expect(await localStatus('ex-bad')).toBe('blocked')
+
+        await retryBlockedRows()
+
+        expect(await localStatus('ex-bad')).toBe('dirty')
+        expect((await getSyncState()).blocked_size).toBe(0)
     })
 })

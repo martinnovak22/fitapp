@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { AppState } from 'react-native'
-import { getSyncState, runSync } from './syncService'
+import { getSyncState, retryBlockedRows, runSync } from './syncService'
 import { syncStatusStore, type SyncStatus as ObservableSyncStatus } from './SyncStatus'
 import { useAuth } from '@/src/modules/auth/useAuth'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
@@ -15,6 +15,7 @@ export const SYNC_MAX_INTERVAL_MS = 5 * 60_000
 type SyncBannerStatus = {
     isSyncing: boolean
     outboxSize: number
+    blockedCount: number
     lastSuccessAt: string | null
     lastAttemptAt: string | null
     lastError: string | null
@@ -25,11 +26,13 @@ type SyncContextValue = {
     status: SyncBannerStatus
     refreshStatus: () => Promise<void>
     triggerSync: () => Promise<void>
+    retryBlocked: () => Promise<void>
 }
 
 const DEFAULT_STATUS: SyncBannerStatus = {
     isSyncing: false,
     outboxSize: 0,
+    blockedCount: 0,
     lastSuccessAt: null,
     lastAttemptAt: null,
     lastError: null,
@@ -47,6 +50,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setStatus((prev) => ({
             isSyncing: state.is_syncing === 1,
             outboxSize: state.outbox_size,
+            blockedCount: state.blocked_size,
             lastSuccessAt: state.last_success_at,
             lastAttemptAt: state.last_attempt_at,
             lastError: state.last_error,
@@ -81,6 +85,13 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             idleCyclesRef.current = 0
         }
     }, [refreshStatus])
+
+    // Un-park blocked rows and immediately attempt a sync. Backs the "Try
+    // again" affordance on the quiet blocked-items note.
+    const retryBlocked = useCallback(async () => {
+        await retryBlockedRows()
+        await triggerSync()
+    }, [triggerSync])
 
     useEffect(() => {
         void refreshStatus()
@@ -144,8 +155,9 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             status,
             refreshStatus,
             triggerSync,
+            retryBlocked,
         }),
-        [refreshStatus, status, triggerSync]
+        [refreshStatus, status, triggerSync, retryBlocked]
     )
 
     return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>
