@@ -4,7 +4,7 @@ module.exports = {
     expo: {
         name: 'FitApp',
         slug: 'fitapp',
-        version: '0.3.3',
+        version: '0.4.0',
         orientation: 'portrait',
         icon: './assets/images/icon.png',
         scheme: 'fitapp',
@@ -22,7 +22,7 @@ module.exports = {
         android: {
             edgeToEdgeEnabled: true,
             package: 'com.martinnovak22.fitapp',
-            versionCode: 33,
+            versionCode: 40,
         },
         web: {
             bundler: 'metro',
