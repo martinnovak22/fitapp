@@ -1,9 +1,11 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Portal } from 'react-native-teleport'
+import { Button } from './Button'
 import { useTheme } from '../hooks/useTheme'
 
 interface FullScreenImageModalProps {
@@ -15,6 +17,7 @@ interface FullScreenImageModalProps {
 export const FullScreenImageModal: React.FC<FullScreenImageModalProps> = ({ visible, onClose, imageUri }) => {
     const insets = useSafeAreaInsets()
     const { theme } = useTheme()
+    const { t } = useTranslation()
 
     if (!visible || !imageUri) return null
 
@@ -23,8 +26,12 @@ export const FullScreenImageModal: React.FC<FullScreenImageModalProps> = ({ visi
             <View style={[styles.container, { backgroundColor: theme.overlayScrim }]}>
                 <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
                 <Image source={{ uri: imageUri }} style={styles.image} />
-                <TouchableOpacity
+                <Button
+                    leftIcon={'close'}
                     onPress={onClose}
+                    variant={'text'}
+                    accessibilityLabel={t('close')}
+                    labelStyle={{ color: theme.error }}
                     style={[
                         styles.closeButton,
                         {
@@ -33,9 +40,7 @@ export const FullScreenImageModal: React.FC<FullScreenImageModalProps> = ({ visi
                             backgroundColor: theme.surfaceMuted,
                         },
                     ]}
-                >
-                    <FontAwesome name={'close'} size={20} color={theme.error} />
-                </TouchableOpacity>
+                />
             </View>
         </Portal>
     )
@@ -57,7 +62,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         width: 40,
         height: 40,
-        borderRadius: 100,
+        borderRadius: Radius.pill,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 10,

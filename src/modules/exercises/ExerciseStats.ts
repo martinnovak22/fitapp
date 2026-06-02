@@ -33,8 +33,7 @@ const coefficientOfVariation = (values: number[]): number => {
     if (values.length === 0) return 0
     const mean = values.reduce((a, b) => a + b, 0) / values.length
     if (mean === 0) return 0
-    const variance =
-        values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length
+    const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length
     return Math.sqrt(variance) / mean
 }
 
@@ -54,9 +53,7 @@ export const computeDominantMetric = (
         case 'cardio': {
             const distances = sets.map((s) => s.distance ?? 0)
             const durations = sets.map((s) => s.duration ?? 0)
-            return coefficientOfVariation(durations) > coefficientOfVariation(distances)
-                ? 'duration'
-                : 'distance'
+            return coefficientOfVariation(durations) > coefficientOfVariation(distances) ? 'duration' : 'distance'
         }
     }
 }
@@ -66,9 +63,7 @@ const fetchExerciseType = async (exerciseId: number): Promise<ExerciseType | nul
     return exercise?.type ?? null
 }
 
-const fetchScopedSets = async (
-    exerciseId: number
-): Promise<{ set: Set; date: string }[]> => {
+const fetchScopedSets = async (exerciseId: number): Promise<{ set: Set; date: string }[]> => {
     const db = await getDb()
     const setScope = buildPrincipalWhereClause('s.user_id')
     const workoutScope = buildPrincipalWhereClause('w.user_id')
@@ -137,9 +132,7 @@ export const ExerciseStats = {
         const values = bestSets.map((s) => getSetMetricValue(s, dominantMetric))
         const sum = values.reduce((a, b) => a + b, 0)
         // For duration-dominant cardio, "best" is the shortest time.
-        const max = ExerciseTypeMetadata.isBetterLower(type, dominantMetric)
-            ? Math.min(...values)
-            : Math.max(...values)
+        const max = ExerciseTypeMetadata.isBetterLower(type, dominantMetric) ? Math.min(...values) : Math.max(...values)
         const summary: SessionSummary = {
             dominantMetric,
             max,

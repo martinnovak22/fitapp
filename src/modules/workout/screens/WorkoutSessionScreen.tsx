@@ -1,3 +1,4 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { SubSet, Set as WorkoutSet } from '@/src/db/workouts'
@@ -228,18 +229,22 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                       disabled: false,
                   }
                 : canFinishWorkout
-                ? {
-                      icon: 'flag-checkered' as const,
-                      accessibilityLabel: isFinishingWorkout ? t('saving') : t('finish'),
-                      onPress: finishWorkout,
-                      disabled: isFinishingWorkout,
-                  }
-                : null
+                  ? {
+                        icon: 'flag-checkered' as const,
+                        accessibilityLabel: isFinishingWorkout ? t('saving') : t('finish'),
+                        onPress: finishWorkout,
+                        disabled: isFinishingWorkout,
+                    }
+                  : null
 
             navigation.getParent()?.setOptions({
                 headerLeft: () => (
                     <TouchableOpacity
-                        onPress={() => (router.canGoBack() ? router.back() : router.replace(parentTabFallback as Parameters<typeof router.replace>[0]))}
+                        onPress={() =>
+                            router.canGoBack()
+                                ? router.back()
+                                : router.replace(parentTabFallback as Parameters<typeof router.replace>[0])
+                        }
                         style={styles.headerBack}
                         accessibilityRole={'button'}
                         accessibilityLabel={t('back')}
@@ -295,7 +300,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     if (loading && !workout) {
         return (
             <ScreenLayout style={styles.loadingContainer}>
-                <ActivityIndicator size={"large"} color={theme.primary} />
+                <ActivityIndicator size={'large'} color={theme.primary} />
             </ScreenLayout>
         )
     }
@@ -303,7 +308,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     if (loadError && !workout) {
         return (
             <ScreenLayout style={styles.loadingContainer}>
-                <EmptyState message={loadError} icon={"exclamation-circle"} />
+                <EmptyState message={loadError} icon={'exclamation-circle'} />
                 <Button label={t('retry')} onPress={loadData} style={{ marginTop: Spacing.md }} />
             </ScreenLayout>
         )
@@ -324,7 +329,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             accessibilityLabel={t('addSet')}
                             hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                         >
-                            <FontAwesome name={'plus'} size={32} color={theme.onPrimary} />
+                            <FontAwesome name={'plus'} size={24} color={theme.onPrimary} />
                         </TouchableOpacity>
                     )}
 
@@ -350,7 +355,9 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                     <View style={styles.timingHeader}>
                         <Typography.Meta style={{ color: theme.textSecondary }}>{t('workoutTiming')}</Typography.Meta>
                         <TouchableOpacity onPress={openTimingModal} accessibilityRole={'button'}>
-                            <Typography.Meta style={{ color: theme.primary, fontWeight: '700' }}>{t('editTime')}</Typography.Meta>
+                            <Typography.Meta color={'primary'} weight={'bold'}>
+                                {t('editTime')}
+                            </Typography.Meta>
                         </TouchableOpacity>
                     </View>
                     <Typography.Body>{`${t('startedAt')}: ${formatLocalizedDate(
@@ -391,66 +398,87 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 </Animated.View>
             )}
 
-            <Modal visible={timingModalVisible} transparent animationType={'fade'} onRequestClose={() => setTimingModalVisible(false)}>
+            <Modal
+                visible={timingModalVisible}
+                transparent
+                animationType={'fade'}
+                onRequestClose={() => setTimingModalVisible(false)}
+            >
                 <View style={[styles.modalBackdrop, { backgroundColor: theme.overlayBackdrop }]}>
                     <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                         <Typography.Subtitle style={{ marginBottom: Spacing.md }}>{t('editTime')}</Typography.Subtitle>
 
-                        <Typography.Label>{t('workoutDate')}</Typography.Label>
-                        <TextInput
-                            value={timingDate}
-                            onChangeText={setTimingDate}
-                            placeholder={'YYYY-MM-DD'}
-                            placeholderTextColor={theme.textSecondary}
-                            style={[
-                                styles.modalInput,
-                                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
-                            ]}
-                            autoCapitalize={'none'}
-                            keyboardType={'numbers-and-punctuation'}
-                        />
+                        <View style={{ gap: Spacing.sm }}>
+                            <Typography.Label>{t('workoutDate')}</Typography.Label>
+                            <TextInput
+                                value={timingDate}
+                                onChangeText={setTimingDate}
+                                placeholder={'YYYY-MM-DD'}
+                                placeholderTextColor={theme.textSecondary}
+                                style={[
+                                    styles.modalInput,
+                                    {
+                                        color: theme.text,
+                                        backgroundColor: theme.inputBackground,
+                                        borderColor: theme.border,
+                                    },
+                                ]}
+                                autoCapitalize={'none'}
+                                keyboardType={'numbers-and-punctuation'}
+                            />
+                        </View>
 
-                        <Typography.Label>{t('startTime')}</Typography.Label>
-                        <TextInput
-                            value={timingStartTime}
-                            onChangeText={setTimingStartTime}
-                            placeholder={'HH:mm'}
-                            placeholderTextColor={theme.textSecondary}
-                            style={[
-                                styles.modalInput,
-                                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
-                            ]}
-                            autoCapitalize={'none'}
-                            keyboardType={'numbers-and-punctuation'}
-                        />
+                        <View style={{ gap: Spacing.sm }}>
+                            <Typography.Label>{t('startTime')}</Typography.Label>
+                            <TextInput
+                                value={timingStartTime}
+                                onChangeText={setTimingStartTime}
+                                placeholder={'HH:mm'}
+                                placeholderTextColor={theme.textSecondary}
+                                style={[
+                                    styles.modalInput,
+                                    {
+                                        color: theme.text,
+                                        backgroundColor: theme.inputBackground,
+                                        borderColor: theme.border,
+                                    },
+                                ]}
+                                autoCapitalize={'none'}
+                                keyboardType={'numbers-and-punctuation'}
+                            />
+                        </View>
 
-                        <Typography.Label>{t('endTime')}</Typography.Label>
-                        <TextInput
-                            value={timingEndTime}
-                            onChangeText={setTimingEndTime}
-                            placeholder={'HH:mm'}
-                            placeholderTextColor={theme.textSecondary}
-                            style={[
-                                styles.modalInput,
-                                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
-                            ]}
-                            autoCapitalize={'none'}
-                            keyboardType={'numbers-and-punctuation'}
-                        />
+                        <View style={{ gap: Spacing.sm }}>
+                            <Typography.Label>{t('endTime')}</Typography.Label>
+                            <TextInput
+                                value={timingEndTime}
+                                onChangeText={setTimingEndTime}
+                                placeholder={'HH:mm'}
+                                placeholderTextColor={theme.textSecondary}
+                                style={[
+                                    styles.modalInput,
+                                    {
+                                        color: theme.text,
+                                        backgroundColor: theme.inputBackground,
+                                        borderColor: theme.border,
+                                    },
+                                ]}
+                                autoCapitalize={'none'}
+                                keyboardType={'numbers-and-punctuation'}
+                            />
+                        </View>
 
                         <View style={styles.modalActions}>
-                            <TouchableOpacity onPress={() => setTimingModalVisible(false)} style={styles.modalCancel}>
-                                <Typography.Body style={{ color: theme.error }}>{t('cancel')}</Typography.Body>
-                            </TouchableOpacity>
-                            <TouchableOpacity
+                            <Button
+                                label={t('cancel')}
+                                variant={'outline'}
+                                onPress={() => setTimingModalVisible(false)}
+                            />
+                            <Button
+                                label={isSavingWorkoutTime ? t('saving') : t('saveChanges')}
                                 onPress={saveTiming}
-                                style={[styles.modalSave, { backgroundColor: theme.primary }, isSavingWorkoutTime && styles.modalSaveDisabled]}
                                 disabled={isSavingWorkoutTime}
-                            >
-                                <Typography.Body style={{ color: theme.onPrimary, fontWeight: '700' }}>
-                                    {isSavingWorkoutTime ? t('saving') : t('saveChanges')}
-                                </Typography.Body>
-                            </TouchableOpacity>
+                            />
                         </View>
                     </View>
                 </View>
@@ -549,7 +577,7 @@ const styles = StyleSheet.create({
     },
     modalCard: {
         borderWidth: 1,
-        borderRadius: 12,
+        borderRadius: Radius.md,
         padding: Spacing.md,
     },
     modalInput: {
@@ -562,18 +590,6 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         alignItems: 'center',
         gap: Spacing.sm,
-    },
-    modalCancel: {
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: Spacing.xs,
-    },
-    modalSave: {
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        borderRadius: Spacing.sm,
-    },
-    modalSaveDisabled: {
-        opacity: 0.5,
     },
     headerBack: {
         paddingLeft: Spacing.md,

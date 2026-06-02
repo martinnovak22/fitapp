@@ -1,4 +1,6 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
+import { FontWeight } from '@/src/constants/Typography'
 import {
     EMAIL_CONFIRMATION_REQUIRED_CODE,
     SupabaseAuthError,
@@ -20,7 +22,6 @@ import { router, useLocalSearchParams } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-    ActivityIndicator,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
@@ -284,30 +285,16 @@ export default function LoginScreen() {
                                 </View>
 
                                 <Animated.View entering={FadeInDown.delay(80).duration(220)}>
-                                    <Pressable
+                                    <Button
+                                        label={t('continueWithGoogle')}
+                                        leftIcon={'google'}
+                                        variant={'secondary'}
                                         onPress={submitGoogle}
+                                        isLoading={isGoogleSubmitting}
                                         disabled={isSubmitting || isGoogleSubmitting}
-                                        accessibilityRole={'button'}
-                                        accessibilityLabel={t('continueWithGoogle')}
-                                        style={[
-                                            styles.googleButton,
-                                            {
-                                                borderColor: theme.border,
-                                                backgroundColor: theme.inputBackground,
-                                            },
-                                            (isSubmitting || isGoogleSubmitting) && styles.googleButtonDisabled,
-                                        ]}
-                                    >
-                                        <View style={styles.googleButtonInner}>
-                                            <FontAwesome name={'google'} size={18} color={theme.text} />
-                                            <Typography.Body style={{ color: theme.text, fontWeight: '700' }}>
-                                                {t('continueWithGoogle')}
-                                            </Typography.Body>
-                                        </View>
-                                        {isGoogleSubmitting ? (
-                                            <ActivityIndicator size={'small'} color={theme.textSecondary} />
-                                        ) : null}
-                                    </Pressable>
+                                        labelStyle={styles.googleButtonText}
+                                        style={styles.googleButton}
+                                    />
                                 </Animated.View>
 
                                 <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
@@ -318,7 +305,10 @@ export default function LoginScreen() {
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                                 </Animated.View>
 
-                                <Animated.View entering={FadeInDown.delay(120).duration(220)}>
+                                <Animated.View
+                                    entering={FadeInDown.delay(120).duration(220)}
+                                    style={{ gap: Spacing.sm }}
+                                >
                                     <Typography.Label>{t('email')}</Typography.Label>
                                     <TextInput
                                         ref={emailInputRef}
@@ -343,7 +333,10 @@ export default function LoginScreen() {
                                     />
                                 </Animated.View>
 
-                                <Animated.View entering={FadeInDown.delay(140).duration(220)}>
+                                <Animated.View
+                                    entering={FadeInDown.delay(140).duration(220)}
+                                    style={{ gap: Spacing.sm }}
+                                >
                                     <Typography.Label>{t('password')}</Typography.Label>
                                     <View style={styles.passwordInputContainer}>
                                         <TextInput
@@ -372,27 +365,26 @@ export default function LoginScreen() {
                                             ]}
                                         />
                                         {password.length > 0 ? (
-                                            <Pressable
-                                                style={styles.visibilityButton}
+                                            <Button
+                                                leftIcon={isPasswordVisible ? 'eye-slash' : 'eye'}
                                                 onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-                                                hitSlop={8}
-                                                accessibilityRole={'button'}
+                                                variant={'text'}
                                                 accessibilityLabel={
                                                     isPasswordVisible ? t('hidePassword') : t('showPassword')
                                                 }
-                                            >
-                                                <FontAwesome
-                                                    name={isPasswordVisible ? 'eye-slash' : 'eye'}
-                                                    size={18}
-                                                    color={theme.textSecondary}
-                                                />
-                                            </Pressable>
+                                                labelStyle={{ color: theme.textSecondary }}
+                                                style={styles.visibilityButton}
+                                            />
                                         ) : null}
                                     </View>
                                 </Animated.View>
 
                                 {isSignUp && (
-                                    <Animated.View layout={formLayoutTransition} entering={FadeInDown.duration(180)}>
+                                    <Animated.View
+                                        layout={formLayoutTransition}
+                                        entering={FadeInDown.duration(180)}
+                                        style={{ gap: Spacing.sm }}
+                                    >
                                         <Typography.Label>{t('confirmPassword')}</Typography.Label>
                                         <View style={styles.passwordInputContainer}>
                                             <TextInput
@@ -417,23 +409,18 @@ export default function LoginScreen() {
                                                 ]}
                                             />
                                             {confirmPassword.length > 0 ? (
-                                                <Pressable
-                                                    style={styles.visibilityButton}
+                                                <Button
+                                                    leftIcon={isConfirmPasswordVisible ? 'eye-slash' : 'eye'}
                                                     onPress={() =>
                                                         setIsConfirmPasswordVisible(!isConfirmPasswordVisible)
                                                     }
-                                                    hitSlop={8}
-                                                    accessibilityRole={'button'}
+                                                    variant={'text'}
                                                     accessibilityLabel={
                                                         isConfirmPasswordVisible ? t('hidePassword') : t('showPassword')
                                                     }
-                                                >
-                                                    <FontAwesome
-                                                        name={isConfirmPasswordVisible ? 'eye-slash' : 'eye'}
-                                                        size={18}
-                                                        color={theme.textSecondary}
-                                                    />
-                                                </Pressable>
+                                                    labelStyle={{ color: theme.textSecondary }}
+                                                    style={styles.visibilityButton}
+                                                />
                                             ) : null}
                                         </View>
                                     </Animated.View>
@@ -508,29 +495,27 @@ export default function LoginScreen() {
                                 <Animated.View entering={FadeInDown.delay(200).duration(220)}>
                                     <View style={styles.switchRow}>
                                         {isRemoteDataMode() ? (
-                                            <Pressable
+                                            <Button
+                                                label={t('continueAsGuest')}
                                                 onPress={async () => {
                                                     await continueAsGuest()
                                                     router.replace('/landing')
                                                 }}
-                                                hitSlop={8}
-                                            >
-                                                <Typography.Body style={{ color: theme.primary, fontWeight: '700' }}>
-                                                    {t('continueAsGuest')}
-                                                </Typography.Body>
-                                            </Pressable>
+                                                variant={'text'}
+                                                size={'sm'}
+                                                labelStyle={styles.switchButtonText}
+                                            />
                                         ) : null}
-                                        <Pressable
+                                        <Button
+                                            label={t(isSignUp ? 'signIn' : 'signUp')}
                                             onPress={() => {
                                                 setMode(isSignUp ? 'signin' : 'signup')
                                                 setErrorMessage(null)
                                             }}
-                                            hitSlop={8}
-                                        >
-                                            <Typography.Body style={{ color: theme.primary, fontWeight: '700' }}>
-                                                {t(isSignUp ? 'signIn' : 'signUp')}
-                                            </Typography.Body>
-                                        </Pressable>
+                                            variant={'text'}
+                                            size={'sm'}
+                                            labelStyle={styles.switchButtonText}
+                                        />
                                     </View>
                                 </Animated.View>
                             </Card>
@@ -561,13 +546,15 @@ const styles = StyleSheet.create({
     },
     title: {
         marginBottom: Spacing.xs,
+        textAlign: 'center',
     },
     subtitle: {
         marginBottom: Spacing.sm,
+        textAlign: 'center',
     },
     migrationRow: {
         borderWidth: 1,
-        borderRadius: 10,
+        borderRadius: Radius.sm,
         padding: Spacing.sm,
         flexDirection: 'row',
         alignItems: 'flex-start',
@@ -577,24 +564,14 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     googleButton: {
-        borderWidth: 1,
-        borderRadius: 10,
         minHeight: 48,
-        paddingHorizontal: Spacing.md,
         marginBottom: Spacing.md,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
     },
-    googleButtonInner: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: Spacing.sm,
+    googleButtonText: {
+        fontWeight: FontWeight.bold,
     },
-    googleButtonDisabled: {
-        opacity: 0.5,
+    switchButtonText: {
+        fontWeight: FontWeight.bold,
     },
     dividerRow: {
         marginBottom: Spacing.sm,
@@ -608,7 +585,7 @@ const styles = StyleSheet.create({
     },
     input: {
         borderWidth: 1,
-        borderRadius: 10,
+        borderRadius: Radius.sm,
         minHeight: 48,
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,

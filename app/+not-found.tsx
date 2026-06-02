@@ -1,20 +1,22 @@
+import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
-import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { Typography } from '@/src/modules/core/components/Typography'
 import { Link, Stack } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 
 export default function NotFoundScreen() {
     const { t } = useTranslation()
-    const { theme } = useTheme()
     return (
         <>
             <Stack.Screen options={{ title: t('oops') }} />
-            <View style={GlobalStyles.container}>
-                <Text style={GlobalStyles.title}>{t('screenNotFound')}</Text>
+            <View style={[GlobalStyles.container, styles.content]}>
+                <Typography.Title>{t('screenNotFound')}</Typography.Title>
 
                 <Link href="/" style={styles.link}>
-                    <Text style={[styles.linkText, { color: theme.primary }]}>{t('goHome')}</Text>
+                    <Typography.Body size="sm" color="primary">
+                        {t('goHome')}
+                    </Typography.Body>
                 </Link>
             </View>
         </>
@@ -22,11 +24,11 @@ export default function NotFoundScreen() {
 }
 
 const styles = StyleSheet.create({
-    link: {
-        marginTop: 15,
-        paddingVertical: 15,
+    content: {
+        gap: Spacing.md,
     },
-    linkText: {
-        fontSize: 14,
+    link: {
+        marginTop: Spacing.md,
+        paddingVertical: Spacing.md,
     },
 })

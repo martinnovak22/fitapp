@@ -1,7 +1,10 @@
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { Exercise } from '@/src/db/exercises'
 import { SubSet } from '@/src/db/workouts'
+import { Button } from '@/src/modules/core/components/Button'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { ExercisePicker } from '@/src/modules/exercises/ExercisePicker'
@@ -9,24 +12,29 @@ import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-    ActivityIndicator,
     Dimensions,
-    FlatList,
     Keyboard,
-    type ListRenderItem,
     Modal,
     Platform,
+    ScrollView,
     StyleSheet,
-    Text,
     TextInput,
     TouchableOpacity,
     View,
 } from 'react-native'
-import Animated, { FadeIn, LinearTransition, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import Animated, {
+    FadeIn,
+    LinearTransition,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
+} from 'react-native-reanimated'
 import { SetFormValues } from '../setPayload'
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window')
 const SHEET_MAX_HEIGHT = Math.min(DEVICE_HEIGHT * 0.9, 760)
+// Fixed height for the pyramid list so adding rows scrolls inside it rather
+// than growing the sheet and shifting everything around it.
 const PYRAMID_LIST_HEIGHT = Math.min(200, Math.floor(DEVICE_HEIGHT * 0.22))
 const UNIFIED_LAYOUT = LinearTransition.duration(200)
 const KEYBOARD_LIFT_FACTOR = 0.8
@@ -158,7 +166,7 @@ export const LogSetModal = ({
                 return next
             })
         },
-        [setSubSets],
+        [setSubSets]
     )
 
     const removeSubSet = React.useCallback(
@@ -166,32 +174,21 @@ export const LogSetModal = ({
             setSubSetKeys((prev) => prev.filter((_, i) => i !== index))
             setSubSets((prev) => prev.filter((_, i) => i !== index))
         },
-        [setSubSets],
+        [setSubSets]
     )
 
     const subSetItems = React.useMemo(
         () => subSets.map((subSet, idx) => ({ key: subSetKeys[idx] ?? `subset-fallback-${idx}`, subSet, index: idx })),
-        [subSets, subSetKeys],
-    )
-
-    const renderSubSetRow: ListRenderItem<{ key: string; subSet: SubSet; index: number }> = React.useCallback(
-        ({ item }) => (
-            <SubSetRow
-                index={item.index}
-                subSet={item.subSet}
-                theme={theme}
-                t={t}
-                onChange={updateSubSet}
-                onRemove={removeSubSet}
-            />
-        ),
-        [theme, t, updateSubSet, removeSubSet],
+        [subSets, subSetKeys]
     )
 
     return (
         <Modal animationType={'none'} transparent visible={visible} onRequestClose={onClose}>
             <View style={styles.modalRoot}>
-                <Animated.View entering={FadeIn.duration(180)} style={[styles.backdrop, { backgroundColor: theme.overlayBackdrop }]}>
+                <Animated.View
+                    entering={FadeIn.duration(180)}
+                    style={[styles.backdrop, { backgroundColor: theme.overlayBackdrop }]}
+                >
                     <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
                 </Animated.View>
 
@@ -200,98 +197,120 @@ export const LogSetModal = ({
                         <View style={[styles.grabber, { backgroundColor: `${theme.textSecondary}66` }]} />
                     </View>
 
-                    <Text style={[GlobalStyles.title, styles.sheetTitle, { color: theme.text }]}>
-                        {editingSetId ? t('editSet') : t('inputSet')}
-                    </Text>
+                    <Typography.Title>{editingSetId ? t('editSet') : t('inputSet')}</Typography.Title>
 
-                        <Animated.View layout={UNIFIED_LAYOUT}>
-                            {!editingSetId && (
-                                <Animated.View entering={FadeIn.duration(160)}>
-                                    <ExercisePicker
-                                        exercises={exercises}
-                                        onPick={(exercise) => {
-                                            setSelectedExerciseId(exercise.id)
-                                            const fields = ['weight', 'reps', 'distance', 'durationMinutes', 'durationSeconds'] as const
-                                            fields.forEach((key) => updateInput(key, ''))
-                                        }}
-                                    />
-                                </Animated.View>
-                            )}
+                    <View style={styles.body}>
+                        {!editingSetId && (
+                            <Animated.View entering={FadeIn.duration(160)}>
+                                <ExercisePicker
+                                    exercises={exercises}
+                                    selectedId={selectedExerciseId}
+                                    onPick={(exercise) => {
+                                        setSelectedExerciseId(exercise.id)
+                                        const fields = [
+                                            'weight',
+                                            'reps',
+                                            'distance',
+                                            'durationMinutes',
+                                            'durationSeconds',
+                                        ] as const
+                                        fields.forEach((key) => updateInput(key, ''))
+                                    }}
+                                />
+                            </Animated.View>
+                        )}
 
-                            {selectedExercise && (
-                                <Animated.View
-                                    entering={FadeIn.duration(180)}
-                                    style={styles.inputsSection}
-                                >
-                                    <SetInputFields
-                                        selectedExercise={selectedExercise}
-                                        inputValues={inputValues}
-                                        updateInput={updateInput}
-                                    />
+                        {selectedExercise && (
+                            <View style={styles.scrollBody}>
+                                <SetInputFields
+                                    selectedExercise={selectedExercise}
+                                    inputValues={inputValues}
+                                    updateInput={updateInput}
+                                />
 
-                                    {selectedExercise.type === 'weight' && (
-                                        <Animated.View
-                                            entering={FadeIn.duration(200)}
-                                            style={[styles.pyramidSection, { borderTopColor: theme.inputBackground }]}
-                                        >
-                                             <View style={styles.pyramidHeader}>
-                                                <TouchableOpacity
-                                                    onPress={() => setIsExpanded(!isExpanded)}
-                                                    style={styles.pyramidTitleContainer}
-                                                    activeOpacity={0.7}
+                                {selectedExercise.type === 'weight' && (
+                                    <Animated.View
+                                        entering={FadeIn.duration(200)}
+                                        style={[styles.pyramidSection, { borderTopColor: theme.inputBackground }]}
+                                    >
+                                        <View style={styles.pyramidHeader}>
+                                            <TouchableOpacity
+                                                onPress={() => setIsExpanded(!isExpanded)}
+                                                style={styles.pyramidTitleContainer}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Typography.Meta weight="heavy" style={styles.pyramidTitle}>
+                                                    {t('pyramidSet')} {subSets.length > 0 ? `(${subSets.length})` : ''}
+                                                </Typography.Meta>
+                                                <FontAwesome
+                                                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                                                    size={10}
+                                                    color={theme.textSecondary}
+                                                    style={styles.pyramidChevron}
+                                                />
+                                            </TouchableOpacity>
+
+                                            <Button
+                                                leftIcon={'plus'}
+                                                onPress={addSubSet}
+                                                variant={'primary'}
+                                                size={'sm'}
+                                                accessibilityLabel={t('addDropSet')}
+                                            />
+                                        </View>
+
+                                        {isExpanded && (
+                                            <Animated.View
+                                                entering={FadeIn.duration(160)}
+                                                style={styles.pyramidListWrap}
+                                            >
+                                                <ScrollView
+                                                    style={[styles.pyramidList, { backgroundColor: theme.background }]}
+                                                    contentContainerStyle={
+                                                        subSetItems.length === 0
+                                                            ? styles.emptySubsetsContainer
+                                                            : undefined
+                                                    }
+                                                    nestedScrollEnabled
+                                                    keyboardShouldPersistTaps={'handled'}
+                                                    showsVerticalScrollIndicator
                                                 >
-                                                    <Text style={[styles.pyramidTitle, { color: theme.textSecondary }]}>
-                                                        {t('pyramidSet')} {subSets.length > 0 ? `(${subSets.length})` : ''}
-                                                    </Text>
-                                                    <FontAwesome
-                                                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                                                        size={10}
-                                                        color={theme.textSecondary}
-                                                        style={styles.pyramidChevron}
-                                                    />
-                                                </TouchableOpacity>
-
-                                                <TouchableOpacity
-                                                    style={[styles.addDropButton, { backgroundColor: theme.primary }]}
-                                                    onPress={addSubSet}
-                                                >
-                                                    <FontAwesome name={'plus'} size={10} color={theme.onPrimary} />
-                                                </TouchableOpacity>
-                                            </View>
-
-                                            {isExpanded && (
-                                                <Animated.View
-                                                    entering={FadeIn.duration(160)}
-                                                    style={styles.pyramidListWrap}
-                                                >
-                                                    <FlatList
-                                                        data={subSetItems}
-                                                        keyExtractor={(item) => item.key}
-                                                        renderItem={renderSubSetRow}
-                                                        style={[styles.pyramidList, { backgroundColor: theme.background }]}
-                                                        contentContainerStyle={subSetItems.length === 0 ? styles.emptySubsetsContainer : undefined}
-                                                        keyboardShouldPersistTaps={'handled'}
-                                                        showsVerticalScrollIndicator
-                                                        removeClippedSubviews={false}
-                                                        ListEmptyComponent={(
-                                                            <View style={styles.emptySubsets}>
-                                                                <FontAwesome
-                                                                    name={'list'}
-                                                                    size={20}
-                                                                    color={theme.textSecondary}
-                                                                    style={styles.emptySubsetsIcon}
-                                                                />
-                                                                <Text style={[styles.emptySubsetsText, { color: theme.textSecondary }]}>{t('noDropSets')}</Text>
-                                                            </View>
-                                                        )}
-                                                    />
-                                                </Animated.View>
-                                            )}
-                                        </Animated.View>
-                                    )}
-                                </Animated.View>
-                            )}
-                        </Animated.View>
+                                                    {subSetItems.length === 0 ? (
+                                                        <>
+                                                            <FontAwesome
+                                                                name={'list'}
+                                                                size={20}
+                                                                color={theme.textSecondary}
+                                                                style={styles.emptySubsetsIcon}
+                                                            />
+                                                            <Typography.Meta
+                                                                weight="semibold"
+                                                                style={styles.emptySubsetsText}
+                                                            >
+                                                                {t('noDropSets')}
+                                                            </Typography.Meta>
+                                                        </>
+                                                    ) : (
+                                                        subSetItems.map((item) => (
+                                                            <SubSetRow
+                                                                key={item.key}
+                                                                index={item.index}
+                                                                subSet={item.subSet}
+                                                                theme={theme}
+                                                                t={t}
+                                                                onChange={updateSubSet}
+                                                                onRemove={removeSubSet}
+                                                            />
+                                                        ))
+                                                    )}
+                                                </ScrollView>
+                                            </Animated.View>
+                                        )}
+                                    </Animated.View>
+                                )}
+                            </View>
+                        )}
+                    </View>
 
                     <View
                         style={[
@@ -299,38 +318,19 @@ export const LogSetModal = ({
                             {
                                 backgroundColor: theme.surface,
                                 borderTopColor: `${theme.border}33`,
-                                paddingBottom: Spacing.sm
+                                paddingBottom: Spacing.sm,
                             },
                         ]}
                     >
                         <View style={styles.footer}>
-                            <View>
-                                <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
-                                    <Text style={[{ color: theme.error }]}>{t('cancel')}</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            <View>
-                                <TouchableOpacity
-                                    onPress={onSave}
-                                    style={[styles.saveButton, { backgroundColor: theme.primary }, (!selectedExerciseId || isSaving) && styles.saveButtonDisabled]}
-                                    disabled={!selectedExerciseId || isSaving}
-                                    accessibilityRole={'button'}
-                                    accessibilityLabel={editingSetId ? t('update') : t('addSet')}
-                                    accessibilityState={{ disabled: !selectedExerciseId || isSaving }}
-                                >
-                                    {isSaving ? (
-                                        <Animated.View entering={FadeIn.duration(120)} style={styles.saveLoadingRow}>
-                                            <ActivityIndicator size={'small'} color={theme.onPrimary} />
-                                            <Text style={styles.saveText}>{t('saving')}</Text>
-                                        </Animated.View>
-                                    ) : (
-                                        <Animated.Text entering={FadeIn.duration(120)} style={styles.saveText}>
-                                            {editingSetId ? t('update') : t('addSet')}
-                                        </Animated.Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
+                            <Button label={t('cancel')} variant={'secondary'} size={'sm'} onPress={onClose} />
+                            <Button
+                                label={editingSetId ? t('update') : t('addSet')}
+                                size={'sm'}
+                                onPress={onSave}
+                                isLoading={isSaving}
+                                disabled={!selectedExerciseId || isSaving}
+                            />
                         </View>
                     </View>
                 </Animated.View>
@@ -356,7 +356,9 @@ const SubSetRow = React.memo(function SubSetRow({ index, subSet, theme, t, onCha
     return (
         <View style={[styles.subSetRow, { borderBottomColor: theme.inputBackground }]}>
             <View style={styles.subSetIndexContainer}>
-                <Text style={[styles.subSetIndex, { color: theme.textSecondary }]}>#{index + 1}</Text>
+                <Typography.Meta weight="bold" style={styles.subSetIndex}>
+                    #{index + 1}
+                </Typography.Meta>
             </View>
 
             <View style={styles.subSetInputGroup}>
@@ -375,7 +377,7 @@ const SubSetRow = React.memo(function SubSetRow({ index, subSet, theme, t, onCha
                     returnKeyType={'next'}
                     accessibilityLabel={`${t('drop')} ${index + 1} ${t('weight')}`}
                 />
-                <Text style={[styles.subSetX, { color: theme.textSecondary }]}>×</Text>
+                <Typography.Meta style={styles.subSetX}>×</Typography.Meta>
                 <TextInput
                     style={[styles.subSetInput, { color: theme.text, backgroundColor: theme.inputBackground }]}
                     keyboardType={'numeric'}
@@ -393,14 +395,27 @@ const SubSetRow = React.memo(function SubSetRow({ index, subSet, theme, t, onCha
                 />
             </View>
 
-            <TouchableOpacity onPress={handleRemove} style={styles.removeSubSet}>
-                <FontAwesome name={'minus-circle'} size={18} color={theme.error} />
-            </TouchableOpacity>
+            <Button
+                leftIcon={'minus-circle'}
+                onPress={handleRemove}
+                variant={'text'}
+                size={'sm'}
+                accessibilityLabel={t('delete')}
+                labelStyle={{ color: theme.error }}
+            />
         </View>
     )
 })
 
-const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { selectedExercise?: Exercise; inputValues: Props['inputValues']; updateInput: Props['updateInput'] }) => {
+const SetInputFields = ({
+    selectedExercise,
+    inputValues,
+    updateInput,
+}: {
+    selectedExercise?: Exercise
+    inputValues: Props['inputValues']
+    updateInput: Props['updateInput']
+}) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
     const type = selectedExercise?.type?.toLowerCase()
@@ -418,7 +433,10 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         keyboardType={'numeric'}
                         multiline={false}
                         numberOfLines={1}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
+                        style={[
+                            GlobalStyles.input,
+                            { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                        ]}
                         value={inputValues.weight}
                         onChangeText={(value) => updateInput('weight', value)}
                         placeholder={'0'}
@@ -443,7 +461,10 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         keyboardType={'numeric'}
                         multiline={false}
                         numberOfLines={1}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
+                        style={[
+                            GlobalStyles.input,
+                            { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                        ]}
                         value={inputValues.reps}
                         onChangeText={(value) => updateInput('reps', value)}
                         placeholder={'0'}
@@ -468,7 +489,10 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                         keyboardType={'numeric'}
                         multiline={false}
                         numberOfLines={1}
-                        style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
+                        style={[
+                            GlobalStyles.input,
+                            { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                        ]}
                         value={inputValues.distance}
                         onChangeText={(value) => updateInput('distance', value)}
                         placeholder={'0'}
@@ -494,7 +518,14 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                             keyboardType={'numeric'}
                             multiline={false}
                             numberOfLines={1}
-                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
+                            style={[
+                                GlobalStyles.input,
+                                {
+                                    color: theme.text,
+                                    backgroundColor: theme.inputBackground,
+                                    borderColor: theme.border,
+                                },
+                            ]}
                             value={inputValues.durationMinutes}
                             onChangeText={(value) => updateInput('durationMinutes', value)}
                             placeholder={'00'}
@@ -512,7 +543,14 @@ const SetInputFields = ({ selectedExercise, inputValues, updateInput }: { select
                             keyboardType={'numeric'}
                             multiline={false}
                             numberOfLines={1}
-                            style={[GlobalStyles.input, { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border }]}
+                            style={[
+                                GlobalStyles.input,
+                                {
+                                    color: theme.text,
+                                    backgroundColor: theme.inputBackground,
+                                    borderColor: theme.border,
+                                },
+                            ]}
                             value={inputValues.durationSeconds}
                             onChangeText={(value) => updateInput('durationSeconds', value)}
                             placeholder={'00'}
@@ -541,8 +579,8 @@ const styles = StyleSheet.create({
     sheet: {
         width: '100%',
         maxHeight: SHEET_MAX_HEIGHT,
-        borderTopLeftRadius: 22,
-        borderTopRightRadius: 22,
+        borderTopLeftRadius: Radius.lg,
+        borderTopRightRadius: Radius.lg,
         overflow: 'hidden',
         paddingHorizontal: Spacing.lg,
         paddingTop: Spacing.md,
@@ -560,21 +598,31 @@ const styles = StyleSheet.create({
     grabber: {
         width: 42,
         height: 4,
-        borderRadius: 4,
+        borderRadius: Radius.pill,
     },
-    sheetTitle: {
-        marginBottom: 0,
+    // Body holds the (fixed) exercise picker and the scrollable input/pyramid
+    // region. flexShrink lets it give up height so the footer stays pinned when
+    // the sheet hits its max height (e.g. when the pyramid list expands).
+    body: {
+        flexShrink: 1,
+        minHeight: 0,
     },
-    inputsSection: {
+    // Holds the (fixed) input fields and the pyramid section. flexShrink lets
+    // the section give up height — absorbed by the pyramid list's own scroll —
+    // so the inputs and footer stay put instead of the whole block scrolling.
+    scrollBody: {
+        flexShrink: 1,
+        minHeight: 0,
         marginTop: Spacing.sm,
     },
     dynamicFields: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        gap: Spacing.sm,
     },
     fieldCell: {
         flex: 1,
+        gap: Spacing.sm,
     },
     fieldFull: {
         minWidth: '100%',
@@ -582,12 +630,15 @@ const styles = StyleSheet.create({
     durationRow: {
         flex: 2,
         flexDirection: 'row',
-        gap: 10,
+        gap: Spacing.sm,
     },
     durationCell: {
         flex: 1,
+        gap: Spacing.sm,
     },
     pyramidSection: {
+        flexShrink: 1,
+        minHeight: 0,
         paddingVertical: Spacing.sm,
         borderTopWidth: 1,
     },
@@ -602,44 +653,35 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.xs,
     },
     pyramidTitle: {
-        fontSize: 12,
-        fontWeight: '800',
         textTransform: 'uppercase',
     },
     pyramidChevron: {
-        marginLeft: 6,
+        marginLeft: Spacing.xs,
         opacity: 0.5,
     },
-    addDropButton: {
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: Spacing.xs,
-        borderRadius: 8,
-    },
     pyramidListWrap: {
+        flexShrink: 1,
+        minHeight: 0,
         overflow: 'hidden',
         marginTop: Spacing.sm,
     },
     pyramidList: {
         height: PYRAMID_LIST_HEIGHT,
-        borderRadius: 10,
+        minHeight: 120,
+        flexShrink: 1,
+        borderRadius: Radius.sm,
     },
     emptySubsetsContainer: {
         flexGrow: 1,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    emptySubsets: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: Spacing.lg,
+        paddingVertical: Spacing.lg,
     },
     emptySubsetsIcon: {
         opacity: 0.2,
         marginBottom: 8,
     },
     emptySubsetsText: {
-        fontSize: 10,
-        fontWeight: '600',
         opacity: 0.5,
     },
     subSetRow: {
@@ -654,8 +696,6 @@ const styles = StyleSheet.create({
         width: 24,
     },
     subSetIndex: {
-        fontSize: 10,
-        fontWeight: 'bold',
         opacity: 0.6,
     },
     subSetInputGroup: {
@@ -667,50 +707,25 @@ const styles = StyleSheet.create({
     subSetInput: {
         flex: 1,
         height: 34,
-        borderRadius: 6,
+        borderRadius: Radius.sm,
         textAlign: 'center',
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.semibold,
         paddingVertical: 0,
         includeFontPadding: false,
     },
     subSetX: {
-        fontSize: 12,
         opacity: 0.4,
-    },
-    removeSubSet: {
-        padding: Spacing.xs,
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
         gap: Spacing.sm,
-        paddingVertical: Spacing.md,
+        paddingVertical: Spacing.sm,
     },
     footerSurface: {
         borderTopWidth: 1,
         paddingTop: Spacing.xs,
         zIndex: 2,
-    },
-    cancelButton: {
-        padding: Spacing.sm,
-        marginRight: Spacing.sm,
-    },
-    saveButton: {
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.lg,
-        borderRadius: 8,
-    },
-    saveButtonDisabled: {
-        opacity: 0.5,
-    },
-    saveText: {
-        color: 'white',
-        fontWeight: 'bold',
-    },
-    saveLoadingRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
     },
 })

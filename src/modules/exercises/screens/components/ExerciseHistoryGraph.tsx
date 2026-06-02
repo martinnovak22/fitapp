@@ -1,5 +1,8 @@
 import { Exercise } from '@/src/db/exercises'
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
+import { FontSize } from '@/src/constants/Typography'
+import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import {
     ExerciseTypeMetadata,
@@ -11,7 +14,7 @@ import {
 import type { BestSetEntry, SessionSummary } from '@/src/modules/exercises/ExerciseStats'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
 
 interface ExerciseHistoryGraphProps {
@@ -21,18 +24,12 @@ interface ExerciseHistoryGraphProps {
     dominantMetric: PrimaryMetric | null
 }
 
-export const ExerciseHistoryGraph = ({
-    exercise,
-    data,
-    summary,
-    dominantMetric,
-}: ExerciseHistoryGraphProps) => {
+export const ExerciseHistoryGraph = ({ exercise, data, summary, dominantMetric }: ExerciseHistoryGraphProps) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
     const [graphWidth, setGraphWidth] = useState(0)
 
-    const effectiveDominant: PrimaryMetric =
-        dominantMetric ?? ExerciseTypeMetadata.defaultDominantMetric(exercise.type)
+    const effectiveDominant: PrimaryMetric = dominantMetric ?? ExerciseTypeMetadata.defaultDominantMetric(exercise.type)
     const isInverted = ExerciseTypeMetadata.isBetterLower(exercise.type, effectiveDominant)
 
     const rawValues = useMemo(
@@ -71,10 +68,7 @@ export const ExerciseHistoryGraph = ({
 
     const contextLine = useMemo(() => {
         if (!summary?.contextAvgDistance) return null
-        return `${t('avgDistance')} ${ExerciseTypeMetadata.formatAxisLabel(
-            'distance',
-            summary.contextAvgDistance
-        )}`
+        return `${t('avgDistance')} ${ExerciseTypeMetadata.formatAxisLabel('distance', summary.contextAvgDistance)}`
     }, [summary, t])
 
     const maxDisplay = processedData.length ? Math.max(...processedData.map((d) => d.value)) : 0
@@ -114,23 +108,19 @@ export const ExerciseHistoryGraph = ({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={[styles.title, { color: theme.text }]}>{t('progress')}</Text>
-                {contextLine && (
-                    <Text style={[styles.context, { color: theme.textSecondary }]}>
-                        {contextLine}
-                    </Text>
-                )}
+                <Typography.Subtitle weight="bold">{t('progress')}</Typography.Subtitle>
+                {contextLine && <Typography.Meta>{contextLine}</Typography.Meta>}
             </View>
 
             {stats && (
                 <View style={styles.statsRow}>
                     <View style={[styles.statItem, { backgroundColor: theme.background }]}>
-                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('personalBest')}</Text>
-                        <Text style={[styles.statValue, { color: theme.text }]}>{stats.max}</Text>
+                        <Typography.Meta style={styles.statLabel}>{t('personalBest')}</Typography.Meta>
+                        <Typography.Body weight="bold">{stats.max}</Typography.Body>
                     </View>
                     <View style={[styles.statItem, { backgroundColor: theme.background }]}>
-                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('average')}</Text>
-                        <Text style={[styles.statValue, { color: theme.text }]}>{stats.avg}</Text>
+                        <Typography.Meta style={styles.statLabel}>{t('average')}</Typography.Meta>
+                        <Typography.Body weight="bold">{stats.avg}</Typography.Body>
                     </View>
                 </View>
             )}
@@ -209,7 +199,7 @@ export const ExerciseHistoryGraph = ({
                     })()
                 ) : (
                     <View style={styles.emptyState}>
-                        <Text style={{ color: theme.textSecondary }}>{t('noHistoryData')}</Text>
+                        <Typography.Body color="textSecondary">{t('noHistoryData')}</Typography.Body>
                     </View>
                 )}
             </View>
@@ -227,13 +217,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
     },
-    title: {
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    context: {
-        fontSize: 12,
-    },
     statsRow: {
         flexDirection: 'row',
         marginBottom: 24,
@@ -242,15 +225,10 @@ const styles = StyleSheet.create({
     statItem: {
         flex: 1,
         padding: 12,
-        borderRadius: 12,
+        borderRadius: Radius.md,
     },
     statLabel: {
-        fontSize: 12,
         marginBottom: 4,
-    },
-    statValue: {
-        fontSize: 16,
-        fontWeight: '700',
     },
     graphWrapper: {
         width: '100%',
@@ -259,7 +237,7 @@ const styles = StyleSheet.create({
         borderTopWidth: 0.5,
     },
     axisText: {
-        fontSize: 12,
+        fontSize: FontSize.xs,
     },
     emptyState: {
         padding: Spacing.xl2,

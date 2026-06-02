@@ -1,9 +1,9 @@
 import { Spacing } from '@/src/constants/Spacing'
-import { GlobalStyles } from '@/src/constants/Styles'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Button } from './Button'
+import { Typography } from './Typography'
 import { useTheme } from '../hooks/useTheme'
 
 interface ScreenHeaderProps {
@@ -21,41 +21,28 @@ export const ScreenHeader = ({ title, onDelete, rightAction }: ScreenHeaderProps
     const { t } = useTranslation()
     return (
         <View style={styles.container}>
-            <Text style={[GlobalStyles.title, { color: theme.text, flex: 1, marginBottom: 0 }]} numberOfLines={1}>
+            <Typography.Title style={styles.title} numberOfLines={1}>
                 {title}
-            </Text>
+            </Typography.Title>
 
             <View style={styles.actions}>
                 {rightAction && (
-                    <TouchableOpacity
+                    <Button
+                        label={rightAction.label}
                         onPress={rightAction.onPress}
                         disabled={rightAction.disabled}
-                        style={[
-                            styles.textButton,
-                            { backgroundColor: theme.primary },
-                            rightAction.disabled && styles.disabledAction,
-                        ]}
-                        accessibilityRole={'button'}
-                        accessibilityLabel={rightAction.label}
-                        accessibilityState={rightAction.disabled ? { disabled: true } : undefined}
-                        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                    >
-                        <Text style={[styles.actionText, { color: theme.onPrimary }]} allowFontScaling={true}>
-                            {rightAction.label}
-                        </Text>
-                    </TouchableOpacity>
+                        size={'sm'}
+                    />
                 )}
 
                 {onDelete && (
-                    <TouchableOpacity
+                    <Button
+                        leftIcon={'trash'}
                         onPress={onDelete}
-                        style={styles.iconButton}
-                        accessibilityRole={'button'}
+                        variant={'text'}
                         accessibilityLabel={t('delete')}
-                        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                    >
-                        <FontAwesome name={'trash'} size={24} color={theme.error} />
-                    </TouchableOpacity>
+                        labelStyle={{ color: theme.error }}
+                    />
                 )}
             </View>
         </View>
@@ -70,30 +57,12 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.md,
         gap: Spacing.md,
     },
+    title: {
+        flex: 1,
+    },
     actions: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.sm,
-    },
-    iconButton: {
-        padding: Spacing.xs,
-        minWidth: 44,
-        minHeight: 44,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    textButton: {
-        paddingVertical: 6,
-        paddingHorizontal: Spacing.md,
-        borderRadius: Spacing.sm,
-        minHeight: 44,
-        justifyContent: 'center',
-    },
-    disabledAction: {
-        opacity: 0.6,
-    },
-    actionText: {
-        fontWeight: 'bold',
-        fontSize: 16,
     },
 })

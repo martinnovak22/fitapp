@@ -190,38 +190,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(nextSession)
     }, [])
 
-    const signIn = useCallback(async (
-        email: string,
-        password: string,
-        options?: { migrationPolicy?: MigrationPolicy }
-    ) => {
-        const nextSession = await signInWithEmailPassword(email.trim(), password)
-        await transitionTo(
-            { kind: 'account', userId: nextSession.userId },
-            options?.migrationPolicy ?? 'clear'
-        )
-        await adoptAccountSession(nextSession)
-    }, [adoptAccountSession, transitionTo])
+    const signIn = useCallback(
+        async (email: string, password: string, options?: { migrationPolicy?: MigrationPolicy }) => {
+            const nextSession = await signInWithEmailPassword(email.trim(), password)
+            await transitionTo({ kind: 'account', userId: nextSession.userId }, options?.migrationPolicy ?? 'clear')
+            await adoptAccountSession(nextSession)
+        },
+        [adoptAccountSession, transitionTo]
+    )
 
-    const signUp = useCallback(async (email: string, password: string) => {
-        const nextSession = await signUpWithEmailPassword(email.trim(), password)
-        await transitionTo({ kind: 'account', userId: nextSession.userId }, 'preserve')
-        await adoptAccountSession(nextSession)
-    }, [adoptAccountSession, transitionTo])
+    const signUp = useCallback(
+        async (email: string, password: string) => {
+            const nextSession = await signUpWithEmailPassword(email.trim(), password)
+            await transitionTo({ kind: 'account', userId: nextSession.userId }, 'preserve')
+            await adoptAccountSession(nextSession)
+        },
+        [adoptAccountSession, transitionTo]
+    )
 
-    const signInWithOAuthRedirectUrl = useCallback(async (
-        url: string,
-        options?: { migrationPolicy?: MigrationPolicy }
-    ) => {
-        const nextSession = await getSupabaseSessionFromOAuthRedirectUrl(url)
-        if (!nextSession) return false
-        await transitionTo(
-            { kind: 'account', userId: nextSession.userId },
-            options?.migrationPolicy ?? 'clear'
-        )
-        await adoptAccountSession(nextSession)
-        return true
-    }, [adoptAccountSession, transitionTo])
+    const signInWithOAuthRedirectUrl = useCallback(
+        async (url: string, options?: { migrationPolicy?: MigrationPolicy }) => {
+            const nextSession = await getSupabaseSessionFromOAuthRedirectUrl(url)
+            if (!nextSession) return false
+            await transitionTo({ kind: 'account', userId: nextSession.userId }, options?.migrationPolicy ?? 'clear')
+            await adoptAccountSession(nextSession)
+            return true
+        },
+        [adoptAccountSession, transitionTo]
+    )
 
     const continueAsGuest = useCallback(async () => {
         await transitionTo({ kind: 'guest' }, 'clear')

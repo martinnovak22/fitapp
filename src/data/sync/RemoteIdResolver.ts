@@ -32,9 +32,7 @@ export const createRemoteIdResolver = (adapter: RemoteAdapter): RemoteIdResolver
         async resolveMany(table, uuids) {
             const cache = caches[table]
             const negs = negativeCache[table]
-            const missing = [
-                ...new Set(uuids.filter((u) => !cache.has(u) && !negs.has(u))),
-            ]
+            const missing = [...new Set(uuids.filter((u) => !cache.has(u) && !negs.has(u)))]
             if (missing.length > 0) {
                 const found = await adapter.selectIdsByUuids(table, missing)
                 const foundUuids = new Set(found.map((f) => f.uuid))
