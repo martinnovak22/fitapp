@@ -133,7 +133,7 @@ export default function WorkoutDashboardScreen() {
         return (
             <ScrollScreenLayout>
                 <View style={layoutStyles.loadingContainer}>
-                    <ActivityIndicator size={"large"} color={theme.primary} />
+                    <ActivityIndicator size={'large'} color={theme.primary} />
                 </View>
             </ScrollScreenLayout>
         )
@@ -143,7 +143,7 @@ export default function WorkoutDashboardScreen() {
         return (
             <ScrollScreenLayout>
                 <View style={layoutStyles.loadingContainer}>
-                    <EmptyState message={loadError} icon={"exclamation-circle"} />
+                    <EmptyState message={loadError} icon={'exclamation-circle'} />
                     <Button label={t('retry')} onPress={loadData} style={{ marginTop: Spacing.md }} />
                 </View>
             </ScrollScreenLayout>
@@ -206,7 +206,9 @@ export default function WorkoutDashboardScreen() {
                     <View style={[layoutStyles.heroDivider, { backgroundColor: theme.border + '15' }]} />
 
                     <View style={layoutStyles.headerRow}>
-                        <Typography.Subtitle style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text }}>
+                        <Typography.Subtitle
+                            style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: theme.text }}
+                        >
                             {t('weeklyActivity')}
                         </Typography.Subtitle>
                         <FontAwesome name="chevron-right" size={12} color={theme.textSecondary} />
@@ -267,14 +269,22 @@ export default function WorkoutDashboardScreen() {
                                 {t('startedAt')} {formatHourMinute(activeWorkout.start_time)}
                             </Typography.Body>
 
-                            <Button label={t('resumeSession')} onPress={handleStartWorkout} isLoading={isStartingWorkout} />
+                            <Button
+                                label={t('resumeSession')}
+                                onPress={handleStartWorkout}
+                                isLoading={isStartingWorkout}
+                            />
                         </View>
                     ) : (
                         <View style={layoutStyles.activeContent}>
                             <Typography.Body style={[layoutStyles.activePromo, { color: theme.textSecondary }]}>
                                 {t('readyToCrush')}
                             </Typography.Body>
-                            <Button label={t('startNewWorkout')} onPress={handleStartWorkout} isLoading={isStartingWorkout} />
+                            <Button
+                                label={t('startNewWorkout')}
+                                onPress={handleStartWorkout}
+                                isLoading={isStartingWorkout}
+                            />
                         </View>
                     )}
                 </Card>

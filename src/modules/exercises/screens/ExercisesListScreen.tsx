@@ -15,16 +15,7 @@ import { router, useFocusEffect, useNavigation } from 'expo-router'
 import { TFunction } from 'i18next'
 import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-    ActivityIndicator,
-    Image,
-    Modal,
-    Platform,
-    Pressable,
-    StyleSheet,
-    TouchableOpacity,
-    View,
-} from 'react-native'
+import { ActivityIndicator, Image, Modal, Platform, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native'
 import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
 import { ListSeparator } from '../../core/components/ListSeparator'
 import { useExercises } from '../hooks/useExercises'
@@ -178,7 +169,7 @@ export default function ExercisesListScreen() {
                             accessibilityLabel={t('import')}
                         >
                             {isImporting ? (
-                                <ActivityIndicator size={"small"} color={theme.primary} />
+                                <ActivityIndicator size={'small'} color={theme.primary} />
                             ) : (
                                 <FontAwesome name={'download'} size={20} color={theme.primary} />
                             )}
@@ -204,11 +195,11 @@ export default function ExercisesListScreen() {
         <ScreenLayout>
             {!hasLoaded ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size={"large"} color={theme.primary} />
+                    <ActivityIndicator size={'large'} color={theme.primary} />
                 </View>
             ) : loadError && exercises.length === 0 ? (
                 <View style={styles.loadingContainer}>
-                    <EmptyState message={loadError} icon={"exclamation-circle"} />
+                    <EmptyState message={loadError} icon={'exclamation-circle'} />
                     <Button label={t('retry')} onPress={loadExercises} style={{ marginTop: Spacing.md }} />
                 </View>
             ) : exercises.length === 0 ? (
@@ -230,7 +221,7 @@ export default function ExercisesListScreen() {
             )}
             {isReordering && (
                 <View style={[styles.reorderOverlay, { backgroundColor: theme.overlayChip }]}>
-                    <ActivityIndicator size={"small"} color={theme.primary} />
+                    <ActivityIndicator size={'small'} color={theme.primary} />
                     <Typography.Meta weight="semibold" color="text">
                         {t('saving')}
                     </Typography.Meta>
@@ -293,7 +284,7 @@ export default function ExercisesListScreen() {
                     <View
                         style={[styles.importOverlayCard, { backgroundColor: theme.card, borderColor: theme.border }]}
                     >
-                        <ActivityIndicator size={"large"} color={theme.primary} />
+                        <ActivityIndicator size={'large'} color={theme.primary} />
                         <Typography.Label weight="semibold" color="text" style={styles.importOverlayText}>
                             {t('importInProgress')}
                         </Typography.Label>

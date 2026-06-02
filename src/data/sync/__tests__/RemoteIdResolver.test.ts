@@ -11,9 +11,7 @@ describe('RemoteIdResolver', () => {
             { uuid: 'wk-2', user_id: 'u', date: '2026-01-02' },
             { uuid: 'wk-3', user_id: 'u', date: '2026-01-03' },
         ])
-        await adapter.upsert('exercises', [
-            { uuid: 'ex-1', user_id: 'u', name: 'Bench' },
-        ])
+        await adapter.upsert('exercises', [{ uuid: 'ex-1', user_id: 'u', name: 'Bench' }])
 
         const resolver = createRemoteIdResolver(adapter)
 

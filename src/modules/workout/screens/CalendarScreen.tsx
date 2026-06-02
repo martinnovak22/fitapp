@@ -140,7 +140,7 @@ export default function CalendarScreen() {
         return (
             <ScrollScreenLayout contentContainerStyle={styles.scrollContent} style={styles.container}>
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size={"large"} color={theme.primary} />
+                    <ActivityIndicator size={'large'} color={theme.primary} />
                 </View>
             </ScrollScreenLayout>
         )
@@ -150,7 +150,7 @@ export default function CalendarScreen() {
         return (
             <ScrollScreenLayout contentContainerStyle={styles.scrollContent} style={styles.container}>
                 <View style={styles.loadingContainer}>
-                    <EmptyState message={loadError} icon={"exclamation-circle"} />
+                    <EmptyState message={loadError} icon={'exclamation-circle'} />
                     <Button label={t('retry')} onPress={loadWorkouts} style={{ marginTop: Spacing.md }} />
                 </View>
             </ScrollScreenLayout>
@@ -306,7 +306,7 @@ export default function CalendarScreen() {
                         <ScrollView style={styles.summaryScroll} contentContainerStyle={styles.summaryScrollContent}>
                             {isLoadingSummary ? (
                                 <View style={styles.summaryLoading}>
-                                    <ActivityIndicator size={"small"} color={theme.primary} />
+                                    <ActivityIndicator size={'small'} color={theme.primary} />
                                 </View>
                             ) : workoutSets.length > 0 ? (
                                 workoutSets.map((item, index) => (

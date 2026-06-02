@@ -116,11 +116,11 @@ export default function HistoryScreen() {
         <ScreenLayout>
             {initialLoading ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size={"large"} color={theme.primary} />
+                    <ActivityIndicator size={'large'} color={theme.primary} />
                 </View>
             ) : loadError && workouts.length === 0 ? (
                 <View style={styles.loadingContainer}>
-                    <EmptyState message={loadError} icon={"exclamation-circle"} />
+                    <EmptyState message={loadError} icon={'exclamation-circle'} />
                     <Button label={t('retry')} onPress={onRefresh} style={{ marginTop: Spacing.md }} />
                 </View>
             ) : (

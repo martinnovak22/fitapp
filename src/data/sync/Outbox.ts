@@ -127,10 +127,8 @@ export const DIRTY_STATUSES = `('dirty','failed')`
 export const tableOf = (entityType: OutboxEntityType): EntityTable =>
     entityType === 'exercise' ? 'exercises' : entityType === 'workout' ? 'workouts' : 'sets'
 
-const EXERCISE_COLS =
-    'uuid, user_id, name, type, muscle_group, photo_uri, position, created_at, updated_at, deleted_at'
-const WORKOUT_COLS =
-    'uuid, user_id, date, start_time, end_time, status, note, created_at, updated_at, deleted_at'
+const EXERCISE_COLS = 'uuid, user_id, name, type, muscle_group, photo_uri, position, created_at, updated_at, deleted_at'
+const WORKOUT_COLS = 'uuid, user_id, date, start_time, end_time, status, note, created_at, updated_at, deleted_at'
 const SET_COLS = `s.uuid, s.user_id, s.workout_id, s.exercise_id, s.weight, s.reps,
     s.distance, s.duration, s.rpe, s.position, s.sub_sets, s.created_at, s.updated_at,
     s.deleted_at, w.uuid as workout_uuid, e.uuid as exercise_uuid`
@@ -155,9 +153,7 @@ const selectDirtySets = (db: SqliteLike, snapshot: PrincipalSnapshot): Promise<S
             ? 'AND w.user_id = ? AND e.user_id = ?'
             : 'AND w.user_id IS NULL AND e.user_id IS NULL'
     const setParams =
-        snapshot.mode === 'account'
-            ? [...snapshot.scopeParams, ...snapshot.scopeParams, ...snapshot.scopeParams]
-            : []
+        snapshot.mode === 'account' ? [...snapshot.scopeParams, ...snapshot.scopeParams, ...snapshot.scopeParams] : []
     return db.getAllAsync<SetRowWithRefs>(
         `SELECT ${SET_COLS}
         FROM sets s
@@ -189,7 +185,11 @@ const updateEntityStatus = (
         )
     )
 
-const readAttempts = async (read: SqliteLike, table: EntityTable | 'deletion_tombstones', key: { column: string; value: string | number }) => {
+const readAttempts = async (
+    read: SqliteLike,
+    table: EntityTable | 'deletion_tombstones',
+    key: { column: string; value: string | number }
+) => {
     const rows = await read.getAllAsync<{ sync_attempts: number | null }>(
         `SELECT sync_attempts FROM ${table} WHERE ${key.column} = ?`,
         key.value
@@ -267,12 +267,9 @@ export const createOutbox = (read: SqliteLike, write: RunWrite): Outbox => ({
                     )
                 )
             } else {
-                await updateEntityStatus(
-                    write,
-                    row,
-                    `sync_status = 'synced', sync_attempts = 0, last_synced_at = ?`,
-                    [new Date().toISOString()]
-                )
+                await updateEntityStatus(write, row, `sync_status = 'synced', sync_attempts = 0, last_synced_at = ?`, [
+                    new Date().toISOString(),
+                ])
             }
         }
     },
@@ -285,7 +282,8 @@ export const createOutbox = (read: SqliteLike, write: RunWrite): Outbox => ({
         const dispositions: FailDisposition[] = []
         for (const row of rows) {
             if (row.kind === 'tombstone') {
-                const attempts = (await readAttempts(read, 'deletion_tombstones', { column: 'id', value: row.tombstoneId })) + 1
+                const attempts =
+                    (await readAttempts(read, 'deletion_tombstones', { column: 'id', value: row.tombstoneId })) + 1
                 const status = classifyFailure(reason.kind, attempts)
                 await write((db) =>
                     db.runAsync(
@@ -297,7 +295,8 @@ export const createOutbox = (read: SqliteLike, write: RunWrite): Outbox => ({
                 )
                 dispositions.push({ uuid: row.uuid, status })
             } else {
-                const attempts = (await readAttempts(read, tableOf(row.entityType), { column: 'uuid', value: row.uuid })) + 1
+                const attempts =
+                    (await readAttempts(read, tableOf(row.entityType), { column: 'uuid', value: row.uuid })) + 1
                 const status = classifyFailure(reason.kind, attempts)
                 await updateEntityStatus(write, row, `sync_status = ?, sync_attempts = ?`, [status, attempts])
                 dispositions.push({ uuid: row.uuid, status })

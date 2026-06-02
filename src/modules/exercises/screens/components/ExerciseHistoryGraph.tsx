@@ -24,18 +24,12 @@ interface ExerciseHistoryGraphProps {
     dominantMetric: PrimaryMetric | null
 }
 
-export const ExerciseHistoryGraph = ({
-    exercise,
-    data,
-    summary,
-    dominantMetric,
-}: ExerciseHistoryGraphProps) => {
+export const ExerciseHistoryGraph = ({ exercise, data, summary, dominantMetric }: ExerciseHistoryGraphProps) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
     const [graphWidth, setGraphWidth] = useState(0)
 
-    const effectiveDominant: PrimaryMetric =
-        dominantMetric ?? ExerciseTypeMetadata.defaultDominantMetric(exercise.type)
+    const effectiveDominant: PrimaryMetric = dominantMetric ?? ExerciseTypeMetadata.defaultDominantMetric(exercise.type)
     const isInverted = ExerciseTypeMetadata.isBetterLower(exercise.type, effectiveDominant)
 
     const rawValues = useMemo(
@@ -74,10 +68,7 @@ export const ExerciseHistoryGraph = ({
 
     const contextLine = useMemo(() => {
         if (!summary?.contextAvgDistance) return null
-        return `${t('avgDistance')} ${ExerciseTypeMetadata.formatAxisLabel(
-            'distance',
-            summary.contextAvgDistance
-        )}`
+        return `${t('avgDistance')} ${ExerciseTypeMetadata.formatAxisLabel('distance', summary.contextAvgDistance)}`
     }, [summary, t])
 
     const maxDisplay = processedData.length ? Math.max(...processedData.map((d) => d.value)) : 0

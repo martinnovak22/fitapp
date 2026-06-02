@@ -24,9 +24,7 @@ export type RemoteRow = Record<string, unknown> & {
     updated_at?: string | null
 }
 
-export type FailureMode =
-    | { kind: 'network-error'; message?: string }
-    | { kind: 'empty-after-upsert' }
+export type FailureMode = { kind: 'network-error'; message?: string } | { kind: 'empty-after-upsert' }
 
 export type UpsertResult = { id: number; uuid: string }[]
 
@@ -41,12 +39,7 @@ export interface FakeSupabaseAdapter {
     selectIdsByUuids(table: RemoteTable, uuids: string[]): Promise<{ id: number; uuid: string }[]>
     selectActive(table: RemoteTable, userId: string): Promise<RemoteRow[]>
     selectDeleted(table: RemoteTable, userId: string): Promise<{ uuid: string; deleted_at: string | null }[]>
-    patchByUuid(
-        table: RemoteTable,
-        uuid: string,
-        userId: string,
-        patch: Partial<RemoteRow>
-    ): Promise<void>
+    patchByUuid(table: RemoteTable, uuid: string, userId: string, patch: Partial<RemoteRow>): Promise<void>
 
     /** Queue a failure to be consumed by the next call (FIFO). */
     queueFailure(failure: FailureMode): void
@@ -139,9 +132,7 @@ export const createFakeSupabaseAdapter = (): FakeSupabaseAdapter => {
             if (failure?.kind === 'network-error') {
                 throw new Error(failure.message ?? 'network error')
             }
-            return [...tables[table].values()].filter(
-                (row) => row.user_id === userId && !row.deleted_at
-            )
+            return [...tables[table].values()].filter((row) => row.user_id === userId && !row.deleted_at)
         },
 
         async selectDeleted(table, userId) {

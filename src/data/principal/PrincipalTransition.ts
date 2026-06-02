@@ -6,10 +6,7 @@ import type * as SQLite from 'expo-sqlite'
 import { nowIso } from '@/src/db/sync'
 import { executeWriteTransaction } from '@/src/db/writeQueue'
 
-export type PrincipalIdentity =
-    | { kind: 'guest' }
-    | { kind: 'account'; userId: string }
-    | { kind: 'signed-out' }
+export type PrincipalIdentity = { kind: 'guest' } | { kind: 'account'; userId: string } | { kind: 'signed-out' }
 
 export type MigrationPolicy = 'clear' | 'preserve'
 
@@ -54,9 +51,7 @@ const clearLocal = async (db: SqliteWrite): Promise<number> => {
              last_success_at = NULL, last_attempt_at = NULL, last_error = NULL
          WHERE id = 1`
     )
-    await db.runAsync(
-        `DELETE FROM sqlite_sequence WHERE name IN ('sets','workouts','exercises','deletion_tombstones')`
-    )
+    await db.runAsync(`DELETE FROM sqlite_sequence WHERE name IN ('sets','workouts','exercises','deletion_tombstones')`)
     return total
 }
 

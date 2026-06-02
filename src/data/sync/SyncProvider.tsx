@@ -77,7 +77,13 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // up the React tree.
         const result = await runSync()
         await refreshStatus()
-        const idle = !!result && !result.skipped && result.pushed === 0 && result.pulled === 0 && result.failed === 0 && !result.aborted
+        const idle =
+            !!result &&
+            !result.skipped &&
+            result.pushed === 0 &&
+            result.pulled === 0 &&
+            result.failed === 0 &&
+            !result.aborted
         lastCycleWasIdleRef.current = idle
         if (idle) {
             idleCyclesRef.current += 1

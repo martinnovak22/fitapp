@@ -35,10 +35,7 @@ export const capturePrincipalSnapshot = (live: LivePrincipal): PrincipalSnapshot
     })
 }
 
-export const principalHasDiverged = (
-    snapshot: PrincipalSnapshot,
-    live: LivePrincipal
-): boolean => {
+export const principalHasDiverged = (snapshot: PrincipalSnapshot, live: LivePrincipal): boolean => {
     const current = capturePrincipalSnapshot(live)
     return current.mode !== snapshot.mode || current.userId !== snapshot.userId
 }
