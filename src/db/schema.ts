@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite'
 
 export const DATABASE_NAME = 'fitapp.db'
-const SCHEMA_VERSION = 2
+const SCHEMA_VERSION = 3
 
 type ColumnDef = {
     name: string
@@ -17,6 +17,10 @@ const SYNC_METADATA_COLUMNS: ColumnDef[] = [
     { name: 'deleted_at', sqlType: 'TEXT' },
     { name: 'sync_status', sqlType: 'TEXT', defaultValue: "'local'" },
     { name: 'last_synced_at', sqlType: 'TEXT' },
+    // Consecutive failed push attempts. Drives the give-up / dead-letter
+    // policy: a row that keeps failing is eventually marked 'blocked' and
+    // dropped from the outbox so it stops re-failing every cycle.
+    { name: 'sync_attempts', sqlType: 'INTEGER', defaultValue: '0' },
 ]
 
 const getColumnDefinitions = async (db: SQLite.SQLiteDatabase, table: string) => {
@@ -71,7 +75,8 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       deleted_at TEXT,
       sync_status TEXT DEFAULT 'local',
-      last_synced_at TEXT
+      last_synced_at TEXT,
+      sync_attempts INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS workouts (
@@ -87,7 +92,8 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       deleted_at TEXT,
       sync_status TEXT DEFAULT 'local',
-      last_synced_at TEXT
+      last_synced_at TEXT,
+      sync_attempts INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS sets (
@@ -108,6 +114,7 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       deleted_at TEXT,
       sync_status TEXT DEFAULT 'local',
       last_synced_at TEXT,
+      sync_attempts INTEGER DEFAULT 0,
       FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE,
       FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
     );
@@ -118,7 +125,8 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       entity_uuid TEXT NOT NULL,
       user_id TEXT,
       deleted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      sync_status TEXT NOT NULL DEFAULT 'dirty'
+      sync_status TEXT NOT NULL DEFAULT 'dirty',
+      sync_attempts INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS sync_state (
@@ -167,6 +175,11 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
     await ensureSyncMetadataColumns(db, 'exercises')
     await ensureSyncMetadataColumns(db, 'workouts')
     await ensureSyncMetadataColumns(db, 'sets')
+    await ensureColumn(db, 'deletion_tombstones', {
+        name: 'sync_attempts',
+        sqlType: 'INTEGER',
+        defaultValue: '0',
+    })
     await backfillSyncMetadata(db)
     await createIndexes(db)
     await db.execAsync(`

@@ -4,6 +4,24 @@
 
 export type RemoteTable = 'exercises' | 'workouts' | 'sets'
 
+// Carries the HTTP status of a failed PostgREST request so failures can be
+// classified as permanent (the server refused the data) vs transient.
+export class RemoteRequestError extends Error {
+    constructor(
+        message: string,
+        readonly status: number
+    ) {
+        super(message)
+        this.name = 'RemoteRequestError'
+    }
+}
+
+// A 4xx (except auth/timeout/rate-limit) means the server rejected the data
+// itself — retrying the same payload cannot succeed, so we give up immediately.
+// 5xx, network errors, 401, 408 and 429 are transient and worth retrying.
+export const isPermanentRejectionStatus = (status: number): boolean =>
+    status >= 400 && status < 500 && status !== 401 && status !== 408 && status !== 429
+
 export type RemoteRow = Record<string, unknown> & {
     uuid: string
     user_id: string | null
