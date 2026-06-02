@@ -13,13 +13,11 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     Dimensions,
-    FlatList,
     Keyboard,
-    type ListRenderItem,
     Modal,
     Platform,
+    ScrollView,
     StyleSheet,
-    Text,
     TextInput,
     TouchableOpacity,
     View,
@@ -29,6 +27,8 @@ import { SetFormValues } from '../setPayload'
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window')
 const SHEET_MAX_HEIGHT = Math.min(DEVICE_HEIGHT * 0.9, 760)
+// Fixed height for the pyramid list so adding rows scrolls inside it rather
+// than growing the sheet and shifting everything around it.
 const PYRAMID_LIST_HEIGHT = Math.min(200, Math.floor(DEVICE_HEIGHT * 0.22))
 const UNIFIED_LAYOUT = LinearTransition.duration(200)
 const KEYBOARD_LIFT_FACTOR = 0.8
@@ -176,20 +176,6 @@ export const LogSetModal = ({
         [subSets, subSetKeys],
     )
 
-    const renderSubSetRow: ListRenderItem<{ key: string; subSet: SubSet; index: number }> = React.useCallback(
-        ({ item }) => (
-            <SubSetRow
-                index={item.index}
-                subSet={item.subSet}
-                theme={theme}
-                t={t}
-                onChange={updateSubSet}
-                onRemove={removeSubSet}
-            />
-        ),
-        [theme, t, updateSubSet, removeSubSet],
-    )
-
     return (
         <Modal animationType={'none'} transparent visible={visible} onRequestClose={onClose}>
             <View style={styles.modalRoot}>
@@ -204,11 +190,12 @@ export const LogSetModal = ({
 
                     <Typography.Title>{editingSetId ? t('editSet') : t('inputSet')}</Typography.Title>
 
-                        <Animated.View layout={UNIFIED_LAYOUT}>
+                        <View style={styles.body}>
                             {!editingSetId && (
                                 <Animated.View entering={FadeIn.duration(160)}>
                                     <ExercisePicker
                                         exercises={exercises}
+                                        selectedId={selectedExerciseId}
                                         onPick={(exercise) => {
                                             setSelectedExerciseId(exercise.id)
                                             const fields = ['weight', 'reps', 'distance', 'durationMinutes', 'durationSeconds'] as const
@@ -219,10 +206,7 @@ export const LogSetModal = ({
                             )}
 
                             {selectedExercise && (
-                                <Animated.View
-                                    entering={FadeIn.duration(180)}
-                                    style={styles.inputsSection}
-                                >
+                                <View style={styles.scrollBody}>
                                     <SetInputFields
                                         selectedExercise={selectedExercise}
                                         inputValues={inputValues}
@@ -251,12 +235,13 @@ export const LogSetModal = ({
                                                     />
                                                 </TouchableOpacity>
 
-                                                <TouchableOpacity
-                                                    style={[styles.addDropButton, { backgroundColor: theme.primary }]}
+                                                <Button
+                                                    leftIcon={'plus'}
                                                     onPress={addSubSet}
-                                                >
-                                                    <FontAwesome name={'plus'} size={10} color={theme.onPrimary} />
-                                                </TouchableOpacity>
+                                                    variant={'primary'}
+                                                    size={'sm'}
+                                                    accessibilityLabel={t('addDropSet')}
+                                                />
                                             </View>
 
                                             {isExpanded && (
@@ -264,17 +249,15 @@ export const LogSetModal = ({
                                                     entering={FadeIn.duration(160)}
                                                     style={styles.pyramidListWrap}
                                                 >
-                                                    <FlatList
-                                                        data={subSetItems}
-                                                        keyExtractor={(item) => item.key}
-                                                        renderItem={renderSubSetRow}
+                                                    <ScrollView
                                                         style={[styles.pyramidList, { backgroundColor: theme.background }]}
                                                         contentContainerStyle={subSetItems.length === 0 ? styles.emptySubsetsContainer : undefined}
+                                                        nestedScrollEnabled
                                                         keyboardShouldPersistTaps={'handled'}
                                                         showsVerticalScrollIndicator
-                                                        removeClippedSubviews={false}
-                                                        ListEmptyComponent={(
-                                                            <View style={styles.emptySubsets}>
+                                                    >
+                                                        {subSetItems.length === 0 ? (
+                                                            <>
                                                                 <FontAwesome
                                                                     name={'list'}
                                                                     size={20}
@@ -282,16 +265,28 @@ export const LogSetModal = ({
                                                                     style={styles.emptySubsetsIcon}
                                                                 />
                                                                 <Typography.Meta weight="semibold" style={styles.emptySubsetsText}>{t('noDropSets')}</Typography.Meta>
-                                                            </View>
+                                                            </>
+                                                        ) : (
+                                                            subSetItems.map((item) => (
+                                                                <SubSetRow
+                                                                    key={item.key}
+                                                                    index={item.index}
+                                                                    subSet={item.subSet}
+                                                                    theme={theme}
+                                                                    t={t}
+                                                                    onChange={updateSubSet}
+                                                                    onRemove={removeSubSet}
+                                                                />
+                                                            ))
                                                         )}
-                                                    />
+                                                    </ScrollView>
                                                 </Animated.View>
                                             )}
                                         </Animated.View>
                                     )}
-                                </Animated.View>
+                                </View>
                             )}
-                        </Animated.View>
+                        </View>
 
                     <View
                         style={[
@@ -304,9 +299,10 @@ export const LogSetModal = ({
                         ]}
                     >
                         <View style={styles.footer}>
-                            <Button label={t('cancel')} variant={'outline'} onPress={onClose} />
+                            <Button label={t('cancel')} variant={'secondary'} size={'sm'} onPress={onClose} />
                             <Button
                                 label={editingSetId ? t('update') : t('addSet')}
+                                size={'sm'}
                                 onPress={onSave}
                                 isLoading={isSaving}
                                 disabled={!selectedExerciseId || isSaving}
@@ -379,6 +375,7 @@ const SubSetRow = React.memo(function SubSetRow({ index, subSet, theme, t, onCha
                 leftIcon={'minus-circle'}
                 onPress={handleRemove}
                 variant={'text'}
+                size={'sm'}
                 accessibilityLabel={t('delete')}
                 labelStyle={{ color: theme.error }}
             />
@@ -548,7 +545,19 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: Radius.pill,
     },
-    inputsSection: {
+    // Body holds the (fixed) exercise picker and the scrollable input/pyramid
+    // region. flexShrink lets it give up height so the footer stays pinned when
+    // the sheet hits its max height (e.g. when the pyramid list expands).
+    body: {
+        flexShrink: 1,
+        minHeight: 0,
+    },
+    // Holds the (fixed) input fields and the pyramid section. flexShrink lets
+    // the section give up height — absorbed by the pyramid list's own scroll —
+    // so the inputs and footer stay put instead of the whole block scrolling.
+    scrollBody: {
+        flexShrink: 1,
+        minHeight: 0,
         marginTop: Spacing.sm,
     },
     dynamicFields: {
@@ -573,6 +582,8 @@ const styles = StyleSheet.create({
         gap: Spacing.sm,
     },
     pyramidSection: {
+        flexShrink: 1,
+        minHeight: 0,
         paddingVertical: Spacing.sm,
         borderTopWidth: 1,
     },
@@ -593,28 +604,23 @@ const styles = StyleSheet.create({
         marginLeft: Spacing.xs,
         opacity: 0.5,
     },
-    addDropButton: {
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: Spacing.xs,
-        borderRadius: Radius.sm,
-    },
     pyramidListWrap: {
+        flexShrink: 1,
+        minHeight: 0,
         overflow: 'hidden',
         marginTop: Spacing.sm,
     },
     pyramidList: {
         height: PYRAMID_LIST_HEIGHT,
+        minHeight: 120,
+        flexShrink: 1,
         borderRadius: Radius.sm,
     },
     emptySubsetsContainer: {
         flexGrow: 1,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    emptySubsets: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: Spacing.lg,
+        paddingVertical: Spacing.lg,
     },
     emptySubsetsIcon: {
         opacity: 0.2,
@@ -660,7 +666,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'flex-end',
         gap: Spacing.sm,
-        paddingVertical: Spacing.md,
+        paddingVertical: Spacing.sm,
     },
     footerSurface: {
         borderTopWidth: 1,

@@ -325,7 +325,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             accessibilityLabel={t('addSet')}
                             hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                         >
-                            <FontAwesome name={'plus'} size={32} color={theme.onPrimary} />
+                            <FontAwesome name={'plus'} size={24} color={theme.onPrimary} />
                         </TouchableOpacity>
                     )}
 
