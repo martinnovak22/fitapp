@@ -26,13 +26,7 @@ describe('test harness smoke', () => {
         )
         const names = tables.map((t) => t.name)
         expect(names).toEqual(
-            expect.arrayContaining([
-                'exercises',
-                'workouts',
-                'sets',
-                'deletion_tombstones',
-                'sync_state',
-            ])
+            expect.arrayContaining(['exercises', 'workouts', 'sets', 'deletion_tombstones', 'sync_state'])
         )
     })
 
@@ -96,14 +90,10 @@ describe('test harness smoke', () => {
         const adapter = createFakeSupabaseAdapter()
 
         adapter.queueFailure({ kind: 'network-error' })
-        await expect(
-            adapter.upsert('exercises', [{ uuid: 'a', user_id: 'u', name: 'x' }])
-        ).rejects.toThrow(/network/i)
+        await expect(adapter.upsert('exercises', [{ uuid: 'a', user_id: 'u', name: 'x' }])).rejects.toThrow(/network/i)
 
         adapter.queueFailure({ kind: 'empty-after-upsert' })
-        const silentlyEmpty = await adapter.upsert('exercises', [
-            { uuid: 'b', user_id: 'u', name: 'y' },
-        ])
+        const silentlyEmpty = await adapter.upsert('exercises', [{ uuid: 'b', user_id: 'u', name: 'y' }])
         expect(silentlyEmpty).toEqual([])
         // The dangerous bit: the local code path would treat this as "synced",
         // but the row was NOT persisted remotely.

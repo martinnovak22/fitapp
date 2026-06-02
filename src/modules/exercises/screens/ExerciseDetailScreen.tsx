@@ -2,11 +2,7 @@ import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { getRepositories } from '@/src/data/repositories'
 import { Exercise } from '@/src/db/exercises'
-import {
-    ExerciseStats,
-    type BestSetEntry,
-    type SessionSummary,
-} from '@/src/modules/exercises/ExerciseStats'
+import { ExerciseStats, type BestSetEntry, type SessionSummary } from '@/src/modules/exercises/ExerciseStats'
 import type { PrimaryMetric } from '@/src/modules/exercises/ExerciseTypeMetadata'
 import { Card } from '@/src/modules/core/components/Card'
 import { Button } from '@/src/modules/core/components/Button'
@@ -173,7 +169,7 @@ export default function ExerciseDetailScreen() {
     if (isLoading && !exercise) {
         return (
             <ScreenLayout style={styles.centeredScreen}>
-                <ActivityIndicator size={"large"} color={theme.primary} />
+                <ActivityIndicator size={'large'} color={theme.primary} />
                 <Typography.Body style={styles.loadingText}>{t('loading')}</Typography.Body>
             </ScreenLayout>
         )
@@ -183,7 +179,11 @@ export default function ExerciseDetailScreen() {
         return (
             <ScreenLayout style={styles.centeredScreen}>
                 <Card>
-                    <EmptyState message={loadError} icon={"exclamation-circle"} style={{ backgroundColor: theme.surface }} />
+                    <EmptyState
+                        message={loadError}
+                        icon={'exclamation-circle'}
+                        style={{ backgroundColor: theme.surface }}
+                    />
                     <Button
                         label={t('retry')}
                         onPress={loadData}
@@ -246,16 +246,20 @@ export default function ExerciseDetailScreen() {
                 </View>
                 {historyLoading ? (
                     <View style={styles.historyLoading}>
-                        <ActivityIndicator size={"small"} color={theme.primary} />
+                        <ActivityIndicator size={'small'} color={theme.primary} />
                         <Typography.Meta style={styles.loadingText}>{t('loading')}</Typography.Meta>
                     </View>
                 ) : historyError ? (
                     <View style={styles.historyError}>
-                        <EmptyState message={historyError} icon={"line-chart"} style={{ backgroundColor: theme.surface }} />
+                        <EmptyState
+                            message={historyError}
+                            icon={'line-chart'}
+                            style={{ backgroundColor: theme.surface }}
+                        />
                         <Button
                             label={t('retry')}
                             onPress={() => loadHistory(exercise.id)}
-                            variant={"outline"}
+                            variant={'outline'}
                             style={styles.retryButton}
                             accessibilityHint={t('failedToLoadHistory')}
                         />

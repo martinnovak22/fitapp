@@ -305,7 +305,10 @@ export default function LoginScreen() {
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                                 </Animated.View>
 
-                                <Animated.View entering={FadeInDown.delay(120).duration(220)} style={{ gap: Spacing.sm }}>
+                                <Animated.View
+                                    entering={FadeInDown.delay(120).duration(220)}
+                                    style={{ gap: Spacing.sm }}
+                                >
                                     <Typography.Label>{t('email')}</Typography.Label>
                                     <TextInput
                                         ref={emailInputRef}
@@ -330,7 +333,10 @@ export default function LoginScreen() {
                                     />
                                 </Animated.View>
 
-                                <Animated.View entering={FadeInDown.delay(140).duration(220)} style={{ gap: Spacing.sm }}>
+                                <Animated.View
+                                    entering={FadeInDown.delay(140).duration(220)}
+                                    style={{ gap: Spacing.sm }}
+                                >
                                     <Typography.Label>{t('password')}</Typography.Label>
                                     <View style={styles.passwordInputContainer}>
                                         <TextInput
@@ -374,7 +380,11 @@ export default function LoginScreen() {
                                 </Animated.View>
 
                                 {isSignUp && (
-                                    <Animated.View layout={formLayoutTransition} entering={FadeInDown.duration(180)} style={{ gap: Spacing.sm }}>
+                                    <Animated.View
+                                        layout={formLayoutTransition}
+                                        entering={FadeInDown.duration(180)}
+                                        style={{ gap: Spacing.sm }}
+                                    >
                                         <Typography.Label>{t('confirmPassword')}</Typography.Label>
                                         <View style={styles.passwordInputContainer}>
                                             <TextInput

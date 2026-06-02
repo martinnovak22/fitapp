@@ -271,7 +271,11 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                             placeholderTextColor={theme.textSecondary}
                             style={[
                                 GlobalStyles.input,
-                                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                                {
+                                    color: theme.text,
+                                    backgroundColor: theme.inputBackground,
+                                    borderColor: theme.border,
+                                },
                             ]}
                             value={muscle}
                             onChangeText={setMuscle}

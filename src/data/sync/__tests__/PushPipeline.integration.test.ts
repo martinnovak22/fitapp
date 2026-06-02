@@ -55,10 +55,7 @@ const insertDirtySet = async (uuid: string, workoutId: number, exerciseId: numbe
 }
 
 const localStatus = async (table: 'exercises' | 'workouts' | 'sets', uuid: string) => {
-    const row = await db.getFirstAsync<{ sync_status: string }>(
-        `SELECT sync_status FROM ${table} WHERE uuid = ?`,
-        uuid
-    )
+    const row = await db.getFirstAsync<{ sync_status: string }>(`SELECT sync_status FROM ${table} WHERE uuid = ?`, uuid)
     return row?.sync_status
 }
 

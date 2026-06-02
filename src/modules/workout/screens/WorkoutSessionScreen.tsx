@@ -229,18 +229,22 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                       disabled: false,
                   }
                 : canFinishWorkout
-                ? {
-                      icon: 'flag-checkered' as const,
-                      accessibilityLabel: isFinishingWorkout ? t('saving') : t('finish'),
-                      onPress: finishWorkout,
-                      disabled: isFinishingWorkout,
-                  }
-                : null
+                  ? {
+                        icon: 'flag-checkered' as const,
+                        accessibilityLabel: isFinishingWorkout ? t('saving') : t('finish'),
+                        onPress: finishWorkout,
+                        disabled: isFinishingWorkout,
+                    }
+                  : null
 
             navigation.getParent()?.setOptions({
                 headerLeft: () => (
                     <TouchableOpacity
-                        onPress={() => (router.canGoBack() ? router.back() : router.replace(parentTabFallback as Parameters<typeof router.replace>[0]))}
+                        onPress={() =>
+                            router.canGoBack()
+                                ? router.back()
+                                : router.replace(parentTabFallback as Parameters<typeof router.replace>[0])
+                        }
                         style={styles.headerBack}
                         accessibilityRole={'button'}
                         accessibilityLabel={t('back')}
@@ -296,7 +300,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     if (loading && !workout) {
         return (
             <ScreenLayout style={styles.loadingContainer}>
-                <ActivityIndicator size={"large"} color={theme.primary} />
+                <ActivityIndicator size={'large'} color={theme.primary} />
             </ScreenLayout>
         )
     }
@@ -304,7 +308,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     if (loadError && !workout) {
         return (
             <ScreenLayout style={styles.loadingContainer}>
-                <EmptyState message={loadError} icon={"exclamation-circle"} />
+                <EmptyState message={loadError} icon={'exclamation-circle'} />
                 <Button label={t('retry')} onPress={loadData} style={{ marginTop: Spacing.md }} />
             </ScreenLayout>
         )
@@ -351,7 +355,9 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                     <View style={styles.timingHeader}>
                         <Typography.Meta style={{ color: theme.textSecondary }}>{t('workoutTiming')}</Typography.Meta>
                         <TouchableOpacity onPress={openTimingModal} accessibilityRole={'button'}>
-                            <Typography.Meta color={'primary'} weight={'bold'}>{t('editTime')}</Typography.Meta>
+                            <Typography.Meta color={'primary'} weight={'bold'}>
+                                {t('editTime')}
+                            </Typography.Meta>
                         </TouchableOpacity>
                     </View>
                     <Typography.Body>{`${t('startedAt')}: ${formatLocalizedDate(
@@ -392,7 +398,12 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 </Animated.View>
             )}
 
-            <Modal visible={timingModalVisible} transparent animationType={'fade'} onRequestClose={() => setTimingModalVisible(false)}>
+            <Modal
+                visible={timingModalVisible}
+                transparent
+                animationType={'fade'}
+                onRequestClose={() => setTimingModalVisible(false)}
+            >
                 <View style={[styles.modalBackdrop, { backgroundColor: theme.overlayBackdrop }]}>
                     <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                         <Typography.Subtitle style={{ marginBottom: Spacing.md }}>{t('editTime')}</Typography.Subtitle>
@@ -406,7 +417,11 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                                 placeholderTextColor={theme.textSecondary}
                                 style={[
                                     styles.modalInput,
-                                    { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                                    {
+                                        color: theme.text,
+                                        backgroundColor: theme.inputBackground,
+                                        borderColor: theme.border,
+                                    },
                                 ]}
                                 autoCapitalize={'none'}
                                 keyboardType={'numbers-and-punctuation'}
@@ -422,7 +437,11 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                                 placeholderTextColor={theme.textSecondary}
                                 style={[
                                     styles.modalInput,
-                                    { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                                    {
+                                        color: theme.text,
+                                        backgroundColor: theme.inputBackground,
+                                        borderColor: theme.border,
+                                    },
                                 ]}
                                 autoCapitalize={'none'}
                                 keyboardType={'numbers-and-punctuation'}
@@ -438,7 +457,11 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                                 placeholderTextColor={theme.textSecondary}
                                 style={[
                                     styles.modalInput,
-                                    { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+                                    {
+                                        color: theme.text,
+                                        backgroundColor: theme.inputBackground,
+                                        borderColor: theme.border,
+                                    },
                                 ]}
                                 autoCapitalize={'none'}
                                 keyboardType={'numbers-and-punctuation'}
@@ -446,7 +469,11 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                         </View>
 
                         <View style={styles.modalActions}>
-                            <Button label={t('cancel')} variant={'outline'} onPress={() => setTimingModalVisible(false)} />
+                            <Button
+                                label={t('cancel')}
+                                variant={'outline'}
+                                onPress={() => setTimingModalVisible(false)}
+                            />
                             <Button
                                 label={isSavingWorkoutTime ? t('saving') : t('saveChanges')}
                                 onPress={saveTiming}

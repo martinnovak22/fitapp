@@ -34,12 +34,7 @@ const insertAccountWorkout = async (uuid: string, userId: string) => {
 }
 
 const countOf = async (table: string, scope: 'all' | 'guest' | string = 'all') => {
-    const where =
-        scope === 'all'
-            ? ''
-            : scope === 'guest'
-              ? `WHERE user_id IS NULL`
-              : `WHERE user_id = '${scope}'`
+    const where = scope === 'all' ? '' : scope === 'guest' ? `WHERE user_id IS NULL` : `WHERE user_id = '${scope}'`
     const row = await db.getFirstAsync<{ c: number }>(`SELECT COUNT(*) c FROM ${table} ${where}`)
     return row?.c ?? 0
 }
@@ -86,9 +81,7 @@ describe('runPrincipalTransition', () => {
 
     it('account → guest with clear: empties data tables and resets sync_state', async () => {
         await insertAccountWorkout('wk-1', 'user-A')
-        await db.runAsync(
-            `UPDATE sync_state SET is_syncing = 1, outbox_size = 5, last_error = 'boom' WHERE id = 1`
-        )
+        await db.runAsync(`UPDATE sync_state SET is_syncing = 1, outbox_size = 5, last_error = 'boom' WHERE id = 1`)
 
         const outcome = await runPrincipalTransition({
             from: { kind: 'account', userId: 'user-A' },

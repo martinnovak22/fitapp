@@ -4,15 +4,9 @@
 // in a later slice; this slice extracts just enough to enforce abort discipline.
 
 import type { Outbox, OutboxRow, SyncFailureReason } from './Outbox'
-import {
-    type LivePrincipal,
-    type PrincipalSnapshot,
-    principalHasDiverged,
-} from './PrincipalSnapshot'
+import { type LivePrincipal, type PrincipalSnapshot, principalHasDiverged } from './PrincipalSnapshot'
 
-export type PushOutcome =
-    | { kind: 'ack' }
-    | { kind: 'fail'; reason: SyncFailureReason }
+export type PushOutcome = { kind: 'ack' } | { kind: 'fail'; reason: SyncFailureReason }
 
 export type PushFn = (row: OutboxRow) => Promise<PushOutcome>
 

@@ -34,10 +34,5 @@ export type UpsertAck = { id: number; uuid: string }
 export type RemoteAdapter = {
     upsert(table: RemoteTable, rows: RemoteRow[]): Promise<UpsertAck[]>
     selectIdsByUuids(table: RemoteTable, uuids: string[]): Promise<UpsertAck[]>
-    patchByUuid(
-        table: RemoteTable,
-        uuid: string,
-        userId: string,
-        patch: Partial<RemoteRow>
-    ): Promise<void>
+    patchByUuid(table: RemoteTable, uuid: string, userId: string, patch: Partial<RemoteRow>): Promise<void>
 }

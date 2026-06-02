@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-    capturePrincipalSnapshot,
-    principalHasDiverged,
-} from '../PrincipalSnapshot'
+import { capturePrincipalSnapshot, principalHasDiverged } from '../PrincipalSnapshot'
 
 describe('PrincipalSnapshot', () => {
     it('captures an account snapshot with user-scoped clause and is frozen', () => {

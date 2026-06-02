@@ -33,10 +33,7 @@ export const SyncStatusBanner: React.FC = () => {
 
         return (
             <View
-                style={[
-                    styles.banner,
-                    { backgroundColor: theme.errorSurface, paddingTop: insets.top + Spacing.sm },
-                ]}
+                style={[styles.banner, { backgroundColor: theme.errorSurface, paddingTop: insets.top + Spacing.sm }]}
                 accessibilityRole="alert"
             >
                 <Typography.Label size="xs" style={[styles.message, { color: 'white' }]} numberOfLines={2}>
@@ -57,23 +54,14 @@ export const SyncStatusBanner: React.FC = () => {
 
     if (status.blockedCount > 0) {
         const summary =
-            status.blockedCount === 1
-                ? "1 item couldn't sync"
-                : `${status.blockedCount} items couldn't sync`
+            status.blockedCount === 1 ? "1 item couldn't sync" : `${status.blockedCount} items couldn't sync`
 
         return (
             <View
-                style={[
-                    styles.banner,
-                    { backgroundColor: theme.surface, paddingTop: insets.top + Spacing.sm },
-                ]}
+                style={[styles.banner, { backgroundColor: theme.surface, paddingTop: insets.top + Spacing.sm }]}
                 accessibilityLiveRegion="polite"
             >
-                <Typography.Label
-                    size="xs"
-                    style={[styles.message, { color: theme.textSecondary }]}
-                    numberOfLines={2}
-                >
+                <Typography.Label size="xs" style={[styles.message, { color: theme.textSecondary }]} numberOfLines={2}>
                     {summary}
                 </Typography.Label>
                 <Button

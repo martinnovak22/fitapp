@@ -228,7 +228,6 @@ const createSupabaseHttpAdapter = (): RemoteAdapter => ({
     },
 })
 
-
 // In-memory pull cursors per userId. Tracks the max updated_at / deleted_at we
 // have seen so subsequent pulls can request only rows that have advanced past
 // it. Cold-start (process restart) falls back to a full pull, which is
@@ -254,8 +253,7 @@ const EMPTY_CURSORS: PullCursors = {
 
 const pullCursorsByUser = new Map<string, PullCursors>()
 
-const getCursors = (userId: string): PullCursors =>
-    pullCursorsByUser.get(userId) ?? { ...EMPTY_CURSORS }
+const getCursors = (userId: string): PullCursors => pullCursorsByUser.get(userId) ?? { ...EMPTY_CURSORS }
 
 const setCursors = (userId: string, cursors: PullCursors) => {
     pullCursorsByUser.set(userId, cursors)
