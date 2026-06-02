@@ -29,6 +29,7 @@ import Animated, {
     useSharedValue,
     withTiming,
 } from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SetFormValues } from '../setPayload'
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window')
@@ -70,6 +71,7 @@ export const LogSetModal = ({
 }: Props) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
+    const insets = useSafeAreaInsets()
 
     const selectedExercise = exercises.find((exercise) => exercise.id === selectedExerciseId)
     const [isExpanded, setIsExpanded] = React.useState(false)
@@ -318,7 +320,7 @@ export const LogSetModal = ({
                             {
                                 backgroundColor: theme.surface,
                                 borderTopColor: `${theme.border}33`,
-                                paddingBottom: Spacing.sm,
+                                paddingBottom: Spacing.sm + insets.bottom,
                             },
                         ]}
                     >
