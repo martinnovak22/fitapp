@@ -1,28 +1,34 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { router, useFocusEffect, useNavigation } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
-import { Gesture } from 'react-native-gesture-handler'
-import { NestedReorderableList, reorderItems, ScrollViewContainer } from 'react-native-reorderable-list'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
-import type { SubSet, Set as WorkoutSet } from '@/src/db/workouts'
+import { Set as WorkoutSet } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
-import { Appear } from '@/src/modules/core/components/motion'
 import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatLocalizedDate } from '@/src/utils/dateTime'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router, useFocusEffect, useNavigation } from 'expo-router'
+import React, { useCallback, useEffect, useReducer } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ActivityIndicator, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
+import { Gesture } from 'react-native-gesture-handler'
+import { NestedReorderableList, ScrollViewContainer, reorderItems } from 'react-native-reorderable-list'
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import { LogSetModal } from '../components/LogSetModal'
 import { WorkoutSetItem } from '../components/WorkoutSetItem'
 import { useWorkoutSession } from '../hooks/useWorkoutSession'
-import { buildSetPayload, type SetFormValues } from '../setPayload'
-import { parseSubSets } from '../workoutUtils'
+import { buildSetPayload, SetFormValues } from '../setPayload'
+import {
+    canEditHistoryWorkout as deriveCanEditHistoryWorkout,
+    canFinishWorkout as deriveCanFinishWorkout,
+    initialSessionState,
+    isReadOnly as deriveIsReadOnly,
+    sessionReducer,
+} from '../workoutSessionReducer'
 
 type SetWithExercise = WorkoutSet & { exercise_name: string }
 type WorkoutSessionScreenProps = {
@@ -54,69 +60,37 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         updateWorkoutTiming,
     } = useWorkoutSession(origin)
 
-    const [modalVisible, setModalVisible] = useState(false)
-    const [editingSetId, setEditingSetId] = useState<number | null>(null)
-
-    const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null)
-    const [subSets, setSubSets] = useState<SubSet[]>([])
-    const [isHistoryEditMode, setIsHistoryEditMode] = useState(false)
-    const [timingModalVisible, setTimingModalVisible] = useState(false)
-    const [timingDate, setTimingDate] = useState('')
-    const [timingStartTime, setTimingStartTime] = useState('')
-    const [timingEndTime, setTimingEndTime] = useState('')
-    const [inputValues, setInputValues] = useState<SetFormValues>({
-        weight: '',
-        reps: '',
-        distance: '',
-        durationMinutes: '',
-        durationSeconds: '',
-    })
+    const [session, dispatch] = useReducer(sessionReducer, initialSessionState)
+    const {
+        modalVisible,
+        editingSetId,
+        selectedExerciseId,
+        subSets,
+        isHistoryEditMode,
+        timingModalVisible,
+        timingDate,
+        timingStartTime,
+        timingEndTime,
+        inputValues,
+    } = session
 
     // We can allow default selection once exercises are loaded
     useEffect(() => {
         if (!selectedExerciseId && exercises.length > 0) {
-            setSelectedExerciseId(exercises[0].id)
+            dispatch({ type: 'SELECT_DEFAULT_EXERCISE', exerciseId: exercises[0].id })
         }
     }, [exercises, selectedExerciseId])
 
     const updateInput = (key: keyof SetFormValues, value: string) => {
-        setInputValues((prev) => ({ ...prev, [key]: value }))
+        dispatch({ type: 'UPDATE_INPUT', key, value })
     }
 
     const handleOpenAddModal = () => {
-        setEditingSetId(null)
-        setSubSets([])
-        setInputValues({
-            weight: '',
-            reps: '',
-            distance: '',
-            durationMinutes: '',
-            durationSeconds: '',
-        })
-        setModalVisible(true)
+        dispatch({ type: 'OPEN_ADD_MODAL' })
     }
 
     const handleOpenEditModal = (s: WorkoutSet) => {
-        setEditingSetId(s.id)
-        setSelectedExerciseId(s.exercise_id)
-
-        let mins = ''
-        let secs = ''
-        if (s.duration) {
-            mins = Math.floor(s.duration).toString()
-            secs = Math.round((s.duration - Math.floor(s.duration)) * 60).toString()
-        }
-
-        setSubSets(parseSubSets(s.sub_sets))
-
-        setInputValues({
-            weight: s.weight?.toString() || '',
-            reps: s.reps?.toString() || '',
-            distance: s.distance?.toString() || '',
-            durationMinutes: mins,
-            durationSeconds: secs,
-        })
-        setModalVisible(true)
+        dispatch({ type: 'OPEN_EDIT_MODAL', set: s })
     }
 
     const handleSaveSet = async () => {
@@ -141,7 +115,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 title: t('emptySetIgnored'),
                 message: t('emptySetIgnoredMessage'),
             })
-            setModalVisible(false)
+            dispatch({ type: 'CLOSE_MODAL' })
             return
         }
 
@@ -153,9 +127,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         }
 
         if (success) {
-            setModalVisible(false)
-            setEditingSetId(null)
-            setSubSets([])
+            dispatch({ type: 'SET_SAVE_SUCCEEDED' })
         }
     }
 
@@ -175,17 +147,18 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         return dateTime.toISOString()
     }
 
-    const isFinishedWorkout = workout?.status === 'finished'
-    const canEditHistoryWorkout = origin === 'history' && isFinishedWorkout
-    const isReadOnly = isFinishedWorkout && !isHistoryEditMode
-    const canFinishWorkout = !isFinishedWorkout
+    const canEditHistoryWorkout = deriveCanEditHistoryWorkout(origin, workout)
+    const isReadOnly = deriveIsReadOnly(workout, isHistoryEditMode)
+    const canFinishWorkout = deriveCanFinishWorkout(workout)
 
     const openTimingModal = () => {
         if (!workout) return
-        setTimingDate(workout.date ?? '')
-        setTimingStartTime(toLocalTimeInput(workout.start_time))
-        setTimingEndTime(toLocalTimeInput(workout.end_time))
-        setTimingModalVisible(true)
+        dispatch({
+            type: 'OPEN_TIMING_MODAL',
+            date: workout.date ?? '',
+            startTime: toLocalTimeInput(workout.start_time),
+            endTime: toLocalTimeInput(workout.end_time),
+        })
     }
 
     const saveTiming = async () => {
@@ -213,7 +186,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
         const saved = await updateWorkoutTiming(timingDate, nextStart, nextEnd)
         if (saved) {
-            setTimingModalVisible(false)
+            dispatch({ type: 'CLOSE_TIMING_MODAL' })
         }
     }
 
@@ -225,7 +198,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 ? {
                       icon: isHistoryEditMode ? ('check' as const) : ('pencil' as const),
                       accessibilityLabel: isHistoryEditMode ? t('save') : t('edit'),
-                      onPress: () => setIsHistoryEditMode((prev) => !prev),
+                      onPress: () => dispatch({ type: 'TOGGLE_HISTORY_EDIT_MODE' }),
                       disabled: false,
                   }
                 : canFinishWorkout
@@ -255,7 +228,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 ),
                 headerRight: () =>
                     workout ? (
-                        <Appear style={styles.headerActions}>
+                        <Animated.View entering={FadeIn.duration(180)} style={styles.headerActions}>
                             {rightAction && (
                                 <TouchableOpacity
                                     onPress={rightAction.onPress}
@@ -278,7 +251,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                                     <FontAwesome name={'trash'} size={20} color={theme.error} />
                                 </TouchableOpacity>
                             )}
-                        </Appear>
+                        </Animated.View>
                     ) : null,
             })
         }, [
@@ -322,29 +295,34 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             floatingElements={
                 <>
                     {!isReadOnly && (
-                        <Appear variant="fade" style={GlobalStyles.fab}>
-                            <TouchableOpacity
-                                style={[StyleSheet.absoluteFill, styles.fabTouchable]}
-                                onPress={handleOpenAddModal}
-                                accessibilityRole={'button'}
-                                accessibilityLabel={t('addSet')}
-                                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                            >
-                                <FontAwesome name={'plus'} size={24} color={theme.onPrimary} />
-                            </TouchableOpacity>
-                        </Appear>
+                        <TouchableOpacity
+                            style={GlobalStyles.fab}
+                            onPress={handleOpenAddModal}
+                            accessibilityRole={'button'}
+                            accessibilityLabel={t('addSet')}
+                            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                        >
+                            <FontAwesome name={'plus'} size={24} color={theme.onPrimary} />
+                        </TouchableOpacity>
                     )}
 
                     <LogSetModal
                         visible={modalVisible}
-                        onClose={() => setModalVisible(false)}
+                        onClose={() => dispatch({ type: 'CLOSE_MODAL' })}
                         onSave={handleSaveSet}
                         editingSetId={editingSetId}
                         exercises={exercises}
                         selectedExerciseId={selectedExerciseId}
-                        setSelectedExerciseId={setSelectedExerciseId}
+                        setSelectedExerciseId={(exerciseId) =>
+                            dispatch({ type: 'SET_SELECTED_EXERCISE', exerciseId })
+                        }
                         subSets={subSets}
-                        setSubSets={setSubSets}
+                        setSubSets={(next) =>
+                            dispatch({
+                                type: 'SET_SUB_SETS',
+                                subSets: typeof next === 'function' ? next(subSets) : next,
+                            })
+                        }
                         inputValues={inputValues}
                         updateInput={updateInput}
                         isSaving={isSavingSet}
@@ -353,50 +331,39 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             }
         >
             {canEditHistoryWorkout && (
-                <Appear variant="down">
-                    <Card
-                        style={[styles.timingCard, { borderColor: theme.border, backgroundColor: theme.surfaceSubtle }]}
-                    >
-                        <View style={styles.timingHeader}>
-                            <Typography.Meta style={{ color: theme.textSecondary }}>
-                                {t('workoutTiming')}
+                <Card style={[styles.timingCard, { borderColor: theme.border, backgroundColor: theme.surfaceSubtle }]}>
+                    <View style={styles.timingHeader}>
+                        <Typography.Meta style={{ color: theme.textSecondary }}>{t('workoutTiming')}</Typography.Meta>
+                        <TouchableOpacity onPress={openTimingModal} accessibilityRole={'button'}>
+                            <Typography.Meta color={'primary'} weight={'bold'}>
+                                {t('editTime')}
                             </Typography.Meta>
-                            <TouchableOpacity onPress={openTimingModal} accessibilityRole={'button'}>
-                                <Typography.Meta color={'primary'} weight={'bold'}>
-                                    {t('editTime')}
-                                </Typography.Meta>
-                            </TouchableOpacity>
-                        </View>
-                        <Typography.Body>{`${t('startedAt')}: ${formatLocalizedDate(
-                            workout?.start_time || '',
-                            i18n.language,
-                            { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
-                            true
-                        )}`}</Typography.Body>
-                        <Typography.Body style={{ marginTop: Spacing.xs }}>
-                            {`${t('time')}: ${
-                                workout?.end_time
-                                    ? `${formatLocalizedDate(
-                                          workout.end_time,
-                                          i18n.language,
-                                          { hour: '2-digit', minute: '2-digit' },
-                                          true
-                                      )}`
-                                    : t('notSpecified')
-                            }`}
-                        </Typography.Body>
-                    </Card>
-                </Appear>
+                        </TouchableOpacity>
+                    </View>
+                    <Typography.Body>{`${t('startedAt')}: ${formatLocalizedDate(
+                        workout?.start_time || '',
+                        i18n.language,
+                        { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
+                        true
+                    )}`}</Typography.Body>
+                    <Typography.Body style={{ marginTop: Spacing.xs }}>
+                        {`${t('time')}: ${
+                            workout?.end_time
+                                ? `${formatLocalizedDate(
+                                      workout.end_time,
+                                      i18n.language,
+                                      { hour: '2-digit', minute: '2-digit' },
+                                      true
+                                  )}`
+                                : t('notSpecified')
+                        }`}
+                    </Typography.Body>
+                </Card>
             )}
             {exerciseNamesOrder.length === 0 ? (
-                <Appear key="empty" variant="down">
-                    <EmptyState
-                        message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')}
-                        icon={'file-text-o'}
-                    />
-                </Appear>
+                <EmptyState message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')} icon={'file-text-o'} />
             ) : (
-                <Appear key="list" variant="down">
+                <Animated.View entering={FadeInDown.duration(340)}>
                     {exerciseNamesOrder.map((exerciseName) => (
                         <WorkoutExerciseGroup
                             key={exerciseName}
@@ -408,14 +375,14 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             handleReorderSets={reorderSets}
                         />
                     ))}
-                </Appear>
+                </Animated.View>
             )}
 
             <Modal
                 visible={timingModalVisible}
                 transparent
                 animationType={'fade'}
-                onRequestClose={() => setTimingModalVisible(false)}
+                onRequestClose={() => dispatch({ type: 'CLOSE_TIMING_MODAL' })}
             >
                 <View style={[styles.modalBackdrop, { backgroundColor: theme.overlayBackdrop }]}>
                     <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -425,7 +392,9 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             <Typography.Label>{t('workoutDate')}</Typography.Label>
                             <TextInput
                                 value={timingDate}
-                                onChangeText={setTimingDate}
+                                onChangeText={(value) =>
+                                    dispatch({ type: 'SET_TIMING_FIELD', field: 'timingDate', value })
+                                }
                                 placeholder={'YYYY-MM-DD'}
                                 placeholderTextColor={theme.textSecondary}
                                 style={[
@@ -445,7 +414,9 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             <Typography.Label>{t('startTime')}</Typography.Label>
                             <TextInput
                                 value={timingStartTime}
-                                onChangeText={setTimingStartTime}
+                                onChangeText={(value) =>
+                                    dispatch({ type: 'SET_TIMING_FIELD', field: 'timingStartTime', value })
+                                }
                                 placeholder={'HH:mm'}
                                 placeholderTextColor={theme.textSecondary}
                                 style={[
@@ -465,7 +436,9 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             <Typography.Label>{t('endTime')}</Typography.Label>
                             <TextInput
                                 value={timingEndTime}
-                                onChangeText={setTimingEndTime}
+                                onChangeText={(value) =>
+                                    dispatch({ type: 'SET_TIMING_FIELD', field: 'timingEndTime', value })
+                                }
                                 placeholder={'HH:mm'}
                                 placeholderTextColor={theme.textSecondary}
                                 style={[
@@ -485,7 +458,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             <Button
                                 label={t('cancel')}
                                 variant={'outline'}
-                                onPress={() => setTimingModalVisible(false)}
+                                onPress={() => dispatch({ type: 'CLOSE_TIMING_MODAL' })}
                             />
                             <Button
                                 label={isSavingWorkoutTime ? t('saving') : t('saveChanges')}
@@ -560,12 +533,6 @@ const styles = StyleSheet.create({
     listContent: {
         paddingTop: Spacing.sm + Spacing.xs,
         paddingBottom: 100,
-    },
-    // The round FAB visual + position lives on the Appear wrapper; the touchable
-    // fills it so the button can fade in/out without breaking absolute layout.
-    fabTouchable: {
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     groupCard: {
         padding: 0,
