@@ -25,6 +25,7 @@ import {
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Duration, Motion } from '@/src/constants/Motion'
+import { Collapsible } from '@/src/modules/core/components/motion'
 import { SetFormValues } from '../setPayload'
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window')
@@ -297,54 +298,45 @@ export const LogSetModal = ({
                                             />
                                         </View>
 
-                                        {isExpanded && (
-                                            <Animated.View
-                                                entering={ENTER}
-                                                exiting={EXIT}
-                                                style={styles.pyramidListWrap}
+                                        <Collapsible expanded={isExpanded} style={styles.pyramidListWrap}>
+                                            <ScrollView
+                                                style={[styles.pyramidList, { backgroundColor: theme.background }]}
+                                                contentContainerStyle={
+                                                    subSetItems.length === 0
+                                                        ? styles.emptySubsetsContainer
+                                                        : undefined
+                                                }
+                                                nestedScrollEnabled
+                                                keyboardShouldPersistTaps={'handled'}
+                                                showsVerticalScrollIndicator
                                             >
-                                                <ScrollView
-                                                    style={[styles.pyramidList, { backgroundColor: theme.background }]}
-                                                    contentContainerStyle={
-                                                        subSetItems.length === 0
-                                                            ? styles.emptySubsetsContainer
-                                                            : undefined
-                                                    }
-                                                    nestedScrollEnabled
-                                                    keyboardShouldPersistTaps={'handled'}
-                                                    showsVerticalScrollIndicator
-                                                >
-                                                    {subSetItems.length === 0 ? (
-                                                        <>
-                                                            <FontAwesome
-                                                                name={'list'}
-                                                                size={20}
-                                                                color={theme.textSecondary}
-                                                                style={styles.emptySubsetsIcon}
-                                                            />
-                                                            <Typography.Meta
-                                                                weight="semibold"
-                                                                style={styles.emptySubsetsText}
-                                                            >
-                                                                {t('noDropSets')}
-                                                            </Typography.Meta>
-                                                        </>
-                                                    ) : (
-                                                        subSetItems.map((item) => (
-                                                            <SubSetRow
-                                                                key={item.key}
-                                                                index={item.index}
-                                                                subSet={item.subSet}
-                                                                theme={theme}
-                                                                t={t}
-                                                                onChange={updateSubSet}
-                                                                onRemove={removeSubSet}
-                                                            />
-                                                        ))
-                                                    )}
-                                                </ScrollView>
-                                            </Animated.View>
-                                        )}
+                                                {subSetItems.length === 0 ? (
+                                                    <>
+                                                        <FontAwesome
+                                                            name={'list'}
+                                                            size={20}
+                                                            color={theme.textSecondary}
+                                                            style={styles.emptySubsetsIcon}
+                                                        />
+                                                        <Typography.Meta weight="semibold" style={styles.emptySubsetsText}>
+                                                            {t('noDropSets')}
+                                                        </Typography.Meta>
+                                                    </>
+                                                ) : (
+                                                    subSetItems.map((item) => (
+                                                        <SubSetRow
+                                                            key={item.key}
+                                                            index={item.index}
+                                                            subSet={item.subSet}
+                                                            theme={theme}
+                                                            t={t}
+                                                            onChange={updateSubSet}
+                                                            onRemove={removeSubSet}
+                                                        />
+                                                    ))
+                                                )}
+                                            </ScrollView>
+                                        </Collapsible>
                                     </Animated.View>
                                 )}
                             </View>
