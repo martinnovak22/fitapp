@@ -14,5 +14,14 @@ export default defineConfig({
         environment: 'node',
         testTimeout: 5000,
         hookTimeout: 5000,
+        coverage: {
+            // v8 picked to match the runtime; fallow reads the lcov/json it
+            // emits so CRAP scores reflect measured coverage, not estimates.
+            provider: 'v8',
+            reporter: ['text', 'json', 'json-summary', 'lcov'],
+            reportsDirectory: './coverage',
+            include: ['src/**/*.ts'],
+            exclude: ['src/**/__tests__/**', 'src/test/**'],
+        },
     },
 })
