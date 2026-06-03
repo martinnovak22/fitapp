@@ -17,8 +17,14 @@ import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'exp
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
-import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
+import Animated from 'react-native-reanimated'
+import { Motion } from '@/src/constants/Motion'
+import { Appear } from '@/src/modules/core/components/motion'
 import { ScrollScreenLayout } from '../../core/components/ScreenLayout'
+
+// Hoisted: the form container is the single layout owner; don't allocate the
+// builder in render.
+const FORM_LAYOUT = Motion.layout()
 
 type ExerciseFormScreenProps = {
     mode?: 'create' | 'edit'
@@ -224,7 +230,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     return (
         <ScrollScreenLayout>
             <Card style={{ padding: 0, overflow: 'hidden' }}>
-                <Animated.View layout={LinearTransition.duration(300)} style={{ padding: Spacing.md }}>
+                <Animated.View layout={FORM_LAYOUT} style={{ padding: Spacing.md }}>
                     <Typography.Subtitle style={{ marginBottom: Spacing.md }}>
                         {t('exerciseDetails')}
                     </Typography.Subtitle>
@@ -289,7 +295,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                     <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>
                         {t('exerciseType')}
                     </Typography.Subtitle>
-                    <Animated.View layout={LinearTransition.duration(300)} style={styles.typeContainer}>
+                    <View style={styles.typeContainer}>
                         {[
                             { label: t('typeWeight'), value: 'weight' as ExerciseType },
                             { label: t('typeCardio'), value: 'cardio' as ExerciseType },
@@ -322,11 +328,11 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                                 </TouchableOpacity>
                             )
                         })}
-                    </Animated.View>
+                    </View>
 
                     {/* Tracking Mode Toggle */}
                     {(type === 'bodyweight' || type === 'bodyweight_timer') && (
-                        <Animated.View entering={FadeIn} layout={LinearTransition} style={{ marginTop: 20 }}>
+                        <Appear style={{ marginTop: 20 }}>
                             <Typography.Label style={{ fontSize: FontSize.xs, marginBottom: 6 }}>
                                 {t('trackingMode')}
                             </Typography.Label>
@@ -392,10 +398,10 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                                     </Typography.Meta>
                                 </TouchableOpacity>
                             </View>
-                        </Animated.View>
+                        </Appear>
                     )}
 
-                    <Animated.View entering={FadeIn} layout={LinearTransition} style={styles.photoSection}>
+                    <Appear style={styles.photoSection}>
                         <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>
                             {t('photo')}
                         </Typography.Subtitle>
@@ -441,7 +447,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                                 </Typography.Meta>
                             </TouchableOpacity>
                         )}
-                    </Animated.View>
+                    </Appear>
                 </Animated.View>
                 {photoUri && (
                     <FullScreenImageModal
