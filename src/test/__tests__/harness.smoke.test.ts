@@ -56,10 +56,10 @@ describe('test harness smoke', () => {
 
         const acks = await adapter.upsert('exercises', [
             {
-                uuid: local?.uuid,
-                user_id: local?.user_id,
-                name: local?.name,
-                updated_at: local?.updated_at,
+                uuid: local!.uuid,
+                user_id: local!.user_id,
+                name: local!.name,
+                updated_at: local!.updated_at,
             },
         ])
         expect(acks).toEqual([{ id: 1, uuid: 'ex-uuid-1' }])
