@@ -52,8 +52,4 @@ export const configureRepositories = (repositories: Partial<DataRepositories>) =
     }
 }
 
-export const resetRepositories = () => {
-    activeRepositories = localRepositories
-}
-
 export const getLocalRepositories = (): DataRepositories => localRepositories

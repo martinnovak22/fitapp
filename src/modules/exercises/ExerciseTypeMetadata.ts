@@ -3,7 +3,7 @@ import type { Set } from '@/src/db/workouts'
 import { formatDuration } from '@/src/utils/formatters'
 
 export type PrimaryMetric = 'weight' | 'reps' | 'distance' | 'duration'
-export type MetricUnit = 'kg' | 'reps' | 'm' | ''
+type MetricUnit = 'kg' | 'reps' | 'm' | ''
 
 const formatCompactWeight = (value: number): string => {
     const rounded = Math.round(value * 100) / 100
@@ -112,7 +112,7 @@ export const formatHeadlineStat = (_type: ExerciseType, dominant: PrimaryMetric,
     return unit ? `${formatted} ${unit}` : formatted
 }
 
-export const formatAxisLabel = (dominant: PrimaryMetric, value: number): string => {
+const formatAxisLabel = (dominant: PrimaryMetric, value: number): string => {
     switch (dominant) {
         case 'weight':
             return value.toFixed(0)
@@ -125,7 +125,7 @@ export const formatAxisLabel = (dominant: PrimaryMetric, value: number): string 
     }
 }
 
-export interface ExerciseTypeAdapter {
+interface ExerciseTypeAdapter {
     type: ExerciseType
     defaultDominantMetric: PrimaryMetric
 }

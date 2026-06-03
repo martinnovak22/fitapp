@@ -37,7 +37,7 @@ const coefficientOfVariation = (values: number[]): number => {
     return Math.sqrt(variance) / mean
 }
 
-export const computeDominantMetric = (
+const computeDominantMetric = (
     type: ExerciseType,
     sets: Pick<Set, 'weight' | 'reps' | 'distance' | 'duration'>[]
 ): PrimaryMetric => {
