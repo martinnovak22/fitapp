@@ -1,7 +1,7 @@
-import { Duration } from '@/src/constants/Motion'
-import React from 'react'
-import { StyleProp, ViewStyle } from 'react-native'
+import type React from 'react'
+import type { StyleProp, ViewStyle } from 'react-native'
 import Animated, { FadeIn, FadeInDown, FadeOut, FadeOutDown, LinearTransition } from 'react-native-reanimated'
+import { Duration } from '@/src/constants/Motion'
 
 type AppearProps = {
     children: React.ReactNode

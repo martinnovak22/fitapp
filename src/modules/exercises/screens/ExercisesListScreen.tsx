@@ -1,8 +1,17 @@
-import { ThemeType } from '@/src/constants/Colors'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router, useFocusEffect, useNavigation } from 'expo-router'
+import type { TFunction } from 'i18next'
+import React, { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ActivityIndicator, Image, Modal, Platform, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
+import type { ThemeType } from '@/src/constants/Colors'
+import { Duration, Motion } from '@/src/constants/Motion'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
-import { Exercise } from '@/src/db/exercises'
+import type { Exercise } from '@/src/db/exercises'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
@@ -10,18 +19,8 @@ import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv'
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { router, useFocusEffect, useNavigation } from 'expo-router'
-import { TFunction } from 'i18next'
-import React, { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Image, Modal, Platform, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native'
-import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
 import { ListSeparator } from '../../core/components/ListSeparator'
 import { useExercises } from '../hooks/useExercises'
-
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
-import { Duration, Motion } from '@/src/constants/Motion'
 
 const ExerciseListItem = React.memo(
     ({
@@ -84,7 +83,7 @@ const ExerciseListItem = React.memo(
                                     { backgroundColor: theme.surface, borderColor: theme.border },
                                 ]}
                             >
-                                <FontAwesome name={'camera'} size={20} color={theme.textSecondary + '40'} />
+                                <FontAwesome name={'camera'} size={20} color={`${theme.textSecondary}40`} />
                             </View>
                         )}
                         <View style={styles.content}>

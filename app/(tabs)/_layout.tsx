@@ -1,10 +1,10 @@
-import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Redirect, Tabs } from 'expo-router'
-import React from 'react'
+import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/src/modules/auth/useAuth'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
 
 const TAB_BAR_BASE_HEIGHT = 80
 

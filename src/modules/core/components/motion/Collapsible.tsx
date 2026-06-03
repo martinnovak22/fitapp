@@ -1,7 +1,7 @@
-import { Duration } from '@/src/constants/Motion'
-import React from 'react'
-import { StyleProp, ViewStyle } from 'react-native'
+import type React from 'react'
+import type { StyleProp, ViewStyle } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
+import { Duration } from '@/src/constants/Motion'
 
 type CollapsibleProps = {
     // Whether the content is shown. Toggling animates the height + a fade.

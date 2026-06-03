@@ -1,20 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import {
-    SupabaseAuthSessionData,
-    getSupabaseSessionFromOAuthRedirectUrl,
-    refreshSupabaseSession,
-    signInWithEmailPassword,
-    signOutSupabaseSession,
-    signUpWithEmailPassword,
-} from '@/src/data/remote/supabase/auth'
-import { clearSupabaseSession, setSupabaseSession } from '@/src/data/remote/supabase/session'
+import type React from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { setActivePrincipal } from '@/src/data/principal'
 import {
     type MigrationPolicy,
     type PrincipalIdentity,
     runPrincipalTransition,
 } from '@/src/data/principal/PrincipalTransition'
+import {
+    getSupabaseSessionFromOAuthRedirectUrl,
+    refreshSupabaseSession,
+    type SupabaseAuthSessionData,
+    signInWithEmailPassword,
+    signOutSupabaseSession,
+    signUpWithEmailPassword,
+} from '@/src/data/remote/supabase/auth'
+import { clearSupabaseSession, setSupabaseSession } from '@/src/data/remote/supabase/session'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 
 type AuthContextValue = {

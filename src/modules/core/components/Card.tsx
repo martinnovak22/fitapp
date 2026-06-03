@@ -1,6 +1,6 @@
+import type React from 'react'
+import { type StyleProp, TouchableOpacity, View, type ViewStyle } from 'react-native'
 import { GlobalStyles } from '@/src/constants/Styles'
-import React from 'react'
-import { StyleProp, TouchableOpacity, View, ViewStyle } from 'react-native'
 import { useTheme } from '../hooks/useTheme'
 
 interface CardProps {

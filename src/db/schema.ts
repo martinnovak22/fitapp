@@ -1,4 +1,4 @@
-import * as SQLite from 'expo-sqlite'
+import type * as SQLite from 'expo-sqlite'
 
 export const DATABASE_NAME = 'fitapp.db'
 const SCHEMA_VERSION = 3

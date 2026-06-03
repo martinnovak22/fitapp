@@ -1,8 +1,16 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router, useFocusEffect, useNavigation } from 'expo-router'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { Calendar } from 'react-native-calendars'
+import Animated from 'react-native-reanimated'
+import { Motion } from '@/src/constants/Motion'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
-import { Workout } from '@/src/db/workouts'
+import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -11,14 +19,6 @@ import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { router, useFocusEffect, useNavigation } from 'expo-router'
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
-import { Calendar } from 'react-native-calendars'
-import Animated from 'react-native-reanimated'
-import { Motion } from '@/src/constants/Motion'
 
 // Hoisted builders (don't allocate these in render). The populated list and the
 // empty state share one entrance, so selecting any day animates the same way
@@ -202,7 +202,7 @@ export default function CalendarScreen() {
                                       [selectedDate]: {
                                           ...markedDates[selectedDate],
                                           selected: true,
-                                          selectedColor: theme.primary + '40',
+                                          selectedColor: `${theme.primary}40`,
                                       },
                                   }
                                 : {}),

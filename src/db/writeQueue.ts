@@ -1,4 +1,4 @@
-import * as SQLite from 'expo-sqlite'
+import type * as SQLite from 'expo-sqlite'
 import { getDb } from './client'
 
 const SQLITE_BUSY_RETRY_COUNT = 4

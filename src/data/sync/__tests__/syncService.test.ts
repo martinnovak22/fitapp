@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createTestDb, getTestDb, resetTestDb, useTestDb, type TestDb } from '@/src/test/setupTestDb'
 import { setActivePrincipal } from '@/src/data/principal'
+import { createTestDb, getTestDb, resetTestDb, type TestDb, useTestDb } from '@/src/test/setupTestDb'
 
 vi.mock('@/src/db/client', () => ({
     getDb: async () => getTestDb(),

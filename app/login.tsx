@@ -1,40 +1,40 @@
-import { Radius } from '@/src/constants/Radius'
-import { Spacing } from '@/src/constants/Spacing'
-import { FontWeight } from '@/src/constants/Typography'
-import {
-    EMAIL_CONFIRMATION_REQUIRED_CODE,
-    SupabaseAuthError,
-    getSupabaseOAuthAuthorizeUrl,
-} from '@/src/data/remote/supabase/auth'
-import { hasLocalUserData } from '@/src/db/reset'
-import { Button } from '@/src/modules/core/components/Button'
-import { Card } from '@/src/modules/core/components/Card'
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
-import { Typography } from '@/src/modules/core/components/Typography'
-import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { showToast } from '@/src/modules/core/utils/toast'
-import { isRemoteDataMode } from '@/src/modules/auth/authMode'
-import { useAuth } from '@/src/modules/auth/useAuth'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import * as Linking from 'expo-linking'
-import * as WebBrowser from 'expo-web-browser'
 import { router, useLocalSearchParams } from 'expo-router'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as WebBrowser from 'expo-web-browser'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     Keyboard,
     KeyboardAvoidingView,
     Platform,
     Pressable,
-    StyleSheet,
     ScrollView,
+    StyleSheet,
     TextInput,
     TouchableWithoutFeedback,
     View,
 } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { Duration, Motion } from '@/src/constants/Motion'
+import { Radius } from '@/src/constants/Radius'
+import { Spacing } from '@/src/constants/Spacing'
+import { FontWeight } from '@/src/constants/Typography'
+import {
+    EMAIL_CONFIRMATION_REQUIRED_CODE,
+    getSupabaseOAuthAuthorizeUrl,
+    SupabaseAuthError,
+} from '@/src/data/remote/supabase/auth'
+import { hasLocalUserData } from '@/src/db/reset'
+import { isRemoteDataMode } from '@/src/modules/auth/authMode'
+import { useAuth } from '@/src/modules/auth/useAuth'
+import { Button } from '@/src/modules/core/components/Button'
+import { Card } from '@/src/modules/core/components/Card'
 import { Appear, ListItemAppear } from '@/src/modules/core/components/motion'
+import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { showToast } from '@/src/modules/core/utils/toast'
 
 type AuthMode = 'signin' | 'signup'
 

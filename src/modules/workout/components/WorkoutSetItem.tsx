@@ -1,16 +1,16 @@
-import { Radius } from '@/src/constants/Radius'
-import { Spacing } from '@/src/constants/Spacing'
-import { Set as WorkoutSet } from '@/src/db/workouts'
-import { Button } from '@/src/modules/core/components/Button'
-import { Typography } from '@/src/modules/core/components/Typography'
-import { formatDuration } from '@/src/utils/formatters'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, TouchableOpacity, View } from 'react-native'
 import { useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
+import { Radius } from '@/src/constants/Radius'
+import { Spacing } from '@/src/constants/Spacing'
+import type { Set as WorkoutSet } from '@/src/db/workouts'
+import { Button } from '@/src/modules/core/components/Button'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { formatDuration } from '@/src/utils/formatters'
 import { useTheme } from '../../core/hooks/useTheme'
-import { SET_BASE_HEIGHT, SUBSET_HEIGHT, calculateSetHeight, parseSubSets } from '../workoutUtils'
+import { calculateSetHeight, parseSubSets, SET_BASE_HEIGHT, SUBSET_HEIGHT } from '../workoutUtils'
 
 interface Props<T extends WorkoutSet = WorkoutSet> {
     set: T
@@ -57,7 +57,7 @@ function WorkoutSetItemInner<T extends WorkoutSet = WorkoutSet>({
             style={[
                 styles.card,
                 {
-                    borderBottomColor: theme.border + '15',
+                    borderBottomColor: `${theme.border}15`,
                     backgroundColor: isActive ? theme.surface : 'transparent',
                     height: totalHeight,
                     transform: [{ scale: isActive ? 0.9 : 1 }],

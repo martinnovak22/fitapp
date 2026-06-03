@@ -1,12 +1,13 @@
+import type React from 'react'
+import { useCallback } from 'react'
+import { StyleSheet, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { Button } from '@/src/modules/core/components/Button'
 import { Appear } from '@/src/modules/core/components/motion'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import React, { useCallback } from 'react'
-import { StyleSheet, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useSync } from './SyncProvider'
 
 export const SyncStatusBanner: React.FC = () => {

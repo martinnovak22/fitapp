@@ -1,13 +1,13 @@
-import { Radius } from '@/src/constants/Radius'
-import { Spacing } from '@/src/constants/Spacing'
-import React from 'react'
+import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image, StyleSheet, TouchableOpacity } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Portal } from 'react-native-teleport'
+import { Radius } from '@/src/constants/Radius'
+import { Spacing } from '@/src/constants/Spacing'
+import { useTheme } from '../hooks/useTheme'
 import { Button } from './Button'
 import { Appear } from './motion'
-import { useTheme } from '../hooks/useTheme'
 
 interface FullScreenImageModalProps {
     visible: boolean

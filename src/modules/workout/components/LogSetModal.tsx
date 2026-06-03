@@ -1,13 +1,3 @@
-import { Radius } from '@/src/constants/Radius'
-import { Spacing } from '@/src/constants/Spacing'
-import { GlobalStyles } from '@/src/constants/Styles'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
-import { Exercise } from '@/src/db/exercises'
-import { SubSet } from '@/src/db/workouts'
-import { Button } from '@/src/modules/core/components/Button'
-import { Typography } from '@/src/modules/core/components/Typography'
-import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { ExercisePicker } from '@/src/modules/exercises/ExercisePicker'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,8 +15,18 @@ import {
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Duration, Motion } from '@/src/constants/Motion'
+import { Radius } from '@/src/constants/Radius'
+import { Spacing } from '@/src/constants/Spacing'
+import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
+import type { Exercise } from '@/src/db/exercises'
+import type { SubSet } from '@/src/db/workouts'
+import { Button } from '@/src/modules/core/components/Button'
 import { Collapsible } from '@/src/modules/core/components/motion'
-import { SetFormValues } from '../setPayload'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { ExercisePicker } from '@/src/modules/exercises/ExercisePicker'
+import type { SetFormValues } from '../setPayload'
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window')
 const SHEET_MAX_HEIGHT = Math.min(DEVICE_HEIGHT * 0.9, 760)
@@ -130,7 +130,7 @@ export const LogSetModal = ({
     React.useEffect(() => {
         if (visible && subSets.length > 0) setIsExpanded(true)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [visible])
+    }, [visible, subSets.length])
 
     React.useEffect(() => {
         const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
@@ -302,9 +302,7 @@ export const LogSetModal = ({
                                             <ScrollView
                                                 style={[styles.pyramidList, { backgroundColor: theme.background }]}
                                                 contentContainerStyle={
-                                                    subSetItems.length === 0
-                                                        ? styles.emptySubsetsContainer
-                                                        : undefined
+                                                    subSetItems.length === 0 ? styles.emptySubsetsContainer : undefined
                                                 }
                                                 nestedScrollEnabled
                                                 keyboardShouldPersistTaps={'handled'}
@@ -318,7 +316,10 @@ export const LogSetModal = ({
                                                             color={theme.textSecondary}
                                                             style={styles.emptySubsetsIcon}
                                                         />
-                                                        <Typography.Meta weight="semibold" style={styles.emptySubsetsText}>
+                                                        <Typography.Meta
+                                                            weight="semibold"
+                                                            style={styles.emptySubsetsText}
+                                                        >
                                                             {t('noDropSets')}
                                                         </Typography.Meta>
                                                     </>

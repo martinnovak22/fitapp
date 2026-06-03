@@ -1,10 +1,10 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import type React from 'react'
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import React from 'react'
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native'
-import { Typography } from './Typography'
 import { useTheme } from '../hooks/useTheme'
+import { Typography } from './Typography'
 
 interface EmptyStateProps {
     message: string

@@ -1,6 +1,6 @@
-import { Exercise, ExerciseRepository } from '@/src/db/exercises'
-import { SetData, SetWithExerciseName, Workout, WorkoutRepository } from '@/src/db/workouts'
 import { createCachedExerciseRepository } from '@/src/data/exercisesCache'
+import { type Exercise, ExerciseRepository } from '@/src/db/exercises'
+import { type SetData, type SetWithExerciseName, type Workout, WorkoutRepository } from '@/src/db/workouts'
 
 export interface ExerciseRepositoryPort {
     getAll: () => Promise<Exercise[]>

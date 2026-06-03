@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createTestDb, getTestDb, resetTestDb, useTestDb, type TestDb } from '@/src/test/setupTestDb'
 import { createFakeSupabaseAdapter, type FakeSupabaseAdapter } from '@/src/test/fakeSupabase'
+import { createTestDb, getTestDb, resetTestDb, type TestDb, useTestDb } from '@/src/test/setupTestDb'
 
 vi.mock('@/src/db/client', () => ({
     getDb: async () => getTestDb(),
@@ -68,8 +68,8 @@ describe('PushPipeline end-to-end via fake adapter', () => {
         const ex = await db.getFirstAsync<{ id: number }>(`SELECT id FROM exercises WHERE uuid = 'ex-1'`)
         const wk = await db.getFirstAsync<{ id: number }>(`SELECT id FROM workouts WHERE uuid = 'wk-1'`)
         const wk2 = await db.getFirstAsync<{ id: number }>(`SELECT id FROM workouts WHERE uuid = 'wk-2'`)
-        await insertDirtySet('set-1', wk!.id, ex!.id)
-        await insertDirtySet('set-2', wk2!.id, ex!.id)
+        await insertDirtySet('set-1', wk?.id, ex?.id)
+        await insertDirtySet('set-2', wk2?.id, ex?.id)
 
         const outbox = createOutbox(db as never, executeWriteTransaction)
         const writer = createRemoteWriter(adapter)

@@ -18,7 +18,7 @@ export type LivePrincipal = {
 }
 
 export const capturePrincipalSnapshot = (live: LivePrincipal): PrincipalSnapshot => {
-    const mode: PrincipalMode = live.remote && !!live.userId ? 'account' : 'guest'
+    const mode: PrincipalMode = live.remote && live.userId ? 'account' : 'guest'
     if (mode === 'account') {
         return Object.freeze({
             mode,

@@ -1,11 +1,18 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import type React from 'react'
+import {
+    ActivityIndicator,
+    type StyleProp,
+    StyleSheet,
+    type TextStyle,
+    TouchableOpacity,
+    type ViewStyle,
+} from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontWeight } from '@/src/constants/Typography'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import React from 'react'
-import { ActivityIndicator, StyleProp, StyleSheet, TextStyle, TouchableOpacity, ViewStyle } from 'react-native'
-import { Typography } from './Typography'
 import { useTheme } from '../hooks/useTheme'
+import { Typography } from './Typography'
 
 type GlyphName = keyof typeof FontAwesome.glyphMap
 
