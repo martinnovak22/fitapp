@@ -1,4 +1,4 @@
-import { getSupabaseConfig, type SupabaseConfig } from '@/src/data/remote/supabase/config'
+import { SupabaseConfig, getSupabaseConfig } from '@/src/data/remote/supabase/config'
 
 export type SupabaseAuthSessionData = {
     accessToken: string
@@ -49,7 +49,11 @@ const parseErrorMessage = (payload: SupabaseAuthApiResponse | null, fallback: st
     return payload.error_description ?? payload.msg ?? payload.error ?? fallback
 }
 
-const authRequest = async <T>(config: SupabaseConfig, endpoint: string, options?: AuthRequestOptions): Promise<T> => {
+export const authRequest = async <T>(
+    config: SupabaseConfig,
+    endpoint: string,
+    options?: AuthRequestOptions
+): Promise<T> => {
     const response = await fetch(`${config.url}/auth/v1/${endpoint}`, {
         method: options?.method ?? 'POST',
         headers: {
