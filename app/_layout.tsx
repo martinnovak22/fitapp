@@ -5,7 +5,7 @@ import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { useEffect } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import 'react-native-reanimated'
+import { ReducedMotionConfig, ReduceMotion } from 'react-native-reanimated'
 import { StyleSheet } from 'react-native'
 import { PortalHost, PortalProvider } from 'react-native-teleport'
 import Toast from 'react-native-toast-message'
@@ -51,6 +51,9 @@ export default function RootLayout() {
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
+            {/* Honor the OS "reduce motion" accessibility setting across all
+                reanimated entering/exiting/layout animations. */}
+            <ReducedMotionConfig mode={ReduceMotion.System} />
             <PortalProvider>
                 <CustomThemeProvider>
                     <AuthProvider>

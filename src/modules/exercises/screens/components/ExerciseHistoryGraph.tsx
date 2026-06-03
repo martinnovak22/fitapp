@@ -2,6 +2,7 @@ import { Exercise } from '@/src/db/exercises'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize } from '@/src/constants/Typography'
+import { Appear } from '@/src/modules/core/components/motion'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import {
@@ -113,7 +114,7 @@ export const ExerciseHistoryGraph = ({ exercise, data, summary, dominantMetric }
             </View>
 
             {stats && (
-                <View style={styles.statsRow}>
+                <Appear variant="down" style={styles.statsRow}>
                     <View style={[styles.statItem, { backgroundColor: theme.background }]}>
                         <Typography.Meta style={styles.statLabel}>{t('personalBest')}</Typography.Meta>
                         <Typography.Body weight="bold">{stats.max}</Typography.Body>
@@ -122,7 +123,7 @@ export const ExerciseHistoryGraph = ({ exercise, data, summary, dominantMetric }
                         <Typography.Meta style={styles.statLabel}>{t('average')}</Typography.Meta>
                         <Typography.Body weight="bold">{stats.avg}</Typography.Body>
                     </View>
-                </View>
+                </Appear>
             )}
 
             <View

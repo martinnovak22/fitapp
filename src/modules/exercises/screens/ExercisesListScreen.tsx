@@ -20,7 +20,8 @@ import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from '
 import { ListSeparator } from '../../core/components/ListSeparator'
 import { useExercises } from '../hooks/useExercises'
 
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import { Duration, Motion } from '@/src/constants/Motion'
 
 const ExerciseListItem = React.memo(
     ({
@@ -41,7 +42,8 @@ const ExerciseListItem = React.memo(
         const scale = useSharedValue(1)
 
         React.useEffect(() => {
-            scale.value = withTiming(isDragged ? 0.9 : 1, { duration: 100 })
+            // Snappy drag-pickup feedback; fast is the tightest shared token.
+            scale.value = withTiming(isDragged ? 0.9 : 1, { duration: Duration.fast })
         }, [isDragged, scale])
 
         const animatedStyle = useAnimatedStyle(() => ({
@@ -50,7 +52,7 @@ const ExerciseListItem = React.memo(
 
         return (
             <Animated.View
-                entering={animateOnEnter ? FadeInDown.delay(50 + Math.min(index, 8) * 50).duration(320) : undefined}
+                entering={animateOnEnter ? Motion.listItem(index) : undefined}
                 style={styles.itemEnterWrapper}
             >
                 <Animated.View
@@ -182,7 +184,9 @@ export default function ExercisesListScreen() {
 
     const renderItem = useCallback(
         ({ item, index }: { item: Exercise; index: number }) => {
-            const animateOnEnter = !animatedItemIdsRef.current.has(item.id)
+            // Cap at the stagger ceiling so a long list doesn't fire dozens of
+            // simultaneous entrances on first load (mirrors HistoryScreen).
+            const animateOnEnter = index < 8 && !animatedItemIdsRef.current.has(item.id)
             if (animateOnEnter) {
                 animatedItemIdsRef.current.add(item.id)
             }

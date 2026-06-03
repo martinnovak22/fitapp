@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import { Gesture } from 'react-native-gesture-handler'
 import { NestedReorderableList, ScrollViewContainer, reorderItems } from 'react-native-reorderable-list'
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
+import { Appear } from '@/src/modules/core/components/motion'
 import { LogSetModal } from '../components/LogSetModal'
 import { WorkoutSetItem } from '../components/WorkoutSetItem'
 import { useWorkoutSession } from '../hooks/useWorkoutSession'
@@ -255,7 +255,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 ),
                 headerRight: () =>
                     workout ? (
-                        <Animated.View entering={FadeIn.duration(180)} style={styles.headerActions}>
+                        <Appear style={styles.headerActions}>
                             {rightAction && (
                                 <TouchableOpacity
                                     onPress={rightAction.onPress}
@@ -278,7 +278,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                                     <FontAwesome name={'trash'} size={20} color={theme.error} />
                                 </TouchableOpacity>
                             )}
-                        </Animated.View>
+                        </Appear>
                     ) : null,
             })
         }, [
@@ -322,15 +322,17 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             floatingElements={
                 <>
                     {!isReadOnly && (
-                        <TouchableOpacity
-                            style={GlobalStyles.fab}
-                            onPress={handleOpenAddModal}
-                            accessibilityRole={'button'}
-                            accessibilityLabel={t('addSet')}
-                            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                        >
-                            <FontAwesome name={'plus'} size={24} color={theme.onPrimary} />
-                        </TouchableOpacity>
+                        <Appear variant="fade" style={GlobalStyles.fab}>
+                            <TouchableOpacity
+                                style={[StyleSheet.absoluteFill, styles.fabTouchable]}
+                                onPress={handleOpenAddModal}
+                                accessibilityRole={'button'}
+                                accessibilityLabel={t('addSet')}
+                                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                            >
+                                <FontAwesome name={'plus'} size={24} color={theme.onPrimary} />
+                            </TouchableOpacity>
+                        </Appear>
                     )}
 
                     <LogSetModal
@@ -351,39 +353,50 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             }
         >
             {canEditHistoryWorkout && (
-                <Card style={[styles.timingCard, { borderColor: theme.border, backgroundColor: theme.surfaceSubtle }]}>
-                    <View style={styles.timingHeader}>
-                        <Typography.Meta style={{ color: theme.textSecondary }}>{t('workoutTiming')}</Typography.Meta>
-                        <TouchableOpacity onPress={openTimingModal} accessibilityRole={'button'}>
-                            <Typography.Meta color={'primary'} weight={'bold'}>
-                                {t('editTime')}
+                <Appear variant="down">
+                    <Card
+                        style={[styles.timingCard, { borderColor: theme.border, backgroundColor: theme.surfaceSubtle }]}
+                    >
+                        <View style={styles.timingHeader}>
+                            <Typography.Meta style={{ color: theme.textSecondary }}>
+                                {t('workoutTiming')}
                             </Typography.Meta>
-                        </TouchableOpacity>
-                    </View>
-                    <Typography.Body>{`${t('startedAt')}: ${formatLocalizedDate(
-                        workout?.start_time || '',
-                        i18n.language,
-                        { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
-                        true
-                    )}`}</Typography.Body>
-                    <Typography.Body style={{ marginTop: Spacing.xs }}>
-                        {`${t('time')}: ${
-                            workout?.end_time
-                                ? `${formatLocalizedDate(
-                                      workout.end_time,
-                                      i18n.language,
-                                      { hour: '2-digit', minute: '2-digit' },
-                                      true
-                                  )}`
-                                : t('notSpecified')
-                        }`}
-                    </Typography.Body>
-                </Card>
+                            <TouchableOpacity onPress={openTimingModal} accessibilityRole={'button'}>
+                                <Typography.Meta color={'primary'} weight={'bold'}>
+                                    {t('editTime')}
+                                </Typography.Meta>
+                            </TouchableOpacity>
+                        </View>
+                        <Typography.Body>{`${t('startedAt')}: ${formatLocalizedDate(
+                            workout?.start_time || '',
+                            i18n.language,
+                            { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
+                            true
+                        )}`}</Typography.Body>
+                        <Typography.Body style={{ marginTop: Spacing.xs }}>
+                            {`${t('time')}: ${
+                                workout?.end_time
+                                    ? `${formatLocalizedDate(
+                                          workout.end_time,
+                                          i18n.language,
+                                          { hour: '2-digit', minute: '2-digit' },
+                                          true
+                                      )}`
+                                    : t('notSpecified')
+                            }`}
+                        </Typography.Body>
+                    </Card>
+                </Appear>
             )}
             {exerciseNamesOrder.length === 0 ? (
-                <EmptyState message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')} icon={'file-text-o'} />
+                <Appear key="empty" variant="down">
+                    <EmptyState
+                        message={isReadOnly ? t('noWorkoutsRecorded') : t('readyToCrush')}
+                        icon={'file-text-o'}
+                    />
+                </Appear>
             ) : (
-                <Animated.View entering={FadeInDown.duration(340)}>
+                <Appear key="list" variant="down">
                     {exerciseNamesOrder.map((exerciseName) => (
                         <WorkoutExerciseGroup
                             key={exerciseName}
@@ -395,7 +408,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             handleReorderSets={reorderSets}
                         />
                     ))}
-                </Animated.View>
+                </Appear>
             )}
 
             <Modal
@@ -547,6 +560,12 @@ const styles = StyleSheet.create({
     listContent: {
         paddingTop: Spacing.sm + Spacing.xs,
         paddingBottom: 100,
+    },
+    // The round FAB visual + position lives on the Appear wrapper; the touchable
+    // fills it so the button can fade in/out without breaking absolute layout.
+    fabTouchable: {
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     groupCard: {
         padding: 0,
