@@ -1,6 +1,7 @@
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { Button } from '@/src/modules/core/components/Button'
+import { Appear } from '@/src/modules/core/components/motion'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import React, { useCallback } from 'react'
@@ -24,14 +25,18 @@ export const SyncStatusBanner: React.FC = () => {
 
     // Transient failures still being retried get the prominent alert. Rows that
     // were given up on (blocked) are reported quietly below, never both.
+    let variant: 'failed' | 'blocked' | null = null
+    let content: React.ReactNode = null
+
     if (observable.kind === 'failed') {
+        variant = 'failed'
         const firstReason = observable.rows[0]?.reason
         const summary =
             observable.rows.length === 1
                 ? `Sync failed: ${firstReason?.message ?? firstReason?.kind ?? 'unknown error'}`
                 : `${observable.rows.length} rows failed to sync`
 
-        return (
+        content = (
             <View
                 style={[styles.banner, { backgroundColor: theme.errorSurface, paddingTop: insets.top + Spacing.sm }]}
                 accessibilityRole="alert"
@@ -50,13 +55,12 @@ export const SyncStatusBanner: React.FC = () => {
                 />
             </View>
         )
-    }
-
-    if (status.blockedCount > 0) {
+    } else if (status.blockedCount > 0) {
+        variant = 'blocked'
         const summary =
             status.blockedCount === 1 ? "1 item couldn't sync" : `${status.blockedCount} items couldn't sync`
 
-        return (
+        content = (
             <View
                 style={[styles.banner, { backgroundColor: theme.surface, paddingTop: insets.top + Spacing.sm }]}
                 accessibilityLiveRegion="polite"
@@ -76,17 +80,27 @@ export const SyncStatusBanner: React.FC = () => {
         )
     }
 
-    return null
+    if (!variant) return null
+
+    // Appear owns the fixed positioning so the banner fades in/out (and swaps
+    // between failed/blocked via the key) instead of popping.
+    return (
+        <Appear key={variant} variant="fade" style={styles.bannerContainer}>
+            {content}
+        </Appear>
+    )
 }
 
 const styles = StyleSheet.create({
-    banner: {
+    bannerContainer: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         zIndex: 10,
         elevation: 10,
+    },
+    banner: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: Spacing.md,
