@@ -17,7 +17,7 @@ export interface ToastAction {
     onPress: () => void
 }
 
-export interface CustomToastExtraProps {
+interface CustomToastExtraProps {
     icon?: ToastIcon
     action?: ToastAction
     tone?: 'info' | 'danger'

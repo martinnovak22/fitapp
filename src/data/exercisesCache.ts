@@ -66,13 +66,6 @@ export const invalidateExercisesCache = (): void => {
     notify()
 }
 
-export const subscribeToExercisesCache = (listener: Listener): (() => void) => {
-    listeners.add(listener)
-    return () => {
-        listeners.delete(listener)
-    }
-}
-
 // Exposed for tests that want a deterministic starting point.
 export const __resetExercisesCacheForTests = (): void => {
     cached = null

@@ -1,8 +1,8 @@
-export const getLocaleFromLanguage = (language: string): string => {
+const getLocaleFromLanguage = (language: string): string => {
     return language === 'cs' ? 'cs-CZ' : 'en-US'
 }
 
-export const capitalizeFirst = (value: string): string => {
+const capitalizeFirst = (value: string): string => {
     if (!value) return value
     return value.charAt(0).toUpperCase() + value.slice(1)
 }
