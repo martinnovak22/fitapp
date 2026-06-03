@@ -17,7 +17,15 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Calendar } from 'react-native-calendars'
-import Animated, { FadeInDown } from 'react-native-reanimated'
+import Animated from 'react-native-reanimated'
+import { Motion } from '@/src/constants/Motion'
+
+// Hoisted builders (don't allocate these in render). The populated list and the
+// empty state share one entrance, so selecting any day animates the same way
+// instead of the empty state jumping in.
+const DAY_DETAIL_ENTER = Motion.screenEnter().delay(140)
+const DAY_DETAIL_EXIT = Motion.fadeOutDown()
+const CALENDAR_CARD_ENTER = Motion.screenEnter().delay(70)
 
 interface MarkedDates {
     [date: string]: {
@@ -159,7 +167,7 @@ export default function CalendarScreen() {
 
     return (
         <ScrollScreenLayout contentContainerStyle={styles.scrollContent} style={styles.container}>
-            <Animated.View entering={FadeInDown.delay(70).duration(360)}>
+            <Animated.View entering={CALENDAR_CARD_ENTER}>
                 <Card style={styles.calendarCard}>
                     <Calendar
                         theme={{
@@ -208,7 +216,7 @@ export default function CalendarScreen() {
 
             {selectedDate &&
                 (dayWorkouts.length > 0 ? (
-                    <Animated.View entering={FadeInDown.delay(140).duration(360)}>
+                    <Animated.View key={`${selectedDate}-list`} entering={DAY_DETAIL_ENTER} exiting={DAY_DETAIL_EXIT}>
                         <Typography.Subtitle style={[styles.dayHeader, { color: theme.text }]}>
                             {formatLocalizedDate(
                                 selectedDate,
@@ -219,10 +227,7 @@ export default function CalendarScreen() {
                         </Typography.Subtitle>
 
                         {dayWorkouts.map((w, index) => (
-                            <Animated.View
-                                key={w.id}
-                                entering={FadeInDown.delay(170 + Math.min(index, 8) * 45).duration(320)}
-                            >
+                            <Animated.View key={w.id} entering={Motion.listItem(index)}>
                                 <Card
                                     style={styles.workoutCard}
                                     onPress={() => handleOpenSummary(w)}
@@ -255,7 +260,7 @@ export default function CalendarScreen() {
                         ))}
                     </Animated.View>
                 ) : (
-                    <View>
+                    <Animated.View key={`${selectedDate}-empty`} entering={DAY_DETAIL_ENTER} exiting={DAY_DETAIL_EXIT}>
                         <Typography.Subtitle style={[styles.dayHeader, { color: theme.text }]}>
                             {formatLocalizedDate(
                                 selectedDate,
@@ -265,7 +270,7 @@ export default function CalendarScreen() {
                             )}
                         </Typography.Subtitle>
                         <EmptyState message={t('noWorkoutsRecorded')} icon={'calendar-o'} />
-                    </View>
+                    </Animated.View>
                 ))}
 
             <Modal
