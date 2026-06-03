@@ -1,22 +1,27 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import type React from 'react'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import {
+    SupabaseAuthSessionData,
+    getSupabaseSessionFromOAuthRedirectUrl,
+    refreshSupabaseSession,
+    signInWithEmailPassword,
+    signOutSupabaseSession,
+    signUpWithEmailPassword,
+} from '@/src/data/remote/supabase/auth'
+import { clearSupabaseSession, setSupabaseSession } from '@/src/data/remote/supabase/session'
 import { setActivePrincipal } from '@/src/data/principal'
 import {
     type MigrationPolicy,
     type PrincipalIdentity,
     runPrincipalTransition,
 } from '@/src/data/principal/PrincipalTransition'
-import {
-    getSupabaseSessionFromOAuthRedirectUrl,
-    refreshSupabaseSession,
-    type SupabaseAuthSessionData,
-    signInWithEmailPassword,
-    signOutSupabaseSession,
-    signUpWithEmailPassword,
-} from '@/src/data/remote/supabase/auth'
-import { clearSupabaseSession, setSupabaseSession } from '@/src/data/remote/supabase/session'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
+import {
+    type AuthInitializationEffect,
+    type AuthInitializationSession,
+    normalizeStoredAuthMode,
+    planAuthInitialization,
+} from '@/src/modules/auth/authInitialization'
 
 type AuthContextValue = {
     isAuthRequired: boolean
@@ -56,6 +61,42 @@ const loadStoredSession = async (): Promise<SupabaseAuthSessionData | null> => {
     const raw = await AsyncStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     return JSON.parse(raw) as SupabaseAuthSessionData
+}
+
+/**
+ * Runs the side effects produced by {@link planAuthInitialization} and resolves
+ * the plan's session value into the concrete session to store in state. The
+ * pure transition owns every decision; this runner only performs the I/O.
+ */
+const runInitializationEffects = async (
+    effects: AuthInitializationEffect[],
+    plannedSession: AuthInitializationSession
+): Promise<SupabaseAuthSessionData | null> => {
+    let activeSession: SupabaseAuthSessionData | null =
+        plannedSession === 'refresh-then-apply' ? null : plannedSession
+
+    for (const effect of effects) {
+        switch (effect.type) {
+            case 'clearSupabaseSession':
+                clearSupabaseSession()
+                break
+            case 'applySession':
+                applySession(effect.session)
+                break
+            case 'persistSession':
+                await persistSession(effect.session)
+                break
+            case 'refreshThenApplyAndPersist': {
+                const refreshed = await refreshSupabaseSession(effect.stored.refreshToken)
+                applySession(refreshed)
+                await persistSession(refreshed)
+                activeSession = refreshed
+                break
+            }
+        }
+    }
+
+    return activeSession
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -103,8 +144,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const initialize = async () => {
             if (!isAuthRequired) {
+                const plan = planAuthInitialization({
+                    isAuthRequired,
+                    isRemoteMode,
+                    storedAuthMode: null,
+                    storedSession: null,
+                    now: Date.now(),
+                })
                 if (isMounted) {
-                    clearSupabaseSession()
+                    runInitializationEffects(plan.effects, null)
                     setSession(null)
                     setIsInitialized(true)
                 }
@@ -112,27 +160,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             try {
-                if (isRemoteMode) {
-                    const storedModeRaw = await AsyncStorage.getItem(AUTH_MODE_STORAGE_KEY)
-                    const storedMode = storedModeRaw === 'guest' ? 'guest' : 'account'
-                    if (isMounted) setAuthMode(storedMode)
-                    if (storedMode === 'guest') {
-                        clearSupabaseSession()
-                        if (isMounted) setSession(null)
-                        return
-                    }
-                }
+                const storedAuthMode = isRemoteMode ? await AsyncStorage.getItem(AUTH_MODE_STORAGE_KEY) : null
+                const isGuest = isRemoteMode && normalizeStoredAuthMode(storedAuthMode) === 'guest'
+                const storedSession = isGuest ? null : await loadStoredSession()
+                const plan = planAuthInitialization({
+                    isAuthRequired,
+                    isRemoteMode,
+                    storedAuthMode,
+                    storedSession,
+                    now: Date.now(),
+                })
 
-                const stored = await loadStoredSession()
-                if (!stored) {
-                    clearSupabaseSession()
-                    if (isMounted) setSession(null)
-                    return
-                }
+                if (isMounted && plan.authMode) setAuthMode(plan.authMode)
 
-                const activeSession = shouldRefresh(stored) ? await refreshSupabaseSession(stored.refreshToken) : stored
-                applySession(activeSession)
-                await persistSession(activeSession)
+                const activeSession = await runInitializationEffects(plan.effects, plan.session)
                 if (isMounted) setSession(activeSession)
             } catch {
                 await AsyncStorage.removeItem(STORAGE_KEY)
