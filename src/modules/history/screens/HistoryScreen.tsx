@@ -14,7 +14,8 @@ import { router, useFocusEffect, useNavigation } from 'expo-router'
 import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
-import Animated, { FadeInDown } from 'react-native-reanimated'
+import Animated from 'react-native-reanimated'
+import { Motion } from '@/src/constants/Motion'
 
 export default function HistoryScreen() {
     const { workouts: workoutRepo } = getRepositories()
@@ -77,7 +78,7 @@ export default function HistoryScreen() {
         }
 
         return (
-            <Animated.View entering={canAnimate ? FadeInDown.delay(50 + index * 45).duration(300) : undefined}>
+            <Animated.View entering={canAnimate ? Motion.listItem(index) : undefined}>
                 <Card
                     onPress={() => router.push(`/(tabs)/history/${item.id}`)}
                     style={styles.workoutCard}
