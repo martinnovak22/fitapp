@@ -1,12 +1,12 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import type { ComponentProps } from 'react'
+import { StyleSheet, View } from 'react-native'
+import Toast, { type ToastConfig, type ToastConfigParams } from 'react-native-toast-message'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import i18n from '@/src/modules/core/utils/i18n'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import React, { ComponentProps } from 'react'
-import { StyleSheet, View } from 'react-native'
-import Toast, { ToastConfig, ToastConfigParams } from 'react-native-toast-message'
 import { Button } from './Button'
 import { Typography } from './Typography'
 
@@ -37,7 +37,7 @@ const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action, cance
     const { theme } = useTheme()
     const primaryActionColor = actionColor || theme.primary
     return (
-        <View style={[styles.toastContainer, { backgroundColor: theme.surface, borderColor: theme.border + '20' }]}>
+        <View style={[styles.toastContainer, { backgroundColor: theme.surface, borderColor: `${theme.border}20` }]}>
             <View style={styles.contentRow}>
                 <View style={[styles.iconBadge, { backgroundColor: `${iconColor || theme.primary}15` }]}>
                     <FontAwesome name={icon} size={20} color={iconColor || theme.primary} />
@@ -55,7 +55,7 @@ const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action, cance
             </View>
 
             {(action || cancelAction) && (
-                <View style={[styles.actionRow, { borderTopColor: theme.border + '15' }]}>
+                <View style={[styles.actionRow, { borderTopColor: `${theme.border}15` }]}>
                     <View style={styles.buttonContainer}>
                         {cancelAction && (
                             <Button

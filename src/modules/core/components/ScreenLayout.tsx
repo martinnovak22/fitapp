@@ -1,7 +1,7 @@
+import type { ComponentType, ReactElement, ReactNode } from 'react'
+import { type RefreshControlProps, ScrollView, type ScrollViewProps, View, type ViewStyle } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
-import { ComponentType, ReactElement, ReactNode } from 'react'
-import { RefreshControlProps, ScrollView, ScrollViewProps, View, ViewStyle } from 'react-native'
 import { useTheme } from '../hooks/useTheme'
 
 interface ScreenLayoutProps {

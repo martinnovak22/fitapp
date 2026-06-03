@@ -1,9 +1,10 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import type React from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { AppState } from 'react-native'
-import { getSyncState, retryBlockedRows, runSync } from './syncService'
-import { syncStatusStore, type SyncStatus as ObservableSyncStatus } from './SyncStatus'
-import { useAuth } from '@/src/modules/auth/useAuth'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
+import { useAuth } from '@/src/modules/auth/useAuth'
+import { type SyncStatus as ObservableSyncStatus, syncStatusStore } from './SyncStatus'
+import { getSyncState, retryBlockedRows, runSync } from './syncService'
 
 // Sync polling is the dominant background cost when the user is idle. Issue #26
 // relaxes it from a 20s tick to a 60s base with exponential backoff up to 5min

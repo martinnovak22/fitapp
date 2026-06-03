@@ -1,5 +1,5 @@
 import Toast from 'react-native-toast-message'
-import { ToastAction, ToastIcon } from '../components/ToastConfig'
+import type { ToastAction, ToastIcon } from '../components/ToastConfig'
 
 type ToastOptions = {
     title: string

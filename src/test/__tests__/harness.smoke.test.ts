@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createTestDb, useTestDb, getTestDb, resetTestDb, type TestDb } from '../setupTestDb'
 import { createFakeSupabaseAdapter } from '../fakeSupabase'
+import { createTestDb, getTestDb, resetTestDb, type TestDb, useTestDb } from '../setupTestDb'
 
 // Route the product code's getDb() at the in-memory test DB so the real
 // serialized write queue (executeWrite / executeWriteTransaction) runs against it.
@@ -56,10 +56,10 @@ describe('test harness smoke', () => {
 
         const acks = await adapter.upsert('exercises', [
             {
-                uuid: local!.uuid,
-                user_id: local!.user_id,
-                name: local!.name,
-                updated_at: local!.updated_at,
+                uuid: local?.uuid,
+                user_id: local?.user_id,
+                name: local?.name,
+                updated_at: local?.updated_at,
             },
         ])
         expect(acks).toEqual([{ id: 1, uuid: 'ex-uuid-1' }])

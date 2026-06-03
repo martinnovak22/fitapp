@@ -1,4 +1,4 @@
-import { SupabaseConfig, getSupabaseConfig } from '@/src/data/remote/supabase/config'
+import { getSupabaseConfig, type SupabaseConfig } from '@/src/data/remote/supabase/config'
 
 export type SupabaseAuthSessionData = {
     accessToken: string

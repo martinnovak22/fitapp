@@ -1,5 +1,5 @@
+import type * as SQLite from 'expo-sqlite'
 import { buildPrincipalWhereClause } from '@/src/data/principal'
-import * as SQLite from 'expo-sqlite'
 import { executeWriteTransaction } from './writeQueue'
 
 export type SyncStatus = 'local' | 'dirty' | 'synced' | 'failed'
@@ -32,11 +32,7 @@ export const recordDeletionTombstone = async (
 // Hard-delete a row by id within the current principal scope, first recording a
 // deletion tombstone so the removal propagates on the next sync. Shared by the
 // per-entity repositories whose delete logic differs only by table + type.
-export const softDeleteById = async (
-    table: string,
-    entityType: SyncEntityType,
-    id: number
-): Promise<void> => {
+export const softDeleteById = async (table: string, entityType: SyncEntityType, id: number): Promise<void> => {
     await executeWriteTransaction(async (db) => {
         const scope = buildPrincipalWhereClause('user_id')
         const entity = await db.getFirstAsync<{ uuid: string; user_id?: string | null }>(

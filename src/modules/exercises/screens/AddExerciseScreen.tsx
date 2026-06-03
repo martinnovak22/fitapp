@@ -1,25 +1,25 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import * as FileSystem from 'expo-file-system/legacy'
+import * as ImagePicker from 'expo-image-picker'
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
+import Animated from 'react-native-reanimated'
+import { Motion } from '@/src/constants/Motion'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
-import { ExerciseType } from '@/src/db/exercises'
+import type { ExerciseType } from '@/src/db/exercises'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
+import { Appear } from '@/src/modules/core/components/motion'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import * as FileSystem from 'expo-file-system/legacy'
-import * as ImagePicker from 'expo-image-picker'
-import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
-import Animated from 'react-native-reanimated'
-import { Motion } from '@/src/constants/Motion'
-import { Appear } from '@/src/modules/core/components/motion'
 import { ScrollScreenLayout } from '../../core/components/ScreenLayout'
 
 // Hoisted: the form container is the single layout owner; don't allocate the
@@ -159,7 +159,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
         } finally {
             setIsLoading(false)
         }
-    }, [name, muscle, type, photoUri, isEditing, resolvedExerciseId, exerciseRepo, t])
+    }, [name, muscle, type, photoUri, isEditing, resolvedExerciseId, exerciseRepo, t, savePhotoPermanently])
 
     const handleDelete = useCallback(() => {
         showToast.confirm({

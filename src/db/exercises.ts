@@ -1,6 +1,6 @@
 import { buildPrincipalWhereClause, getScopedUserId } from '@/src/data/principal'
 import { getDb } from './client'
-import { createEntityUuid, nowIso, softDeleteById, SyncStatus } from './sync'
+import { createEntityUuid, nowIso, type SyncStatus, softDeleteById } from './sync'
 import { executeWrite, executeWriteTransaction } from './writeQueue'
 
 export type ExerciseType = 'weight' | 'cardio' | 'bodyweight' | 'bodyweight_timer'

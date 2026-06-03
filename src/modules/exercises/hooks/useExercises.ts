@@ -1,8 +1,8 @@
-import { getRepositories } from '@/src/data/repositories'
-import { Exercise } from '@/src/db/exercises'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getRepositories } from '@/src/data/repositories'
+import type { Exercise } from '@/src/db/exercises'
 
 export function useExercises() {
     const { exercises: exerciseRepo } = getRepositories()

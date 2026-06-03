@@ -83,7 +83,7 @@ const formatRawMetric = (metric: PrimaryMetric, value: number): string => {
 
 // Compact, single-string label that captures the whole set for one data point.
 // Driven by (exercise type, dominant metric) per the PRD's table.
-export const formatCompactSetLabel = (type: ExerciseType, dominant: PrimaryMetric, set: Set): string => {
+export const formatCompactSetLabel = (type: ExerciseType, _dominant: PrimaryMetric, set: Set): string => {
     const weight = set.weight ?? 0
     const reps = set.reps ?? 0
     const distance = set.distance ?? 0

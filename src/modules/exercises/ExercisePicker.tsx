@@ -1,12 +1,12 @@
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { FlatList, type ListRenderItem, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import type { Exercise } from '@/src/db/exercises'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { formatExerciseType } from '@/src/utils/formatters'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import { FlatList, type ListRenderItem, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { ExerciseStats, type HeadlineStat } from './ExerciseStats'
 
 type Props = {

@@ -10,6 +10,7 @@
         "lint:fix": "eslint . --fix",
         "biome:check": "biome check .",
         "biome:format": "biome format --write .",
+        "biome:unsafe": "biome check --write --unsafe .",
         "test:unit": "./node_modules/.bin/ts-node --transpile-only scripts/test-build-set-payload.ts",
         "test": "vitest run",
         "typecheck": "tsc --noEmit",

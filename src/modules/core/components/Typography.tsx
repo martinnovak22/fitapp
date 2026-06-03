@@ -1,7 +1,7 @@
-import { FontSize, FontSizeToken, FontWeight, FontWeightToken } from '@/src/constants/Typography'
-import React from 'react'
-import { StyleProp, Text, TextStyle } from 'react-native'
-import { ThemeType } from '@/src/constants/Colors'
+import type React from 'react'
+import { type StyleProp, Text, type TextStyle } from 'react-native'
+import type { ThemeType } from '@/src/constants/Colors'
+import { FontSize, type FontSizeToken, FontWeight, type FontWeightToken } from '@/src/constants/Typography'
 import { useTheme } from '../hooks/useTheme'
 
 type ColorToken = keyof Pick<ThemeType, 'text' | 'textSecondary' | 'primary' | 'secondary' | 'error' | 'onPrimary'>

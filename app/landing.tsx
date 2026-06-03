@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
-import React, { useCallback, useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { Dimensions, Image, StyleSheet, View } from 'react-native'
 import Animated, {
     Easing,

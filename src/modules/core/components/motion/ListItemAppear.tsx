@@ -1,6 +1,6 @@
+import type React from 'react'
+import type { StyleProp, ViewStyle } from 'react-native'
 import { Duration, staggerDelay } from '@/src/constants/Motion'
-import React from 'react'
-import { StyleProp, ViewStyle } from 'react-native'
 import { Appear } from './Appear'
 
 type ListItemAppearProps = {
