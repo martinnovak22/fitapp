@@ -115,7 +115,7 @@ export type Outbox = {
 // cannot fix it, so it is parked on the first failure (see classifyFailure).
 export const MAX_SYNC_ATTEMPTS = 5
 
-export const classifyFailure = (reasonKind: SyncFailureKind, attempts: number): FailStatus => {
+const classifyFailure = (reasonKind: SyncFailureKind, attempts: number): FailStatus => {
     if (reasonKind === 'permanent-rejection') return 'blocked'
     return attempts >= MAX_SYNC_ATTEMPTS ? 'blocked' : 'failed'
 }
