@@ -6,6 +6,7 @@ import { getRepositories } from '@/src/data/repositories'
 import type { Exercise } from '@/src/db/exercises'
 import i18n from '@/src/modules/core/utils/i18n'
 import { showToast } from '@/src/modules/core/utils/toast'
+import { buildExerciseKey, parseExercisesCsv } from '@/src/utils/exercisesCsvParser'
 
 const EXPORT_FILE_NAME = 'exercises_export.csv'
 const EXPORT_FILE_BASENAME = 'exercises_export'
