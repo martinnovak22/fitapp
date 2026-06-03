@@ -1,25 +1,16 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import type React from 'react'
-import {
-    ActivityIndicator,
-    type StyleProp,
-    StyleSheet,
-    type TextStyle,
-    TouchableOpacity,
-    type ViewStyle,
-} from 'react-native'
-import { Radius } from '@/src/constants/Radius'
-import { Spacing } from '@/src/constants/Spacing'
-import { FontWeight } from '@/src/constants/Typography'
-import { useTheme } from '../hooks/useTheme'
+import React from 'react'
+import { ActivityIndicator, StyleProp, StyleSheet, TextStyle, TouchableOpacity, ViewStyle } from 'react-native'
+import { type ButtonSize, type ButtonVariant, resolveButtonStyle } from './buttonStyles'
 import { Typography } from './Typography'
+import { useTheme } from '../hooks/useTheme'
 
 type GlyphName = keyof typeof FontAwesome.glyphMap
 
 interface BaseButtonProps {
     onPress: () => void
-    variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'text'
-    size?: 'sm' | 'md'
+    variant?: ButtonVariant
+    size?: ButtonSize
     isLoading?: boolean
     disabled?: boolean
     style?: StyleProp<ViewStyle>
@@ -55,60 +46,24 @@ export const Button: React.FC<ButtonProps> = ({
 
     const isIconOnly = label === undefined
 
-    const getButtonStyle = () => {
-        switch (variant) {
-            case 'secondary':
-                return [{ backgroundColor: theme.inputBackground, borderColor: theme.border }]
-            case 'outline':
-                return [styles.outlineButton, { borderColor: theme.primary }]
-            case 'danger':
-                return [styles.dangerButton, { backgroundColor: theme.error, borderColor: theme.border }]
-            case 'text':
-                return [styles.textButton]
-            default:
-                return [{ backgroundColor: theme.primary, borderColor: theme.hairline }]
-        }
-    }
-
-    const getLabelStyle = () => {
-        switch (variant) {
-            case 'outline':
-                return [styles.outlineButtonText, { color: theme.primary }]
-            case 'secondary':
-                return [styles.secondaryButtonText, { color: theme.text }]
-            case 'text':
-                return [styles.textButtonText, { color: theme.primary }]
-            default:
-                return [styles.primaryButtonText, { color: theme.onPrimary }]
-        }
-    }
-    const labelStyles = getLabelStyle()
+    const { container, disabledOverlay, label: labelStyles, variantColor, iconSize, isDisabled } =
+        resolveButtonStyle({ variant, size, isIconOnly, disabled, isLoading, theme })
 
     // Resolve the effective label/icon color: variant default, overridden by labelStyle.
-    const variantColor = (labelStyles[1] as { color: string })?.color ?? theme.onPrimary
     const overrideColor = (StyleSheet.flatten(labelStyle) as TextStyle | undefined)?.color
     const resolvedColor = (overrideColor as string) ?? variantColor
 
-    const iconSize = size === 'sm' ? 14 : 16
-
     return (
         <TouchableOpacity
-            style={[
-                styles.baseButton,
-                getButtonStyle(),
-                size === 'sm' && styles.sizeSm,
-                isIconOnly && styles.iconOnly,
-                style,
-                (disabled || isLoading) && styles.disabled,
-            ]}
+            style={[container, style, disabledOverlay]}
             hitSlop={size === 'sm' || isIconOnly ? HIT_SLOP : undefined}
             onPress={onPress}
-            disabled={disabled || isLoading}
+            disabled={isDisabled}
             activeOpacity={0.7}
             accessibilityRole={'button'}
             accessibilityLabel={accessibilityLabel ?? label}
             accessibilityHint={accessibilityHint}
-            accessibilityState={{ disabled: disabled || isLoading, busy: isLoading }}
+            accessibilityState={{ disabled: isDisabled, busy: isLoading }}
             testID={testID}
         >
             {isLoading ? (
@@ -126,54 +81,3 @@ export const Button: React.FC<ButtonProps> = ({
         </TouchableOpacity>
     )
 }
-
-const styles = StyleSheet.create({
-    baseButton: {
-        flexDirection: 'row',
-        padding: Spacing.md,
-        borderRadius: Radius.sm,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: Spacing.sm,
-        borderWidth: 1,
-        borderColor: 'transparent',
-        minHeight: 44,
-    },
-    sizeSm: {
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        minHeight: undefined,
-    },
-    iconOnly: {
-        padding: Spacing.sm,
-        borderRadius: Radius.sm,
-    },
-    outlineButton: {
-        backgroundColor: 'transparent',
-    },
-    dangerButton: {},
-    textButton: {
-        backgroundColor: 'transparent',
-        borderColor: 'transparent',
-        borderWidth: 0,
-        borderRadius: 0,
-        minHeight: undefined,
-        paddingVertical: 0,
-        paddingHorizontal: 0,
-    },
-    primaryButtonText: {
-        fontWeight: FontWeight.bold,
-    },
-    secondaryButtonText: {
-        fontWeight: FontWeight.semibold,
-    },
-    outlineButtonText: {
-        fontWeight: FontWeight.bold,
-    },
-    textButtonText: {
-        fontWeight: FontWeight.semibold,
-    },
-    disabled: {
-        opacity: 0.5,
-    },
-})
