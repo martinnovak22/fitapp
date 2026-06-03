@@ -32,18 +32,13 @@ import {
     TouchableWithoutFeedback,
     View,
 } from 'react-native'
-import Animated, {
-    FadeInDown,
-    LinearTransition,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
-} from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import { Duration, Motion } from '@/src/constants/Motion'
+import { Appear, ListItemAppear } from '@/src/modules/core/components/motion'
 
 type AuthMode = 'signin' | 'signup'
 
 const MIN_PASSWORD_LENGTH = 6
-const formLayoutTransition = LinearTransition.duration(220)
 const cardMaxWidth = 520
 
 const isValidEmail = (value: string): boolean => {
@@ -124,10 +119,10 @@ export default function LoginScreen() {
 
         const showSubscription = Keyboard.addListener(showEvent, (event) => {
             const keyboardHeight = event.endCoordinates?.height ?? 0
-            keyboardOffset.value = withTiming(Math.min(keyboardHeight * 0.42, 140), { duration: 180 })
+            keyboardOffset.value = withTiming(Math.min(keyboardHeight * 0.42, 140), { duration: Duration.base })
         })
         const hideSubscription = Keyboard.addListener(hideEvent, () => {
-            keyboardOffset.value = withTiming(0, { duration: 180 })
+            keyboardOffset.value = withTiming(0, { duration: Duration.base })
         })
 
         return () => {
@@ -269,22 +264,22 @@ export default function LoginScreen() {
                         keyboardShouldPersistTaps={'handled'}
                         showsVerticalScrollIndicator={false}
                     >
-                        <Animated.View layout={formLayoutTransition} style={[styles.cardWrapper, cardAnimatedStyle]}>
+                        <Animated.View layout={Motion.layout()} style={[styles.cardWrapper, cardAnimatedStyle]}>
                             <Card style={styles.card}>
                                 <View style={{ marginBottom: Spacing.sm }}>
-                                    <Animated.View entering={FadeInDown.duration(220)}>
+                                    <ListItemAppear index={0}>
                                         <Typography.Title style={styles.title}>
                                             {t(isSignUp ? 'createAccount' : 'welcomeBack')}
                                         </Typography.Title>
-                                    </Animated.View>
-                                    <Animated.View entering={FadeInDown.delay(40).duration(220)}>
+                                    </ListItemAppear>
+                                    <ListItemAppear index={1}>
                                         <Typography.Body style={[styles.subtitle, { color: theme.textSecondary }]}>
                                             {t(isSignUp ? 'authSignUpSubtitle' : 'authSignInSubtitle')}
                                         </Typography.Body>
-                                    </Animated.View>
+                                    </ListItemAppear>
                                 </View>
 
-                                <Animated.View entering={FadeInDown.delay(80).duration(220)}>
+                                <ListItemAppear index={2}>
                                     <Button
                                         label={t('continueWithGoogle')}
                                         leftIcon={'google'}
@@ -295,20 +290,17 @@ export default function LoginScreen() {
                                         labelStyle={styles.googleButtonText}
                                         style={styles.googleButton}
                                     />
-                                </Animated.View>
+                                </ListItemAppear>
 
-                                <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
+                                <ListItemAppear index={3} style={styles.dividerRow}>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                                     <Typography.Meta style={{ color: theme.textSecondary }}>
                                         {t('orContinueWithEmail')}
                                     </Typography.Meta>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                                </Animated.View>
+                                </ListItemAppear>
 
-                                <Animated.View
-                                    entering={FadeInDown.delay(120).duration(220)}
-                                    style={{ gap: Spacing.sm }}
-                                >
+                                <ListItemAppear index={4} style={{ gap: Spacing.sm }}>
                                     <Typography.Label>{t('email')}</Typography.Label>
                                     <TextInput
                                         ref={emailInputRef}
@@ -331,12 +323,9 @@ export default function LoginScreen() {
                                             },
                                         ]}
                                     />
-                                </Animated.View>
+                                </ListItemAppear>
 
-                                <Animated.View
-                                    entering={FadeInDown.delay(140).duration(220)}
-                                    style={{ gap: Spacing.sm }}
-                                >
+                                <ListItemAppear index={5} style={{ gap: Spacing.sm }}>
                                     <Typography.Label>{t('password')}</Typography.Label>
                                     <View style={styles.passwordInputContainer}>
                                         <TextInput
@@ -377,14 +366,10 @@ export default function LoginScreen() {
                                             />
                                         ) : null}
                                     </View>
-                                </Animated.View>
+                                </ListItemAppear>
 
                                 {isSignUp && (
-                                    <Animated.View
-                                        layout={formLayoutTransition}
-                                        entering={FadeInDown.duration(180)}
-                                        style={{ gap: Spacing.sm }}
-                                    >
+                                    <Appear variant="down" style={{ gap: Spacing.sm }}>
                                         <Typography.Label>{t('confirmPassword')}</Typography.Label>
                                         <View style={styles.passwordInputContainer}>
                                             <TextInput
@@ -423,35 +408,23 @@ export default function LoginScreen() {
                                                 />
                                             ) : null}
                                         </View>
-                                    </Animated.View>
+                                    </Appear>
                                 )}
 
                                 {errorMessage ? (
-                                    <Animated.View
-                                        layout={formLayoutTransition}
-                                        entering={FadeInDown.duration(140)}
-                                        style={styles.errorArea}
-                                    >
+                                    <Appear key="error" variant="down" style={styles.errorArea}>
                                         <Typography.Body style={{ color: theme.error }}>{errorMessage}</Typography.Body>
-                                    </Animated.View>
+                                    </Appear>
                                 ) : isSignUp ? (
-                                    <Animated.View
-                                        layout={formLayoutTransition}
-                                        entering={FadeInDown.duration(140)}
-                                        style={styles.hintArea}
-                                    >
+                                    <Appear key="hint" variant="down" style={styles.hintArea}>
                                         <Typography.Meta style={{ color: theme.textSecondary }}>
                                             {t('passwordMinHint')}
                                         </Typography.Meta>
-                                    </Animated.View>
+                                    </Appear>
                                 ) : null}
 
                                 {authMode === 'guest' && guestDataExists && !isSignUp ? (
-                                    <Animated.View
-                                        layout={formLayoutTransition}
-                                        entering={FadeInDown.duration(160)}
-                                        style={styles.hintArea}
-                                    >
+                                    <Appear variant="down" style={styles.hintArea}>
                                         <Pressable
                                             style={[styles.migrationRow, { borderColor: theme.border }]}
                                             onPress={() => setMergeGuestDataOnSignIn((prev) => !prev)}
@@ -473,10 +446,10 @@ export default function LoginScreen() {
                                                 </Typography.Meta>
                                             </View>
                                         </Pressable>
-                                    </Animated.View>
+                                    </Appear>
                                 ) : null}
 
-                                <Animated.View entering={FadeInDown.delay(160).duration(220)}>
+                                <ListItemAppear index={6}>
                                     <Button
                                         label={t(isSignUp ? 'createAccount' : 'signIn')}
                                         onPress={submit}
@@ -484,15 +457,15 @@ export default function LoginScreen() {
                                         isLoading={isSubmitting}
                                         style={styles.submitButton}
                                     />
-                                </Animated.View>
-                                <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
+                                </ListItemAppear>
+                                <ListItemAppear index={7} style={styles.dividerRow}>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                                     <Typography.Meta style={{ color: theme.textSecondary }}>
                                         {t(isSignUp ? 'alreadyHaveAccount' : 'noAccountYet')}
                                     </Typography.Meta>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                                </Animated.View>
-                                <Animated.View entering={FadeInDown.delay(200).duration(220)}>
+                                </ListItemAppear>
+                                <ListItemAppear index={8}>
                                     <View style={styles.switchRow}>
                                         {isRemoteDataMode() ? (
                                             <Button
@@ -517,7 +490,7 @@ export default function LoginScreen() {
                                             labelStyle={styles.switchButtonText}
                                         />
                                     </View>
-                                </Animated.View>
+                                </ListItemAppear>
                             </Card>
                         </Animated.View>
                     </ScrollView>
