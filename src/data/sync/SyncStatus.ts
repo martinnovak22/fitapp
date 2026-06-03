@@ -10,21 +10,21 @@ export type SyncFailure = {
     reason: SyncFailureReason
 }
 
-export type SyncStatus =
+export type SyncStatusState =
     | { kind: 'idle' }
     | { kind: 'running' }
     | { kind: 'failed'; rows: SyncFailure[]; lastAttemptAt: string }
 
-export type SyncStatusListener = (status: SyncStatus) => void
+export type SyncStatusListener = (status: SyncStatusState) => void
 
 export type SyncStatusStore = {
-    get(): SyncStatus
-    set(next: SyncStatus): void
+    get(): SyncStatusState
+    set(next: SyncStatusState): void
     subscribe(listener: SyncStatusListener): () => void
 }
 
-export const createSyncStatusStore = (initial: SyncStatus = { kind: 'idle' }): SyncStatusStore => {
-    let current: SyncStatus = initial
+export const createSyncStatusStore = (initial: SyncStatusState = { kind: 'idle' }): SyncStatusStore => {
+    let current: SyncStatusState = initial
     const listeners = new Set<SyncStatusListener>()
     return {
         get: () => current,
