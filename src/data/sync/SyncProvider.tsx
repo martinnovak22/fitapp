@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AppState } from 'react-native'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { useAuth } from '@/src/modules/auth/useAuth'
-import { type SyncStatus as ObservableSyncStatus, syncStatusStore } from './SyncStatus'
+import { type SyncStatusState, syncStatusStore } from './SyncStatus'
 import { getSyncState, retryBlockedRows, runSync } from './syncService'
 
 // Sync polling is the dominant background cost when the user is idle. Issue #26
@@ -20,7 +20,7 @@ type SyncBannerStatus = {
     lastSuccessAt: string | null
     lastAttemptAt: string | null
     lastError: string | null
-    observable: ObservableSyncStatus
+    observable: SyncStatusState
 }
 
 type SyncContextValue = {
