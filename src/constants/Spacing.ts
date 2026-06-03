@@ -8,5 +8,3 @@ export const Spacing = {
     xl2: 40,
     xxl: 48,
 }
-
-export type SpacingType = typeof Spacing

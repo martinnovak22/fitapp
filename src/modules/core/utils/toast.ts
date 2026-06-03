@@ -1,17 +1,17 @@
 import Toast from 'react-native-toast-message'
 import { ToastAction, ToastIcon } from '../components/ToastConfig'
 
-export type ToastOptions = {
+type ToastOptions = {
     title: string
     message: string
     icon?: ToastIcon
 }
 
-export type ActionToastOptions = ToastOptions & {
+type ActionToastOptions = ToastOptions & {
     action: ToastAction
 }
 
-export type ConfirmToastOptions = ToastOptions & {
+type ConfirmToastOptions = ToastOptions & {
     action: ToastAction
     tone?: 'info' | 'danger'
 }

@@ -3,7 +3,7 @@
 // Sync push code reads only from this value, never from the live principal.
 // A cycle aborts cleanly when the live principal diverges from its snapshot.
 
-export type PrincipalMode = 'guest' | 'account'
+type PrincipalMode = 'guest' | 'account'
 
 export type PrincipalSnapshot = Readonly<{
     mode: PrincipalMode

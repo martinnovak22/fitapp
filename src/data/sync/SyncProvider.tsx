@@ -9,8 +9,8 @@ import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 // relaxes it from a 20s tick to a 60s base with exponential backoff up to 5min
 // when consecutive cycles produce no work. AppState 'active' and explicit user
 // retries reset the backoff so the next tick is prompt.
-export const SYNC_BASE_INTERVAL_MS = 60_000
-export const SYNC_MAX_INTERVAL_MS = 5 * 60_000
+const SYNC_BASE_INTERVAL_MS = 60_000
+const SYNC_MAX_INTERVAL_MS = 5 * 60_000
 
 type SyncBannerStatus = {
     isSyncing: boolean

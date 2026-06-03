@@ -59,7 +59,7 @@ const openConnection = async (): Promise<SQLite.SQLiteDatabase> => {
 // Drop the cached connection (best-effort close) so the next getDb() reopens.
 // Safe to call on a handle that is already dead — closeAsync just rejects and we
 // swallow it.
-export const resetDbConnection = async (): Promise<void> => {
+const resetDbConnection = async (): Promise<void> => {
     const stale = _db
     _db = null
     _opening = null

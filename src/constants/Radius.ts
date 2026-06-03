@@ -13,5 +13,3 @@ export const Radius = {
     lg: 20,
     pill: 9999,
 } as const
-
-export type RadiusToken = keyof typeof Radius
