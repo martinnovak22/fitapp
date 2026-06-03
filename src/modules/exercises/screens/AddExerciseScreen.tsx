@@ -1,30 +1,25 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import * as FileSystem from 'expo-file-system/legacy'
-import * as ImagePicker from 'expo-image-picker'
-import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
-import Animated from 'react-native-reanimated'
-import { Motion } from '@/src/constants/Motion'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
-import type { ExerciseType } from '@/src/db/exercises'
+import { ExerciseType } from '@/src/db/exercises'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
-import { Appear } from '@/src/modules/core/components/motion'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import * as FileSystem from 'expo-file-system/legacy'
+import * as ImagePicker from 'expo-image-picker'
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
 import { ScrollScreenLayout } from '../../core/components/ScreenLayout'
-
-// Hoisted: the form container is the single layout owner; don't allocate the
-// builder in render.
-const FORM_LAYOUT = Motion.layout()
+import { buildExerciseSavePayload, validateExerciseForm } from '../exerciseForm'
 
 type ExerciseFormScreenProps = {
     mode?: 'create' | 'edit'
@@ -114,8 +109,9 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     }
 
     const handleSave = useCallback(async () => {
-        if (!name.trim()) {
-            setNameError(t('enterName'))
+        const validation = validateExerciseForm({ name })
+        if (!validation.ok) {
+            setNameError(t(validation.nameError))
             nameInputRef.current?.focus()
             return
         }
@@ -129,20 +125,17 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                 finalPhotoUri = await savePhotoPermanently(photoUri)
             }
 
+            const payload = buildExerciseSavePayload({ name, muscle, type, photoUri: finalPhotoUri })
+
             if (isEditing) {
                 if (!resolvedExerciseId) return
-                await exerciseRepo.update(resolvedExerciseId, {
-                    name: name.trim(),
-                    muscle_group: muscle.trim().toLowerCase() || undefined,
-                    type: type.toLowerCase() as ExerciseType,
-                    photo_uri: finalPhotoUri,
-                })
+                await exerciseRepo.update(resolvedExerciseId, payload)
             } else {
                 await exerciseRepo.create(
-                    name.trim(),
-                    type.toLowerCase() as ExerciseType,
-                    muscle.trim().toLowerCase() || undefined,
-                    finalPhotoUri ?? undefined
+                    payload.name,
+                    payload.type,
+                    payload.muscle_group,
+                    payload.photo_uri ?? undefined
                 )
             }
             router.replace('/(tabs)/exercises')
@@ -159,7 +152,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
         } finally {
             setIsLoading(false)
         }
-    }, [name, muscle, type, photoUri, isEditing, resolvedExerciseId, exerciseRepo, t, savePhotoPermanently])
+    }, [name, muscle, type, photoUri, isEditing, resolvedExerciseId, exerciseRepo, t])
 
     const handleDelete = useCallback(() => {
         showToast.confirm({
@@ -230,7 +223,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     return (
         <ScrollScreenLayout>
             <Card style={{ padding: 0, overflow: 'hidden' }}>
-                <Animated.View layout={FORM_LAYOUT} style={{ padding: Spacing.md }}>
+                <Animated.View layout={LinearTransition.duration(300)} style={{ padding: Spacing.md }}>
                     <Typography.Subtitle style={{ marginBottom: Spacing.md }}>
                         {t('exerciseDetails')}
                     </Typography.Subtitle>
@@ -295,7 +288,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                     <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>
                         {t('exerciseType')}
                     </Typography.Subtitle>
-                    <View style={styles.typeContainer}>
+                    <Animated.View layout={LinearTransition.duration(300)} style={styles.typeContainer}>
                         {[
                             { label: t('typeWeight'), value: 'weight' as ExerciseType },
                             { label: t('typeCardio'), value: 'cardio' as ExerciseType },
@@ -328,11 +321,11 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                                 </TouchableOpacity>
                             )
                         })}
-                    </View>
+                    </Animated.View>
 
                     {/* Tracking Mode Toggle */}
                     {(type === 'bodyweight' || type === 'bodyweight_timer') && (
-                        <Appear style={{ marginTop: 20 }}>
+                        <Animated.View entering={FadeIn} layout={LinearTransition} style={{ marginTop: 20 }}>
                             <Typography.Label style={{ fontSize: FontSize.xs, marginBottom: 6 }}>
                                 {t('trackingMode')}
                             </Typography.Label>
@@ -398,10 +391,10 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                                     </Typography.Meta>
                                 </TouchableOpacity>
                             </View>
-                        </Appear>
+                        </Animated.View>
                     )}
 
-                    <Appear style={styles.photoSection}>
+                    <Animated.View entering={FadeIn} layout={LinearTransition} style={styles.photoSection}>
                         <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>
                             {t('photo')}
                         </Typography.Subtitle>
@@ -447,7 +440,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                                 </Typography.Meta>
                             </TouchableOpacity>
                         )}
-                    </Appear>
+                    </Animated.View>
                 </Animated.View>
                 {photoUri && (
                     <FullScreenImageModal
