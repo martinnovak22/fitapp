@@ -1,117 +1,70 @@
+import { Radius } from '@/src/constants/Radius'
+import { Spacing } from '@/src/constants/Spacing'
+import { FontWeight } from '@/src/constants/Typography'
+import { Button } from '@/src/modules/core/components/Button'
+import { Card } from '@/src/modules/core/components/Card'
+import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { isRemoteDataMode } from '@/src/modules/auth/authMode'
+import { useLoginForm } from '@/src/modules/auth/useLoginForm'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import * as Linking from 'expo-linking'
-import { router, useLocalSearchParams } from 'expo-router'
-import * as WebBrowser from 'expo-web-browser'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     Keyboard,
     KeyboardAvoidingView,
     Platform,
     Pressable,
-    ScrollView,
     StyleSheet,
+    ScrollView,
     TextInput,
     TouchableWithoutFeedback,
     View,
 } from 'react-native'
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
-import { Duration, Motion } from '@/src/constants/Motion'
-import { Radius } from '@/src/constants/Radius'
-import { Spacing } from '@/src/constants/Spacing'
-import { FontWeight } from '@/src/constants/Typography'
-import {
-    EMAIL_CONFIRMATION_REQUIRED_CODE,
-    getSupabaseOAuthAuthorizeUrl,
-    SupabaseAuthError,
-} from '@/src/data/remote/supabase/auth'
-import { hasLocalUserData } from '@/src/db/reset'
-import { isRemoteDataMode } from '@/src/modules/auth/authMode'
-import { useAuth } from '@/src/modules/auth/useAuth'
-import { Button } from '@/src/modules/core/components/Button'
-import { Card } from '@/src/modules/core/components/Card'
-import { Appear, ListItemAppear } from '@/src/modules/core/components/motion'
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
-import { Typography } from '@/src/modules/core/components/Typography'
-import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { showToast } from '@/src/modules/core/utils/toast'
+import Animated, {
+    FadeInDown,
+    LinearTransition,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
+} from 'react-native-reanimated'
 
-type AuthMode = 'signin' | 'signup'
-
-const MIN_PASSWORD_LENGTH = 6
+const formLayoutTransition = LinearTransition.duration(220)
 const cardMaxWidth = 520
-
-const isValidEmail = (value: string): boolean => {
-    const normalized = value.trim()
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
-}
-
-const mapAuthErrorToMessage = (message: string, t: (key: string) => string): string => {
-    const normalized = message.toLowerCase()
-    if (normalized.includes('invalid login credentials')) return t('authInvalidCredentials')
-    if (normalized.includes('email not confirmed')) return t('authEmailNotConfirmed')
-    if (normalized.includes('redirect_to') || (normalized.includes('redirect') && normalized.includes('not allowed'))) {
-        return 'Auth redirect URL is not allowed. Check Supabase Redirect URLs.'
-    }
-    return message.trim() || t('authUnknownError')
-}
 
 export default function LoginScreen() {
     const { t } = useTranslation()
     const { theme } = useTheme()
-    const { authMode, isAuthenticated, continueAsGuest, signIn, signInWithOAuthRedirectUrl, signUp } = useAuth()
-    const { mode: modeParam } = useLocalSearchParams<{ mode?: string | string[] }>()
+    const form = useLoginForm()
+    const {
+        isSignUp,
+        email,
+        password,
+        confirmPassword,
+        isPasswordVisible,
+        isConfirmPasswordVisible,
+        isSubmitting,
+        isGoogleSubmitting,
+        errorMessage,
+        guestDataExists,
+        mergeGuestDataOnSignIn,
+        canSubmit,
+        isGuest,
+        setEmail,
+        setPassword,
+        setConfirmPassword,
+        setIsPasswordVisible,
+        setIsConfirmPasswordVisible,
+        toggleMergeGuestData,
+        switchMode,
+        submit,
+        submitGoogle,
+        continueAsGuest,
+    } = form
 
-    const [mode, setMode] = useState<AuthMode>('signin')
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [confirmPassword, setConfirmPassword] = useState('')
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
-    const [errorMessage, setErrorMessage] = useState<string | null>(null)
-    const [guestDataExists, setGuestDataExists] = useState(false)
-    const [mergeGuestDataOnSignIn, setMergeGuestDataOnSignIn] = useState(false)
-    const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-    const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false)
     const emailInputRef = useRef<TextInput>(null)
-    const handledOAuthUrlRef = useRef<string | null>(null)
     const keyboardOffset = useSharedValue(0)
-
-    const isSignUp = mode === 'signup'
-
-    useEffect(() => {
-        if (isAuthenticated && authMode === 'account') {
-            router.replace('/landing')
-        }
-    }, [authMode, isAuthenticated])
-
-    useEffect(() => {
-        const requestedMode = Array.isArray(modeParam) ? modeParam[0] : modeParam
-        if (requestedMode !== 'signin' && requestedMode !== 'signup') return
-        setMode(requestedMode)
-    }, [modeParam])
-
-    useEffect(() => {
-        const refreshGuestDataState = async () => {
-            if (authMode !== 'guest') {
-                setGuestDataExists(false)
-                setMergeGuestDataOnSignIn(false)
-                return
-            }
-
-            try {
-                const hasData = await hasLocalUserData()
-                setGuestDataExists(hasData)
-                setMergeGuestDataOnSignIn(hasData && isSignUp)
-            } catch (error) {
-                console.error('Failed to detect local guest data:', error)
-                setGuestDataExists(false)
-                setMergeGuestDataOnSignIn(false)
-            }
-        }
-
-        void refreshGuestDataState()
-    }, [authMode, isSignUp])
 
     useEffect(() => {
         const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
@@ -119,10 +72,10 @@ export default function LoginScreen() {
 
         const showSubscription = Keyboard.addListener(showEvent, (event) => {
             const keyboardHeight = event.endCoordinates?.height ?? 0
-            keyboardOffset.value = withTiming(Math.min(keyboardHeight * 0.42, 140), { duration: Duration.base })
+            keyboardOffset.value = withTiming(Math.min(keyboardHeight * 0.42, 140), { duration: 180 })
         })
         const hideSubscription = Keyboard.addListener(hideEvent, () => {
-            keyboardOffset.value = withTiming(0, { duration: Duration.base })
+            keyboardOffset.value = withTiming(0, { duration: 180 })
         })
 
         return () => {
@@ -135,126 +88,6 @@ export default function LoginScreen() {
         transform: [{ translateY: -keyboardOffset.value }],
     }))
 
-    const canSubmit = useMemo(() => {
-        if (!isValidEmail(email) || password.length < MIN_PASSWORD_LENGTH) return false
-        if (isSignUp && password !== confirmPassword) return false
-        return true
-    }, [confirmPassword, email, isSignUp, password])
-
-    const showEmailConfirmationToast = (value: string) => {
-        showToast.info({
-            title: t('checkYourEmail'),
-            message: t('checkYourEmailDescription', { email: value }),
-        })
-    }
-
-    const completeGoogleSignInFromUrl = useCallback(
-        async (url: string) => {
-            if (!url.includes('access_token=') || !url.includes('refresh_token=')) return false
-            if (handledOAuthUrlRef.current === url) return true
-            handledOAuthUrlRef.current = url
-
-            setIsGoogleSubmitting(true)
-            setErrorMessage(null)
-            try {
-                const applied = await signInWithOAuthRedirectUrl(url, {
-                    migrationPolicy: mergeGuestDataOnSignIn ? 'preserve' : 'clear',
-                })
-                if (!applied) return false
-                router.replace('/landing')
-                return true
-            } catch (error) {
-                const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError')
-                setErrorMessage(message)
-                return false
-            } finally {
-                setIsGoogleSubmitting(false)
-            }
-        },
-        [mergeGuestDataOnSignIn, signInWithOAuthRedirectUrl, t]
-    )
-
-    useEffect(() => {
-        const subscription = Linking.addEventListener('url', (event) => {
-            void completeGoogleSignInFromUrl(event.url)
-        })
-        return () => {
-            subscription.remove()
-        }
-    }, [completeGoogleSignInFromUrl])
-
-    useEffect(() => {
-        const hydrateFromInitialUrl = async () => {
-            const initialUrl = await Linking.getInitialURL()
-            if (!initialUrl) return
-            await completeGoogleSignInFromUrl(initialUrl)
-        }
-        void hydrateFromInitialUrl()
-    }, [completeGoogleSignInFromUrl])
-
-    const submitGoogle = async () => {
-        if (isSubmitting || isGoogleSubmitting) return
-
-        setErrorMessage(null)
-        setIsGoogleSubmitting(true)
-        try {
-            const redirectTo = process.env.EXPO_PUBLIC_SUPABASE_EMAIL_REDIRECT_TO?.trim() || Linking.createURL('login')
-            const authUrl = getSupabaseOAuthAuthorizeUrl('google', redirectTo)
-            const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectTo)
-            if (result.type === 'success' && result.url) {
-                await completeGoogleSignInFromUrl(result.url)
-            }
-        } catch (error) {
-            const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError')
-            setErrorMessage(message)
-        }
-        setIsGoogleSubmitting(false)
-    }
-
-    const submit = async () => {
-        if (isSubmitting) return
-        const normalizedEmail = email.trim()
-
-        if (!isValidEmail(normalizedEmail)) {
-            setErrorMessage(t('validationEmailInvalid'))
-            return
-        }
-        if (password.length < MIN_PASSWORD_LENGTH) {
-            setErrorMessage(t('validationPasswordMin'))
-            return
-        }
-        if (isSignUp && password !== confirmPassword) {
-            setErrorMessage(t('validationPasswordMismatch'))
-            return
-        }
-
-        setIsSubmitting(true)
-        setErrorMessage(null)
-        try {
-            if (isSignUp) {
-                await signUp(normalizedEmail, password)
-                router.replace('/landing')
-            } else {
-                await signIn(normalizedEmail, password, {
-                    migrationPolicy: mergeGuestDataOnSignIn ? 'preserve' : 'clear',
-                })
-                router.replace('/landing')
-            }
-        } catch (error) {
-            if (error instanceof SupabaseAuthError && error.code === EMAIL_CONFIRMATION_REQUIRED_CODE) {
-                showEmailConfirmationToast(normalizedEmail)
-                setMode('signin')
-                setPassword('')
-                setConfirmPassword('')
-                return
-            }
-            const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError')
-            setErrorMessage(message)
-        } finally {
-            setIsSubmitting(false)
-        }
-    }
-
     return (
         <ScreenLayout style={styles.container}>
             <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -264,22 +97,22 @@ export default function LoginScreen() {
                         keyboardShouldPersistTaps={'handled'}
                         showsVerticalScrollIndicator={false}
                     >
-                        <Animated.View layout={Motion.layout()} style={[styles.cardWrapper, cardAnimatedStyle]}>
+                        <Animated.View layout={formLayoutTransition} style={[styles.cardWrapper, cardAnimatedStyle]}>
                             <Card style={styles.card}>
                                 <View style={{ marginBottom: Spacing.sm }}>
-                                    <ListItemAppear index={0}>
+                                    <Animated.View entering={FadeInDown.duration(220)}>
                                         <Typography.Title style={styles.title}>
                                             {t(isSignUp ? 'createAccount' : 'welcomeBack')}
                                         </Typography.Title>
-                                    </ListItemAppear>
-                                    <ListItemAppear index={1}>
+                                    </Animated.View>
+                                    <Animated.View entering={FadeInDown.delay(40).duration(220)}>
                                         <Typography.Body style={[styles.subtitle, { color: theme.textSecondary }]}>
                                             {t(isSignUp ? 'authSignUpSubtitle' : 'authSignInSubtitle')}
                                         </Typography.Body>
-                                    </ListItemAppear>
+                                    </Animated.View>
                                 </View>
 
-                                <ListItemAppear index={2}>
+                                <Animated.View entering={FadeInDown.delay(80).duration(220)}>
                                     <Button
                                         label={t('continueWithGoogle')}
                                         leftIcon={'google'}
@@ -290,17 +123,20 @@ export default function LoginScreen() {
                                         labelStyle={styles.googleButtonText}
                                         style={styles.googleButton}
                                     />
-                                </ListItemAppear>
+                                </Animated.View>
 
-                                <ListItemAppear index={3} style={styles.dividerRow}>
+                                <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                                     <Typography.Meta style={{ color: theme.textSecondary }}>
                                         {t('orContinueWithEmail')}
                                     </Typography.Meta>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                                </ListItemAppear>
+                                </Animated.View>
 
-                                <ListItemAppear index={4} style={{ gap: Spacing.sm }}>
+                                <Animated.View
+                                    entering={FadeInDown.delay(120).duration(220)}
+                                    style={{ gap: Spacing.sm }}
+                                >
                                     <Typography.Label>{t('email')}</Typography.Label>
                                     <TextInput
                                         ref={emailInputRef}
@@ -323,9 +159,12 @@ export default function LoginScreen() {
                                             },
                                         ]}
                                     />
-                                </ListItemAppear>
+                                </Animated.View>
 
-                                <ListItemAppear index={5} style={{ gap: Spacing.sm }}>
+                                <Animated.View
+                                    entering={FadeInDown.delay(140).duration(220)}
+                                    style={{ gap: Spacing.sm }}
+                                >
                                     <Typography.Label>{t('password')}</Typography.Label>
                                     <View style={styles.passwordInputContainer}>
                                         <TextInput
@@ -366,10 +205,14 @@ export default function LoginScreen() {
                                             />
                                         ) : null}
                                     </View>
-                                </ListItemAppear>
+                                </Animated.View>
 
                                 {isSignUp && (
-                                    <Appear variant="down" style={{ gap: Spacing.sm }}>
+                                    <Animated.View
+                                        layout={formLayoutTransition}
+                                        entering={FadeInDown.duration(180)}
+                                        style={{ gap: Spacing.sm }}
+                                    >
                                         <Typography.Label>{t('confirmPassword')}</Typography.Label>
                                         <View style={styles.passwordInputContainer}>
                                             <TextInput
@@ -408,26 +251,38 @@ export default function LoginScreen() {
                                                 />
                                             ) : null}
                                         </View>
-                                    </Appear>
+                                    </Animated.View>
                                 )}
 
                                 {errorMessage ? (
-                                    <Appear key="error" variant="down" style={styles.errorArea}>
+                                    <Animated.View
+                                        layout={formLayoutTransition}
+                                        entering={FadeInDown.duration(140)}
+                                        style={styles.errorArea}
+                                    >
                                         <Typography.Body style={{ color: theme.error }}>{errorMessage}</Typography.Body>
-                                    </Appear>
+                                    </Animated.View>
                                 ) : isSignUp ? (
-                                    <Appear key="hint" variant="down" style={styles.hintArea}>
+                                    <Animated.View
+                                        layout={formLayoutTransition}
+                                        entering={FadeInDown.duration(140)}
+                                        style={styles.hintArea}
+                                    >
                                         <Typography.Meta style={{ color: theme.textSecondary }}>
                                             {t('passwordMinHint')}
                                         </Typography.Meta>
-                                    </Appear>
+                                    </Animated.View>
                                 ) : null}
 
-                                {authMode === 'guest' && guestDataExists && !isSignUp ? (
-                                    <Appear variant="down" style={styles.hintArea}>
+                                {isGuest && guestDataExists && !isSignUp ? (
+                                    <Animated.View
+                                        layout={formLayoutTransition}
+                                        entering={FadeInDown.duration(160)}
+                                        style={styles.hintArea}
+                                    >
                                         <Pressable
                                             style={[styles.migrationRow, { borderColor: theme.border }]}
-                                            onPress={() => setMergeGuestDataOnSignIn((prev) => !prev)}
+                                            onPress={toggleMergeGuestData}
                                             accessibilityRole={'checkbox'}
                                             accessibilityLabel={t('mergeGuestDataLabel')}
                                             accessibilityState={{ checked: mergeGuestDataOnSignIn }}
@@ -446,10 +301,10 @@ export default function LoginScreen() {
                                                 </Typography.Meta>
                                             </View>
                                         </Pressable>
-                                    </Appear>
+                                    </Animated.View>
                                 ) : null}
 
-                                <ListItemAppear index={6}>
+                                <Animated.View entering={FadeInDown.delay(160).duration(220)}>
                                     <Button
                                         label={t(isSignUp ? 'createAccount' : 'signIn')}
                                         onPress={submit}
@@ -457,23 +312,20 @@ export default function LoginScreen() {
                                         isLoading={isSubmitting}
                                         style={styles.submitButton}
                                     />
-                                </ListItemAppear>
-                                <ListItemAppear index={7} style={styles.dividerRow}>
+                                </Animated.View>
+                                <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                                     <Typography.Meta style={{ color: theme.textSecondary }}>
                                         {t(isSignUp ? 'alreadyHaveAccount' : 'noAccountYet')}
                                     </Typography.Meta>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                                </ListItemAppear>
-                                <ListItemAppear index={8}>
+                                </Animated.View>
+                                <Animated.View entering={FadeInDown.delay(200).duration(220)}>
                                     <View style={styles.switchRow}>
                                         {isRemoteDataMode() ? (
                                             <Button
                                                 label={t('continueAsGuest')}
-                                                onPress={async () => {
-                                                    await continueAsGuest()
-                                                    router.replace('/landing')
-                                                }}
+                                                onPress={continueAsGuest}
                                                 variant={'text'}
                                                 size={'sm'}
                                                 labelStyle={styles.switchButtonText}
@@ -481,16 +333,13 @@ export default function LoginScreen() {
                                         ) : null}
                                         <Button
                                             label={t(isSignUp ? 'signIn' : 'signUp')}
-                                            onPress={() => {
-                                                setMode(isSignUp ? 'signin' : 'signup')
-                                                setErrorMessage(null)
-                                            }}
+                                            onPress={switchMode}
                                             variant={'text'}
                                             size={'sm'}
                                             labelStyle={styles.switchButtonText}
                                         />
                                     </View>
-                                </ListItemAppear>
+                                </Animated.View>
                             </Card>
                         </Animated.View>
                     </ScrollView>
