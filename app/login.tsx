@@ -10,13 +10,8 @@ import {
     TouchableWithoutFeedback,
     View,
 } from 'react-native'
-import Animated, {
-    FadeInDown,
-    LinearTransition,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
-} from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import { Motion } from '@/src/constants/Motion'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontWeight } from '@/src/constants/Typography'
 import { EmailField } from '@/src/modules/auth/components/EmailField'
@@ -28,11 +23,14 @@ import { PasswordField } from '@/src/modules/auth/components/PasswordField'
 import { useLoginForm } from '@/src/modules/auth/useLoginForm'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
+import { Appear } from '@/src/modules/core/components/motion'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 
-const formLayoutTransition = LinearTransition.duration(220)
+// The card owns the single layout transition so the whole form reflows on one
+// clock when the confirm-password field appears/disappears.
+const cardLayout = Motion.layout()
 const cardMaxWidth = 520
 
 export default function LoginScreen() {
@@ -99,11 +97,11 @@ export default function LoginScreen() {
                         keyboardShouldPersistTaps={'handled'}
                         showsVerticalScrollIndicator={false}
                     >
-                        <Animated.View layout={formLayoutTransition} style={[styles.cardWrapper, cardAnimatedStyle]}>
+                        <Animated.View layout={cardLayout} style={[styles.cardWrapper, cardAnimatedStyle]}>
                             <Card style={styles.card}>
                                 <LoginHeader isSignUp={isSignUp} />
 
-                                <Animated.View entering={FadeInDown.delay(80).duration(220)}>
+                                <Appear variant="down" delayMs={80}>
                                     <Button
                                         label={t('continueWithGoogle')}
                                         leftIcon={'google'}
@@ -114,27 +112,21 @@ export default function LoginScreen() {
                                         labelStyle={styles.googleButtonText}
                                         style={styles.googleButton}
                                     />
-                                </Animated.View>
+                                </Appear>
 
-                                <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
+                                <Appear variant="down" delayMs={100} style={styles.dividerRow}>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                                     <Typography.Meta style={{ color: theme.textSecondary }}>
                                         {t('orContinueWithEmail')}
                                     </Typography.Meta>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                                </Animated.View>
+                                </Appear>
 
-                                <Animated.View
-                                    entering={FadeInDown.delay(120).duration(220)}
-                                    style={{ gap: Spacing.sm }}
-                                >
+                                <Appear variant="down" delayMs={120} style={styles.fieldGroup}>
                                     <EmailField ref={emailInputRef} value={email} onChangeText={setEmail} />
-                                </Animated.View>
+                                </Appear>
 
-                                <Animated.View
-                                    entering={FadeInDown.delay(140).duration(220)}
-                                    style={{ gap: Spacing.sm }}
-                                >
+                                <Appear variant="down" delayMs={140} style={styles.fieldGroup}>
                                     <PasswordField
                                         label={t('password')}
                                         value={password}
@@ -150,14 +142,10 @@ export default function LoginScreen() {
                                             }
                                         }}
                                     />
-                                </Animated.View>
+                                </Appear>
 
                                 {isSignUp && (
-                                    <Animated.View
-                                        layout={formLayoutTransition}
-                                        entering={FadeInDown.duration(180)}
-                                        style={{ gap: Spacing.sm }}
-                                    >
+                                    <Appear variant="down" style={styles.fieldGroup}>
                                         <PasswordField
                                             label={t('confirmPassword')}
                                             value={confirmPassword}
@@ -171,7 +159,7 @@ export default function LoginScreen() {
                                             returnKeyType={'done'}
                                             onSubmitEditing={submit}
                                         />
-                                    </Animated.View>
+                                    </Appear>
                                 )}
 
                                 <LoginFormStatus errorMessage={errorMessage} isSignUp={isSignUp} />
@@ -182,7 +170,7 @@ export default function LoginScreen() {
                                     onToggle={toggleMergeGuestData}
                                 />
 
-                                <Animated.View entering={FadeInDown.delay(160).duration(220)}>
+                                <Appear variant="down" delayMs={160}>
                                     <Button
                                         label={t(isSignUp ? 'createAccount' : 'signIn')}
                                         onPress={submit}
@@ -190,21 +178,21 @@ export default function LoginScreen() {
                                         isLoading={isSubmitting}
                                         style={styles.submitButton}
                                     />
-                                </Animated.View>
-                                <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
+                                </Appear>
+                                <Appear variant="down" delayMs={100} style={styles.dividerRow}>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                                     <Typography.Meta style={{ color: theme.textSecondary }}>
                                         {t(isSignUp ? 'alreadyHaveAccount' : 'noAccountYet')}
                                     </Typography.Meta>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                                </Animated.View>
-                                <Animated.View entering={FadeInDown.delay(200).duration(220)}>
+                                </Appear>
+                                <Appear variant="down" delayMs={200}>
                                     <LoginModeSwitch
                                         isSignUp={isSignUp}
                                         onSwitchMode={switchMode}
                                         onContinueAsGuest={continueAsGuest}
                                     />
-                                </Animated.View>
+                                </Appear>
                             </Card>
                         </Animated.View>
                     </ScrollView>
@@ -227,6 +215,9 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: cardMaxWidth,
         alignSelf: 'center',
+    },
+    fieldGroup: {
+        gap: Spacing.sm,
     },
     card: {
         marginBottom: 0,
