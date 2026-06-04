@@ -1,6 +1,7 @@
 import { buildPrincipalWhereClause, getScopedUserId } from '@/src/data/principal'
 import { getDb } from './client'
 import { createEntityUuid, nowIso, recordDeletionTombstone, type SyncStatus, softDeleteById } from './sync'
+import { buildSetMetricColumns, resolveNextSetPosition } from './setWriteValues'
 import { executeWrite, executeWriteTransaction } from './writeQueue'
 
 export interface Workout {
@@ -206,7 +207,8 @@ export const WorkoutRepository = {
                 workoutId,
                 ...setScope.params
             )
-            const nextPosition = lastSet ? lastSet.position + 1 : 0
+            const nextPosition = resolveNextSetPosition(lastSet)
+            const metrics = buildSetMetricColumns(data)
             const now = nowIso()
 
             await db.runAsync(
@@ -217,12 +219,12 @@ export const WorkoutRepository = {
                 getScopedUserId(),
                 workoutId,
                 exerciseId,
-                data.weight ?? null,
-                data.reps ?? null,
-                data.distance ?? null,
-                data.duration ?? null,
+                metrics.weight,
+                metrics.reps,
+                metrics.distance,
+                metrics.duration,
                 nextPosition,
-                data.sub_sets ?? null,
+                metrics.sub_sets,
                 now,
                 now,
                 'dirty'
