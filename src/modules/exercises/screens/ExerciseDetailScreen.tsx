@@ -3,8 +3,7 @@ import { useIsFocused } from '@react-navigation/native'
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 'react-native'
-import { Radius } from '@/src/constants/Radius'
+import { ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
 import { getRepositories } from '@/src/data/repositories'
 import type { Exercise } from '@/src/db/exercises'
@@ -19,8 +18,8 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { type BestSetEntry, ExerciseStats, type SessionSummary } from '@/src/modules/exercises/ExerciseStats'
 import type { PrimaryMetric } from '@/src/modules/exercises/ExerciseTypeMetadata'
-import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
-import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph'
+import { ExerciseHistorySection } from './components/ExerciseHistorySection'
+import { ExerciseInfoRow } from './components/ExerciseInfoRow'
 
 export default function ExerciseDetailScreen() {
     const { exercises: exerciseRepo } = getRepositories()
@@ -210,78 +209,16 @@ export default function ExerciseDetailScreen() {
             nestedScrollEnabled={true}
         >
             <Card style={{ marginTop: Spacing.md }}>
-                <View
-                    style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        height: 120,
-                        marginBottom: Spacing.md,
-                    }}
-                >
-                    <View style={{ flexDirection: 'column', gap: Spacing.md, justifyContent: 'space-between' }}>
-                        <View style={{ gap: Spacing.sm }}>
-                            <Typography.Label>{t('type')}</Typography.Label>
-                            <Typography.Body>{t(formatExerciseType(exercise.type))}</Typography.Body>
-                        </View>
-                        <View style={{ gap: Spacing.sm }}>
-                            <Typography.Label>{t('muscleGroup')}</Typography.Label>
-                            <Typography.Body>
-                                {exercise.muscle_group ? formatMuscleGroup(exercise.muscle_group) : t('notSpecified')}
-                            </Typography.Body>
-                        </View>
-                    </View>
-
-                    {exercise.photo_uri && (
-                        <TouchableOpacity
-                            style={[
-                                styles.photoContainer,
-                                { backgroundColor: theme.surfaceSubtle, borderColor: theme.border },
-                            ]}
-                            onPress={() => setShowImageFullScreen(true)}
-                            activeOpacity={0.9}
-                        >
-                            <Image key={exercise.photo_uri} source={{ uri: exercise.photo_uri }} style={styles.photo} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-                {historyLoading ? (
-                    <Appear key="loading" style={styles.historyLoading}>
-                        <ActivityIndicator size={'small'} color={theme.primary} />
-                        <Typography.Meta style={styles.loadingText}>{t('loading')}</Typography.Meta>
-                    </Appear>
-                ) : historyError ? (
-                    <Appear key="error" style={styles.historyError}>
-                        <EmptyState
-                            message={historyError}
-                            icon={'line-chart'}
-                            style={{ backgroundColor: theme.surface }}
-                        />
-                        <Button
-                            label={t('retry')}
-                            onPress={() => loadHistory(exercise.id)}
-                            variant={'outline'}
-                            style={styles.retryButton}
-                            accessibilityHint={t('failedToLoadHistory')}
-                        />
-                    </Appear>
-                ) : historyData.length > 0 ? (
-                    <Appear key="graph">
-                        <ExerciseHistoryGraph
-                            exercise={exercise}
-                            data={historyData}
-                            summary={historySummary}
-                            dominantMetric={dominantMetric}
-                        />
-                    </Appear>
-                ) : (
-                    <Appear key="empty">
-                        <EmptyState
-                            message={t('statsComingSoon')}
-                            icon={'line-chart'}
-                            style={{ backgroundColor: theme.surface }}
-                        />
-                    </Appear>
-                )}
+                <ExerciseInfoRow exercise={exercise} onOpenPhoto={() => setShowImageFullScreen(true)} />
+                <ExerciseHistorySection
+                    exercise={exercise}
+                    historyData={historyData}
+                    historySummary={historySummary}
+                    dominantMetric={dominantMetric}
+                    historyLoading={historyLoading}
+                    historyError={historyError}
+                    onRetry={() => loadHistory(exercise.id)}
+                />
             </Card>
             <FullScreenImageModal
                 visible={showImageFullScreen}
@@ -301,31 +238,8 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: Spacing.xs,
     },
-    historyLoading: {
-        marginTop: Spacing.md,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: Spacing.sm,
-        minHeight: 120,
-    },
-    historyError: {
-        marginTop: Spacing.md,
-    },
     retryButton: {
         marginTop: Spacing.md,
-    },
-    photoContainer: {
-        width: '50%',
-        height: 120,
-        borderRadius: Radius.md,
-        overflow: 'hidden',
-        borderWidth: 1,
-    },
-
-    photo: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
     },
     headerBack: {
         paddingLeft: Spacing.md,
