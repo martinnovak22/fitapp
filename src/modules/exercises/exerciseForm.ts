@@ -47,3 +47,103 @@ export function buildExerciseSavePayload(fields: ExerciseFormFields): ExerciseSa
         photo_uri: fields.photoUri,
     }
 }
+
+/**
+ * Whether a picked photo still needs to be copied into permanent app storage.
+ * A photo is persisted only when it exists, the document directory is known, and
+ * the uri does not already point inside that directory.
+ */
+export function shouldPersistPhoto(photoUri: string | null, docDir: string | null): boolean {
+    if (!photoUri || !docDir) return false
+    return !photoUri.includes(docDir)
+}
+
+/**
+ * The save decision for a validated submit: which repository write to perform.
+ * `invalid` carries the field error; `noop` covers an edit with no resolved id;
+ * `create`/`update` tell the screen which write path to take.
+ */
+export type ExerciseSavePlan =
+    | { kind: 'invalid'; nameError: string }
+    | { kind: 'create' }
+    | { kind: 'update'; exerciseId: number }
+    | { kind: 'noop' }
+
+export function resolveExerciseSavePlan(input: {
+    name: string
+    isEditing: boolean
+    resolvedExerciseId: number | undefined
+}): ExerciseSavePlan {
+    const validation = validateExerciseForm({ name: input.name })
+    if (!validation.ok) {
+        return { kind: 'invalid', nameError: validation.nameError }
+    }
+    if (!input.isEditing) {
+        return { kind: 'create' }
+    }
+    if (input.resolvedExerciseId === undefined) {
+        return { kind: 'noop' }
+    }
+    return { kind: 'update', exerciseId: input.resolvedExerciseId }
+}
+
+/** Translation keys + interpolated name for the success toast after a save. */
+export type ExerciseSavedToast = {
+    titleKey: string
+    messageNameKey: string
+    name: string
+}
+
+/**
+ * The success-toast content for a saved exercise: editing reports an update,
+ * otherwise a creation. The screen passes the keys through i18n.
+ */
+export function resolveExerciseSavedToast(isEditing: boolean, name: string): ExerciseSavedToast {
+    return isEditing
+        ? { titleKey: 'exerciseUpdated', messageNameKey: 'updated', name }
+        : { titleKey: 'exerciseCreated', messageNameKey: 'ready', name }
+}
+
+/** A selectable exercise type chip with its active state for the current type. */
+export type ExerciseTypeOption = {
+    value: ExerciseType
+    labelKey: string
+    isActive: boolean
+}
+
+/**
+ * The three primary exercise-type chips with their active state. `bodyweight_timer`
+ * shares the `bodyweight` chip, so that chip reads active for both bodyweight modes.
+ */
+export function resolveExerciseTypeOptions(type: ExerciseType): ExerciseTypeOption[] {
+    return [
+        { value: 'weight', labelKey: 'typeWeight' },
+        { value: 'cardio', labelKey: 'typeCardio' },
+        { value: 'bodyweight', labelKey: 'typeBodyweight' },
+    ].map((option) => ({
+        ...option,
+        value: option.value as ExerciseType,
+        isActive: type === option.value || (option.value === 'bodyweight' && type === 'bodyweight_timer'),
+    }))
+}
+
+/** A reps/timer tracking-mode toggle option with its active state. */
+export type TrackingModeOption = {
+    value: Extract<ExerciseType, 'bodyweight' | 'bodyweight_timer'>
+    labelKey: string
+    isActive: boolean
+}
+
+/**
+ * The reps/timer sub-toggle shown only for bodyweight exercises; null for any
+ * other type, which is how the screen decides whether to render it at all.
+ */
+export function resolveTrackingModeToggle(type: ExerciseType): TrackingModeOption[] | null {
+    if (type !== 'bodyweight' && type !== 'bodyweight_timer') {
+        return null
+    }
+    return [
+        { value: 'bodyweight', labelKey: 'reps', isActive: type === 'bodyweight' },
+        { value: 'bodyweight_timer', labelKey: 'timer', isActive: type === 'bodyweight_timer' },
+    ]
+}

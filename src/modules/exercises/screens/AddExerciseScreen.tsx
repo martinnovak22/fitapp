@@ -1,25 +1,28 @@
-import { Radius } from '@/src/constants/Radius'
-import { Spacing } from '@/src/constants/Spacing'
-import { GlobalStyles } from '@/src/constants/Styles'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
-import { getRepositories } from '@/src/data/repositories'
-import { ExerciseType } from '@/src/db/exercises'
-import { Button } from '@/src/modules/core/components/Button'
-import { Card } from '@/src/modules/core/components/Card'
-import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
-import { Typography } from '@/src/modules/core/components/Typography'
-import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { showToast } from '@/src/modules/core/utils/toast'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as ImagePicker from 'expo-image-picker'
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
-import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
+import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
+import Animated, { LinearTransition } from 'react-native-reanimated'
+import { Spacing } from '@/src/constants/Spacing'
+import { GlobalStyles } from '@/src/constants/Styles'
+import { getRepositories } from '@/src/data/repositories'
+import type { ExerciseType } from '@/src/db/exercises'
+import { Card } from '@/src/modules/core/components/Card'
+import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { showToast } from '@/src/modules/core/utils/toast'
 import { ScrollScreenLayout } from '../../core/components/ScreenLayout'
-import { buildExerciseSavePayload, validateExerciseForm } from '../exerciseForm'
+import {
+    buildExerciseSavePayload,
+    resolveExerciseSavedToast,
+    resolveExerciseSavePlan,
+    shouldPersistPhoto,
+} from '../exerciseForm'
+import { ExercisePhotoField, ExerciseTypeSelector, TrackingModeToggle } from './components/ExerciseFormSections'
 
 type ExerciseFormScreenProps = {
     mode?: 'create' | 'edit'
@@ -109,27 +112,26 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     }
 
     const handleSave = useCallback(async () => {
-        const validation = validateExerciseForm({ name })
-        if (!validation.ok) {
-            setNameError(t(validation.nameError))
+        const plan = resolveExerciseSavePlan({ name, isEditing, resolvedExerciseId })
+        if (plan.kind === 'invalid') {
+            setNameError(t(plan.nameError))
             nameInputRef.current?.focus()
             return
         }
+        if (plan.kind === 'noop') return
         setNameError('')
 
         setIsLoading(true)
         try {
             let finalPhotoUri = photoUri
-            const docDir = FileSystem.documentDirectory
-            if (photoUri && docDir && !photoUri.includes(docDir)) {
+            if (photoUri && shouldPersistPhoto(photoUri, FileSystem.documentDirectory)) {
                 finalPhotoUri = await savePhotoPermanently(photoUri)
             }
 
             const payload = buildExerciseSavePayload({ name, muscle, type, photoUri: finalPhotoUri })
 
-            if (isEditing) {
-                if (!resolvedExerciseId) return
-                await exerciseRepo.update(resolvedExerciseId, payload)
+            if (plan.kind === 'update') {
+                await exerciseRepo.update(plan.exerciseId, payload)
             } else {
                 await exerciseRepo.create(
                     payload.name,
@@ -139,9 +141,10 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                 )
             }
             router.replace('/(tabs)/exercises')
+            const toast = resolveExerciseSavedToast(isEditing, name)
             showToast.success({
-                title: isEditing ? t('exerciseUpdated') : t('exerciseCreated'),
-                message: isEditing ? `${name} ${t('updated')}` : `${name} ${t('ready')}`,
+                title: t(toast.titleKey),
+                message: `${toast.name} ${t(toast.messageNameKey)}`,
             })
         } catch (error) {
             console.error('Failed to save exercise:', error)
@@ -288,159 +291,16 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                     <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>
                         {t('exerciseType')}
                     </Typography.Subtitle>
-                    <Animated.View layout={LinearTransition.duration(300)} style={styles.typeContainer}>
-                        {[
-                            { label: t('typeWeight'), value: 'weight' as ExerciseType },
-                            { label: t('typeCardio'), value: 'cardio' as ExerciseType },
-                            { label: t('typeBodyweight'), value: 'bodyweight' as ExerciseType },
-                        ].map((t_item) => {
-                            const isActive =
-                                type === t_item.value || (t_item.value === 'bodyweight' && type === 'bodyweight_timer')
-                            return (
-                                <TouchableOpacity
-                                    key={t_item.value}
-                                    style={[
-                                        styles.typeButton,
-                                        { borderColor: theme.border },
-                                        isActive && { backgroundColor: theme.primary, borderColor: theme.primary },
-                                    ]}
-                                    onPress={() => setType(t_item.value)}
-                                    accessibilityRole={'button'}
-                                    accessibilityLabel={t_item.label}
-                                    accessibilityState={{ selected: isActive }}
-                                >
-                                    <Typography.Meta
-                                        style={[
-                                            styles.typeButtonText,
-                                            { color: theme.textSecondary },
-                                            isActive && { color: theme.onPrimary },
-                                        ]}
-                                    >
-                                        {t_item.label}
-                                    </Typography.Meta>
-                                </TouchableOpacity>
-                            )
-                        })}
-                    </Animated.View>
+                    <ExerciseTypeSelector type={type} onSelect={setType} />
 
-                    {/* Tracking Mode Toggle */}
-                    {(type === 'bodyweight' || type === 'bodyweight_timer') && (
-                        <Animated.View entering={FadeIn} layout={LinearTransition} style={{ marginTop: 20 }}>
-                            <Typography.Label style={{ fontSize: FontSize.xs, marginBottom: 6 }}>
-                                {t('trackingMode')}
-                            </Typography.Label>
-                            <View style={[styles.subToggleContainer, { backgroundColor: theme.inputBackground }]}>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.subToggleButton,
-                                        { backgroundColor: 'transparent' },
-                                        type === 'bodyweight' && [
-                                            styles.subToggleButtonActive,
-                                            {
-                                                backgroundColor: theme.inputBackgroundActive,
-                                                borderColor: theme.inputBackgroundActive,
-                                            },
-                                        ],
-                                    ]}
-                                    onPress={() => setType('bodyweight')}
-                                    accessibilityRole={'button'}
-                                    accessibilityLabel={t('reps')}
-                                    accessibilityState={{ selected: type === 'bodyweight' }}
-                                >
-                                    <Typography.Meta
-                                        style={[
-                                            styles.subToggleText,
-                                            { color: theme.textSecondary },
-                                            type === 'bodyweight' && [
-                                                styles.subToggleTextActive,
-                                                { color: theme.text },
-                                            ],
-                                        ]}
-                                    >
-                                        {t('reps')}
-                                    </Typography.Meta>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.subToggleButton,
-                                        { backgroundColor: 'transparent' },
-                                        type === 'bodyweight_timer' && [
-                                            styles.subToggleButtonActive,
-                                            {
-                                                backgroundColor: theme.inputBackgroundActive,
-                                                borderColor: theme.inputBackgroundActive,
-                                            },
-                                        ],
-                                    ]}
-                                    onPress={() => setType('bodyweight_timer')}
-                                    accessibilityRole={'button'}
-                                    accessibilityLabel={t('timer')}
-                                    accessibilityState={{ selected: type === 'bodyweight_timer' }}
-                                >
-                                    <Typography.Meta
-                                        style={[
-                                            styles.subToggleText,
-                                            { color: theme.textSecondary },
-                                            type === 'bodyweight_timer' && [
-                                                styles.subToggleTextActive,
-                                                { color: theme.text },
-                                            ],
-                                        ]}
-                                    >
-                                        {t('timer')}
-                                    </Typography.Meta>
-                                </TouchableOpacity>
-                            </View>
-                        </Animated.View>
-                    )}
+                    <TrackingModeToggle type={type} onSelect={setType} />
 
-                    <Animated.View entering={FadeIn} layout={LinearTransition} style={styles.photoSection}>
-                        <Typography.Subtitle style={{ marginTop: 24, marginBottom: 12 }}>
-                            {t('photo')}
-                        </Typography.Subtitle>
-                        {photoUri ? (
-                            <TouchableOpacity
-                                style={[
-                                    styles.photoWrapper,
-                                    {
-                                        backgroundColor: theme.surfaceSubtle,
-                                        borderColor: theme.inputBackgroundActive,
-                                    },
-                                ]}
-                                onPress={() => setShowImageFullScreen(true)}
-                                accessibilityRole={'button'}
-                                accessibilityLabel={t('photo')}
-                            >
-                                <Image key={photoUri} source={{ uri: photoUri }} style={styles.photo} />
-                                <Button
-                                    leftIcon={'trash'}
-                                    onPress={() => setPhotoUri(null)}
-                                    variant={'text'}
-                                    accessibilityLabel={t('delete')}
-                                    labelStyle={{ color: theme.error }}
-                                    style={[styles.removePhotoButton, { backgroundColor: theme.overlayScrim }]}
-                                />
-                            </TouchableOpacity>
-                        ) : (
-                            <TouchableOpacity
-                                style={[
-                                    styles.addPhotoButton,
-                                    {
-                                        backgroundColor: theme.surfaceSubtle,
-                                        borderColor: theme.inputBackground,
-                                    },
-                                ]}
-                                onPress={handlePickImage}
-                                accessibilityRole={'button'}
-                                accessibilityLabel={t('photo')}
-                            >
-                                <FontAwesome name={'camera'} size={30} color={theme.primary} />
-                                <Typography.Meta style={[styles.addPhotoText, { color: theme.primary }]}>
-                                    {t('photo')}
-                                </Typography.Meta>
-                            </TouchableOpacity>
-                        )}
-                    </Animated.View>
+                    <ExercisePhotoField
+                        photoUri={photoUri}
+                        onOpenFullScreen={() => setShowImageFullScreen(true)}
+                        onRemove={() => setPhotoUri(null)}
+                        onPick={handlePickImage}
+                    />
                 </Animated.View>
                 {photoUri && (
                     <FullScreenImageModal
@@ -463,85 +323,6 @@ const styles = StyleSheet.create({
         minHeight: 18,
         marginTop: -Spacing.sm,
         marginBottom: Spacing.sm,
-    },
-    typeContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: Spacing.sm,
-    },
-    photoSection: {
-        marginBottom: Spacing.sm,
-    },
-    addPhotoButton: {
-        width: '100%',
-        height: 160,
-        borderRadius: Radius.md,
-        borderWidth: 2,
-        borderStyle: 'dashed',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: Spacing.sm,
-    },
-    addPhotoText: {
-        fontSize: FontSize.sm,
-        fontWeight: FontWeight.semibold,
-    },
-    photoWrapper: {
-        width: '100%',
-        height: 160,
-        borderRadius: Radius.md,
-        overflow: 'hidden',
-        position: 'relative',
-        borderWidth: 1,
-    },
-    photo: {
-        height: 160,
-        width: '100%',
-        resizeMode: 'cover',
-    },
-    removePhotoButton: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        width: 30,
-        height: 30,
-        borderRadius: Radius.pill,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    typeButton: {
-        flex: 1,
-        minWidth: '30%',
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: Spacing.sm,
-        borderRadius: Radius.sm,
-        borderWidth: 1,
-        alignItems: 'center',
-    },
-    typeButtonText: {
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.medium,
-    },
-    subToggleContainer: {
-        flexDirection: 'row',
-        borderRadius: Radius.sm,
-        padding: 4,
-    },
-    subToggleButton: {
-        flex: 1,
-        paddingVertical: Spacing.xs,
-        alignItems: 'center',
-        borderRadius: Radius.sm,
-    },
-    subToggleButtonActive: {
-        borderWidth: 1,
-    },
-    subToggleText: {
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.medium,
-    },
-    subToggleTextActive: {
-        fontWeight: FontWeight.bold,
     },
     headerBack: {
         paddingLeft: Spacing.md,
