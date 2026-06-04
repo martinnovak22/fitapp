@@ -29,7 +29,6 @@ Fixing these three, in that order, unifies most of the visible inconsistency.
 - `useTheme` adopted everywhere except **3 files**, likely intentional:
   - [landing.tsx](app/landing.tsx) — splash/marketing screen
   - [SyncStatusBanner.tsx](src/data/sync/SyncStatusBanner.tsx)
-  - [ListSeparator.tsx](src/modules/core/components/ListSeparator.tsx)
 - **Raw color leaks: tiny.** 6 distinct hex literals, 4 rgba literals across 82 files:
 
   | value | count | likely intent |

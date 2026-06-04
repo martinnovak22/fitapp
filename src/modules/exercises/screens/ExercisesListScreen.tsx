@@ -19,7 +19,6 @@ import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv'
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
-import { ListSeparator } from '../../core/components/ListSeparator'
 import { useExercises } from '../hooks/useExercises'
 
 const ExerciseListItem = React.memo(
@@ -99,7 +98,6 @@ const ExerciseListItem = React.memo(
 
                     <TouchableOpacity
                         onPressIn={drag}
-                        style={styles.dragHandle}
                         accessibilityRole={'button'}
                         accessibilityLabel={t('reorder')}
                         accessibilityHint={t('holdToDrag')}
@@ -216,7 +214,6 @@ export default function ExercisesListScreen() {
                     }}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderItem}
-                    ItemSeparatorComponent={ListSeparator}
                     shouldUpdateActiveItem
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 80 }}
@@ -334,10 +331,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-    },
-    dragHandle: {
-        padding: Spacing.sm,
-        marginLeft: Spacing.sm,
     },
     sheetBackdrop: {
         flex: 1,

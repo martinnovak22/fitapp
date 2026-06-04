@@ -1,36 +1,36 @@
-import { Radius } from '@/src/constants/Radius'
-import { Spacing } from '@/src/constants/Spacing'
-import { FontWeight } from '@/src/constants/Typography'
-import { Button } from '@/src/modules/core/components/Button'
-import { Card } from '@/src/modules/core/components/Card'
-import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
-import { Typography } from '@/src/modules/core/components/Typography'
-import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { isRemoteDataMode } from '@/src/modules/auth/authMode'
-import { useLoginForm } from '@/src/modules/auth/useLoginForm'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
 import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     Keyboard,
     KeyboardAvoidingView,
     Platform,
-    Pressable,
-    StyleSheet,
     ScrollView,
-    TextInput,
+    StyleSheet,
+    type TextInput,
     TouchableWithoutFeedback,
     View,
 } from 'react-native'
-import Animated, {
-    FadeInDown,
-    LinearTransition,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
-} from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import { Motion } from '@/src/constants/Motion'
+import { Spacing } from '@/src/constants/Spacing'
+import { FontWeight } from '@/src/constants/Typography'
+import { EmailField } from '@/src/modules/auth/components/EmailField'
+import { GuestMergeToggle } from '@/src/modules/auth/components/GuestMergeToggle'
+import { LoginFormStatus } from '@/src/modules/auth/components/LoginFormStatus'
+import { LoginHeader } from '@/src/modules/auth/components/LoginHeader'
+import { LoginModeSwitch } from '@/src/modules/auth/components/LoginModeSwitch'
+import { PasswordField } from '@/src/modules/auth/components/PasswordField'
+import { useLoginForm } from '@/src/modules/auth/useLoginForm'
+import { Button } from '@/src/modules/core/components/Button'
+import { Card } from '@/src/modules/core/components/Card'
+import { Appear } from '@/src/modules/core/components/motion'
+import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
 
-const formLayoutTransition = LinearTransition.duration(220)
+// The card owns the single layout transition so the whole form reflows on one
+// clock when the confirm-password field appears/disappears.
+const cardLayout = Motion.layout()
 const cardMaxWidth = 520
 
 export default function LoginScreen() {
@@ -97,22 +97,11 @@ export default function LoginScreen() {
                         keyboardShouldPersistTaps={'handled'}
                         showsVerticalScrollIndicator={false}
                     >
-                        <Animated.View layout={formLayoutTransition} style={[styles.cardWrapper, cardAnimatedStyle]}>
+                        <Animated.View layout={cardLayout} style={[styles.cardWrapper, cardAnimatedStyle]}>
                             <Card style={styles.card}>
-                                <View style={{ marginBottom: Spacing.sm }}>
-                                    <Animated.View entering={FadeInDown.duration(220)}>
-                                        <Typography.Title style={styles.title}>
-                                            {t(isSignUp ? 'createAccount' : 'welcomeBack')}
-                                        </Typography.Title>
-                                    </Animated.View>
-                                    <Animated.View entering={FadeInDown.delay(40).duration(220)}>
-                                        <Typography.Body style={[styles.subtitle, { color: theme.textSecondary }]}>
-                                            {t(isSignUp ? 'authSignUpSubtitle' : 'authSignInSubtitle')}
-                                        </Typography.Body>
-                                    </Animated.View>
-                                </View>
+                                <LoginHeader isSignUp={isSignUp} />
 
-                                <Animated.View entering={FadeInDown.delay(80).duration(220)}>
+                                <Appear variant="down" delayMs={80}>
                                     <Button
                                         label={t('continueWithGoogle')}
                                         leftIcon={'google'}
@@ -123,188 +112,65 @@ export default function LoginScreen() {
                                         labelStyle={styles.googleButtonText}
                                         style={styles.googleButton}
                                     />
-                                </Animated.View>
+                                </Appear>
 
-                                <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
+                                <Appear variant="down" delayMs={100} style={styles.dividerRow}>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                                     <Typography.Meta style={{ color: theme.textSecondary }}>
                                         {t('orContinueWithEmail')}
                                     </Typography.Meta>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                                </Animated.View>
+                                </Appear>
 
-                                <Animated.View
-                                    entering={FadeInDown.delay(120).duration(220)}
-                                    style={{ gap: Spacing.sm }}
-                                >
-                                    <Typography.Label>{t('email')}</Typography.Label>
-                                    <TextInput
-                                        ref={emailInputRef}
-                                        value={email}
-                                        onChangeText={setEmail}
-                                        autoCapitalize={'none'}
-                                        autoCorrect={false}
-                                        keyboardType={'email-address'}
-                                        textContentType={'emailAddress'}
-                                        autoComplete={'email'}
-                                        returnKeyType={'next'}
-                                        placeholder={t('emailPlaceholder')}
-                                        placeholderTextColor={theme.textSecondary}
-                                        style={[
-                                            styles.input,
-                                            {
-                                                color: theme.text,
-                                                borderColor: theme.border,
-                                                backgroundColor: theme.inputBackground,
-                                            },
-                                        ]}
+                                <Appear variant="down" delayMs={120} style={styles.fieldGroup}>
+                                    <EmailField ref={emailInputRef} value={email} onChangeText={setEmail} />
+                                </Appear>
+
+                                <Appear variant="down" delayMs={140} style={styles.fieldGroup}>
+                                    <PasswordField
+                                        label={t('password')}
+                                        value={password}
+                                        onChangeText={setPassword}
+                                        isVisible={isPasswordVisible}
+                                        onToggleVisibility={() => setIsPasswordVisible(!isPasswordVisible)}
+                                        textContentType={isSignUp ? 'newPassword' : 'password'}
+                                        autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                                        returnKeyType={isSignUp ? 'next' : 'done'}
+                                        onSubmitEditing={() => {
+                                            if (!isSignUp) {
+                                                submit()
+                                            }
+                                        }}
                                     />
-                                </Animated.View>
-
-                                <Animated.View
-                                    entering={FadeInDown.delay(140).duration(220)}
-                                    style={{ gap: Spacing.sm }}
-                                >
-                                    <Typography.Label>{t('password')}</Typography.Label>
-                                    <View style={styles.passwordInputContainer}>
-                                        <TextInput
-                                            value={password}
-                                            onChangeText={setPassword}
-                                            secureTextEntry={!isPasswordVisible}
-                                            autoCorrect={false}
-                                            textContentType={isSignUp ? 'newPassword' : 'password'}
-                                            autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                                            returnKeyType={isSignUp ? 'next' : 'done'}
-                                            onSubmitEditing={() => {
-                                                if (!isSignUp) {
-                                                    submit()
-                                                }
-                                            }}
-                                            placeholder={t('passwordPlaceholder')}
-                                            placeholderTextColor={theme.textSecondary}
-                                            style={[
-                                                styles.input,
-                                                styles.passwordInput,
-                                                {
-                                                    color: theme.text,
-                                                    borderColor: theme.border,
-                                                    backgroundColor: theme.inputBackground,
-                                                },
-                                            ]}
-                                        />
-                                        {password.length > 0 ? (
-                                            <Button
-                                                leftIcon={isPasswordVisible ? 'eye-slash' : 'eye'}
-                                                onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-                                                variant={'text'}
-                                                accessibilityLabel={
-                                                    isPasswordVisible ? t('hidePassword') : t('showPassword')
-                                                }
-                                                labelStyle={{ color: theme.textSecondary }}
-                                                style={styles.visibilityButton}
-                                            />
-                                        ) : null}
-                                    </View>
-                                </Animated.View>
+                                </Appear>
 
                                 {isSignUp && (
-                                    <Animated.View
-                                        layout={formLayoutTransition}
-                                        entering={FadeInDown.duration(180)}
-                                        style={{ gap: Spacing.sm }}
-                                    >
-                                        <Typography.Label>{t('confirmPassword')}</Typography.Label>
-                                        <View style={styles.passwordInputContainer}>
-                                            <TextInput
-                                                value={confirmPassword}
-                                                onChangeText={setConfirmPassword}
-                                                secureTextEntry={!isConfirmPasswordVisible}
-                                                autoCorrect={false}
-                                                textContentType={'newPassword'}
-                                                autoComplete={'new-password'}
-                                                returnKeyType={'done'}
-                                                onSubmitEditing={submit}
-                                                placeholder={t('confirmPasswordPlaceholder')}
-                                                placeholderTextColor={theme.textSecondary}
-                                                style={[
-                                                    styles.input,
-                                                    styles.passwordInput,
-                                                    {
-                                                        color: theme.text,
-                                                        borderColor: theme.border,
-                                                        backgroundColor: theme.inputBackground,
-                                                    },
-                                                ]}
-                                            />
-                                            {confirmPassword.length > 0 ? (
-                                                <Button
-                                                    leftIcon={isConfirmPasswordVisible ? 'eye-slash' : 'eye'}
-                                                    onPress={() =>
-                                                        setIsConfirmPasswordVisible(!isConfirmPasswordVisible)
-                                                    }
-                                                    variant={'text'}
-                                                    accessibilityLabel={
-                                                        isConfirmPasswordVisible ? t('hidePassword') : t('showPassword')
-                                                    }
-                                                    labelStyle={{ color: theme.textSecondary }}
-                                                    style={styles.visibilityButton}
-                                                />
-                                            ) : null}
-                                        </View>
-                                    </Animated.View>
+                                    <Appear variant="down" style={styles.fieldGroup}>
+                                        <PasswordField
+                                            label={t('confirmPassword')}
+                                            value={confirmPassword}
+                                            onChangeText={setConfirmPassword}
+                                            isVisible={isConfirmPasswordVisible}
+                                            onToggleVisibility={() =>
+                                                setIsConfirmPasswordVisible(!isConfirmPasswordVisible)
+                                            }
+                                            textContentType={'newPassword'}
+                                            autoComplete={'new-password'}
+                                            returnKeyType={'done'}
+                                            onSubmitEditing={submit}
+                                        />
+                                    </Appear>
                                 )}
 
-                                {errorMessage ? (
-                                    <Animated.View
-                                        layout={formLayoutTransition}
-                                        entering={FadeInDown.duration(140)}
-                                        style={styles.errorArea}
-                                    >
-                                        <Typography.Body style={{ color: theme.error }}>{errorMessage}</Typography.Body>
-                                    </Animated.View>
-                                ) : isSignUp ? (
-                                    <Animated.View
-                                        layout={formLayoutTransition}
-                                        entering={FadeInDown.duration(140)}
-                                        style={styles.hintArea}
-                                    >
-                                        <Typography.Meta style={{ color: theme.textSecondary }}>
-                                            {t('passwordMinHint')}
-                                        </Typography.Meta>
-                                    </Animated.View>
-                                ) : null}
+                                <LoginFormStatus errorMessage={errorMessage} isSignUp={isSignUp} />
 
-                                {isGuest && guestDataExists && !isSignUp ? (
-                                    <Animated.View
-                                        layout={formLayoutTransition}
-                                        entering={FadeInDown.duration(160)}
-                                        style={styles.hintArea}
-                                    >
-                                        <Pressable
-                                            style={[styles.migrationRow, { borderColor: theme.border }]}
-                                            onPress={toggleMergeGuestData}
-                                            accessibilityRole={'checkbox'}
-                                            accessibilityLabel={t('mergeGuestDataLabel')}
-                                            accessibilityState={{ checked: mergeGuestDataOnSignIn }}
-                                        >
-                                            <FontAwesome
-                                                name={mergeGuestDataOnSignIn ? 'check-square-o' : 'square-o'}
-                                                size={18}
-                                                color={mergeGuestDataOnSignIn ? theme.primary : theme.textSecondary}
-                                            />
-                                            <View style={styles.migrationTextWrap}>
-                                                <Typography.Meta style={{ color: theme.text }}>
-                                                    {t('mergeGuestDataLabel')}
-                                                </Typography.Meta>
-                                                <Typography.Meta style={{ color: theme.textSecondary }}>
-                                                    {t('mergeGuestDataHint')}
-                                                </Typography.Meta>
-                                            </View>
-                                        </Pressable>
-                                    </Animated.View>
-                                ) : null}
+                                <GuestMergeToggle
+                                    visible={isGuest && guestDataExists && !isSignUp}
+                                    checked={mergeGuestDataOnSignIn}
+                                    onToggle={toggleMergeGuestData}
+                                />
 
-                                <Animated.View entering={FadeInDown.delay(160).duration(220)}>
+                                <Appear variant="down" delayMs={160}>
                                     <Button
                                         label={t(isSignUp ? 'createAccount' : 'signIn')}
                                         onPress={submit}
@@ -312,34 +178,21 @@ export default function LoginScreen() {
                                         isLoading={isSubmitting}
                                         style={styles.submitButton}
                                     />
-                                </Animated.View>
-                                <Animated.View entering={FadeInDown.delay(100).duration(220)} style={styles.dividerRow}>
+                                </Appear>
+                                <Appear variant="down" delayMs={100} style={styles.dividerRow}>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                                     <Typography.Meta style={{ color: theme.textSecondary }}>
                                         {t(isSignUp ? 'alreadyHaveAccount' : 'noAccountYet')}
                                     </Typography.Meta>
                                     <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                                </Animated.View>
-                                <Animated.View entering={FadeInDown.delay(200).duration(220)}>
-                                    <View style={styles.switchRow}>
-                                        {isRemoteDataMode() ? (
-                                            <Button
-                                                label={t('continueAsGuest')}
-                                                onPress={continueAsGuest}
-                                                variant={'text'}
-                                                size={'sm'}
-                                                labelStyle={styles.switchButtonText}
-                                            />
-                                        ) : null}
-                                        <Button
-                                            label={t(isSignUp ? 'signIn' : 'signUp')}
-                                            onPress={switchMode}
-                                            variant={'text'}
-                                            size={'sm'}
-                                            labelStyle={styles.switchButtonText}
-                                        />
-                                    </View>
-                                </Animated.View>
+                                </Appear>
+                                <Appear variant="down" delayMs={200}>
+                                    <LoginModeSwitch
+                                        isSignUp={isSignUp}
+                                        onSwitchMode={switchMode}
+                                        onContinueAsGuest={continueAsGuest}
+                                    />
+                                </Appear>
                             </Card>
                         </Animated.View>
                     </ScrollView>
@@ -363,36 +216,17 @@ const styles = StyleSheet.create({
         maxWidth: cardMaxWidth,
         alignSelf: 'center',
     },
-    card: {
-        marginBottom: 0,
-    },
-    title: {
-        marginBottom: Spacing.xs,
-        textAlign: 'center',
-    },
-    subtitle: {
-        marginBottom: Spacing.sm,
-        textAlign: 'center',
-    },
-    migrationRow: {
-        borderWidth: 1,
-        borderRadius: Radius.sm,
-        padding: Spacing.sm,
-        flexDirection: 'row',
-        alignItems: 'flex-start',
+    fieldGroup: {
         gap: Spacing.sm,
     },
-    migrationTextWrap: {
-        flex: 1,
+    card: {
+        marginBottom: 0,
     },
     googleButton: {
         minHeight: 48,
         marginBottom: Spacing.md,
     },
     googleButtonText: {
-        fontWeight: FontWeight.bold,
-    },
-    switchButtonText: {
         fontWeight: FontWeight.bold,
     },
     dividerRow: {
@@ -405,42 +239,8 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 1,
     },
-    input: {
-        borderWidth: 1,
-        borderRadius: Radius.sm,
-        minHeight: 48,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        marginBottom: Spacing.sm,
-    },
-    passwordInputContainer: {
-        position: 'relative',
-        justifyContent: 'center',
-    },
-    passwordInput: {
-        paddingRight: Spacing.xl2 + Spacing.sm,
-    },
-    visibilityButton: {
-        position: 'absolute',
-        right: Spacing.md,
-        top: 0,
-        bottom: Spacing.sm,
-        justifyContent: 'center',
-    },
-    errorArea: {
-        marginBottom: Spacing.sm,
-    },
-    hintArea: {
-        marginBottom: Spacing.sm,
-    },
     submitButton: {
         marginTop: Spacing.sm,
         marginBottom: Spacing.md,
-    },
-    switchRow: {
-        marginTop: Spacing.sm,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
     },
 })
