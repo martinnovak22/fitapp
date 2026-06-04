@@ -19,12 +19,9 @@ describe('isValidEmail', () => {
         expect(isValidEmail('  user@example.com  ')).toBe(true)
     })
 
-    it.each([['missing-at.com'], ['user@nodot'], ['user @example.com'], ['']])(
-        'rejects %s',
-        (value) => {
-            expect(isValidEmail(value)).toBe(false)
-        }
-    )
+    it.each([['missing-at.com'], ['user@nodot'], ['user @example.com'], ['']])('rejects %s', (value) => {
+        expect(isValidEmail(value)).toBe(false)
+    })
 })
 
 describe('canSubmitLoginForm', () => {

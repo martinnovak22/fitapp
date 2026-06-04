@@ -105,10 +105,7 @@ describe('resolveButtonStyle - label variant matrix', () => {
     })
 
     it('text label uses semibold weight and primary color', () => {
-        expect(resolve({ variant: 'text' }).label).toEqual([
-            buttonBaseStyles.textButtonText,
-            { color: theme.primary },
-        ])
+        expect(resolve({ variant: 'text' }).label).toEqual([buttonBaseStyles.textButtonText, { color: theme.primary }])
     })
 
     it('primary label uses bold weight and onPrimary color', () => {

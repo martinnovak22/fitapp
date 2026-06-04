@@ -491,7 +491,13 @@ const DurationRow = ({ duration, inputValues, updateInput, theme, t }: DurationR
     <Animated.View entering={ENTER} exiting={EXIT} style={[styles.durationRow, { minWidth: duration.minWidth }]}>
         {duration.fields.map((field) => (
             <View key={field.key} style={styles.durationCell}>
-                <SetFieldInput field={field} value={inputValues[field.key]} onChange={updateInput} theme={theme} t={t} />
+                <SetFieldInput
+                    field={field}
+                    value={inputValues[field.key]}
+                    onChange={updateInput}
+                    theme={theme}
+                    t={t}
+                />
             </View>
         ))}
     </Animated.View>
@@ -519,7 +525,13 @@ const SetInputFields = React.memo(function SetInputFields({
                     exiting={EXIT}
                     style={[styles.fieldCell, { minWidth: field.minWidth }]}
                 >
-                    <SetFieldInput field={field} value={inputValues[field.key]} onChange={updateInput} theme={theme} t={t} />
+                    <SetFieldInput
+                        field={field}
+                        value={inputValues[field.key]}
+                        onChange={updateInput}
+                        theme={theme}
+                        t={t}
+                    />
                 </Animated.View>
             ))}
 

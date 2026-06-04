@@ -24,7 +24,8 @@ const mockFetch = (handler: (call: FetchCall) => FetchResult) => {
         }
         fetchCalls.push(call)
         const result = handler(call)
-        const body = result.text !== undefined ? result.text : result.body === undefined ? '' : JSON.stringify(result.body)
+        const body =
+            result.text !== undefined ? result.text : result.body === undefined ? '' : JSON.stringify(result.body)
         const status = result.status ?? (result.ok === false ? 400 : 200)
         return new Response(body, { status }) as unknown as Response
     }) as typeof fetch
@@ -105,7 +106,11 @@ describe('getSupabaseSessionFromOAuthRedirectUrl', () => {
         mockFetch(() => ({ body: { id: 'user-123', email: null } }))
 
         const session = await getSupabaseSessionFromOAuthRedirectUrl(
-            buildImplicitRedirect({ access_token: 'access-abc', refresh_token: 'refresh-xyz', expires_in: 'not-a-number' })
+            buildImplicitRedirect({
+                access_token: 'access-abc',
+                refresh_token: 'refresh-xyz',
+                expires_in: 'not-a-number',
+            })
         )
 
         expect(session?.expiresAt).toBe(new Date('2026-01-01T01:00:00Z').getTime())

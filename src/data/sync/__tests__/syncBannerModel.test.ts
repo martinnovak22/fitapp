@@ -33,12 +33,19 @@ describe('resolveSyncBanner', () => {
     })
 
     it('falls back to "unknown error" when a single failed row has no usable reason', () => {
-        const state = { kind: 'failed', lastAttemptAt: 't', rows: [{ entityType: 'exercise', uuid: 'u' }] } as SyncStatusState
+        const state = {
+            kind: 'failed',
+            lastAttemptAt: 't',
+            rows: [{ entityType: 'exercise', uuid: 'u' }],
+        } as SyncStatusState
         expect(resolveSyncBanner(state, 0)).toEqual({ variant: 'failed', summary: 'Sync failed: unknown error' })
     })
 
     it('summarizes the count when multiple rows fail', () => {
-        const state = failed([{ kind: 'network', message: 'a' }, { kind: 'network', message: 'b' }])
+        const state = failed([
+            { kind: 'network', message: 'a' },
+            { kind: 'network', message: 'b' },
+        ])
         expect(resolveSyncBanner(state, 0)).toEqual({ variant: 'failed', summary: '2 rows failed to sync' })
     })
 
