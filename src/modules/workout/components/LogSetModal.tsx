@@ -130,7 +130,6 @@ export const LogSetModal = ({
     // every row add/remove, which would otherwise re-run the animation effect.
     React.useEffect(() => {
         if (visible && subSets.length > 0) setIsExpanded(true)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible, subSets.length])
 
     React.useEffect(() => {
@@ -245,7 +244,7 @@ export const LogSetModal = ({
                                             'durationMinutes',
                                             'durationSeconds',
                                         ] as const
-                                        fields.forEach((key) => updateInput(key, ''))
+                                        for (const key of fields) updateInput(key, '')
                                     }}
                                 />
                             </Animated.View>

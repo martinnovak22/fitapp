@@ -354,7 +354,6 @@ const layoutStyles = StyleSheet.create({
         alignItems: 'center',
     },
     heroCard: {
-        marginBottom: Spacing.lg,
         paddingVertical: Spacing.lg,
     },
     heroStatsRow: {
@@ -407,11 +406,8 @@ const layoutStyles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
     },
-
     activeCard: {
-        marginBottom: Spacing.lg,
         borderLeftWidth: 4,
-        padding: Spacing.lg,
     },
     activeHeader: {
         flexDirection: 'row',
