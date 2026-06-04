@@ -88,7 +88,7 @@ const ToastView = ({ kind, text1, text2, props }: ToastConfigParams<CustomToastE
     const { theme } = useTheme()
     const visual = resolveToastVisual(
         { type: kind, icon: props?.icon, tone: props?.tone },
-        { primary: theme.primary, error: theme.error, info: theme.info },
+        { primary: theme.primary, error: theme.error, info: theme.info }
     )
     return (
         <CustomToast

@@ -313,9 +313,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                         editingSetId={editingSetId}
                         exercises={exercises}
                         selectedExerciseId={selectedExerciseId}
-                        setSelectedExerciseId={(exerciseId) =>
-                            dispatch({ type: 'SET_SELECTED_EXERCISE', exerciseId })
-                        }
+                        setSelectedExerciseId={(exerciseId) => dispatch({ type: 'SET_SELECTED_EXERCISE', exerciseId })}
                         subSets={subSets}
                         setSubSets={(next) =>
                             dispatch({

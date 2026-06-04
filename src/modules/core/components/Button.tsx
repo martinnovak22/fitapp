@@ -46,8 +46,14 @@ export const Button: React.FC<ButtonProps> = ({
 
     const isIconOnly = label === undefined
 
-    const { container, disabledOverlay, label: labelStyles, variantColor, iconSize, isDisabled } =
-        resolveButtonStyle({ variant, size, isIconOnly, disabled, isLoading, theme })
+    const {
+        container,
+        disabledOverlay,
+        label: labelStyles,
+        variantColor,
+        iconSize,
+        isDisabled,
+    } = resolveButtonStyle({ variant, size, isIconOnly, disabled, isLoading, theme })
 
     // Resolve the effective label/icon color: variant default, overridden by labelStyle.
     const overrideColor = (StyleSheet.flatten(labelStyle) as TextStyle | undefined)?.color

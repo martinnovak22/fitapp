@@ -72,8 +72,7 @@ const runInitializationEffects = async (
     effects: AuthInitializationEffect[],
     plannedSession: AuthInitializationSession
 ): Promise<SupabaseAuthSessionData | null> => {
-    let activeSession: SupabaseAuthSessionData | null =
-        plannedSession === 'refresh-then-apply' ? null : plannedSession
+    let activeSession: SupabaseAuthSessionData | null = plannedSession === 'refresh-then-apply' ? null : plannedSession
 
     for (const effect of effects) {
         switch (effect.type) {
