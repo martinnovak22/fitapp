@@ -27,6 +27,8 @@ import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { ExercisePicker } from '@/src/modules/exercises/ExercisePicker'
 import type { SetFormValues } from '../setPayload'
+import { parseSetInputNumber, reconcileSubSetKeys } from './dropSet'
+import { resolveSetInputLayout, type SetInputField, type SetInputLayout } from './setInputLayout'
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window')
 const SHEET_MAX_HEIGHT = Math.min(DEVICE_HEIGHT * 0.9, 760)
@@ -177,15 +179,7 @@ export const LogSetModal = ({
     // (modal opened for edit, reset on save). Internal add/remove keep keys in
     // step with subSets eagerly, so we only need to top-up / truncate here.
     React.useEffect(() => {
-        setSubSetKeys((prev) => {
-            if (prev.length === subSets.length) return prev
-            if (prev.length < subSets.length) {
-                const next = prev.slice()
-                while (next.length < subSets.length) next.push(generateKey())
-                return next
-            }
-            return prev.slice(0, subSets.length)
-        })
+        setSubSetKeys((prev) => reconcileSubSetKeys(prev, subSets.length, generateKey))
     }, [subSets.length, generateKey])
 
     const addSubSet = React.useCallback(() => {
@@ -197,7 +191,7 @@ export const LogSetModal = ({
 
     const updateSubSet = React.useCallback(
         (index: number, field: keyof SubSet, value: string) => {
-            const num = parseFloat(value.replace(',', '.')) || 0
+            const num = parseSetInputNumber(value)
             setSubSets((prev) => {
                 const next = [...prev]
                 next[index] = { ...next[index], [field]: num }
@@ -299,44 +293,13 @@ export const LogSetModal = ({
                                         </View>
 
                                         <Collapsible expanded={isExpanded} style={styles.pyramidListWrap}>
-                                            <ScrollView
-                                                style={[styles.pyramidList, { backgroundColor: theme.background }]}
-                                                contentContainerStyle={
-                                                    subSetItems.length === 0 ? styles.emptySubsetsContainer : undefined
-                                                }
-                                                nestedScrollEnabled
-                                                keyboardShouldPersistTaps={'handled'}
-                                                showsVerticalScrollIndicator
-                                            >
-                                                {subSetItems.length === 0 ? (
-                                                    <>
-                                                        <FontAwesome
-                                                            name={'list'}
-                                                            size={20}
-                                                            color={theme.textSecondary}
-                                                            style={styles.emptySubsetsIcon}
-                                                        />
-                                                        <Typography.Meta
-                                                            weight="semibold"
-                                                            style={styles.emptySubsetsText}
-                                                        >
-                                                            {t('noDropSets')}
-                                                        </Typography.Meta>
-                                                    </>
-                                                ) : (
-                                                    subSetItems.map((item) => (
-                                                        <SubSetRow
-                                                            key={item.key}
-                                                            index={item.index}
-                                                            subSet={item.subSet}
-                                                            theme={theme}
-                                                            t={t}
-                                                            onChange={updateSubSet}
-                                                            onRemove={removeSubSet}
-                                                        />
-                                                    ))
-                                                )}
-                                            </ScrollView>
+                                            <DropSetList
+                                                items={subSetItems}
+                                                theme={theme}
+                                                t={t}
+                                                onChange={updateSubSet}
+                                                onRemove={removeSubSet}
+                                            />
                                         </Collapsible>
                                     </Animated.View>
                                 )}
@@ -439,6 +402,102 @@ const SubSetRow = React.memo(function SubSetRow({ index, subSet, theme, t, onCha
     )
 })
 
+type SubSetItem = { key: string; subSet: SubSet; index: number }
+
+type DropSetListProps = {
+    items: SubSetItem[]
+    theme: SubSetRowProps['theme']
+    t: SubSetRowProps['t']
+    onChange: SubSetRowProps['onChange']
+    onRemove: SubSetRowProps['onRemove']
+}
+
+// The scrollable drop-set list: an empty-state placeholder or one SubSetRow per
+// item. Sits inside the Collapsible so expand/collapse stays in LogSetModal.
+const DropSetList = ({ items, theme, t, onChange, onRemove }: DropSetListProps) => (
+    <ScrollView
+        style={[styles.pyramidList, { backgroundColor: theme.background }]}
+        contentContainerStyle={items.length === 0 ? styles.emptySubsetsContainer : undefined}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps={'handled'}
+        showsVerticalScrollIndicator
+    >
+        {items.length === 0 ? (
+            <>
+                <FontAwesome name={'list'} size={20} color={theme.textSecondary} style={styles.emptySubsetsIcon} />
+                <Typography.Meta weight="semibold" style={styles.emptySubsetsText}>
+                    {t('noDropSets')}
+                </Typography.Meta>
+            </>
+        ) : (
+            items.map((item) => (
+                <SubSetRow
+                    key={item.key}
+                    index={item.index}
+                    subSet={item.subSet}
+                    theme={theme}
+                    t={t}
+                    onChange={onChange}
+                    onRemove={onRemove}
+                />
+            ))
+        )}
+    </ScrollView>
+)
+
+type SetFieldInputProps = {
+    field: SetInputField
+    value: string
+    onChange: Props['updateInput']
+    theme: SubSetRowProps['theme']
+    t: SubSetRowProps['t']
+}
+
+// Label + numeric input shared by every set field. The only per-field variation
+// (binding, placeholder, return key, label) rides in on the layout descriptor,
+// so there is exactly one TextInput configuration to maintain.
+const SetFieldInput = ({ field, value, onChange, theme, t }: SetFieldInputProps) => (
+    <>
+        <Typography.Subtitle>{t(field.labelKey)}</Typography.Subtitle>
+        <TextInput
+            keyboardType={'numeric'}
+            multiline={false}
+            numberOfLines={1}
+            style={[
+                GlobalStyles.input,
+                { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
+            ]}
+            value={value}
+            onChangeText={(text) => onChange(field.key, text)}
+            placeholder={field.placeholder}
+            placeholderTextColor={theme.textSecondary}
+            underlineColorAndroid={'transparent'}
+            selectionColor={theme.primary}
+            scrollEnabled={false}
+            returnKeyType={field.returnKey}
+            accessibilityLabel={t(field.labelKey)}
+        />
+    </>
+)
+
+type DurationRowProps = {
+    duration: NonNullable<SetInputLayout['duration']>
+    inputValues: Props['inputValues']
+    updateInput: Props['updateInput']
+    theme: SubSetRowProps['theme']
+    t: SubSetRowProps['t']
+}
+
+const DurationRow = ({ duration, inputValues, updateInput, theme, t }: DurationRowProps) => (
+    <Animated.View entering={ENTER} exiting={EXIT} style={[styles.durationRow, { minWidth: duration.minWidth }]}>
+        {duration.fields.map((field) => (
+            <View key={field.key} style={styles.durationCell}>
+                <SetFieldInput field={field} value={inputValues[field.key]} onChange={updateInput} theme={theme} t={t} />
+            </View>
+        ))}
+    </Animated.View>
+)
+
 const SetInputFields = React.memo(function SetInputFields({
     selectedExercise,
     inputValues,
@@ -450,143 +509,29 @@ const SetInputFields = React.memo(function SetInputFields({
 }) {
     const { t } = useTranslation()
     const { theme } = useTheme()
-    const type = selectedExercise?.type?.toLowerCase()
+    const layout = resolveSetInputLayout(selectedExercise?.type?.toLowerCase())
 
     return (
         <View style={styles.dynamicFields}>
-            {type !== 'cardio' && (
+            {layout.fields.map((field) => (
                 <Animated.View
+                    key={field.key}
                     entering={ENTER}
                     exiting={EXIT}
-                    style={[styles.fieldCell, { minWidth: type === 'bodyweight_timer' ? '100%' : '46%' }]}
+                    style={[styles.fieldCell, { minWidth: field.minWidth }]}
                 >
-                    <Typography.Subtitle>{t('weightKg')}</Typography.Subtitle>
-                    <TextInput
-                        keyboardType={'numeric'}
-                        multiline={false}
-                        numberOfLines={1}
-                        style={[
-                            GlobalStyles.input,
-                            { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
-                        ]}
-                        value={inputValues.weight}
-                        onChangeText={(value) => updateInput('weight', value)}
-                        placeholder={'0'}
-                        placeholderTextColor={theme.textSecondary}
-                        underlineColorAndroid={'transparent'}
-                        selectionColor={theme.primary}
-                        scrollEnabled={false}
-                        returnKeyType={'next'}
-                        accessibilityLabel={t('weightKg')}
-                    />
+                    <SetFieldInput field={field} value={inputValues[field.key]} onChange={updateInput} theme={theme} t={t} />
                 </Animated.View>
-            )}
+            ))}
 
-            {(type === 'weight' || type === 'bodyweight') && (
-                <Animated.View entering={ENTER} exiting={EXIT} style={[styles.fieldCell, { minWidth: '46%' }]}>
-                    <Typography.Subtitle>{t('reps')}</Typography.Subtitle>
-                    <TextInput
-                        keyboardType={'numeric'}
-                        multiline={false}
-                        numberOfLines={1}
-                        style={[
-                            GlobalStyles.input,
-                            { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
-                        ]}
-                        value={inputValues.reps}
-                        onChangeText={(value) => updateInput('reps', value)}
-                        placeholder={'0'}
-                        placeholderTextColor={theme.textSecondary}
-                        underlineColorAndroid={'transparent'}
-                        selectionColor={theme.primary}
-                        scrollEnabled={false}
-                        returnKeyType={'done'}
-                        accessibilityLabel={t('reps')}
-                    />
-                </Animated.View>
-            )}
-
-            {type === 'cardio' && (
-                <Animated.View entering={ENTER} exiting={EXIT} style={[styles.fieldCell, styles.fieldFull]}>
-                    <Typography.Subtitle>{t('distM')}</Typography.Subtitle>
-                    <TextInput
-                        keyboardType={'numeric'}
-                        multiline={false}
-                        numberOfLines={1}
-                        style={[
-                            GlobalStyles.input,
-                            { color: theme.text, backgroundColor: theme.inputBackground, borderColor: theme.border },
-                        ]}
-                        value={inputValues.distance}
-                        onChangeText={(value) => updateInput('distance', value)}
-                        placeholder={'0'}
-                        placeholderTextColor={theme.textSecondary}
-                        underlineColorAndroid={'transparent'}
-                        selectionColor={theme.primary}
-                        scrollEnabled={false}
-                        returnKeyType={'next'}
-                        accessibilityLabel={t('distM')}
-                    />
-                </Animated.View>
-            )}
-
-            {(type === 'cardio' || type === 'bodyweight_timer') && (
-                <Animated.View
-                    entering={ENTER}
-                    exiting={EXIT}
-                    style={[styles.durationRow, { minWidth: type === 'cardio' ? '65%' : '100%' }]}
-                >
-                    <View style={styles.durationCell}>
-                        <Typography.Subtitle>{t('minutes')}</Typography.Subtitle>
-                        <TextInput
-                            keyboardType={'numeric'}
-                            multiline={false}
-                            numberOfLines={1}
-                            style={[
-                                GlobalStyles.input,
-                                {
-                                    color: theme.text,
-                                    backgroundColor: theme.inputBackground,
-                                    borderColor: theme.border,
-                                },
-                            ]}
-                            value={inputValues.durationMinutes}
-                            onChangeText={(value) => updateInput('durationMinutes', value)}
-                            placeholder={'00'}
-                            placeholderTextColor={theme.textSecondary}
-                            underlineColorAndroid={'transparent'}
-                            selectionColor={theme.primary}
-                            scrollEnabled={false}
-                            returnKeyType={'next'}
-                            accessibilityLabel={t('minutes')}
-                        />
-                    </View>
-                    <View style={styles.durationCell}>
-                        <Typography.Subtitle>{t('seconds')}</Typography.Subtitle>
-                        <TextInput
-                            keyboardType={'numeric'}
-                            multiline={false}
-                            numberOfLines={1}
-                            style={[
-                                GlobalStyles.input,
-                                {
-                                    color: theme.text,
-                                    backgroundColor: theme.inputBackground,
-                                    borderColor: theme.border,
-                                },
-                            ]}
-                            value={inputValues.durationSeconds}
-                            onChangeText={(value) => updateInput('durationSeconds', value)}
-                            placeholder={'00'}
-                            placeholderTextColor={theme.textSecondary}
-                            underlineColorAndroid={'transparent'}
-                            selectionColor={theme.primary}
-                            scrollEnabled={false}
-                            returnKeyType={'done'}
-                            accessibilityLabel={t('seconds')}
-                        />
-                    </View>
-                </Animated.View>
+            {layout.duration && (
+                <DurationRow
+                    duration={layout.duration}
+                    inputValues={inputValues}
+                    updateInput={updateInput}
+                    theme={theme}
+                    t={t}
+                />
             )}
         </View>
     )
@@ -647,9 +592,6 @@ const styles = StyleSheet.create({
     fieldCell: {
         flex: 1,
         gap: Spacing.sm,
-    },
-    fieldFull: {
-        minWidth: '100%',
     },
     durationRow: {
         flex: 2,
