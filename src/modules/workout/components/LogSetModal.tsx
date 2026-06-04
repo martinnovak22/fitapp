@@ -32,14 +32,16 @@ import { resolveSetInputLayout, type SetInputField, type SetInputLayout } from '
 
 const { height: DEVICE_HEIGHT } = Dimensions.get('window')
 const SHEET_MAX_HEIGHT = Math.min(DEVICE_HEIGHT * 0.9, 760)
-// Fixed height for the pyramid list so adding rows scrolls inside it rather
-// than growing the sheet and shifting everything around it.
+// Fixed height for the pyramid list so adding rows scrolls inside it rather than
+// growing the section. The list still carries flexShrink, and the Collapsible
+// content now shrinks too, so a space-constrained sheet gives the list less
+// height instead of overflowing.
 const PYRAMID_LIST_HEIGHT = Math.min(200, Math.floor(DEVICE_HEIGHT * 0.22))
 // Shared so every toggled block fades and reflows on the same timeline.
 const ENTER = Motion.fadeIn()
 const EXIT = Motion.fadeOut()
 const UNIFIED_LAYOUT = Motion.layout()
-const KEYBOARD_LIFT_FACTOR = 0.8
+const KEYBOARD_LIFT_FACTOR = 0.9
 // Distance (px) the sheet slides down on entry/exit. Entry starts here and
 // settles to 0; exit reverses, dropping the sheet back down as it fades.
 const SHEET_SLIDE_OFFSET = 32
@@ -79,9 +81,6 @@ export const LogSetModal = ({
 
     const selectedExercise = exercises.find((exercise) => exercise.id === selectedExerciseId)
     const [isExpanded, setIsExpanded] = React.useState(false)
-    // Keeps the RN Modal mounted while the sheet animates. Goes true the moment
-    // `visible` flips true (so the open anim runs) and back to false only once
-    // the close anim has finished — so the exit isn't cut off by an unmount.
     const [isMounted, setIsMounted] = React.useState(visible)
     const wasVisibleRef = React.useRef(false)
 
@@ -569,16 +568,10 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: Radius.pill,
     },
-    // Body holds the (fixed) exercise picker and the scrollable input/pyramid
-    // region. flexShrink lets it give up height so the footer stays pinned when
-    // the sheet hits its max height (e.g. when the pyramid list expands).
     body: {
         flexShrink: 1,
         minHeight: 0,
     },
-    // Holds the (fixed) input fields and the pyramid section. flexShrink lets
-    // the section give up height — absorbed by the pyramid list's own scroll —
-    // so the inputs and footer stay put instead of the whole block scrolling.
     scrollBody: {
         flexShrink: 1,
         minHeight: 0,

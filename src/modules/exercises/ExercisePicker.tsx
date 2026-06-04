@@ -23,6 +23,13 @@ export const ExercisePicker = ({ exercises, onPick, selectedId }: Props) => {
     const { theme } = useTheme()
     const [stats, setStats] = React.useState<Map<number, HeadlineStat | null>>(() => new Map())
 
+    // Land the list on the currently-selected exercise when the picker opens,
+    // instead of always at the top. getItemLayout makes initialScrollIndex exact.
+    const selectedIndex = React.useMemo(
+        () => exercises.findIndex((exercise) => exercise.id === selectedId),
+        [exercises, selectedId]
+    )
+
     React.useEffect(() => {
         let cancelled = false
         ExerciseStats.headlineStats(exercises).then((result) => {
@@ -76,6 +83,7 @@ export const ExercisePicker = ({ exercises, onPick, selectedId }: Props) => {
             renderItem={renderItem}
             style={[styles.list, { backgroundColor: theme.background }]}
             getItemLayout={(_, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
+            initialScrollIndex={selectedIndex > 0 ? selectedIndex : undefined}
             initialNumToRender={8}
             windowSize={5}
             keyboardShouldPersistTaps={'handled'}
