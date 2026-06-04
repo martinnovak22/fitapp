@@ -13,6 +13,13 @@ import type { RemoteAdapter } from './RemoteAdapter'
 import { RemoteRequestError } from './RemoteAdapter'
 import { createRemoteIdResolver } from './RemoteIdResolver'
 import { createRemoteWriter } from './RemoteWriter'
+import {
+    parseIsoMillis,
+    shouldSkipRemoteRow,
+    toExerciseColumns,
+    toSetColumns,
+    toWorkoutColumns,
+} from './remoteRowReconcile'
 import { type CycleResult, drainOutbox } from './SyncCycle'
 import { type SyncFailure, syncStatusStore } from './SyncStatus'
 
@@ -85,14 +92,6 @@ const IDLE_RESULT: SyncCycleResult = {
 }
 
 let currentRun: Promise<SyncCycleResult> | null = null
-
-const toIsoOrNow = (value?: string | null) => value ?? nowIso()
-
-const parseIsoMillis = (value: string | null | undefined) => {
-    if (!value) return 0
-    const parsed = Date.parse(value)
-    return Number.isFinite(parsed) ? parsed : 0
-}
 
 const shouldUseRemoteSync = () => isRemoteDataMode()
 
@@ -323,23 +322,23 @@ const pullExercises = async (userId: string): Promise<number> => {
                 'SELECT id, updated_at, sync_status FROM exercises WHERE uuid = ? LIMIT 1',
                 row.uuid
             )
-            const localIsDirty = local?.sync_status === 'dirty' || local?.sync_status === 'failed'
-            if (localIsDirty && parseIsoMillis(local?.updated_at) > parseIsoMillis(row.updated_at)) return
+            if (shouldSkipRemoteRow(local, row.updated_at)) return
 
+            const cols = toExerciseColumns(row, userId)
             if (local) {
                 await innerDb.runAsync(
                     `UPDATE exercises
            SET user_id = ?, name = ?, type = ?, muscle_group = ?, photo_uri = ?, position = ?, created_at = ?, updated_at = ?,
                deleted_at = NULL, sync_status = 'synced', last_synced_at = ?
            WHERE uuid = ?`,
-                    userId,
-                    row.name ?? null,
-                    row.type ?? 'weight',
-                    row.muscle_group ?? null,
-                    row.photo_uri ?? null,
-                    row.position ?? 0,
-                    toIsoOrNow(row.created_at),
-                    toIsoOrNow(row.updated_at),
+                    cols.user_id,
+                    cols.name,
+                    cols.type,
+                    cols.muscle_group,
+                    cols.photo_uri,
+                    cols.position,
+                    cols.created_at,
+                    cols.updated_at,
                     nowIso(),
                     row.uuid
                 )
@@ -349,14 +348,14 @@ const pullExercises = async (userId: string): Promise<number> => {
            (uuid, user_id, name, type, muscle_group, photo_uri, position, created_at, updated_at, deleted_at, sync_status, last_synced_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced', ?)`,
                     row.uuid,
-                    userId,
-                    row.name ?? null,
-                    row.type ?? 'weight',
-                    row.muscle_group ?? null,
-                    row.photo_uri ?? null,
-                    row.position ?? 0,
-                    toIsoOrNow(row.created_at),
-                    toIsoOrNow(row.updated_at),
+                    cols.user_id,
+                    cols.name,
+                    cols.type,
+                    cols.muscle_group,
+                    cols.photo_uri,
+                    cols.position,
+                    cols.created_at,
+                    cols.updated_at,
                     nowIso()
                 )
             }
@@ -401,23 +400,23 @@ const pullWorkouts = async (userId: string): Promise<number> => {
                 'SELECT id, updated_at, sync_status FROM workouts WHERE uuid = ? LIMIT 1',
                 row.uuid
             )
-            const localIsDirty = local?.sync_status === 'dirty' || local?.sync_status === 'failed'
-            if (localIsDirty && parseIsoMillis(local?.updated_at) > parseIsoMillis(row.updated_at)) return
+            if (shouldSkipRemoteRow(local, row.updated_at)) return
 
+            const cols = toWorkoutColumns(row, userId)
             if (local) {
                 await db.runAsync(
                     `UPDATE workouts
            SET user_id = ?, date = ?, start_time = ?, end_time = ?, status = ?, note = ?,
                created_at = ?, updated_at = ?, deleted_at = NULL, sync_status = 'synced', last_synced_at = ?
            WHERE uuid = ?`,
-                    userId,
-                    row.date ?? null,
-                    row.start_time ?? null,
-                    row.end_time ?? null,
-                    row.status ?? 'finished',
-                    row.note ?? null,
-                    toIsoOrNow(row.created_at),
-                    toIsoOrNow(row.updated_at),
+                    cols.user_id,
+                    cols.date,
+                    cols.start_time,
+                    cols.end_time,
+                    cols.status,
+                    cols.note,
+                    cols.created_at,
+                    cols.updated_at,
                     nowIso(),
                     row.uuid
                 )
@@ -427,14 +426,14 @@ const pullWorkouts = async (userId: string): Promise<number> => {
            (uuid, user_id, date, start_time, end_time, status, note, created_at, updated_at, deleted_at, sync_status, last_synced_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced', ?)`,
                     row.uuid,
-                    userId,
-                    row.date ?? null,
-                    row.start_time ?? null,
-                    row.end_time ?? null,
-                    row.status ?? 'finished',
-                    row.note ?? null,
-                    toIsoOrNow(row.created_at),
-                    toIsoOrNow(row.updated_at),
+                    cols.user_id,
+                    cols.date,
+                    cols.start_time,
+                    cols.end_time,
+                    cols.status,
+                    cols.note,
+                    cols.created_at,
+                    cols.updated_at,
                     nowIso()
                 )
             }
@@ -496,27 +495,27 @@ const pullSets = async (userId: string): Promise<number> => {
                 'SELECT id, updated_at, sync_status FROM sets WHERE uuid = ? LIMIT 1',
                 row.uuid
             )
-            const localIsDirty = local?.sync_status === 'dirty' || local?.sync_status === 'failed'
-            if (localIsDirty && parseIsoMillis(local?.updated_at) > parseIsoMillis(row.updated_at)) return
+            if (shouldSkipRemoteRow(local, row.updated_at)) return
 
+            const cols = toSetColumns(row, userId, workoutLocal.id, exerciseLocal.id)
             if (local) {
                 await db.runAsync(
                     `UPDATE sets
            SET user_id = ?, workout_id = ?, exercise_id = ?, weight = ?, reps = ?, distance = ?, duration = ?, rpe = ?, position = ?, sub_sets = ?,
                created_at = ?, updated_at = ?, deleted_at = NULL, sync_status = 'synced', last_synced_at = ?
            WHERE uuid = ?`,
-                    userId,
-                    workoutLocal.id,
-                    exerciseLocal.id,
-                    row.weight,
-                    row.reps,
-                    row.distance,
-                    row.duration,
-                    row.rpe,
-                    row.position,
-                    row.sub_sets,
-                    toIsoOrNow(row.created_at),
-                    toIsoOrNow(row.updated_at),
+                    cols.user_id,
+                    cols.workout_id,
+                    cols.exercise_id,
+                    cols.weight,
+                    cols.reps,
+                    cols.distance,
+                    cols.duration,
+                    cols.rpe,
+                    cols.position,
+                    cols.sub_sets,
+                    cols.created_at,
+                    cols.updated_at,
                     nowIso(),
                     row.uuid
                 )
@@ -526,18 +525,18 @@ const pullSets = async (userId: string): Promise<number> => {
            (uuid, user_id, workout_id, exercise_id, weight, reps, distance, duration, rpe, position, sub_sets, created_at, updated_at, deleted_at, sync_status, last_synced_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced', ?)`,
                     row.uuid,
-                    userId,
-                    workoutLocal.id,
-                    exerciseLocal.id,
-                    row.weight,
-                    row.reps,
-                    row.distance,
-                    row.duration,
-                    row.rpe,
-                    row.position,
-                    row.sub_sets,
-                    toIsoOrNow(row.created_at),
-                    toIsoOrNow(row.updated_at),
+                    cols.user_id,
+                    cols.workout_id,
+                    cols.exercise_id,
+                    cols.weight,
+                    cols.reps,
+                    cols.distance,
+                    cols.duration,
+                    cols.rpe,
+                    cols.position,
+                    cols.sub_sets,
+                    cols.created_at,
+                    cols.updated_at,
                     nowIso()
                 )
             }

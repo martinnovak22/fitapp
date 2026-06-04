@@ -169,6 +169,136 @@ describe('runSync — issue #26 cheap-exit and cursor', () => {
     })
 })
 
+describe('runSync — pull reconciliation upserts remote rows into local', () => {
+    it('inserts a remote exercise, workout, and set in one cycle and marks them synced', async () => {
+        mockFetch((call) => {
+            const isUpsertPull = call.method === 'GET' && call.url.includes('deleted_at=is.null')
+            if (isUpsertPull && call.url.includes('/exercises?')) {
+                return {
+                    body: [
+                        {
+                            uuid: 'ex-a',
+                            user_id: userId,
+                            name: 'Bench',
+                            type: 'weight',
+                            muscle_group: 'chest',
+                            photo_uri: null,
+                            position: 0,
+                            created_at: '2026-02-01T00:00:00Z',
+                            updated_at: '2026-02-01T00:00:00Z',
+                            deleted_at: null,
+                        },
+                    ],
+                }
+            }
+            if (isUpsertPull && call.url.includes('/workouts?')) {
+                return {
+                    body: [
+                        {
+                            uuid: 'w-a',
+                            user_id: userId,
+                            date: '2026-02-01',
+                            start_time: '08:00',
+                            end_time: null,
+                            status: 'in_progress',
+                            note: 'morning',
+                            created_at: '2026-02-01T00:00:00Z',
+                            updated_at: '2026-02-01T00:00:00Z',
+                            deleted_at: null,
+                        },
+                    ],
+                }
+            }
+            if (isUpsertPull && call.url.includes('/sets?')) {
+                return {
+                    body: [
+                        {
+                            uuid: 's-a',
+                            user_id: userId,
+                            weight: 100,
+                            reps: 5,
+                            distance: null,
+                            duration: null,
+                            rpe: 8,
+                            position: 0,
+                            sub_sets: null,
+                            created_at: '2026-02-01T00:00:00Z',
+                            updated_at: '2026-02-01T00:00:00Z',
+                            deleted_at: null,
+                            workouts: { uuid: 'w-a' },
+                            exercises: { uuid: 'ex-a' },
+                        },
+                    ],
+                }
+            }
+            return { body: [] }
+        })
+
+        const result = await runSync()
+        expect(result.pulled).toBeGreaterThanOrEqual(3)
+
+        const exercise = await db.getFirstAsync<{ name: string; type: string; sync_status: string }>(
+            'SELECT name, type, sync_status FROM exercises WHERE uuid = ?',
+            'ex-a'
+        )
+        expect(exercise).toMatchObject({ name: 'Bench', type: 'weight', sync_status: 'synced' })
+
+        const workout = await db.getFirstAsync<{ date: string; status: string; note: string; sync_status: string }>(
+            'SELECT date, status, note, sync_status FROM workouts WHERE uuid = ?',
+            'w-a'
+        )
+        expect(workout).toMatchObject({
+            date: '2026-02-01',
+            status: 'in_progress',
+            note: 'morning',
+            sync_status: 'synced',
+        })
+
+        const set = await db.getFirstAsync<{ weight: number; reps: number; rpe: number; sync_status: string }>(
+            'SELECT weight, reps, rpe, sync_status FROM sets WHERE uuid = ?',
+            's-a'
+        )
+        expect(set).toMatchObject({ weight: 100, reps: 5, rpe: 8, sync_status: 'synced' })
+    })
+
+    it('keeps a dirty local row that is newer than the incoming remote row (last-writer-wins)', async () => {
+        await insertDirtyExercise('ex-keep')
+        // Local dirty row is dated 2026-01-01 (see helper). Remote claims an
+        // older 2025-01-01 update, so the local copy must win and stay dirty.
+        mockFetch((call) => {
+            const isUpsertPull = call.method === 'GET' && call.url.includes('deleted_at=is.null')
+            if (isUpsertPull && call.url.includes('/exercises?')) {
+                return {
+                    body: [
+                        {
+                            uuid: 'ex-keep',
+                            user_id: userId,
+                            name: 'Remote Name',
+                            type: 'weight',
+                            muscle_group: null,
+                            photo_uri: null,
+                            position: 0,
+                            created_at: '2025-01-01T00:00:00Z',
+                            updated_at: '2025-01-01T00:00:00Z',
+                            deleted_at: null,
+                        },
+                    ],
+                }
+            }
+            return { body: [] }
+        })
+
+        await runSync()
+
+        const exercise = await db.getFirstAsync<{ name: string }>(
+            'SELECT name FROM exercises WHERE uuid = ?',
+            'ex-keep'
+        )
+        // Remote name was NOT applied; the newer local copy won the merge.
+        expect(exercise?.name).toBe('ex-keep')
+    })
+})
+
 describe('runSync — failure lifecycle (blocked / dead-letter)', () => {
     const respond = (status: number) =>
         mockFetch((call) => {
