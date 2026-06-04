@@ -11,6 +11,7 @@
         "biome:check": "biome check .",
         "biome:format": "biome format --write .",
         "test": "vitest run",
+        "coverage": "vitest run --coverage",
         "typecheck": "tsc --noEmit",
         "check": "yarn lint && yarn test && yarn typecheck"
     },
