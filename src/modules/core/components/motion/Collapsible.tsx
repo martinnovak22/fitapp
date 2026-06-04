@@ -1,5 +1,5 @@
 import type React from 'react'
-import type { StyleProp, ViewStyle } from 'react-native'
+import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { Duration } from '@/src/constants/Motion'
 
@@ -19,10 +19,23 @@ export function Collapsible({ expanded, children, style }: CollapsibleProps) {
     return (
         <Animated.View layout={LinearTransition.duration(Duration.base)} style={style}>
             {expanded && (
-                <Animated.View entering={FadeIn.duration(Duration.base)} exiting={FadeOut.duration(Duration.base)}>
+                <Animated.View
+                    style={styles.content}
+                    entering={FadeIn.duration(Duration.base)}
+                    exiting={FadeOut.duration(Duration.base)}
+                >
                     {children}
                 </Animated.View>
             )}
         </Animated.View>
     )
 }
+
+const styles = StyleSheet.create({
+    // Let the content shrink within a height-constrained parent (e.g. a bounded
+    // scroll region) instead of forcing its full natural height and overflowing.
+    content: {
+        flexShrink: 1,
+        minHeight: 0,
+    },
+})
