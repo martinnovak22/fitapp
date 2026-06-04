@@ -87,8 +87,8 @@ export function WorkoutSummaryModal({
                     </ScrollView>
 
                     <View style={styles.modalFooter}>
-                        <Button label={t('close')} onPress={onClose} variant="secondary" style={{ flex: 1 }} />
-                        <Button label={t('viewHistory')} onPress={onViewHistory} style={{ flex: 1 }} />
+                        <Button label={t('close')} onPress={onClose} variant="secondary"  />
+                        <Button label={t('viewHistory')} onPress={onViewHistory}  />
                     </View>
                 </View>
             </TouchableOpacity>

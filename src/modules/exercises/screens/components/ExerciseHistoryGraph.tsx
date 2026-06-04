@@ -107,9 +107,9 @@ export const ExerciseHistoryGraph = ({ exercise, data, summary, dominantMetric }
     })()
 
     return (
-        <View style={styles.container}>
+        <View style={{ rowGap: Spacing.xs }}>
             <View style={styles.header}>
-                <Typography.Subtitle weight="bold">{t('progress')}</Typography.Subtitle>
+                <Typography.Label>{t('progress')}</Typography.Label>
                 {contextLine && <Typography.Meta>{contextLine}</Typography.Meta>}
             </View>
 
@@ -209,18 +209,13 @@ export const ExerciseHistoryGraph = ({ exercise, data, summary, dominantMetric }
 }
 
 const styles = StyleSheet.create({
-    container: {
-        marginTop: 24,
-    },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
     },
     statsRow: {
         flexDirection: 'row',
-        marginBottom: 24,
         gap: 16,
     },
     statItem: {
@@ -235,7 +230,6 @@ const styles = StyleSheet.create({
         width: '100%',
         paddingBottom: 10,
         paddingTop: 20,
-        borderTopWidth: 0.5,
     },
     axisText: {
         fontSize: FontSize.xs,

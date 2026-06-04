@@ -208,7 +208,7 @@ export default function ExerciseDetailScreen() {
             contentContainerStyle={{ paddingTop: 0, paddingBottom: Spacing.lg }}
             nestedScrollEnabled={true}
         >
-            <Card style={{ marginTop: Spacing.md }}>
+            <Card style={{ marginTop: Spacing.md, gap: Spacing.md }}>
                 <ExerciseInfoRow exercise={exercise} onOpenPhoto={() => setShowImageFullScreen(true)} />
                 <ExerciseHistorySection
                     exercise={exercise}

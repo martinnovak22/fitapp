@@ -2,7 +2,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as ImagePicker from 'expo-image-picker'
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import Animated, { LinearTransition } from 'react-native-reanimated'
@@ -23,6 +23,32 @@ import {
     shouldPersistPhoto,
 } from '../exerciseForm'
 import { ExercisePhotoField, ExerciseTypeSelector, TrackingModeToggle } from './components/ExerciseFormSections'
+
+async function savePhotoPermanently(uri: string): Promise<string> {
+    const docDir = FileSystem.documentDirectory
+    if (!docDir) return uri
+    if (!uri) return uri
+
+    // Already persisted in app storage.
+    if (uri.includes(docDir)) return uri
+
+    const filename = `${Date.now()}.jpg`
+    const dest = `${docDir}exercises/${filename}`
+
+    // Ensure directory exists
+    const dir = `${docDir}exercises/`
+    const dirInfo = await FileSystem.getInfoAsync(dir)
+    if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+    }
+
+    await FileSystem.copyAsync({
+        from: uri,
+        to: dest,
+    })
+
+    return dest
+}
 
 type ExerciseFormScreenProps = {
     mode?: 'create' | 'edit'
@@ -83,32 +109,6 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
         if (!result.canceled) {
             setPhotoUri(result.assets[0].uri)
         }
-    }
-
-    const savePhotoPermanently = async (uri: string) => {
-        const docDir = FileSystem.documentDirectory
-        if (!docDir) return uri
-        if (!uri) return uri
-
-        // Already persisted in app storage.
-        if (uri.includes(docDir)) return uri
-
-        const filename = `${Date.now()}.jpg`
-        const dest = `${docDir}exercises/${filename}`
-
-        // Ensure directory exists
-        const dir = `${docDir}exercises/`
-        const dirInfo = await FileSystem.getInfoAsync(dir)
-        if (!dirInfo.exists) {
-            await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
-        }
-
-        await FileSystem.copyAsync({
-            from: uri,
-            to: dest,
-        })
-
-        return dest
     }
 
     const handleSave = useCallback(async () => {
@@ -253,7 +253,6 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                             autoFocus={!isEditing}
                             selectionColor={theme.primary}
                             returnKeyType={'next'}
-                            blurOnSubmit={false}
                             onSubmitEditing={() => muscleInputRef.current?.focus()}
                             accessibilityLabel={t('name')}
                             accessibilityHint={t('required')}
