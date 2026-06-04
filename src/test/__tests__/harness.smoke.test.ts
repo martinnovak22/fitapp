@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createTestDb, useTestDb, getTestDb, resetTestDb, type TestDb } from '../setupTestDb'
 import { createFakeSupabaseAdapter } from '../fakeSupabase'
+import { createTestDb, getTestDb, resetTestDb, type TestDb, useTestDb } from '../setupTestDb'
 
 // Route the product code's getDb() at the in-memory test DB so the real
 // serialized write queue (executeWrite / executeWriteTransaction) runs against it.

@@ -1,20 +1,20 @@
+import { invalidateExercisesCache } from '@/src/data/exercisesCache'
+import { onPrincipalChange } from '@/src/data/principal'
 import { getSupabaseConfig } from '@/src/data/remote/supabase/config'
 import { getSupabaseSession } from '@/src/data/remote/supabase/session'
-import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { getDb } from '@/src/db/client'
-import { executeWriteTransaction } from '@/src/db/writeQueue'
 import { nowIso } from '@/src/db/sync'
+import { executeWriteTransaction } from '@/src/db/writeQueue'
+import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { createOutbox, DIRTY_STATUSES } from './Outbox'
 import { capturePrincipalSnapshot, type LivePrincipal } from './PrincipalSnapshot'
-import { drainOutbox, type CycleResult } from './SyncCycle'
+import { makePushFn, preloadSetParents } from './PushPipeline'
 import type { RemoteAdapter } from './RemoteAdapter'
 import { RemoteRequestError } from './RemoteAdapter'
 import { createRemoteIdResolver } from './RemoteIdResolver'
 import { createRemoteWriter } from './RemoteWriter'
-import { makePushFn, preloadSetParents } from './PushPipeline'
-import { syncStatusStore, type SyncFailure } from './SyncStatus'
-import { invalidateExercisesCache } from '@/src/data/exercisesCache'
-import { onPrincipalChange } from '@/src/data/principal'
+import { type CycleResult, drainOutbox } from './SyncCycle'
+import { type SyncFailure, syncStatusStore } from './SyncStatus'
 
 type SyncState = {
     is_syncing: number
@@ -279,6 +279,31 @@ const maxIso = (a: string | null, b: string | null | undefined) => {
     return parseIsoMillis(a) >= parseIsoMillis(b) ? a : b
 }
 
+// Apply remotely-deleted rows to the local table, skipping any row whose local
+// copy is dirty and newer (local wins). Returns the advanced deletion cursor.
+// Shared by the per-entity pulls, which differ only by table name.
+const applyRemoteDeletions = async (
+    table: string,
+    deleted: DeletedRow[],
+    initialCursor: string | null
+): Promise<string | null> => {
+    let nextDeleted: string | null = initialCursor
+    for (const row of deleted) {
+        await executeWriteTransaction(async (db) => {
+            const local = await db.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
+                `SELECT updated_at, sync_status FROM ${table} WHERE uuid = ? LIMIT 1`,
+                row.uuid
+            )
+            if (!local) return
+            const localIsDirty = local.sync_status === 'dirty' || local.sync_status === 'failed'
+            if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) return
+            await db.runAsync(`DELETE FROM ${table} WHERE uuid = ?`, row.uuid)
+        })
+        nextDeleted = maxIso(nextDeleted, row.deleted_at)
+    }
+    return nextDeleted
+}
+
 const pullExercises = async (userId: string): Promise<number> => {
     const cursors = getCursors(userId)
     const remote = await request<RemoteSimpleRow[]>('exercises', {
@@ -346,20 +371,7 @@ const pullExercises = async (userId: string): Promise<number> => {
             deleted_at: cursors.exercisesDeleted ? `gt.${cursors.exercisesDeleted}` : 'not.is.null',
         },
     })
-    let nextDeleted = cursors.exercisesDeleted
-    for (const row of deleted) {
-        await executeWriteTransaction(async (innerDb) => {
-            const local = await innerDb.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
-                'SELECT updated_at, sync_status FROM exercises WHERE uuid = ? LIMIT 1',
-                row.uuid
-            )
-            if (!local) return
-            const localIsDirty = local.sync_status === 'dirty' || local.sync_status === 'failed'
-            if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) return
-            await innerDb.runAsync('DELETE FROM exercises WHERE uuid = ?', row.uuid)
-        })
-        nextDeleted = maxIso(nextDeleted, row.deleted_at)
-    }
+    const nextDeleted = await applyRemoteDeletions('exercises', deleted, cursors.exercisesDeleted)
 
     setCursors(userId, {
         ...cursors,
@@ -437,20 +449,7 @@ const pullWorkouts = async (userId: string): Promise<number> => {
             deleted_at: cursors.workoutsDeleted ? `gt.${cursors.workoutsDeleted}` : 'not.is.null',
         },
     })
-    let nextDeleted = cursors.workoutsDeleted
-    for (const row of deleted) {
-        await executeWriteTransaction(async (db) => {
-            const local = await db.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
-                'SELECT updated_at, sync_status FROM workouts WHERE uuid = ? LIMIT 1',
-                row.uuid
-            )
-            if (!local) return
-            const localIsDirty = local.sync_status === 'dirty' || local.sync_status === 'failed'
-            if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) return
-            await db.runAsync('DELETE FROM workouts WHERE uuid = ?', row.uuid)
-        })
-        nextDeleted = maxIso(nextDeleted, row.deleted_at)
-    }
+    const nextDeleted = await applyRemoteDeletions('workouts', deleted, cursors.workoutsDeleted)
 
     setCursors(userId, {
         ...cursors,
@@ -552,20 +551,7 @@ const pullSets = async (userId: string): Promise<number> => {
             deleted_at: cursors.setsDeleted ? `gt.${cursors.setsDeleted}` : 'not.is.null',
         },
     })
-    let nextDeleted = cursors.setsDeleted
-    for (const row of deleted) {
-        await executeWriteTransaction(async (db) => {
-            const local = await db.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
-                'SELECT updated_at, sync_status FROM sets WHERE uuid = ? LIMIT 1',
-                row.uuid
-            )
-            if (!local) return
-            const localIsDirty = local.sync_status === 'dirty' || local.sync_status === 'failed'
-            if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) return
-            await db.runAsync('DELETE FROM sets WHERE uuid = ?', row.uuid)
-        })
-        nextDeleted = maxIso(nextDeleted, row.deleted_at)
-    }
+    const nextDeleted = await applyRemoteDeletions('sets', deleted, cursors.setsDeleted)
 
     setCursors(userId, {
         ...cursors,

@@ -1,7 +1,14 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router, useFocusEffect, useNavigation } from 'expo-router'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import Animated from 'react-native-reanimated'
+import { Motion } from '@/src/constants/Motion'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
-import { Workout } from '@/src/db/workouts'
+import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -9,12 +16,6 @@ import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { router, useFocusEffect, useNavigation } from 'expo-router'
-import React, { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
-import Animated, { FadeInDown } from 'react-native-reanimated'
 
 export default function HistoryScreen() {
     const { workouts: workoutRepo } = getRepositories()
@@ -77,7 +78,7 @@ export default function HistoryScreen() {
         }
 
         return (
-            <Animated.View entering={canAnimate ? FadeInDown.delay(50 + index * 45).duration(300) : undefined}>
+            <Animated.View entering={canAnimate ? Motion.listItem(index) : undefined}>
                 <Card
                     onPress={() => router.push(`/(tabs)/history/${item.id}`)}
                     style={styles.workoutCard}

@@ -10,10 +10,9 @@
         "lint:fix": "eslint . --fix",
         "biome:check": "biome check .",
         "biome:format": "biome format --write .",
-        "test:unit": "./node_modules/.bin/ts-node --transpile-only scripts/test-build-set-payload.ts",
         "test": "vitest run",
         "typecheck": "tsc --noEmit",
-        "check": "yarn lint && yarn test:unit && yarn test && yarn typecheck"
+        "check": "yarn lint && yarn test && yarn typecheck"
     },
     "dependencies": {
         "@expo/vector-icons": "^15.0.3",

@@ -1,7 +1,7 @@
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
-import { SubSet, Set as WorkoutSet } from '@/src/db/workouts'
+import { Set as WorkoutSet } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -12,7 +12,7 @@ import { showToast } from '@/src/modules/core/utils/toast'
 import { formatLocalizedDate } from '@/src/utils/dateTime'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import { Gesture } from 'react-native-gesture-handler'
@@ -22,7 +22,13 @@ import { LogSetModal } from '../components/LogSetModal'
 import { WorkoutSetItem } from '../components/WorkoutSetItem'
 import { useWorkoutSession } from '../hooks/useWorkoutSession'
 import { buildSetPayload, SetFormValues } from '../setPayload'
-import { parseSubSets } from '../workoutUtils'
+import {
+    canEditHistoryWorkout as deriveCanEditHistoryWorkout,
+    canFinishWorkout as deriveCanFinishWorkout,
+    initialSessionState,
+    isReadOnly as deriveIsReadOnly,
+    sessionReducer,
+} from '../workoutSessionReducer'
 
 type SetWithExercise = WorkoutSet & { exercise_name: string }
 type WorkoutSessionScreenProps = {
@@ -54,69 +60,37 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         updateWorkoutTiming,
     } = useWorkoutSession(origin)
 
-    const [modalVisible, setModalVisible] = useState(false)
-    const [editingSetId, setEditingSetId] = useState<number | null>(null)
-
-    const [selectedExerciseId, setSelectedExerciseId] = useState<number | null>(null)
-    const [subSets, setSubSets] = useState<SubSet[]>([])
-    const [isHistoryEditMode, setIsHistoryEditMode] = useState(false)
-    const [timingModalVisible, setTimingModalVisible] = useState(false)
-    const [timingDate, setTimingDate] = useState('')
-    const [timingStartTime, setTimingStartTime] = useState('')
-    const [timingEndTime, setTimingEndTime] = useState('')
-    const [inputValues, setInputValues] = useState<SetFormValues>({
-        weight: '',
-        reps: '',
-        distance: '',
-        durationMinutes: '',
-        durationSeconds: '',
-    })
+    const [session, dispatch] = useReducer(sessionReducer, initialSessionState)
+    const {
+        modalVisible,
+        editingSetId,
+        selectedExerciseId,
+        subSets,
+        isHistoryEditMode,
+        timingModalVisible,
+        timingDate,
+        timingStartTime,
+        timingEndTime,
+        inputValues,
+    } = session
 
     // We can allow default selection once exercises are loaded
     useEffect(() => {
         if (!selectedExerciseId && exercises.length > 0) {
-            setSelectedExerciseId(exercises[0].id)
+            dispatch({ type: 'SELECT_DEFAULT_EXERCISE', exerciseId: exercises[0].id })
         }
     }, [exercises, selectedExerciseId])
 
     const updateInput = (key: keyof SetFormValues, value: string) => {
-        setInputValues((prev) => ({ ...prev, [key]: value }))
+        dispatch({ type: 'UPDATE_INPUT', key, value })
     }
 
     const handleOpenAddModal = () => {
-        setEditingSetId(null)
-        setSubSets([])
-        setInputValues({
-            weight: '',
-            reps: '',
-            distance: '',
-            durationMinutes: '',
-            durationSeconds: '',
-        })
-        setModalVisible(true)
+        dispatch({ type: 'OPEN_ADD_MODAL' })
     }
 
     const handleOpenEditModal = (s: WorkoutSet) => {
-        setEditingSetId(s.id)
-        setSelectedExerciseId(s.exercise_id)
-
-        let mins = ''
-        let secs = ''
-        if (s.duration) {
-            mins = Math.floor(s.duration).toString()
-            secs = Math.round((s.duration - Math.floor(s.duration)) * 60).toString()
-        }
-
-        setSubSets(parseSubSets(s.sub_sets))
-
-        setInputValues({
-            weight: s.weight?.toString() || '',
-            reps: s.reps?.toString() || '',
-            distance: s.distance?.toString() || '',
-            durationMinutes: mins,
-            durationSeconds: secs,
-        })
-        setModalVisible(true)
+        dispatch({ type: 'OPEN_EDIT_MODAL', set: s })
     }
 
     const handleSaveSet = async () => {
@@ -141,7 +115,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 title: t('emptySetIgnored'),
                 message: t('emptySetIgnoredMessage'),
             })
-            setModalVisible(false)
+            dispatch({ type: 'CLOSE_MODAL' })
             return
         }
 
@@ -153,9 +127,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         }
 
         if (success) {
-            setModalVisible(false)
-            setEditingSetId(null)
-            setSubSets([])
+            dispatch({ type: 'SET_SAVE_SUCCEEDED' })
         }
     }
 
@@ -175,17 +147,18 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         return dateTime.toISOString()
     }
 
-    const isFinishedWorkout = workout?.status === 'finished'
-    const canEditHistoryWorkout = origin === 'history' && isFinishedWorkout
-    const isReadOnly = isFinishedWorkout && !isHistoryEditMode
-    const canFinishWorkout = !isFinishedWorkout
+    const canEditHistoryWorkout = deriveCanEditHistoryWorkout(origin, workout)
+    const isReadOnly = deriveIsReadOnly(workout, isHistoryEditMode)
+    const canFinishWorkout = deriveCanFinishWorkout(workout)
 
     const openTimingModal = () => {
         if (!workout) return
-        setTimingDate(workout.date ?? '')
-        setTimingStartTime(toLocalTimeInput(workout.start_time))
-        setTimingEndTime(toLocalTimeInput(workout.end_time))
-        setTimingModalVisible(true)
+        dispatch({
+            type: 'OPEN_TIMING_MODAL',
+            date: workout.date ?? '',
+            startTime: toLocalTimeInput(workout.start_time),
+            endTime: toLocalTimeInput(workout.end_time),
+        })
     }
 
     const saveTiming = async () => {
@@ -213,7 +186,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
         const saved = await updateWorkoutTiming(timingDate, nextStart, nextEnd)
         if (saved) {
-            setTimingModalVisible(false)
+            dispatch({ type: 'CLOSE_TIMING_MODAL' })
         }
     }
 
@@ -225,7 +198,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 ? {
                       icon: isHistoryEditMode ? ('check' as const) : ('pencil' as const),
                       accessibilityLabel: isHistoryEditMode ? t('save') : t('edit'),
-                      onPress: () => setIsHistoryEditMode((prev) => !prev),
+                      onPress: () => dispatch({ type: 'TOGGLE_HISTORY_EDIT_MODE' }),
                       disabled: false,
                   }
                 : canFinishWorkout
@@ -335,14 +308,19 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
                     <LogSetModal
                         visible={modalVisible}
-                        onClose={() => setModalVisible(false)}
+                        onClose={() => dispatch({ type: 'CLOSE_MODAL' })}
                         onSave={handleSaveSet}
                         editingSetId={editingSetId}
                         exercises={exercises}
                         selectedExerciseId={selectedExerciseId}
-                        setSelectedExerciseId={setSelectedExerciseId}
+                        setSelectedExerciseId={(exerciseId) => dispatch({ type: 'SET_SELECTED_EXERCISE', exerciseId })}
                         subSets={subSets}
-                        setSubSets={setSubSets}
+                        setSubSets={(next) =>
+                            dispatch({
+                                type: 'SET_SUB_SETS',
+                                subSets: typeof next === 'function' ? next(subSets) : next,
+                            })
+                        }
                         inputValues={inputValues}
                         updateInput={updateInput}
                         isSaving={isSavingSet}
@@ -402,7 +380,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 visible={timingModalVisible}
                 transparent
                 animationType={'fade'}
-                onRequestClose={() => setTimingModalVisible(false)}
+                onRequestClose={() => dispatch({ type: 'CLOSE_TIMING_MODAL' })}
             >
                 <View style={[styles.modalBackdrop, { backgroundColor: theme.overlayBackdrop }]}>
                     <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -412,7 +390,9 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             <Typography.Label>{t('workoutDate')}</Typography.Label>
                             <TextInput
                                 value={timingDate}
-                                onChangeText={setTimingDate}
+                                onChangeText={(value) =>
+                                    dispatch({ type: 'SET_TIMING_FIELD', field: 'timingDate', value })
+                                }
                                 placeholder={'YYYY-MM-DD'}
                                 placeholderTextColor={theme.textSecondary}
                                 style={[
@@ -432,7 +412,9 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             <Typography.Label>{t('startTime')}</Typography.Label>
                             <TextInput
                                 value={timingStartTime}
-                                onChangeText={setTimingStartTime}
+                                onChangeText={(value) =>
+                                    dispatch({ type: 'SET_TIMING_FIELD', field: 'timingStartTime', value })
+                                }
                                 placeholder={'HH:mm'}
                                 placeholderTextColor={theme.textSecondary}
                                 style={[
@@ -452,7 +434,9 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             <Typography.Label>{t('endTime')}</Typography.Label>
                             <TextInput
                                 value={timingEndTime}
-                                onChangeText={setTimingEndTime}
+                                onChangeText={(value) =>
+                                    dispatch({ type: 'SET_TIMING_FIELD', field: 'timingEndTime', value })
+                                }
                                 placeholder={'HH:mm'}
                                 placeholderTextColor={theme.textSecondary}
                                 style={[
@@ -472,7 +456,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             <Button
                                 label={t('cancel')}
                                 variant={'outline'}
-                                onPress={() => setTimingModalVisible(false)}
+                                onPress={() => dispatch({ type: 'CLOSE_TIMING_MODAL' })}
                             />
                             <Button
                                 label={isSavingWorkoutTime ? t('saving') : t('saveChanges')}

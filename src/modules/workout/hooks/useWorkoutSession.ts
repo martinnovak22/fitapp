@@ -1,10 +1,10 @@
-import { getRepositories } from '@/src/data/repositories'
-import { Exercise } from '@/src/db/exercises'
-import { SetData, Workout, Set as WorkoutSet } from '@/src/db/workouts'
-import { showToast } from '@/src/modules/core/utils/toast'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getRepositories } from '@/src/data/repositories'
+import type { Exercise } from '@/src/db/exercises'
+import type { SetData, Workout, Set as WorkoutSet } from '@/src/db/workouts'
+import { showToast } from '@/src/modules/core/utils/toast'
 
 type SetWithExercise = WorkoutSet & { exercise_name: string }
 type SessionOrigin = 'workout' | 'history'

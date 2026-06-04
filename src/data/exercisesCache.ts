@@ -1,7 +1,7 @@
+import { getActivePrincipal, onPrincipalChange } from '@/src/data/principal'
+import type { ExerciseRepositoryPort } from '@/src/data/repositories'
 import type { Exercise, ExerciseType } from '@/src/db/exercises'
 import { ExerciseRepository } from '@/src/db/exercises'
-import type { ExerciseRepositoryPort } from '@/src/data/repositories'
-import { getActivePrincipal, onPrincipalChange } from '@/src/data/principal'
 
 // In-memory cache for the exercises list.
 //
@@ -64,13 +64,6 @@ export const invalidateExercisesCache = (): void => {
     cached = null
     inFlight = null
     notify()
-}
-
-export const subscribeToExercisesCache = (listener: Listener): (() => void) => {
-    listeners.add(listener)
-    return () => {
-        listeners.delete(listener)
-    }
 }
 
 // Exposed for tests that want a deterministic starting point.

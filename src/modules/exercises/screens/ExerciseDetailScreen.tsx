@@ -1,25 +1,25 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { useIsFocused } from '@react-navigation/native'
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { getRepositories } from '@/src/data/repositories'
-import { Exercise } from '@/src/db/exercises'
-import { ExerciseStats, type BestSetEntry, type SessionSummary } from '@/src/modules/exercises/ExerciseStats'
-import type { PrimaryMetric } from '@/src/modules/exercises/ExerciseTypeMetadata'
-import { Card } from '@/src/modules/core/components/Card'
+import type { Exercise } from '@/src/db/exercises'
 import { Button } from '@/src/modules/core/components/Button'
+import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
+import { Appear } from '@/src/modules/core/components/motion'
 import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
+import { type BestSetEntry, ExerciseStats, type SessionSummary } from '@/src/modules/exercises/ExerciseStats'
+import type { PrimaryMetric } from '@/src/modules/exercises/ExerciseTypeMetadata'
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { useIsFocused } from '@react-navigation/native'
-import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
-import React, { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 'react-native'
-import Animated, { FadeIn } from 'react-native-reanimated'
 import { ExerciseHistoryGraph } from './components/ExerciseHistoryGraph'
 
 export default function ExerciseDetailScreen() {
@@ -143,7 +143,7 @@ export default function ExerciseDetailScreen() {
                 ),
                 headerRight: () =>
                     exercise ? (
-                        <Animated.View entering={FadeIn.duration(180)} style={styles.headerActions}>
+                        <Appear style={styles.headerActions}>
                             <TouchableOpacity
                                 onPress={() => router.push(`/(tabs)/exercises/edit/${exercise.id}`)}
                                 accessibilityRole={'button'}
@@ -160,7 +160,7 @@ export default function ExerciseDetailScreen() {
                             >
                                 <FontAwesome name={'trash'} size={20} color={theme.error} />
                             </TouchableOpacity>
-                        </Animated.View>
+                        </Appear>
                     ) : null,
             })
         }, [exercise, navigation, theme, t, handleDelete])
@@ -245,12 +245,12 @@ export default function ExerciseDetailScreen() {
                     )}
                 </View>
                 {historyLoading ? (
-                    <View style={styles.historyLoading}>
+                    <Appear key="loading" style={styles.historyLoading}>
                         <ActivityIndicator size={'small'} color={theme.primary} />
                         <Typography.Meta style={styles.loadingText}>{t('loading')}</Typography.Meta>
-                    </View>
+                    </Appear>
                 ) : historyError ? (
-                    <View style={styles.historyError}>
+                    <Appear key="error" style={styles.historyError}>
                         <EmptyState
                             message={historyError}
                             icon={'line-chart'}
@@ -263,20 +263,24 @@ export default function ExerciseDetailScreen() {
                             style={styles.retryButton}
                             accessibilityHint={t('failedToLoadHistory')}
                         />
-                    </View>
+                    </Appear>
                 ) : historyData.length > 0 ? (
-                    <ExerciseHistoryGraph
-                        exercise={exercise}
-                        data={historyData}
-                        summary={historySummary}
-                        dominantMetric={dominantMetric}
-                    />
+                    <Appear key="graph">
+                        <ExerciseHistoryGraph
+                            exercise={exercise}
+                            data={historyData}
+                            summary={historySummary}
+                            dominantMetric={dominantMetric}
+                        />
+                    </Appear>
                 ) : (
-                    <EmptyState
-                        message={t('statsComingSoon')}
-                        icon={'line-chart'}
-                        style={{ backgroundColor: theme.surface }}
-                    />
+                    <Appear key="empty">
+                        <EmptyState
+                            message={t('statsComingSoon')}
+                            icon={'line-chart'}
+                            style={{ backgroundColor: theme.surface }}
+                        />
+                    </Appear>
                 )}
             </Card>
             <FullScreenImageModal

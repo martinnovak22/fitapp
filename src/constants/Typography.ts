@@ -1,4 +1,4 @@
-import { TextStyle } from 'react-native'
+import type { TextStyle } from 'react-native'
 
 /**
  * Type scale. Collapses the 9 ad-hoc font sizes found across the app

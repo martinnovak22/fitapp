@@ -4,19 +4,19 @@ import { useFonts } from 'expo-font'
 import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { useEffect } from 'react'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import 'react-native-reanimated'
 import { StyleSheet } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { ReducedMotionConfig, ReduceMotion } from 'react-native-reanimated'
 import { PortalHost, PortalProvider } from 'react-native-teleport'
 import Toast from 'react-native-toast-message'
+import { FontWeight } from '../src/constants/Typography'
 import { initializeDataLayer } from '../src/data/bootstrap'
 import { SyncProvider } from '../src/data/sync/SyncProvider'
 import { SyncStatusBanner } from '../src/data/sync/SyncStatusBanner'
-import { FontWeight } from '../src/constants/Typography'
 import { useDatabaseInit } from '../src/db/client'
+import { AuthProvider, useAuth } from '../src/modules/auth/useAuth'
 import { toastConfig } from '../src/modules/core/components/ToastConfig'
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../src/modules/core/hooks/useTheme'
-import { AuthProvider, useAuth } from '../src/modules/auth/useAuth'
 import '../src/modules/core/utils/i18n'
 
 export {
@@ -51,6 +51,9 @@ export default function RootLayout() {
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
+            {/* Honor the OS "reduce motion" accessibility setting across all
+                reanimated entering/exiting/layout animations. */}
+            <ReducedMotionConfig mode={ReduceMotion.System} />
             <PortalProvider>
                 <CustomThemeProvider>
                     <AuthProvider>

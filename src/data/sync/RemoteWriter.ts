@@ -4,7 +4,7 @@
 
 import type { SyncFailureReason } from './Outbox'
 import type { RemoteAdapter, RemoteRow, RemoteTable } from './RemoteAdapter'
-import { RemoteRequestError, isPermanentRejectionStatus } from './RemoteAdapter'
+import { isPermanentRejectionStatus, RemoteRequestError } from './RemoteAdapter'
 
 export type RemoteWriteResult =
     | { uuid: string; kind: 'persisted'; id: number }

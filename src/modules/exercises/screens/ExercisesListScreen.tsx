@@ -1,8 +1,17 @@
-import { ThemeType } from '@/src/constants/Colors'
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router, useFocusEffect, useNavigation } from 'expo-router'
+import type { TFunction } from 'i18next'
+import React, { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ActivityIndicator, Image, Modal, Platform, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
+import type { ThemeType } from '@/src/constants/Colors'
+import { Duration, Motion } from '@/src/constants/Motion'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
-import { Exercise } from '@/src/db/exercises'
+import type { Exercise } from '@/src/db/exercises'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
@@ -10,17 +19,8 @@ import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv'
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { router, useFocusEffect, useNavigation } from 'expo-router'
-import { TFunction } from 'i18next'
-import React, { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Image, Modal, Platform, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native'
-import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
 import { ListSeparator } from '../../core/components/ListSeparator'
 import { useExercises } from '../hooks/useExercises'
-
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 
 const ExerciseListItem = React.memo(
     ({
@@ -41,7 +41,8 @@ const ExerciseListItem = React.memo(
         const scale = useSharedValue(1)
 
         React.useEffect(() => {
-            scale.value = withTiming(isDragged ? 0.9 : 1, { duration: 100 })
+            // Snappy drag-pickup feedback; fast is the tightest shared token.
+            scale.value = withTiming(isDragged ? 0.9 : 1, { duration: Duration.fast })
         }, [isDragged, scale])
 
         const animatedStyle = useAnimatedStyle(() => ({
@@ -50,7 +51,7 @@ const ExerciseListItem = React.memo(
 
         return (
             <Animated.View
-                entering={animateOnEnter ? FadeInDown.delay(50 + Math.min(index, 8) * 50).duration(320) : undefined}
+                entering={animateOnEnter ? Motion.listItem(index) : undefined}
                 style={styles.itemEnterWrapper}
             >
                 <Animated.View
@@ -82,7 +83,7 @@ const ExerciseListItem = React.memo(
                                     { backgroundColor: theme.surface, borderColor: theme.border },
                                 ]}
                             >
-                                <FontAwesome name={'camera'} size={20} color={theme.textSecondary + '40'} />
+                                <FontAwesome name={'camera'} size={20} color={`${theme.textSecondary}40`} />
                             </View>
                         )}
                         <View style={styles.content}>
@@ -182,7 +183,9 @@ export default function ExercisesListScreen() {
 
     const renderItem = useCallback(
         ({ item, index }: { item: Exercise; index: number }) => {
-            const animateOnEnter = !animatedItemIdsRef.current.has(item.id)
+            // Cap at the stagger ceiling so a long list doesn't fire dozens of
+            // simultaneous entrances on first load (mirrors HistoryScreen).
+            const animateOnEnter = index < 8 && !animatedItemIdsRef.current.has(item.id)
             if (animateOnEnter) {
                 animatedItemIdsRef.current.add(item.id)
             }

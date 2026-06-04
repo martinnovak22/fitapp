@@ -3,7 +3,7 @@ import type { Set } from '@/src/db/workouts'
 import { formatDuration } from '@/src/utils/formatters'
 
 export type PrimaryMetric = 'weight' | 'reps' | 'distance' | 'duration'
-export type MetricUnit = 'kg' | 'reps' | 'm' | ''
+type MetricUnit = 'kg' | 'reps' | 'm' | ''
 
 const formatCompactWeight = (value: number): string => {
     const rounded = Math.round(value * 100) / 100
@@ -83,7 +83,7 @@ const formatRawMetric = (metric: PrimaryMetric, value: number): string => {
 
 // Compact, single-string label that captures the whole set for one data point.
 // Driven by (exercise type, dominant metric) per the PRD's table.
-export const formatCompactSetLabel = (type: ExerciseType, dominant: PrimaryMetric, set: Set): string => {
+export const formatCompactSetLabel = (type: ExerciseType, _dominant: PrimaryMetric, set: Set): string => {
     const weight = set.weight ?? 0
     const reps = set.reps ?? 0
     const distance = set.distance ?? 0
@@ -112,7 +112,7 @@ export const formatHeadlineStat = (_type: ExerciseType, dominant: PrimaryMetric,
     return unit ? `${formatted} ${unit}` : formatted
 }
 
-export const formatAxisLabel = (dominant: PrimaryMetric, value: number): string => {
+const formatAxisLabel = (dominant: PrimaryMetric, value: number): string => {
     switch (dominant) {
         case 'weight':
             return value.toFixed(0)
@@ -125,7 +125,7 @@ export const formatAxisLabel = (dominant: PrimaryMetric, value: number): string 
     }
 }
 
-export interface ExerciseTypeAdapter {
+interface ExerciseTypeAdapter {
     type: ExerciseType
     defaultDominantMetric: PrimaryMetric
 }

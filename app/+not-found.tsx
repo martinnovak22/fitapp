@@ -1,9 +1,9 @@
-import { Spacing } from '@/src/constants/Spacing'
-import { GlobalStyles } from '@/src/constants/Styles'
-import { Typography } from '@/src/modules/core/components/Typography'
 import { Link, Stack } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, View } from 'react-native'
+import { Spacing } from '@/src/constants/Spacing'
+import { GlobalStyles } from '@/src/constants/Styles'
+import { Typography } from '@/src/modules/core/components/Typography'
 
 export default function NotFoundScreen() {
     const { t } = useTranslation()

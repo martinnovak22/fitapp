@@ -92,7 +92,7 @@ describe('getDb connection handling', () => {
         expect(openDatabaseAsync).toHaveBeenCalledTimes(1)
 
         expect(appStateHandler).toBeDefined()
-        appStateHandler!('background')
+        appStateHandler?.('background')
         await Promise.resolve()
         await Promise.resolve()
 
@@ -102,7 +102,7 @@ describe('getDb connection handling', () => {
 
     it('ignores transient inactive transitions', async () => {
         await (await getDb()).getFirstAsync('SELECT 1')
-        appStateHandler!('inactive')
+        appStateHandler?.('inactive')
         await Promise.resolve()
 
         await (await getDb()).getFirstAsync('SELECT 1')

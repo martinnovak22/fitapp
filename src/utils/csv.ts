@@ -1,61 +1,17 @@
-import { getRepositories } from '@/src/data/repositories'
-import { Exercise, ExerciseType } from '@/src/db/exercises'
-import i18n from '@/src/modules/core/utils/i18n'
-import { showToast } from '@/src/modules/core/utils/toast'
 import * as DocumentPicker from 'expo-document-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as Sharing from 'expo-sharing'
 import { Platform } from 'react-native'
+import { getRepositories } from '@/src/data/repositories'
+import type { Exercise } from '@/src/db/exercises'
+import i18n from '@/src/modules/core/utils/i18n'
+import { showToast } from '@/src/modules/core/utils/toast'
+import { buildExerciseKey, parseExercisesCsv } from '@/src/utils/exercisesCsvParser'
 
 const EXPORT_FILE_NAME = 'exercises_export.csv'
 const EXPORT_FILE_BASENAME = 'exercises_export'
-const VALID_TYPES: ExerciseType[] = ['weight', 'cardio', 'bodyweight', 'bodyweight_timer']
-const VALID_TYPE_SET = new Set<ExerciseType>(VALID_TYPES)
 
 type ExportAction = 'share' | 'save'
-
-const normalize = (value?: string | null) => value?.trim().toLowerCase() ?? ''
-
-const buildExerciseKey = (name: string, type: ExerciseType, muscleGroup?: string) =>
-    `${normalize(name)}|${normalize(type)}|${normalize(muscleGroup)}`
-
-const parseCsvLine = (line: string): string[] => {
-    const values: string[] = []
-    let current = ''
-    let inQuotes = false
-
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i]
-        const nextChar = line[i + 1]
-
-        if (char === '"' && inQuotes && nextChar === '"') {
-            current += '"'
-            i++
-            continue
-        }
-
-        if (char === '"') {
-            inQuotes = !inQuotes
-            continue
-        }
-
-        if (char === ',' && !inQuotes) {
-            values.push(current.trim())
-            current = ''
-            continue
-        }
-
-        current += char
-    }
-
-    values.push(current.trim())
-    return values
-}
-
-const resolveExerciseType = (rawType: string): ExerciseType | null => {
-    const normalized = normalize(rawType).replace(/\s+/g, '_') as ExerciseType
-    return VALID_TYPE_SET.has(normalized) ? normalized : null
-}
 
 const getExportTimestamp = () => {
     const now = new Date()
@@ -177,60 +133,27 @@ export const importExercisesFromCSV = async (
 
         const content = await FileSystem.readAsStringAsync(selectedAsset.uri)
 
-        const lines = content.split('\n')
-        const exercisesToImport = lines.slice(1).filter((line) => line.trim().length > 0)
+        const { rows, errors } = parseExercisesCsv(content)
 
         const existingExercises = await exerciseRepo.getAll()
         const existingByKey = new Map(
             existingExercises.map((ex) => [buildExerciseKey(ex.name, ex.type, ex.muscle_group), ex])
         )
-        const processedImportKeys = new Set<string>()
 
         let addedCount = 0
         let mergedCount = 0
-        let skippedCount = 0
-        for (const line of exercisesToImport) {
-            const cells = parseCsvLine(line)
-            if (cells.length < 2) {
-                skippedCount++
-                continue
-            }
-
-            const name = cells[0].trim()
-            const resolvedType = resolveExerciseType(cells[1])
-            const muscle_group = cells[2]?.trim() || undefined
-            if (!name || !resolvedType) {
-                skippedCount++
-                continue
-            }
-
-            const key = buildExerciseKey(name, resolvedType, muscle_group)
-            if (processedImportKeys.has(key)) {
-                skippedCount++
-                continue
-            }
-
+        const skippedCount = errors.length
+        for (const { name, type, muscleGroup } of rows) {
+            const key = buildExerciseKey(name, type, muscleGroup)
             const existing = existingByKey.get(key)
             if (!existing) {
-                await exerciseRepo.create(name, resolvedType, muscle_group)
-                existingByKey.set(key, {
-                    id: -1,
-                    name,
-                    type: resolvedType,
-                    muscle_group,
-                    position: 0,
-                })
+                await exerciseRepo.create(name, type, muscleGroup)
+                existingByKey.set(key, { id: -1, name, type, muscle_group: muscleGroup, position: 0 })
                 addedCount++
             } else {
-                await exerciseRepo.update(existing.id, {
-                    name,
-                    type: resolvedType,
-                    muscle_group,
-                })
+                await exerciseRepo.update(existing.id, { name, type, muscle_group: muscleGroup })
                 mergedCount++
             }
-
-            processedImportKeys.add(key)
         }
 
         showToast.success({

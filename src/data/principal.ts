@@ -1,6 +1,6 @@
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 
-export type PrincipalMode = 'local' | 'guest' | 'account' | 'signed-out'
+type PrincipalMode = 'local' | 'guest' | 'account' | 'signed-out'
 
 type PrincipalState = {
     mode: PrincipalMode

@@ -1,16 +1,17 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import type React from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { AppState } from 'react-native'
-import { getSyncState, retryBlockedRows, runSync } from './syncService'
-import { syncStatusStore, type SyncStatus as ObservableSyncStatus } from './SyncStatus'
-import { useAuth } from '@/src/modules/auth/useAuth'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
+import { useAuth } from '@/src/modules/auth/useAuth'
+import { type SyncStatusState, syncStatusStore } from './SyncStatus'
+import { getSyncState, retryBlockedRows, runSync } from './syncService'
 
 // Sync polling is the dominant background cost when the user is idle. Issue #26
 // relaxes it from a 20s tick to a 60s base with exponential backoff up to 5min
 // when consecutive cycles produce no work. AppState 'active' and explicit user
 // retries reset the backoff so the next tick is prompt.
-export const SYNC_BASE_INTERVAL_MS = 60_000
-export const SYNC_MAX_INTERVAL_MS = 5 * 60_000
+const SYNC_BASE_INTERVAL_MS = 60_000
+const SYNC_MAX_INTERVAL_MS = 5 * 60_000
 
 type SyncBannerStatus = {
     isSyncing: boolean
@@ -19,7 +20,7 @@ type SyncBannerStatus = {
     lastSuccessAt: string | null
     lastAttemptAt: string | null
     lastError: string | null
-    observable: ObservableSyncStatus
+    observable: SyncStatusState
 }
 
 type SyncContextValue = {

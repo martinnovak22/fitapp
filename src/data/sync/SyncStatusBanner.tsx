@@ -1,19 +1,20 @@
+import type React from 'react'
+import { useCallback } from 'react'
+import { StyleSheet, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { Button } from '@/src/modules/core/components/Button'
+import { Appear } from '@/src/modules/core/components/motion'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import React, { useCallback } from 'react'
-import { StyleSheet, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useSync } from './SyncProvider'
+import { resolveSyncBanner } from './syncBannerModel'
 
 export const SyncStatusBanner: React.FC = () => {
     const { status, triggerSync, retryBlocked } = useSync()
     const { theme } = useTheme()
     const insets = useSafeAreaInsets()
-    const observable = status.observable
-
     const handleRetry = useCallback(() => {
         void triggerSync()
     }, [triggerSync])
@@ -22,22 +23,17 @@ export const SyncStatusBanner: React.FC = () => {
         void retryBlocked()
     }, [retryBlocked])
 
-    // Transient failures still being retried get the prominent alert. Rows that
-    // were given up on (blocked) are reported quietly below, never both.
-    if (observable.kind === 'failed') {
-        const firstReason = observable.rows[0]?.reason
-        const summary =
-            observable.rows.length === 1
-                ? `Sync failed: ${firstReason?.message ?? firstReason?.kind ?? 'unknown error'}`
-                : `${observable.rows.length} rows failed to sync`
+    const banner = resolveSyncBanner(status.observable, status.blockedCount)
+    if (!banner) return null
 
-        return (
+    const content =
+        banner.variant === 'failed' ? (
             <View
                 style={[styles.banner, { backgroundColor: theme.errorSurface, paddingTop: insets.top + Spacing.sm }]}
                 accessibilityRole="alert"
             >
                 <Typography.Label size="xs" style={[styles.message, { color: 'white' }]} numberOfLines={2}>
-                    {summary}
+                    {banner.summary}
                 </Typography.Label>
                 <Button
                     label="Retry"
@@ -49,20 +45,13 @@ export const SyncStatusBanner: React.FC = () => {
                     labelStyle={styles.retryText}
                 />
             </View>
-        )
-    }
-
-    if (status.blockedCount > 0) {
-        const summary =
-            status.blockedCount === 1 ? "1 item couldn't sync" : `${status.blockedCount} items couldn't sync`
-
-        return (
+        ) : (
             <View
                 style={[styles.banner, { backgroundColor: theme.surface, paddingTop: insets.top + Spacing.sm }]}
                 accessibilityLiveRegion="polite"
             >
                 <Typography.Label size="xs" style={[styles.message, { color: theme.textSecondary }]} numberOfLines={2}>
-                    {summary}
+                    {banner.summary}
                 </Typography.Label>
                 <Button
                     label="Try again"
@@ -74,19 +63,26 @@ export const SyncStatusBanner: React.FC = () => {
                 />
             </View>
         )
-    }
 
-    return null
+    // Appear owns the fixed positioning so the banner fades in/out (and swaps
+    // between failed/blocked via the key) instead of popping.
+    return (
+        <Appear key={banner.variant} variant="fade" style={styles.bannerContainer}>
+            {content}
+        </Appear>
+    )
 }
 
 const styles = StyleSheet.create({
-    banner: {
+    bannerContainer: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         zIndex: 10,
         elevation: 10,
+    },
+    banner: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: Spacing.md,

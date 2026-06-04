@@ -1,4 +1,4 @@
-import { SubSet } from '@/src/db/workouts'
+import type { SubSet } from '@/src/db/workouts'
 
 export const SET_BASE_HEIGHT = 56
 export const SUBSET_HEIGHT = 32

@@ -1,12 +1,12 @@
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { FlatList, type ListRenderItem, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import type { Exercise } from '@/src/db/exercises'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { formatExerciseType } from '@/src/utils/formatters'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import { FlatList, type ListRenderItem, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { ExerciseStats, type HeadlineStat } from './ExerciseStats'
 
 type Props = {
@@ -22,6 +22,13 @@ export const ExercisePicker = ({ exercises, onPick, selectedId }: Props) => {
     const { t } = useTranslation()
     const { theme } = useTheme()
     const [stats, setStats] = React.useState<Map<number, HeadlineStat | null>>(() => new Map())
+
+    // Land the list on the currently-selected exercise when the picker opens,
+    // instead of always at the top. getItemLayout makes initialScrollIndex exact.
+    const selectedIndex = React.useMemo(
+        () => exercises.findIndex((exercise) => exercise.id === selectedId),
+        [exercises, selectedId]
+    )
 
     React.useEffect(() => {
         let cancelled = false
@@ -76,6 +83,7 @@ export const ExercisePicker = ({ exercises, onPick, selectedId }: Props) => {
             renderItem={renderItem}
             style={[styles.list, { backgroundColor: theme.background }]}
             getItemLayout={(_, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
+            initialScrollIndex={selectedIndex > 0 ? selectedIndex : undefined}
             initialNumToRender={8}
             windowSize={5}
             keyboardShouldPersistTaps={'handled'}

@@ -1,6 +1,6 @@
 import { buildPrincipalWhereClause, getScopedUserId } from '@/src/data/principal'
 import { getDb } from './client'
-import { createEntityUuid, nowIso, recordDeletionTombstone, SyncStatus } from './sync'
+import { createEntityUuid, nowIso, type SyncStatus, softDeleteById } from './sync'
 import { executeWrite, executeWriteTransaction } from './writeQueue'
 
 export type ExerciseType = 'weight' | 'cardio' | 'bodyweight' | 'bodyweight_timer'
@@ -134,17 +134,6 @@ export const ExerciseRepository = {
     },
 
     async delete(id: number): Promise<void> {
-        await executeWriteTransaction(async (db) => {
-            const scope = buildPrincipalWhereClause('user_id')
-            const entity = await db.getFirstAsync<{ uuid: string; user_id?: string | null }>(
-                `SELECT uuid, user_id FROM exercises WHERE id = ? AND ${scope.clause}`,
-                id,
-                ...scope.params
-            )
-            if (entity?.uuid) {
-                await recordDeletionTombstone(db, 'exercise', entity.uuid, entity.user_id)
-            }
-            await db.runAsync(`DELETE FROM exercises WHERE id = ? AND ${scope.clause}`, id, ...scope.params)
-        })
+        await softDeleteById('exercises', 'exercise', id)
     },
 }

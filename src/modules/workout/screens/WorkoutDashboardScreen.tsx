@@ -1,22 +1,22 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router, useFocusEffect, useNavigation } from 'expo-router'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
-import { Workout } from '@/src/db/workouts'
+import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
+import { Appear, ListItemAppear } from '@/src/modules/core/components/motion'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
-import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { router, useFocusEffect, useNavigation } from 'expo-router'
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native'
-import Animated, { FadeInDown } from 'react-native-reanimated'
 
 export default function WorkoutDashboardScreen() {
     const { workouts: workoutRepo } = getRepositories()
@@ -154,7 +154,7 @@ export default function WorkoutDashboardScreen() {
         <ScrollScreenLayout
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         >
-            <Animated.View entering={FadeInDown.delay(70).duration(360)}>
+            <ListItemAppear index={0}>
                 <Card
                     onPress={() => router.push('/workout/calendar')}
                     style={layoutStyles.heroCard}
@@ -179,7 +179,7 @@ export default function WorkoutDashboardScreen() {
                                 {t('completed')}
                             </Typography.Meta>
                         </View>
-                        <View style={[layoutStyles.heroStatSeparator, { backgroundColor: theme.border + '20' }]} />
+                        <View style={[layoutStyles.heroStatSeparator, { backgroundColor: `${theme.border}20` }]} />
 
                         <View style={[layoutStyles.heroStatItem]}>
                             <Typography.Meta
@@ -203,7 +203,7 @@ export default function WorkoutDashboardScreen() {
                         </View>
                     </View>
 
-                    <View style={[layoutStyles.heroDivider, { backgroundColor: theme.border + '15' }]} />
+                    <View style={[layoutStyles.heroDivider, { backgroundColor: `${theme.border}15` }]} />
 
                     <View style={layoutStyles.headerRow}>
                         <Typography.Subtitle
@@ -220,7 +220,7 @@ export default function WorkoutDashboardScreen() {
                                 <View
                                     style={[
                                         layoutStyles.dayBox,
-                                        { backgroundColor: theme.surfaceMuted, borderColor: theme.border + '20' },
+                                        { backgroundColor: theme.surfaceMuted, borderColor: `${theme.border}20` },
                                         day.workedOut && { backgroundColor: theme.primary, borderColor: theme.primary },
                                     ]}
                                 >
@@ -238,16 +238,16 @@ export default function WorkoutDashboardScreen() {
                         ))}
                     </View>
                 </Card>
-            </Animated.View>
+            </ListItemAppear>
 
-            <Animated.View entering={FadeInDown.delay(140).duration(360)}>
+            <ListItemAppear index={1}>
                 <Card style={[layoutStyles.activeCard, { borderLeftColor: theme.primary }]}>
                     <View style={layoutStyles.activeHeader}>
                         <Typography.Subtitle size="md" weight="bold">
                             {activeWorkout ? t('activeSession') : t('workout')}
                         </Typography.Subtitle>
                         {activeWorkout && (
-                            <View style={[layoutStyles.liveIndicator, { backgroundColor: theme.primary + '20' }]}>
+                            <View style={[layoutStyles.liveIndicator, { backgroundColor: `${theme.primary}20` }]}>
                                 <View style={[layoutStyles.liveDot, { backgroundColor: theme.primary }]} />
                                 <Typography.Meta
                                     style={{
@@ -264,7 +264,7 @@ export default function WorkoutDashboardScreen() {
                     </View>
 
                     {activeWorkout ? (
-                        <View style={layoutStyles.activeContent}>
+                        <Appear key="active" style={layoutStyles.activeContent}>
                             <Typography.Body style={[layoutStyles.activeTime, { color: theme.textSecondary }]}>
                                 {t('startedAt')} {formatHourMinute(activeWorkout.start_time)}
                             </Typography.Body>
@@ -274,9 +274,9 @@ export default function WorkoutDashboardScreen() {
                                 onPress={handleStartWorkout}
                                 isLoading={isStartingWorkout}
                             />
-                        </View>
+                        </Appear>
                     ) : (
-                        <View style={layoutStyles.activeContent}>
+                        <Appear key="start" style={layoutStyles.activeContent}>
                             <Typography.Body style={[layoutStyles.activePromo, { color: theme.textSecondary }]}>
                                 {t('readyToCrush')}
                             </Typography.Body>
@@ -285,12 +285,12 @@ export default function WorkoutDashboardScreen() {
                                 onPress={handleStartWorkout}
                                 isLoading={isStartingWorkout}
                             />
-                        </View>
+                        </Appear>
                     )}
                 </Card>
-            </Animated.View>
+            </ListItemAppear>
 
-            <Animated.View entering={FadeInDown.delay(210).duration(360)}>
+            <ListItemAppear index={2}>
                 <Card>
                     <Typography.Subtitle style={{ marginBottom: 12 }}>{t('history')}</Typography.Subtitle>
                     <View style={layoutStyles.recentContainer}>
@@ -342,7 +342,7 @@ export default function WorkoutDashboardScreen() {
                         )}
                     </View>
                 </Card>
-            </Animated.View>
+            </ListItemAppear>
         </ScrollScreenLayout>
     )
 }

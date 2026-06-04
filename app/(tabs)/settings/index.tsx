@@ -1,20 +1,21 @@
-import { Radius } from '@/src/constants/Radius'
-import { Spacing } from '@/src/constants/Spacing'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
-import { Button } from '@/src/modules/core/components/Button'
-import { Card } from '@/src/modules/core/components/Card'
-import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
-import { Typography } from '@/src/modules/core/components/Typography'
-import { ThemeMode, useTheme } from '@/src/modules/core/hooks/useTheme'
-import { isRemoteDataMode } from '@/src/modules/auth/authMode'
-import { useAuth } from '@/src/modules/auth/useAuth'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import Constants from 'expo-constants'
 import { router } from 'expo-router'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, TouchableOpacity, View } from 'react-native'
-import Animated, { FadeInDown } from 'react-native-reanimated'
+import { Duration } from '@/src/constants/Motion'
+import { Radius } from '@/src/constants/Radius'
+import { Spacing } from '@/src/constants/Spacing'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
+import { isRemoteDataMode } from '@/src/modules/auth/authMode'
+import { useAuth } from '@/src/modules/auth/useAuth'
+import { Button } from '@/src/modules/core/components/Button'
+import { Card } from '@/src/modules/core/components/Card'
+import { Appear } from '@/src/modules/core/components/motion'
+import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { Typography } from '@/src/modules/core/components/Typography'
+import { type ThemeMode, useTheme } from '@/src/modules/core/hooks/useTheme'
 
 export default function SettingsScreen() {
     const { t, i18n } = useTranslation()
@@ -36,7 +37,7 @@ export default function SettingsScreen() {
 
     return (
         <ScrollScreenLayout style={{ paddingBottom: Spacing.md }}>
-            <Animated.View entering={FadeInDown.delay(100).duration(500)}>
+            <Appear variant="down" durationMs={Duration.slow}>
                 <Typography.Subtitle style={[styles.sectionTitle, { color: theme.primary }]}>
                     {t('language')}
                 </Typography.Subtitle>
@@ -138,7 +139,7 @@ export default function SettingsScreen() {
                 <View style={styles.versionWrap}>
                     <Typography.Meta style={{ color: theme.textSecondary }}>{`FitApp - ${appVersion}`}</Typography.Meta>
                 </View>
-            </Animated.View>
+            </Appear>
         </ScrollScreenLayout>
     )
 }

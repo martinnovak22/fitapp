@@ -2,7 +2,7 @@
 // in SyncCycle.ts calls these directly; runSync in syncService.ts composes
 // them with the rest of a sync run (sync_state updates, pulls, etc.).
 
-import { type ExerciseRow, type OutboxRow, type SetRowWithRefs, type WorkoutRow, tableOf } from './Outbox'
+import { type ExerciseRow, type OutboxRow, type SetRowWithRefs, tableOf, type WorkoutRow } from './Outbox'
 import type { PrincipalSnapshot } from './PrincipalSnapshot'
 import type { RemoteRow, RemoteTable } from './RemoteAdapter'
 import type { RemoteIdResolver } from './RemoteIdResolver'

@@ -1,9 +1,15 @@
-import { Exercise } from '@/src/db/exercises'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { StyleSheet, View } from 'react-native'
+import { LineChart } from 'react-native-gifted-charts'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize } from '@/src/constants/Typography'
+import type { Exercise } from '@/src/db/exercises'
+import { Appear } from '@/src/modules/core/components/motion'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import type { BestSetEntry, SessionSummary } from '@/src/modules/exercises/ExerciseStats'
 import {
     ExerciseTypeMetadata,
     formatCompactSetLabel,
@@ -11,11 +17,6 @@ import {
     getSetMetricValue,
     type PrimaryMetric,
 } from '@/src/modules/exercises/ExerciseTypeMetadata'
-import type { BestSetEntry, SessionSummary } from '@/src/modules/exercises/ExerciseStats'
-import React, { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { StyleSheet, View } from 'react-native'
-import { LineChart } from 'react-native-gifted-charts'
 
 interface ExerciseHistoryGraphProps {
     exercise: Exercise
@@ -87,7 +88,7 @@ export const ExerciseHistoryGraph = ({ exercise, data, summary, dominantMetric }
         const step = maxDisplay / sections
 
         const magnitudes = [1, 2, 2.5, 5]
-        const power = Math.pow(10, Math.floor(Math.log10(step)))
+        const power = 10 ** Math.floor(Math.log10(step))
         let bestStep = power
 
         for (const m of magnitudes) {
@@ -113,7 +114,7 @@ export const ExerciseHistoryGraph = ({ exercise, data, summary, dominantMetric }
             </View>
 
             {stats && (
-                <View style={styles.statsRow}>
+                <Appear variant="down" style={styles.statsRow}>
                     <View style={[styles.statItem, { backgroundColor: theme.background }]}>
                         <Typography.Meta style={styles.statLabel}>{t('personalBest')}</Typography.Meta>
                         <Typography.Body weight="bold">{stats.max}</Typography.Body>
@@ -122,12 +123,12 @@ export const ExerciseHistoryGraph = ({ exercise, data, summary, dominantMetric }
                         <Typography.Meta style={styles.statLabel}>{t('average')}</Typography.Meta>
                         <Typography.Body weight="bold">{stats.avg}</Typography.Body>
                     </View>
-                </View>
+                </Appear>
             )}
 
             <View
                 onLayout={(e) => setGraphWidth(e.nativeEvent.layout.width)}
-                style={[styles.graphWrapper, { borderTopColor: theme.border + '40' }]}
+                style={[styles.graphWrapper, { borderTopColor: `${theme.border}40` }]}
             >
                 {graphWidth > 0 && processedData.length > 0 ? (
                     (() => {

@@ -1,25 +1,15 @@
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontWeight } from '@/src/constants/Typography'
-import {
-    EMAIL_CONFIRMATION_REQUIRED_CODE,
-    SupabaseAuthError,
-    getSupabaseOAuthAuthorizeUrl,
-} from '@/src/data/remote/supabase/auth'
-import { hasLocalUserData } from '@/src/db/reset'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { showToast } from '@/src/modules/core/utils/toast'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
-import { useAuth } from '@/src/modules/auth/useAuth'
+import { useLoginForm } from '@/src/modules/auth/useLoginForm'
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import * as Linking from 'expo-linking'
-import * as WebBrowser from 'expo-web-browser'
-import { router, useLocalSearchParams } from 'expo-router'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     Keyboard,
@@ -40,83 +30,41 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated'
 
-type AuthMode = 'signin' | 'signup'
-
-const MIN_PASSWORD_LENGTH = 6
 const formLayoutTransition = LinearTransition.duration(220)
 const cardMaxWidth = 520
-
-const isValidEmail = (value: string): boolean => {
-    const normalized = value.trim()
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
-}
-
-const mapAuthErrorToMessage = (message: string, t: (key: string) => string): string => {
-    const normalized = message.toLowerCase()
-    if (normalized.includes('invalid login credentials')) return t('authInvalidCredentials')
-    if (normalized.includes('email not confirmed')) return t('authEmailNotConfirmed')
-    if (normalized.includes('redirect_to') || (normalized.includes('redirect') && normalized.includes('not allowed'))) {
-        return 'Auth redirect URL is not allowed. Check Supabase Redirect URLs.'
-    }
-    return message.trim() || t('authUnknownError')
-}
 
 export default function LoginScreen() {
     const { t } = useTranslation()
     const { theme } = useTheme()
-    const { authMode, isAuthenticated, continueAsGuest, signIn, signInWithOAuthRedirectUrl, signUp } = useAuth()
-    const { mode: modeParam } = useLocalSearchParams<{ mode?: string | string[] }>()
+    const form = useLoginForm()
+    const {
+        isSignUp,
+        email,
+        password,
+        confirmPassword,
+        isPasswordVisible,
+        isConfirmPasswordVisible,
+        isSubmitting,
+        isGoogleSubmitting,
+        errorMessage,
+        guestDataExists,
+        mergeGuestDataOnSignIn,
+        canSubmit,
+        isGuest,
+        setEmail,
+        setPassword,
+        setConfirmPassword,
+        setIsPasswordVisible,
+        setIsConfirmPasswordVisible,
+        toggleMergeGuestData,
+        switchMode,
+        submit,
+        submitGoogle,
+        continueAsGuest,
+    } = form
 
-    const [mode, setMode] = useState<AuthMode>('signin')
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [confirmPassword, setConfirmPassword] = useState('')
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
-    const [errorMessage, setErrorMessage] = useState<string | null>(null)
-    const [guestDataExists, setGuestDataExists] = useState(false)
-    const [mergeGuestDataOnSignIn, setMergeGuestDataOnSignIn] = useState(false)
-    const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-    const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false)
     const emailInputRef = useRef<TextInput>(null)
-    const handledOAuthUrlRef = useRef<string | null>(null)
     const keyboardOffset = useSharedValue(0)
-
-    const isSignUp = mode === 'signup'
-
-    useEffect(() => {
-        if (isAuthenticated && authMode === 'account') {
-            router.replace('/landing')
-        }
-    }, [authMode, isAuthenticated])
-
-    useEffect(() => {
-        const requestedMode = Array.isArray(modeParam) ? modeParam[0] : modeParam
-        if (requestedMode !== 'signin' && requestedMode !== 'signup') return
-        setMode(requestedMode)
-    }, [modeParam])
-
-    useEffect(() => {
-        const refreshGuestDataState = async () => {
-            if (authMode !== 'guest') {
-                setGuestDataExists(false)
-                setMergeGuestDataOnSignIn(false)
-                return
-            }
-
-            try {
-                const hasData = await hasLocalUserData()
-                setGuestDataExists(hasData)
-                setMergeGuestDataOnSignIn(hasData && isSignUp)
-            } catch (error) {
-                console.error('Failed to detect local guest data:', error)
-                setGuestDataExists(false)
-                setMergeGuestDataOnSignIn(false)
-            }
-        }
-
-        void refreshGuestDataState()
-    }, [authMode, isSignUp])
 
     useEffect(() => {
         const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
@@ -139,126 +87,6 @@ export default function LoginScreen() {
     const cardAnimatedStyle = useAnimatedStyle(() => ({
         transform: [{ translateY: -keyboardOffset.value }],
     }))
-
-    const canSubmit = useMemo(() => {
-        if (!isValidEmail(email) || password.length < MIN_PASSWORD_LENGTH) return false
-        if (isSignUp && password !== confirmPassword) return false
-        return true
-    }, [confirmPassword, email, isSignUp, password])
-
-    const showEmailConfirmationToast = (value: string) => {
-        showToast.info({
-            title: t('checkYourEmail'),
-            message: t('checkYourEmailDescription', { email: value }),
-        })
-    }
-
-    const completeGoogleSignInFromUrl = useCallback(
-        async (url: string) => {
-            if (!url.includes('access_token=') || !url.includes('refresh_token=')) return false
-            if (handledOAuthUrlRef.current === url) return true
-            handledOAuthUrlRef.current = url
-
-            setIsGoogleSubmitting(true)
-            setErrorMessage(null)
-            try {
-                const applied = await signInWithOAuthRedirectUrl(url, {
-                    migrationPolicy: mergeGuestDataOnSignIn ? 'preserve' : 'clear',
-                })
-                if (!applied) return false
-                router.replace('/landing')
-                return true
-            } catch (error) {
-                const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError')
-                setErrorMessage(message)
-                return false
-            } finally {
-                setIsGoogleSubmitting(false)
-            }
-        },
-        [mergeGuestDataOnSignIn, signInWithOAuthRedirectUrl, t]
-    )
-
-    useEffect(() => {
-        const subscription = Linking.addEventListener('url', (event) => {
-            void completeGoogleSignInFromUrl(event.url)
-        })
-        return () => {
-            subscription.remove()
-        }
-    }, [completeGoogleSignInFromUrl])
-
-    useEffect(() => {
-        const hydrateFromInitialUrl = async () => {
-            const initialUrl = await Linking.getInitialURL()
-            if (!initialUrl) return
-            await completeGoogleSignInFromUrl(initialUrl)
-        }
-        void hydrateFromInitialUrl()
-    }, [completeGoogleSignInFromUrl])
-
-    const submitGoogle = async () => {
-        if (isSubmitting || isGoogleSubmitting) return
-
-        setErrorMessage(null)
-        setIsGoogleSubmitting(true)
-        try {
-            const redirectTo = process.env.EXPO_PUBLIC_SUPABASE_EMAIL_REDIRECT_TO?.trim() || Linking.createURL('login')
-            const authUrl = getSupabaseOAuthAuthorizeUrl('google', redirectTo)
-            const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectTo)
-            if (result.type === 'success' && result.url) {
-                await completeGoogleSignInFromUrl(result.url)
-            }
-        } catch (error) {
-            const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError')
-            setErrorMessage(message)
-        }
-        setIsGoogleSubmitting(false)
-    }
-
-    const submit = async () => {
-        if (isSubmitting) return
-        const normalizedEmail = email.trim()
-
-        if (!isValidEmail(normalizedEmail)) {
-            setErrorMessage(t('validationEmailInvalid'))
-            return
-        }
-        if (password.length < MIN_PASSWORD_LENGTH) {
-            setErrorMessage(t('validationPasswordMin'))
-            return
-        }
-        if (isSignUp && password !== confirmPassword) {
-            setErrorMessage(t('validationPasswordMismatch'))
-            return
-        }
-
-        setIsSubmitting(true)
-        setErrorMessage(null)
-        try {
-            if (isSignUp) {
-                await signUp(normalizedEmail, password)
-                router.replace('/landing')
-            } else {
-                await signIn(normalizedEmail, password, {
-                    migrationPolicy: mergeGuestDataOnSignIn ? 'preserve' : 'clear',
-                })
-                router.replace('/landing')
-            }
-        } catch (error) {
-            if (error instanceof SupabaseAuthError && error.code === EMAIL_CONFIRMATION_REQUIRED_CODE) {
-                showEmailConfirmationToast(normalizedEmail)
-                setMode('signin')
-                setPassword('')
-                setConfirmPassword('')
-                return
-            }
-            const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError')
-            setErrorMessage(message)
-        } finally {
-            setIsSubmitting(false)
-        }
-    }
 
     return (
         <ScreenLayout style={styles.container}>
@@ -446,7 +274,7 @@ export default function LoginScreen() {
                                     </Animated.View>
                                 ) : null}
 
-                                {authMode === 'guest' && guestDataExists && !isSignUp ? (
+                                {isGuest && guestDataExists && !isSignUp ? (
                                     <Animated.View
                                         layout={formLayoutTransition}
                                         entering={FadeInDown.duration(160)}
@@ -454,7 +282,7 @@ export default function LoginScreen() {
                                     >
                                         <Pressable
                                             style={[styles.migrationRow, { borderColor: theme.border }]}
-                                            onPress={() => setMergeGuestDataOnSignIn((prev) => !prev)}
+                                            onPress={toggleMergeGuestData}
                                             accessibilityRole={'checkbox'}
                                             accessibilityLabel={t('mergeGuestDataLabel')}
                                             accessibilityState={{ checked: mergeGuestDataOnSignIn }}
@@ -497,10 +325,7 @@ export default function LoginScreen() {
                                         {isRemoteDataMode() ? (
                                             <Button
                                                 label={t('continueAsGuest')}
-                                                onPress={async () => {
-                                                    await continueAsGuest()
-                                                    router.replace('/landing')
-                                                }}
+                                                onPress={continueAsGuest}
                                                 variant={'text'}
                                                 size={'sm'}
                                                 labelStyle={styles.switchButtonText}
@@ -508,10 +333,7 @@ export default function LoginScreen() {
                                         ) : null}
                                         <Button
                                             label={t(isSignUp ? 'signIn' : 'signUp')}
-                                            onPress={() => {
-                                                setMode(isSignUp ? 'signin' : 'signup')
-                                                setErrorMessage(null)
-                                            }}
+                                            onPress={switchMode}
                                             variant={'text'}
                                             size={'sm'}
                                             labelStyle={styles.switchButtonText}

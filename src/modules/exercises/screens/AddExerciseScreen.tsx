@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
 import { ScrollScreenLayout } from '../../core/components/ScreenLayout'
+import { buildExerciseSavePayload, validateExerciseForm } from '../exerciseForm'
 
 type ExerciseFormScreenProps = {
     mode?: 'create' | 'edit'
@@ -108,8 +109,9 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     }
 
     const handleSave = useCallback(async () => {
-        if (!name.trim()) {
-            setNameError(t('enterName'))
+        const validation = validateExerciseForm({ name })
+        if (!validation.ok) {
+            setNameError(t(validation.nameError))
             nameInputRef.current?.focus()
             return
         }
@@ -123,20 +125,17 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                 finalPhotoUri = await savePhotoPermanently(photoUri)
             }
 
+            const payload = buildExerciseSavePayload({ name, muscle, type, photoUri: finalPhotoUri })
+
             if (isEditing) {
                 if (!resolvedExerciseId) return
-                await exerciseRepo.update(resolvedExerciseId, {
-                    name: name.trim(),
-                    muscle_group: muscle.trim().toLowerCase() || undefined,
-                    type: type.toLowerCase() as ExerciseType,
-                    photo_uri: finalPhotoUri,
-                })
+                await exerciseRepo.update(resolvedExerciseId, payload)
             } else {
                 await exerciseRepo.create(
-                    name.trim(),
-                    type.toLowerCase() as ExerciseType,
-                    muscle.trim().toLowerCase() || undefined,
-                    finalPhotoUri ?? undefined
+                    payload.name,
+                    payload.type,
+                    payload.muscle_group,
+                    payload.photo_uri ?? undefined
                 )
             }
             router.replace('/(tabs)/exercises')
