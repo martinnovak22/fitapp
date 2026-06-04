@@ -81,6 +81,15 @@ const formatRawMetric = (metric: PrimaryMetric, value: number): string => {
     }
 }
 
+// A trailing signed-weight suffix (`+10` / `-20`), or nothing when the set
+// carries no added/assisted weight. Bodyweight reps and timer holds share it.
+const weightSuffix = (weight: number): string => (weight === 0 ? '' : ` (${formatSignedWeight(weight)})`)
+
+const formatBodyweightLabel = (reps: number, weight: number): string => `${Math.round(reps)}${weightSuffix(weight)}`
+
+const formatTimerLabel = (duration: number, weight: number): string =>
+    `${formatDuration(duration)}${weightSuffix(weight)}`
+
 // Compact, single-string label that captures the whole set for one data point.
 // Driven by (exercise type, dominant metric) per the PRD's table.
 export const formatCompactSetLabel = (type: ExerciseType, _dominant: PrimaryMetric, set: Set): string => {
@@ -93,11 +102,9 @@ export const formatCompactSetLabel = (type: ExerciseType, _dominant: PrimaryMetr
         case 'weight':
             return `${formatCompactWeight(weight)}×${Math.round(reps)}`
         case 'bodyweight':
-            return weight === 0 ? `${Math.round(reps)}` : `${Math.round(reps)} (${formatSignedWeight(weight)})`
+            return formatBodyweightLabel(reps, weight)
         case 'bodyweight_timer':
-            return weight === 0
-                ? formatDuration(duration)
-                : `${formatDuration(duration)} (${formatSignedWeight(weight)})`
+            return formatTimerLabel(duration, weight)
         case 'cardio':
             return `${formatCompactDistance(distance)}·${formatDuration(duration)}`
     }
