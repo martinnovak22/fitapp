@@ -108,4 +108,35 @@ describe('getDb connection handling', () => {
         await (await getDb()).getFirstAsync('SELECT 1')
         expect(openDatabaseAsync).toHaveBeenCalledTimes(1)
     })
+
+    it('does not close the fresh connection when a stale handle heals after a prior heal', async () => {
+        // Handle 1 is the dropped connection and always rejects. A proxy bound to
+        // it keeps being used after a heal already swapped in handle 2 (mirrors an
+        // in-flight op that captured the old handle). The second heal must reuse
+        // handle 2, not reset and close it out from under everyone else.
+        const handles: { id: number; closeAsync: ReturnType<typeof vi.fn> }[] = []
+        openDatabaseAsync.mockImplementation(async () => {
+            const handle = { id: handles.length + 1 } as (typeof handles)[number] & {
+                getFirstAsync: ReturnType<typeof vi.fn>
+            }
+            handle.closeAsync = vi.fn(async () => {})
+            handle.getFirstAsync = vi.fn(async () => {
+                if (handle.id === 1) throw new Error(STALE_MESSAGE)
+                return { value: handle.id }
+            })
+            handles.push(handle)
+            return handle
+        })
+
+        // Proxy stays bound to handle 1 (the dropped connection) across calls.
+        const db = await getDb()
+        const first = await db.getFirstAsync<{ value: number }>('SELECT 1') // heals 1 -> 2
+        const second = await db.getFirstAsync<{ value: number }>('SELECT 1') // stale 1 again
+
+        // Both heal onto handle 2; no third connection, and handle 2 is never closed.
+        expect(first).toEqual({ value: 2 })
+        expect(second).toEqual({ value: 2 })
+        expect(openDatabaseAsync).toHaveBeenCalledTimes(2)
+        expect(handles[1].closeAsync).not.toHaveBeenCalled()
+    })
 })
