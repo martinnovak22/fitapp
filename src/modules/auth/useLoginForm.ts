@@ -1,16 +1,16 @@
-import {
-    EMAIL_CONFIRMATION_REQUIRED_CODE,
-    SupabaseAuthError,
-    getSupabaseOAuthAuthorizeUrl,
-} from '@/src/data/remote/supabase/auth'
-import { hasLocalUserData } from '@/src/db/reset'
-import { showToast } from '@/src/modules/core/utils/toast'
-import { useAuth } from '@/src/modules/auth/useAuth'
 import * as Linking from 'expo-linking'
-import * as WebBrowser from 'expo-web-browser'
 import { router, useLocalSearchParams } from 'expo-router'
+import * as WebBrowser from 'expo-web-browser'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+    EMAIL_CONFIRMATION_REQUIRED_CODE,
+    getSupabaseOAuthAuthorizeUrl,
+    SupabaseAuthError,
+} from '@/src/data/remote/supabase/auth'
+import { hasLocalUserData } from '@/src/db/reset'
+import { useAuth } from '@/src/modules/auth/useAuth'
+import { showToast } from '@/src/modules/core/utils/toast'
 import { canSubmitLoginForm, mapAuthErrorToMessage, validateLoginForm } from './loginFormLogic'
 
 export type AuthMode = 'signin' | 'signup'

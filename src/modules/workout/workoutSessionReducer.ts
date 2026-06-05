@@ -1,6 +1,6 @@
-import type { SubSet, Set as WorkoutSet, Workout } from '@/src/db/workouts'
-import { parseSubSets } from './workoutUtils'
+import type { SubSet, Workout, Set as WorkoutSet } from '@/src/db/workouts'
 import type { SetFormValues } from './setPayload'
+import { parseSubSets } from './workoutUtils'
 
 type SessionOrigin = 'workout' | 'history'
 

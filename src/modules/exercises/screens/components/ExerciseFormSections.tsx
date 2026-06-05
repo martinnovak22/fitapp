@@ -1,5 +1,4 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native'
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'

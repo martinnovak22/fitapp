@@ -1,5 +1,5 @@
 import type React from 'react'
-import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
+import { type StyleProp, StyleSheet, type ViewStyle } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { Duration } from '@/src/constants/Motion'
 

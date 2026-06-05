@@ -1,8 +1,8 @@
+import { describe, expect, it } from 'vitest'
 import { Colors } from '@/src/constants/Colors'
-import { FontWeight } from '@/src/constants/Typography'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { describe, expect, it } from 'vitest'
+import { FontWeight } from '@/src/constants/Typography'
 import { type ButtonStyleInput, buttonBaseStyles, resolveButtonStyle } from '../buttonStyles'
 
 const theme = Colors.dark

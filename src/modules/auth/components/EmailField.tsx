@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react'
+import { forwardRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, TextInput } from 'react-native'
 import { Radius } from '@/src/constants/Radius'

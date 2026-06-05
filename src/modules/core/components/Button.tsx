@@ -1,9 +1,16 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import React from 'react'
-import { ActivityIndicator, StyleProp, StyleSheet, TextStyle, TouchableOpacity, ViewStyle } from 'react-native'
+import type React from 'react'
+import {
+    ActivityIndicator,
+    type StyleProp,
+    StyleSheet,
+    type TextStyle,
+    TouchableOpacity,
+    type ViewStyle,
+} from 'react-native'
+import { useTheme } from '../hooks/useTheme'
 import { type ButtonSize, type ButtonVariant, resolveButtonStyle } from './buttonStyles'
 import { Typography } from './Typography'
-import { useTheme } from '../hooks/useTheme'
 
 type GlyphName = keyof typeof FontAwesome.glyphMap
 

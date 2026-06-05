@@ -1,13 +1,10 @@
 import type React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Image, StyleSheet, TouchableOpacity } from 'react-native'
+import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Portal } from 'react-native-teleport'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { useTheme } from '../hooks/useTheme'
-import { Button } from './Button'
-import { Appear } from './motion'
 
 interface FullScreenImageModalProps {
     visible: boolean
@@ -20,38 +17,40 @@ export const FullScreenImageModal: React.FC<FullScreenImageModalProps> = ({ visi
     const { theme } = useTheme()
     const { t } = useTranslation()
 
-    // Portal stays mounted so toggling the inner Appear plays both the fade-in
-    // (open) and fade-out (close) instead of an instant mount/unmount.
     return (
-        <Portal hostName="overlay">
-            {visible && imageUri ? (
-                <Appear variant="fade" style={[styles.container, { backgroundColor: theme.overlayScrim }]}>
-                    <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
-                    <Image source={{ uri: imageUri }} style={styles.image} />
-                    <Button
-                        leftIcon={'close'}
-                        onPress={onClose}
-                        variant={'text'}
-                        accessibilityLabel={t('close')}
-                        labelStyle={{ color: theme.error }}
-                        style={[
-                            styles.closeButton,
-                            {
-                                top: insets.top + Spacing.sm,
-                                right: Spacing.sm,
-                                backgroundColor: theme.surfaceMuted,
-                            },
-                        ]}
-                    />
-                </Appear>
-            ) : null}
-        </Portal>
+        <Modal
+            visible={visible && !!imageUri}
+            transparent={true}
+            animationType="fade"
+            statusBarTranslucent={true}
+            onRequestClose={onClose}
+        >
+            <View style={[styles.container, { backgroundColor: theme.overlayScrim }]}>
+                {imageUri && <Image source={{ uri: imageUri }} style={styles.image} />}
+
+                <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={onClose}
+                    accessibilityLabel={t('close')}
+                    accessibilityRole="button"
+                    style={[
+                        styles.closeButton,
+                        {
+                            top: insets.top + Spacing.sm,
+                            right: Spacing.sm,
+                            backgroundColor: theme.surfaceMuted,
+                        },
+                    ]}
+                >
+                    <Text style={[styles.closeText, { color: theme.error }]}>✕</Text>
+                </TouchableOpacity>
+            </View>
+        </Modal>
     )
 }
 
 const styles = StyleSheet.create({
     container: {
-        ...StyleSheet.absoluteFillObject,
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
@@ -63,11 +62,15 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         position: 'absolute',
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         borderRadius: Radius.pill,
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 10,
+    },
+    closeText: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        textAlign: 'center',
     },
 })

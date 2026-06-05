@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-    MIN_PASSWORD_LENGTH,
     canSubmitLoginForm,
     isValidEmail,
+    MIN_PASSWORD_LENGTH,
     mapAuthErrorToMessage,
     validateLoginForm,
 } from '../loginFormLogic'

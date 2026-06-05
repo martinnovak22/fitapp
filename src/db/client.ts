@@ -58,8 +58,13 @@ const openConnection = async (): Promise<SQLite.SQLiteDatabase> => {
 
 // Drop the cached connection (best-effort close) so the next getDb() reopens.
 // Safe to call on a handle that is already dead — closeAsync just rejects and we
-// swallow it.
-const resetDbConnection = async (): Promise<void> => {
+// swallow it. Pass the handle that actually failed so concurrent healers don't
+// close a connection a sibling already reopened: if the live handle is no longer
+// the one that failed, another healer has already swapped in a fresh connection
+// and we must leave it alone. Called with no argument for the app-background
+// reset, which always sheds the current handle.
+const resetDbConnection = async (failed?: SQLite.SQLiteDatabase | null): Promise<void> => {
+    if (failed && _db !== failed) return
     const stale = _db
     _db = null
     _opening = null
@@ -82,7 +87,7 @@ const healingHandler: ProxyHandler<SQLite.SQLiteDatabase> = {
                 return await value.apply(target, args)
             } catch (error) {
                 if (!isStaleHandleError(error)) throw error
-                await resetDbConnection()
+                await resetDbConnection(target)
                 const fresh = await openConnection()
                 const method = fresh[prop as keyof SQLite.SQLiteDatabase] as (...a: unknown[]) => unknown
                 return await method.apply(fresh, args)
