@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import type { Set as WorkoutSet, Workout } from '@/src/db/workouts'
+import type { Workout, Set as WorkoutSet } from '@/src/db/workouts'
 import {
     canEditHistoryWorkout,
     canFinishWorkout,
     initialSessionState,
     isReadOnly,
-    sessionReducer,
     type SessionState,
+    sessionReducer,
 } from '../workoutSessionReducer'
 
 const EMPTY_INPUTS = {

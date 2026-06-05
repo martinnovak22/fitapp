@@ -1,3 +1,3 @@
 {
-  "ignoreDependencies": ["eas-cli", "expo-linear-gradient"]
+    "ignoreDependencies": ["eas-cli", "expo-linear-gradient"]
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SyncFailureReason } from '../Outbox'
-import { resolveSyncBanner } from '../syncBannerModel'
 import type { SyncStatusState } from '../SyncStatus'
+import { resolveSyncBanner } from '../syncBannerModel'
 
 const failed = (reasons: { kind: string; message: string }[]): SyncStatusState => ({
     kind: 'failed',

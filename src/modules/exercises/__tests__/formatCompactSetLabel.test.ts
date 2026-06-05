@@ -4,8 +4,7 @@ import { formatCompactSetLabel } from '../ExerciseTypeMetadata'
 
 // Characterization tests: pin the exact label string each (exercise type,
 // metric) combination produces today, before refactoring the function.
-const set = (over: Partial<Set>): Set =>
-    ({ weight: 0, reps: 0, distance: 0, duration: 0, ...over }) as Set
+const set = (over: Partial<Set>): Set => ({ weight: 0, reps: 0, distance: 0, duration: 0, ...over }) as Set
 
 describe('formatCompactSetLabel — weight', () => {
     it('renders weight×reps with compact weight and rounded reps', () => {
@@ -43,9 +42,7 @@ describe('formatCompactSetLabel — bodyweight_timer', () => {
 
 describe('formatCompactSetLabel — cardio', () => {
     it('joins compact distance and duration with a middot', () => {
-        expect(formatCompactSetLabel('cardio', 'distance', set({ distance: 5000, duration: 25.5 }))).toBe(
-            '5.0km·25:30'
-        )
+        expect(formatCompactSetLabel('cardio', 'distance', set({ distance: 5000, duration: 25.5 }))).toBe('5.0km·25:30')
         expect(formatCompactSetLabel('cardio', 'distance', set({ distance: 500, duration: 2 }))).toBe('500m·2:00')
     })
 })

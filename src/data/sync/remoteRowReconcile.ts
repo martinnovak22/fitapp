@@ -119,12 +119,7 @@ export interface SetColumns {
     updated_at: string
 }
 
-export const toSetColumns = (
-    row: SetRowSource,
-    userId: string,
-    workoutId: number,
-    exerciseId: number
-): SetColumns => ({
+export const toSetColumns = (row: SetRowSource, userId: string, workoutId: number, exerciseId: number): SetColumns => ({
     user_id: userId,
     workout_id: workoutId,
     exercise_id: exerciseId,

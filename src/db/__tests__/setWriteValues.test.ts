@@ -25,9 +25,7 @@ describe('buildSetMetricColumns', () => {
     })
 
     it('passes through populated metrics verbatim', () => {
-        expect(
-            buildSetMetricColumns({ weight: 100, reps: 5, distance: 1000, duration: 300, sub_sets: '[]' })
-        ).toEqual({
+        expect(buildSetMetricColumns({ weight: 100, reps: 5, distance: 1000, duration: 300, sub_sets: '[]' })).toEqual({
             weight: 100,
             reps: 5,
             distance: 1000,

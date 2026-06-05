@@ -54,9 +54,7 @@ export function WorkoutSummaryModal({
                             })}
                             {' - '}
                             {formatHourMinute(workout.start_time)}
-                            {workout.end_time
-                                ? ` - ${formatHourMinute(workout.end_time)}`
-                                : ` (${t('inProgress')})`}
+                            {workout.end_time ? ` - ${formatHourMinute(workout.end_time)}` : ` (${t('inProgress')})`}
                         </Typography.Meta>
                     )}
 
@@ -87,8 +85,8 @@ export function WorkoutSummaryModal({
                     </ScrollView>
 
                     <View style={styles.modalFooter}>
-                        <Button label={t('close')} onPress={onClose} variant="secondary"  />
-                        <Button label={t('viewHistory')} onPress={onViewHistory}  />
+                        <Button label={t('close')} onPress={onClose} variant="secondary" />
+                        <Button label={t('viewHistory')} onPress={onViewHistory} />
                     </View>
                 </View>
             </TouchableOpacity>

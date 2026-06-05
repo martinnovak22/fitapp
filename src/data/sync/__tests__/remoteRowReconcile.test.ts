@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-    shouldSkipRemoteRow,
-    toExerciseColumns,
-    toSetColumns,
-    toWorkoutColumns,
-} from '../remoteRowReconcile'
+import { shouldSkipRemoteRow, toExerciseColumns, toSetColumns, toWorkoutColumns } from '../remoteRowReconcile'
 
 describe('shouldSkipRemoteRow — last-writer-wins conflict guard', () => {
     it('never skips when there is no local row', () => {
@@ -42,10 +37,7 @@ describe('shouldSkipRemoteRow — last-writer-wins conflict guard', () => {
 
 describe('toExerciseColumns — remote exercise row → local column values', () => {
     it('coalesces optional fields and falls back to defaults', () => {
-        const cols = toExerciseColumns(
-            { created_at: null, updated_at: null },
-            'user-1'
-        )
+        const cols = toExerciseColumns({ created_at: null, updated_at: null }, 'user-1')
         expect(cols).toMatchObject({
             user_id: 'user-1',
             name: null,
@@ -87,10 +79,7 @@ describe('toExerciseColumns — remote exercise row → local column values', ()
 
 describe('toWorkoutColumns — remote workout row → local column values', () => {
     it('coalesces optional fields and defaults status to finished', () => {
-        const cols = toWorkoutColumns(
-            { created_at: null, updated_at: null },
-            'user-1'
-        )
+        const cols = toWorkoutColumns({ created_at: null, updated_at: null }, 'user-1')
         expect(cols).toMatchObject({
             user_id: 'user-1',
             date: null,

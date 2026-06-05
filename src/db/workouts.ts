@@ -1,7 +1,7 @@
 import { buildPrincipalWhereClause, getScopedUserId } from '@/src/data/principal'
 import { getDb } from './client'
-import { createEntityUuid, nowIso, recordDeletionTombstone, type SyncStatus, softDeleteById } from './sync'
 import { buildSetMetricColumns, resolveNextSetPosition } from './setWriteValues'
+import { createEntityUuid, nowIso, recordDeletionTombstone, type SyncStatus, softDeleteById } from './sync'
 import { executeWrite, executeWriteTransaction } from './writeQueue'
 
 export interface Workout {

@@ -7,8 +7,8 @@ import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import i18n from '@/src/modules/core/utils/i18n'
 import { Button } from './Button'
-import { resolveToastVisual, type ToastIcon, type ToastType } from './toastVisual'
 import { Typography } from './Typography'
+import { resolveToastVisual, type ToastIcon, type ToastType } from './toastVisual'
 
 export type { ToastIcon }
 
