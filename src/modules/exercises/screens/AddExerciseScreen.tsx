@@ -282,7 +282,6 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                             onChangeText={setMuscle}
                             selectionColor={theme.primary}
                             returnKeyType={'done'}
-                            onSubmitEditing={handleSave}
                             accessibilityLabel={t('muscleGroup')}
                         />
                     </View>
