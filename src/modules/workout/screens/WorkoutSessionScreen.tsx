@@ -2,11 +2,10 @@ import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
 import { useCallback, useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Gesture } from 'react-native-gesture-handler'
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import { NestedReorderableList, reorderItems, ScrollViewContainer } from 'react-native-reorderable-list'
-import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import type { Set as WorkoutSet } from '@/src/db/workouts'
@@ -17,7 +16,8 @@ import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
-import { formatLocalizedDate } from '@/src/utils/dateTime'
+import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime'
+import { EditTimingModal } from '../components/EditTimingModal'
 import { LogSetModal } from '../components/LogSetModal'
 import { WorkoutSetItem } from '../components/WorkoutSetItem'
 import { useWorkoutSession } from '../hooks/useWorkoutSession'
@@ -338,24 +338,29 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             </Typography.Meta>
                         </TouchableOpacity>
                     </View>
-                    <Typography.Body>{`${t('startedAt')}: ${formatLocalizedDate(
-                        workout?.start_time || '',
-                        i18n.language,
-                        { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
-                        true
-                    )}`}</Typography.Body>
-                    <Typography.Body style={{ marginTop: Spacing.xs }}>
-                        {`${t('time')}: ${
-                            workout?.end_time
-                                ? `${formatLocalizedDate(
-                                      workout.end_time,
-                                      i18n.language,
-                                      { hour: '2-digit', minute: '2-digit' },
-                                      true
-                                  )}`
-                                : t('notSpecified')
-                        }`}
-                    </Typography.Body>
+                    <View style={styles.timingRows}>
+                        <TimingRow
+                            label={t('workoutDate')}
+                            value={
+                                workout?.start_time
+                                    ? formatLocalizedDate(
+                                          workout.start_time,
+                                          i18n.language,
+                                          { year: 'numeric', month: 'short', day: 'numeric' },
+                                          true
+                                      )
+                                    : t('notSpecified')
+                            }
+                        />
+                        <TimingRow
+                            label={t('startTime')}
+                            value={workout?.start_time ? formatHourMinute(workout.start_time) : t('notSpecified')}
+                        />
+                        <TimingRow
+                            label={t('endTime')}
+                            value={workout?.end_time ? formatHourMinute(workout.end_time) : t('notSpecified')}
+                        />
+                    </View>
                 </Card>
             )}
             {exerciseNamesOrder.length === 0 ? (
@@ -376,97 +381,19 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 </Animated.View>
             )}
 
-            <Modal
+            <EditTimingModal
                 visible={timingModalVisible}
-                transparent
-                animationType={'fade'}
-                onRequestClose={() => dispatch({ type: 'CLOSE_TIMING_MODAL' })}
-            >
-                <View style={[styles.modalBackdrop, { backgroundColor: theme.overlayBackdrop }]}>
-                    <View style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                        <Typography.Subtitle style={{ marginBottom: Spacing.md }}>{t('editTime')}</Typography.Subtitle>
-
-                        <View style={{ gap: Spacing.sm }}>
-                            <Typography.Label>{t('workoutDate')}</Typography.Label>
-                            <TextInput
-                                value={timingDate}
-                                onChangeText={(value) =>
-                                    dispatch({ type: 'SET_TIMING_FIELD', field: 'timingDate', value })
-                                }
-                                placeholder={'YYYY-MM-DD'}
-                                placeholderTextColor={theme.textSecondary}
-                                style={[
-                                    styles.modalInput,
-                                    {
-                                        color: theme.text,
-                                        backgroundColor: theme.inputBackground,
-                                        borderColor: theme.border,
-                                    },
-                                ]}
-                                autoCapitalize={'none'}
-                                keyboardType={'numbers-and-punctuation'}
-                            />
-                        </View>
-
-                        <View style={{ gap: Spacing.sm }}>
-                            <Typography.Label>{t('startTime')}</Typography.Label>
-                            <TextInput
-                                value={timingStartTime}
-                                onChangeText={(value) =>
-                                    dispatch({ type: 'SET_TIMING_FIELD', field: 'timingStartTime', value })
-                                }
-                                placeholder={'HH:mm'}
-                                placeholderTextColor={theme.textSecondary}
-                                style={[
-                                    styles.modalInput,
-                                    {
-                                        color: theme.text,
-                                        backgroundColor: theme.inputBackground,
-                                        borderColor: theme.border,
-                                    },
-                                ]}
-                                autoCapitalize={'none'}
-                                keyboardType={'numbers-and-punctuation'}
-                            />
-                        </View>
-
-                        <View style={{ gap: Spacing.sm }}>
-                            <Typography.Label>{t('endTime')}</Typography.Label>
-                            <TextInput
-                                value={timingEndTime}
-                                onChangeText={(value) =>
-                                    dispatch({ type: 'SET_TIMING_FIELD', field: 'timingEndTime', value })
-                                }
-                                placeholder={'HH:mm'}
-                                placeholderTextColor={theme.textSecondary}
-                                style={[
-                                    styles.modalInput,
-                                    {
-                                        color: theme.text,
-                                        backgroundColor: theme.inputBackground,
-                                        borderColor: theme.border,
-                                    },
-                                ]}
-                                autoCapitalize={'none'}
-                                keyboardType={'numbers-and-punctuation'}
-                            />
-                        </View>
-
-                        <View style={styles.modalActions}>
-                            <Button
-                                label={t('cancel')}
-                                variant={'outline'}
-                                onPress={() => dispatch({ type: 'CLOSE_TIMING_MODAL' })}
-                            />
-                            <Button
-                                label={isSavingWorkoutTime ? t('saving') : t('saveChanges')}
-                                onPress={saveTiming}
-                                disabled={isSavingWorkoutTime}
-                            />
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+                language={i18n.language}
+                date={timingDate}
+                startTime={timingStartTime}
+                endTime={timingEndTime}
+                onChangeDate={(value) => dispatch({ type: 'SET_TIMING_FIELD', field: 'timingDate', value })}
+                onChangeStartTime={(value) => dispatch({ type: 'SET_TIMING_FIELD', field: 'timingStartTime', value })}
+                onChangeEndTime={(value) => dispatch({ type: 'SET_TIMING_FIELD', field: 'timingEndTime', value })}
+                onSave={saveTiming}
+                onClose={() => dispatch({ type: 'CLOSE_TIMING_MODAL' })}
+                isSaving={isSavingWorkoutTime}
+            />
         </ScrollScreenLayout>
     )
 }
@@ -527,6 +454,17 @@ function WorkoutExerciseGroup({
     )
 }
 
+function TimingRow({ label, value }: { label: string; value: string }) {
+    return (
+        <View style={styles.timingRow}>
+            <Typography.Label color={'text'}>{label}</Typography.Label>
+            <Typography.Label weight={'bold'} color={'text'}>
+                {value}
+            </Typography.Label>
+        </View>
+    )
+}
+
 const styles = StyleSheet.create({
     listContent: {
         paddingTop: Spacing.sm + Spacing.xs,
@@ -554,26 +492,13 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: Spacing.sm,
     },
-    modalBackdrop: {
-        flex: 1,
-        justifyContent: 'center',
-        padding: Spacing.md,
+    timingRows: {
+        gap: Spacing.xs,
     },
-    modalCard: {
-        borderWidth: 1,
-        borderRadius: Radius.md,
-        padding: Spacing.md,
-    },
-    modalInput: {
-        ...GlobalStyles.input,
-        marginBottom: Spacing.sm,
-    },
-    modalActions: {
-        marginTop: Spacing.sm,
+    timingRow: {
         flexDirection: 'row',
-        justifyContent: 'flex-end',
         alignItems: 'center',
-        gap: Spacing.sm,
+        justifyContent: 'space-between',
     },
     headerBack: {
         paddingLeft: Spacing.md,
