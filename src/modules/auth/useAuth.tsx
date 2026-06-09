@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type React from 'react'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { setActivePrincipal } from '@/src/data/principal'
 import {
     type MigrationPolicy,
@@ -15,7 +15,12 @@ import {
     signOutSupabaseSession,
     signUpWithEmailPassword,
 } from '@/src/data/remote/supabase/auth'
-import { clearSupabaseSession, setSupabaseSession } from '@/src/data/remote/supabase/session'
+import {
+    clearSupabaseSession,
+    refreshSupabaseAccessToken,
+    setSupabaseSession,
+    setSupabaseTokenRefresher,
+} from '@/src/data/remote/supabase/session'
 import {
     type AuthInitializationEffect,
     type AuthInitializationSession,
@@ -106,6 +111,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isRemoteMode = isRemoteDataMode()
     const isAuthRequired = isRemoteMode && authMode === 'account'
 
+    // The registered token refresher and the periodic refresh both read the
+    // live session through this ref, so neither closes over a stale token.
+    const sessionRef = useRef(session)
+    sessionRef.current = session
+
+    const refreshAccountSession = useCallback(async (): Promise<string | null> => {
+        const current = sessionRef.current
+        if (!current) return null
+        try {
+            const refreshed = await refreshSupabaseSession(current.refreshToken)
+            applySession(refreshed)
+            await persistSession(refreshed)
+            setSession(refreshed)
+            return refreshed.accessToken
+        } catch {
+            await AsyncStorage.removeItem(STORAGE_KEY)
+            clearSupabaseSession()
+            setSession(null)
+            return null
+        }
+    }, [])
+
+    // Expose refresh to the sync engine so an access token that expires
+    // mid-cycle is refreshed and the request retried, rather than surfacing a
+    // transient "sync failed" banner the user has to dismiss.
+    useEffect(() => {
+        setSupabaseTokenRefresher(refreshAccountSession)
+        return () => setSupabaseTokenRefresher(null)
+    }, [refreshAccountSession])
+
     useEffect(() => {
         if (!isRemoteMode) {
             setActivePrincipal({ mode: 'local', userId: null })
@@ -194,23 +229,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         if (!isRemoteMode || authMode !== 'account' || !session) return
 
-        let isDisposed = false
-
         const ensureFreshSession = async () => {
             if (!shouldRefresh(session)) return
-            try {
-                const refreshedSession = await refreshSupabaseSession(session.refreshToken)
-                if (isDisposed) return
-                applySession(refreshedSession)
-                await persistSession(refreshedSession)
-                if (isDisposed) return
-                setSession(refreshedSession)
-            } catch {
-                if (isDisposed) return
-                await AsyncStorage.removeItem(STORAGE_KEY)
-                clearSupabaseSession()
-                setSession(null)
-            }
+            // Coalesced with the sync engine's on-401 refresh so a rotating
+            // refresh token is never spent twice in parallel.
+            await refreshSupabaseAccessToken()
         }
 
         void ensureFreshSession()
@@ -219,7 +242,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }, 30_000)
 
         return () => {
-            isDisposed = true
             clearInterval(intervalId)
         }
     }, [authMode, isRemoteMode, session])
