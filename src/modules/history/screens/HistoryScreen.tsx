@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
 import { getRepositories } from '@/src/data/repositories'
+import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -54,6 +55,10 @@ export default function HistoryScreen() {
             loadData(false)
         }, [loadData])
     )
+
+    // Reflect rows a background sync just pulled (e.g. right after login)
+    // without making the user pull to refresh.
+    useReloadOnSyncSuccess(useCallback(() => void loadData(false), [loadData]))
 
     const onRefresh = async () => {
         await loadData(true)
