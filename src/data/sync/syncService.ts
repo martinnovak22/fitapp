@@ -1,7 +1,7 @@
 import { invalidateExercisesCache } from '@/src/data/exercisesCache'
 import { onPrincipalChange } from '@/src/data/principal'
 import { getSupabaseConfig } from '@/src/data/remote/supabase/config'
-import { getSupabaseSession } from '@/src/data/remote/supabase/session'
+import { getSupabaseSession, refreshSupabaseAccessToken } from '@/src/data/remote/supabase/session'
 import { getDb } from '@/src/db/client'
 import { nowIso } from '@/src/db/sync'
 import { executeWriteTransaction } from '@/src/db/writeQueue'
@@ -120,17 +120,34 @@ const request = async <T>(
 
     const query = options?.query ? buildQuery(options.query) : ''
     const url = `${config.url}/rest/v1/${table}${query ? `?${query}` : ''}`
-    const response = await fetch(url, {
-        method: options?.method ?? 'GET',
-        headers: {
-            apikey: config.publicKey,
-            Authorization: `Bearer ${session.accessToken}`,
-            'Content-Type': 'application/json',
-            ...(options?.prefer ? { Prefer: options.prefer } : {}),
-        },
-        body: options?.body ? JSON.stringify(options.body) : undefined,
-    })
-    const text = await response.text()
+
+    const send = async (accessToken: string): Promise<{ response: Response; text: string }> => {
+        const response = await fetch(url, {
+            method: options?.method ?? 'GET',
+            headers: {
+                apikey: config.publicKey,
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                ...(options?.prefer ? { Prefer: options.prefer } : {}),
+            },
+            body: options?.body ? JSON.stringify(options.body) : undefined,
+        })
+        return { response, text: await response.text() }
+    }
+
+    let { response, text } = await send(session.accessToken)
+
+    // An expired access token is recoverable: the auth layer holds a refresh
+    // token. Refresh once and retry before treating this as a sync failure, so
+    // a token that lapses while the app is backgrounded doesn't flash a
+    // spurious "sync failed" banner on the next foreground cycle.
+    if (response.status === 401 && text.toLowerCase().includes('jwt expired')) {
+        const refreshedToken = await refreshSupabaseAccessToken()
+        if (refreshedToken) {
+            ;({ response, text } = await send(refreshedToken))
+        }
+    }
+
     const payload = text ? (JSON.parse(text) as T) : (null as T)
     if (!response.ok) {
         const normalized = text.toLowerCase()

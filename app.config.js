@@ -4,7 +4,7 @@ module.exports = {
     expo: {
         name: 'FitApp',
         slug: 'fitapp',
-        version: '0.4.1',
+        version: '0.4.2',
         orientation: 'portrait',
         icon: './assets/images/icon.png',
         scheme: 'fitapp',
@@ -22,14 +22,14 @@ module.exports = {
         android: {
             edgeToEdgeEnabled: true,
             package: 'com.martinnovak22.fitapp',
-            versionCode: 41,
+            versionCode: 42,
         },
         web: {
             bundler: 'metro',
             output: 'static',
             favicon: './assets/images/favicon.png',
         },
-        plugins: ['expo-router', 'expo-sqlite'],
+        plugins: ['expo-router', 'expo-sqlite', '@react-native-community/datetimepicker'],
         experiments: {
             typedRoutes: true,
         },

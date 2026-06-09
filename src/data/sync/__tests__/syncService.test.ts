@@ -10,8 +10,14 @@ vi.mock('@/src/data/remote/supabase/config', () => ({
     getSupabaseConfig: () => ({ url: 'https://example.test', publicKey: 'anon' }),
 }))
 
+const { refreshMock, tokenState } = vi.hoisted(() => ({
+    refreshMock: vi.fn(async () => null as string | null),
+    tokenState: { current: 'token' },
+}))
+
 vi.mock('@/src/data/remote/supabase/session', () => ({
-    getSupabaseSession: () => ({ accessToken: 'token', userId: 'user-1' }),
+    getSupabaseSession: () => ({ accessToken: tokenState.current, userId: 'user-1' }),
+    refreshSupabaseAccessToken: () => refreshMock(),
 }))
 
 vi.mock('@/src/modules/auth/authMode', () => ({
@@ -46,7 +52,13 @@ beforeEach(async () => {
     fetchCalls.length = 0
     resetPullCursorsForTest()
     syncStatusStore.set({ kind: 'idle' })
+    refreshMock.mockReset()
+    refreshMock.mockResolvedValue(null)
+    tokenState.current = 'token'
 })
+
+const isExercisesUpsertPull = (call: FetchCall) =>
+    call.method === 'GET' && call.url.includes('/exercises?') && call.url.includes('deleted_at=is.null')
 
 const insertDirtyExercise = async (uuid: string) => {
     await db.runAsync(
@@ -296,6 +308,46 @@ describe('runSync — pull reconciliation upserts remote rows into local', () =>
         )
         // Remote name was NOT applied; the newer local copy won the merge.
         expect(exercise?.name).toBe('ex-keep')
+    })
+})
+
+describe('runSync — expired access token is refreshed and retried', () => {
+    it('refreshes once and retries a request that 401s with jwt expired, without raising the banner', async () => {
+        refreshMock.mockImplementation(async () => {
+            tokenState.current = 'fresh-token'
+            return 'fresh-token'
+        })
+
+        let exercisesPullCount = 0
+        mockFetch((call) => {
+            if (isExercisesUpsertPull(call)) {
+                exercisesPullCount += 1
+                if (exercisesPullCount === 1) return { status: 401, body: { message: 'JWT expired' } }
+            }
+            return { body: [] }
+        })
+
+        const result = await runSync()
+
+        expect(refreshMock).toHaveBeenCalledTimes(1)
+        expect(result.failed).toBe(0)
+        expect(syncStatusStore.get().kind).toBe('idle')
+        // The 401 was retried, so the exercises upsert-pull was issued twice.
+        expect(fetchCalls.filter(isExercisesUpsertPull).length).toBeGreaterThanOrEqual(2)
+    })
+
+    it('surfaces the failure when no fresh token is available to retry with', async () => {
+        refreshMock.mockResolvedValue(null)
+        mockFetch((call) => {
+            if (isExercisesUpsertPull(call)) return { status: 401, body: { message: 'JWT expired' } }
+            return { body: [] }
+        })
+
+        const result = await runSync()
+
+        expect(refreshMock).toHaveBeenCalled()
+        expect(result.failed).toBe(1)
+        expect(syncStatusStore.get().kind).toBe('failed')
     })
 })
 

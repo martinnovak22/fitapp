@@ -7,6 +7,7 @@ import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { getRepositories } from '@/src/data/repositories'
+import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
@@ -102,6 +103,10 @@ export default function WorkoutDashboardScreen() {
             loadData()
         }, [loadData])
     )
+
+    // Reflect rows a background sync just pulled (e.g. right after login)
+    // without making the user pull to refresh.
+    useReloadOnSyncSuccess(loadData)
 
     const onRefresh = async () => {
         setRefreshing(true)
