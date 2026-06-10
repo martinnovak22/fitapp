@@ -2,8 +2,6 @@ import type { SubSet, Workout, Set as WorkoutSet } from '@/src/db/workouts'
 import type { SetFormValues } from './setPayload'
 import { parseSubSets } from './workoutUtils'
 
-type SessionOrigin = 'workout' | 'history'
-
 type TimingField = 'timingDate' | 'timingStartTime' | 'timingEndTime'
 
 const EMPTY_INPUTS: SetFormValues = {
@@ -145,5 +143,4 @@ export const isReadOnly = (workout: Workout | null, isHistoryEditMode: boolean):
 
 export const canFinishWorkout = (workout: Workout | null): boolean => workout?.status !== 'finished'
 
-export const canEditHistoryWorkout = (origin: SessionOrigin, workout: Workout | null): boolean =>
-    origin === 'history' && workout?.status === 'finished'
+export const canEditFinishedWorkout = (workout: Workout | null): boolean => workout?.status === 'finished'

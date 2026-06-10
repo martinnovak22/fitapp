@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Workout, Set as WorkoutSet } from '@/src/db/workouts'
 import {
-    canEditHistoryWorkout,
+    canEditFinishedWorkout,
     canFinishWorkout,
     initialSessionState,
     isReadOnly,
@@ -230,11 +230,9 @@ describe('derived flags', () => {
         expect(canFinishWorkout(null)).toBe(true)
     })
 
-    it('canEditHistoryWorkout is true only for a finished workout opened from history', () => {
-        const finished = makeWorkout({ status: 'finished' })
-        expect(canEditHistoryWorkout('history', finished)).toBe(true)
-        expect(canEditHistoryWorkout('workout', finished)).toBe(false)
-        expect(canEditHistoryWorkout('history', makeWorkout({ status: 'in_progress' }))).toBe(false)
-        expect(canEditHistoryWorkout('history', null)).toBe(false)
+    it('canEditFinishedWorkout is true only for a finished workout', () => {
+        expect(canEditFinishedWorkout(makeWorkout({ status: 'finished' }))).toBe(true)
+        expect(canEditFinishedWorkout(makeWorkout({ status: 'in_progress' }))).toBe(false)
+        expect(canEditFinishedWorkout(null)).toBe(false)
     })
 })
