@@ -120,7 +120,7 @@ export default function CalendarScreen() {
         if (modalWorkout) {
             const id = modalWorkout.id
             setModalWorkout(null)
-            router.replace(`/(tabs)/history/${id}`)
+            router.push(`/(tabs)/workout/${id}`)
         }
     }
 

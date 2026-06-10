@@ -24,7 +24,7 @@ import { WorkoutSetItem } from '../components/WorkoutSetItem'
 import { useWorkoutSession } from '../hooks/useWorkoutSession'
 import { buildSetPayload, type SetFormValues } from '../setPayload'
 import {
-    canEditHistoryWorkout as deriveCanEditHistoryWorkout,
+    canEditFinishedWorkout as deriveCanEditFinishedWorkout,
     canFinishWorkout as deriveCanFinishWorkout,
     isReadOnly as deriveIsReadOnly,
     initialSessionState,
@@ -149,7 +149,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         return dateTime.toISOString()
     }
 
-    const canEditHistoryWorkout = deriveCanEditHistoryWorkout(origin, workout)
+    const canEditFinishedWorkout = deriveCanEditFinishedWorkout(workout)
     const isReadOnly = deriveIsReadOnly(workout, isHistoryEditMode)
     const canFinishWorkout = deriveCanFinishWorkout(workout)
 
@@ -196,7 +196,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
     useFocusEffect(
         useCallback(() => {
-            const rightAction = canEditHistoryWorkout
+            const rightAction = canEditFinishedWorkout
                 ? {
                       icon: isHistoryEditMode ? ('check' as const) : ('pencil' as const),
                       accessibilityLabel: isHistoryEditMode ? t('save') : t('edit'),
@@ -231,7 +231,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 headerRight: () =>
                     workout ? (
                         <Animated.View entering={FadeIn.duration(180)} style={styles.headerActions}>
-                            {origin === 'workout' && (
+                            {canFinishWorkout && (
                                 <TouchableOpacity
                                     onPress={() => setTimerSetupVisible(true)}
                                     accessibilityRole={'button'}
@@ -270,14 +270,13 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             navigation,
             parentTabFallback,
             workout,
-            canEditHistoryWorkout,
+            canEditFinishedWorkout,
             canFinishWorkout,
             isHistoryEditMode,
             isFinishingWorkout,
             isDeletingWorkout,
             finishWorkout,
             deleteWorkout,
-            origin,
             theme,
             t,
         ])
@@ -343,7 +342,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 </>
             }
         >
-            {canEditHistoryWorkout && (
+            {canEditFinishedWorkout && (
                 <Card style={[styles.timingCard, { borderColor: theme.border, backgroundColor: theme.surfaceSubtle }]}>
                     <View style={styles.timingHeader}>
                         <Typography.Meta style={{ color: theme.textSecondary }}>{t('workoutTiming')}</Typography.Meta>

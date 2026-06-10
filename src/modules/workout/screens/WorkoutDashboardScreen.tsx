@@ -397,7 +397,7 @@ export default function WorkoutDashboardScreen() {
                     {lastWorkoutSummary ? (
                         <>
                             <Card
-                                onPress={() => router.push(`/(tabs)/history/${lastWorkoutSummary.workout.id}`)}
+                                onPress={() => router.push(`/(tabs)/workout/${lastWorkoutSummary.workout.id}`)}
                                 style={layoutStyles.recapPressable}
                                 accessibilityLabel={t('lastWorkout')}
                                 accessibilityHint={t('viewHistory')}
@@ -460,7 +460,7 @@ export default function WorkoutDashboardScreen() {
                                     {previousWorkouts.map((workout) => (
                                         <Card
                                             key={workout.id}
-                                            onPress={() => router.push(`/(tabs)/history/${workout.id}`)}
+                                            onPress={() => router.push(`/(tabs)/workout/${workout.id}`)}
                                             style={layoutStyles.previousRowCard}
                                             accessibilityLabel={formatLocalizedDate(
                                                 workout.date,
