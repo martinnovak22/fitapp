@@ -49,7 +49,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             ])
 
             if (!w) {
-                router.replace('/(tabs)/workout')
+                router.replace(originTabRoot)
                 return
             }
 
@@ -62,7 +62,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         } finally {
             setLoading(false)
         }
-    }, [exerciseRepo, t, workoutId, workoutRepo])
+    }, [exerciseRepo, originTabRoot, t, workoutId, workoutRepo])
 
     useFocusEffect(
         useCallback(() => {
