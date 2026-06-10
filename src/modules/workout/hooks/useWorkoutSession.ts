@@ -14,6 +14,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const { t } = useTranslation()
     const { id } = useLocalSearchParams()
     const workoutId = Number(id)
+    const originTabRoot = origin === 'history' ? ('/(tabs)/history' as const) : ('/(tabs)/workout' as const)
 
     const [workout, setWorkout] = useState<Workout | null>(null)
     const [sets, setSets] = useState<SetWithExercise[]>([])
@@ -131,7 +132,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
                     setIsFinishingWorkout(true)
                     try {
                         await workoutRepo.finish(workoutId)
-                        router.replace('/(tabs)/history')
+                        router.dismissTo(originTabRoot)
                         showToast.success({ title: t('workoutFinished'), message: t('greatJob') })
                     } catch (e) {
                         console.error('Failed to finish workout:', e)
@@ -157,7 +158,11 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
                     setIsDeletingWorkout(true)
                     try {
                         await workoutRepo.delete(workoutId)
-                        router.replace(origin === 'history' ? '/(tabs)/history' : '/(tabs)/workout')
+                        if (router.canGoBack()) {
+                            router.back()
+                        } else {
+                            router.replace(originTabRoot)
+                        }
                         showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') })
                     } catch (e) {
                         console.error('Failed to delete workout:', e)
