@@ -11,7 +11,7 @@ export default function WorkoutLayout() {
         >
             <Stack.Screen name="index" options={{ title: t('workout') }} />
             <Stack.Screen name="[id]" options={{ title: t('session') }} />
-            <Stack.Screen name="calendar" options={{ title: t('calendar'), presentation: 'modal' }} />
+            <Stack.Screen name="calendar" options={{ title: t('calendar') }} />
         </Stack>
     )
 }
