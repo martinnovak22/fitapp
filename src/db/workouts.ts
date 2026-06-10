@@ -57,6 +57,7 @@ export interface SetData {
 
 export interface SetWithExerciseName extends Set {
     exercise_name: string
+    muscle_group: string | null
 }
 
 export const WorkoutRepository = {
@@ -287,7 +288,7 @@ export const WorkoutRepository = {
         const exerciseScope = buildPrincipalWhereClause('e.user_id')
         const workoutScope = buildPrincipalWhereClause('w.user_id')
         return await db.getAllAsync<SetWithExerciseName>(
-            `SELECT s.*, e.name as exercise_name
+            `SELECT s.*, e.name as exercise_name, e.muscle_group as muscle_group
              FROM sets s
              JOIN exercises e ON s.exercise_id = e.id
              JOIN workouts w ON s.workout_id = w.id
