@@ -1,6 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
-import { useCallback, useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useReducer, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Gesture } from 'react-native-gesture-handler'
@@ -16,6 +16,7 @@ import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
+import { TimerSetupModal } from '@/src/modules/timer/components/TimerSetupModal'
 import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime'
 import { EditTimingModal } from '../components/EditTimingModal'
 import { LogSetModal } from '../components/LogSetModal'
@@ -60,6 +61,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         updateWorkoutTiming,
     } = useWorkoutSession(origin)
 
+    const [timerSetupVisible, setTimerSetupVisible] = useState(false)
     const [session, dispatch] = useReducer(sessionReducer, initialSessionState)
     const {
         modalVisible,
@@ -229,6 +231,16 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 headerRight: () =>
                     workout ? (
                         <Animated.View entering={FadeIn.duration(180)} style={styles.headerActions}>
+                            {origin === 'workout' && (
+                                <TouchableOpacity
+                                    onPress={() => setTimerSetupVisible(true)}
+                                    accessibilityRole={'button'}
+                                    accessibilityLabel={t('timer')}
+                                    hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                                >
+                                    <FontAwesome name={'clock-o'} size={20} color={theme.primary} />
+                                </TouchableOpacity>
+                            )}
                             {rightAction && (
                                 <TouchableOpacity
                                     onPress={rightAction.onPress}
@@ -265,6 +277,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             isDeletingWorkout,
             finishWorkout,
             deleteWorkout,
+            origin,
             theme,
             t,
         ])
@@ -325,6 +338,8 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                         updateInput={updateInput}
                         isSaving={isSavingSet}
                     />
+
+                    <TimerSetupModal visible={timerSetupVisible} onClose={() => setTimerSetupVisible(false)} />
                 </>
             }
         >

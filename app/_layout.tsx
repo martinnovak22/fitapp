@@ -15,6 +15,8 @@ import { SyncStatusBanner } from '@/src/data/sync/SyncStatusBanner'
 import { useDatabaseInit } from '@/src/db/client'
 import { AuthProvider, useAuth } from '@/src/modules/auth/useAuth'
 import { toastConfig } from '@/src/modules/core/components/ToastConfig'
+import { TimerPill } from '@/src/modules/timer/components/TimerPill'
+import { TimerProvider } from '@/src/modules/timer/TimerProvider'
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../src/modules/core/hooks/useTheme'
 import '../src/modules/core/utils/i18n'
 
@@ -53,10 +55,13 @@ export default function RootLayout() {
             <PortalProvider>
                 <CustomThemeProvider>
                     <AuthProvider>
-                        <SyncProvider>
-                            <SyncStatusBanner />
-                            <RootLayoutNav />
-                        </SyncProvider>
+                        <TimerProvider>
+                            <SyncProvider>
+                                <SyncStatusBanner />
+                                <RootLayoutNav />
+                                <TimerPill />
+                            </SyncProvider>
+                        </TimerProvider>
                     </AuthProvider>
                 </CustomThemeProvider>
                 <PortalHost style={StyleSheet.absoluteFillObject} name="overlay" />
