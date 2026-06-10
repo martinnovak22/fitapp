@@ -70,7 +70,7 @@ interface MuscleBalanceEntry {
 }
 
 export default function WorkoutDashboardScreen() {
-    const { workouts: workoutRepo } = getRepositories()
+    const { workouts: workoutRepo, exercises: exerciseRepo } = getRepositories()
     const { t, i18n } = useTranslation()
     const { theme } = useTheme()
     const navigation = useNavigation()
@@ -176,12 +176,19 @@ export default function WorkoutDashboardScreen() {
             }
 
             const weekSets = (await Promise.all(weekWorkouts.map((w) => workoutRepo.getSets(w.id)))).flat()
+            // Seed every known muscle group at 0 so untrained groups stay visible in the balance.
+            const allExercises = await exerciseRepo.getAll()
             const groupCounts = new Map<string | null, number>()
+            for (const exercise of allExercises) {
+                if (exercise.muscle_group) groupCounts.set(exercise.muscle_group, 0)
+            }
             for (const set of weekSets) {
                 groupCounts.set(set.muscle_group, (groupCounts.get(set.muscle_group) ?? 0) + 1)
             }
             setMuscleBalance(
-                [...groupCounts.entries()].map(([group, count]) => ({ group, count })).sort((a, b) => b.count - a.count)
+                [...groupCounts.entries()]
+                    .map(([group, count]) => ({ group, count }))
+                    .sort((a, b) => b.count - a.count || (a.group ?? '').localeCompare(b.group ?? ''))
             )
         } catch (error) {
             console.error('Failed to load workout dashboard:', error)
@@ -189,7 +196,7 @@ export default function WorkoutDashboardScreen() {
         } finally {
             setIsLoading(false)
         }
-    }, [i18n.language, t, workoutRepo])
+    }, [i18n.language, t, workoutRepo, exerciseRepo])
 
     useFocusEffect(
         useCallback(() => {
@@ -312,7 +319,9 @@ export default function WorkoutDashboardScreen() {
 
                     <View style={layoutStyles.heroStatsRow}>
                         <View style={layoutStyles.heroStatItem}>
-                            <Typography.Subtitle style={layoutStyles.statValue}>{weekStats.streak}</Typography.Subtitle>
+                            <Typography.Subtitle style={layoutStyles.statValue}>
+                                {t('weeksShort', { count: weekStats.streak })}
+                            </Typography.Subtitle>
                             <Typography.Meta style={layoutStyles.statLabel}>{t('weekStreakLabel')}</Typography.Meta>
                         </View>
                         <View style={[layoutStyles.heroStatSeparator, { backgroundColor: theme.hairline }]} />
@@ -397,15 +406,17 @@ export default function WorkoutDashboardScreen() {
                                     <Typography.Subtitle size="md" weight="bold">
                                         {t('lastWorkout')}
                                     </Typography.Subtitle>
-                                    <Typography.Meta style={{ fontSize: FontSize.xs, color: theme.textSecondary }}>
-                                        {formatLocalizedDate(
-                                            lastWorkoutSummary.workout.date,
-                                            i18n.language,
-                                            { weekday: 'short', month: 'short', day: 'numeric' },
-                                            true
-                                        )}
-                                    </Typography.Meta>
+                                    <FontAwesome name="chevron-right" size={12} color={theme.textSecondary} />
                                 </View>
+
+                                <Typography.Body style={[layoutStyles.recapDate, { color: theme.text }]}>
+                                    {formatLocalizedDate(
+                                        lastWorkoutSummary.workout.date,
+                                        i18n.language,
+                                        { weekday: 'long', month: 'long', day: 'numeric' },
+                                        true
+                                    )}
+                                </Typography.Body>
 
                                 <View style={layoutStyles.recapMetaRow}>
                                     <View style={layoutStyles.recapMetaItem}>
@@ -513,7 +524,7 @@ export default function WorkoutDashboardScreen() {
                                                 layoutStyles.balanceFill,
                                                 {
                                                     backgroundColor: theme.primary,
-                                                    width: `${Math.round((entry.count / maxBalanceCount) * 100)}%`,
+                                                    width: `${maxBalanceCount > 0 ? Math.round((entry.count / maxBalanceCount) * 100) : 0}%`,
                                                 },
                                             ]}
                                         />
@@ -627,6 +638,10 @@ const layoutStyles = StyleSheet.create({
         borderWidth: 0,
         backgroundColor: 'transparent',
         marginBottom: 0,
+    },
+    recapDate: {
+        fontSize: FontSize.sm,
+        marginBottom: Spacing.sm,
     },
     recapMetaRow: {
         flexDirection: 'row',
