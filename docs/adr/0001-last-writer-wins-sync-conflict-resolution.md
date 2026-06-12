@@ -22,4 +22,6 @@ For a single-user fitness tracker, the worst outcome of LWW is losing one device
 - Correctness depends on device clocks being roughly sane; a device with a badly wrong clock can win (or lose) conflicts it shouldn't.
 - Worth revisiting if the app grows shared data (coach/client, shared plans), multi-device becomes a primary workflow, or any entity gains fields where losing half an edit is costly.
 
-What happens to dirty local rows when the user signs out mid-push is a separate open question, tracked in issue #50.
+## Sign-out racing an active push
+
+A principal change mid-push (sign-out or account switch while the outbox is draining) aborts the cycle, leaving already-acked rows `synced` and the rest `dirty` — deliberately, with no rollback. This split state is benign and self-healing: the dirty rows persist in SQLite, sync does not run while signed out, and when the same account signs back in the outbox picks them up and the push converges. Any overlap with edits made on another device in the meantime resolves by the same last-writer-wins rule above, and other principals never see the rows because every query is principal-scoped. No reconciliation pass is needed (decided in issue #50).
