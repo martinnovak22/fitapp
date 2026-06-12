@@ -292,6 +292,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAuthMode('guest')
     }, [transitionTo])
 
+    // Deliberately leaves authMode as 'account': signed-out is represented as
+    // account-without-session (the principal layer maps it to 'signed-out'),
+    // which is what routes to the login wall here and after a restart.
+    // Resetting to 'guest' would instead drop the user into guest mode.
     const signOut = useCallback(async () => {
         const accessToken = session?.accessToken ?? null
 
