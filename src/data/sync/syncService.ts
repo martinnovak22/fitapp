@@ -286,6 +286,7 @@ const getCursors = (userId: string): PullCursors => pullCursorsByUser.get(userId
 const loadCursors = async (userId: string): Promise<void> => {
     if (pullCursorsByUser.has(userId)) return
     if (pendingCursorReset) await pendingCursorReset
+    const generation = cursorResetGeneration
     const db = await getDb()
     const row = await db.getFirstAsync<{
         exercises_updated: string | null
@@ -295,6 +296,10 @@ const loadCursors = async (userId: string): Promise<void> => {
         sets_updated: string | null
         sets_deleted: string | null
     }>('SELECT * FROM pull_cursors WHERE user_id = ? LIMIT 1', userId)
+    // A reset that fired while we were reading invalidates the row we hold;
+    // leave the cache empty so this pull starts from scratch instead of
+    // caching a watermark the reset just deleted.
+    if (generation !== cursorResetGeneration) return
     pullCursorsByUser.set(
         userId,
         row
@@ -336,8 +341,10 @@ const setCursors = async (userId: string, cursors: PullCursors): Promise<void> =
 }
 
 let pendingCursorReset: Promise<unknown> | null = null
+let cursorResetGeneration = 0
 
 const resetPullCursors = () => {
+    cursorResetGeneration += 1
     pullCursorsByUser.clear()
     // The cache is cleared synchronously so the next loadCursors re-reads from
     // SQLite; drop the persisted rows too, since a principal transition may

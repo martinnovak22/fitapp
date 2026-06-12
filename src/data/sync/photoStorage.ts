@@ -183,7 +183,7 @@ export const createExercisePhotoStore = (): ExercisePhotoStore => ({
 // or reduced so the 60s sync polling pays nothing in steady state.
 const backfilledUsers = new Set<string>()
 const fullyScannedUsers = new Set<string>()
-let hydrationRun: Promise<number> | null = null
+const hydrationRuns = new Map<string, Promise<number>>()
 
 // One-time normalization of rows from before photo sync existed (and of rows
 // adopted from guest mode): a photo_uri without a photo_key either gets a key
@@ -220,11 +220,13 @@ export const backfillLocalPhotoKeys = async (userId: string): Promise<void> => {
 // Fire-and-forget after a pull: downloads bytes for rows whose photo_key has
 // no local file yet (fresh pull, key change, reinstall). Never marks rows
 // dirty — photo_uri is device-local state. Returns how many photos landed so
-// the caller can invalidate read caches. Single-flighted: a cycle that fires
-// while the previous hydration still runs joins it instead of racing it.
+// the caller can invalidate read caches. Single-flighted per user: a cycle
+// that fires while that user's previous hydration still runs joins it instead
+// of racing it, and a principal change never joins another user's run.
 export const hydrateExercisePhotos = async (userId: string): Promise<number> => {
-    if (hydrationRun) return hydrationRun
-    hydrationRun = (async () => {
+    const existing = hydrationRuns.get(userId)
+    if (existing) return existing
+    const run = (async () => {
         const docDir = FileSystem.documentDirectory
         if (!docDir) return 0
         const db = await getDb()
@@ -257,9 +259,10 @@ export const hydrateExercisePhotos = async (userId: string): Promise<number> => 
         fullyScannedUsers.add(userId)
         return hydrated
     })()
+    hydrationRuns.set(userId, run)
     try {
-        return await hydrationRun
+        return await run
     } finally {
-        hydrationRun = null
+        hydrationRuns.delete(userId)
     }
 }
