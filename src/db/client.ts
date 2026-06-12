@@ -1,6 +1,5 @@
 import * as SQLite from 'expo-sqlite'
 import { useEffect, useState } from 'react'
-import { AppState, Platform } from 'react-native'
 import { DATABASE_NAME, initializeDb } from './schema'
 
 // expo-sqlite caches a single native connection behind this handle. On Android
@@ -11,12 +10,15 @@ import { DATABASE_NAME, initializeDb } from './schema'
 // "Call to function 'NativeDatabase.prepareAsync' has been rejected". That is
 // what surfaces the sync-failed banner on app resume.
 //
-// Two layers of defence, both contained here so call sites stay unaware:
-//   1. Drop the handle when the app backgrounds (Android), so the first access
-//      after resume reopens a fresh connection.
-//   2. Self-heal any individual call that still hits a dead handle by reopening
-//      and retrying once — covers a missed background event or a handle that
-//      dies mid-session.
+// The defence is lazy, contained here so call sites stay unaware: any call
+// that hits a dead handle reopens a fresh connection and retries once.
+//
+// Deliberately NO eager reset on AppState 'background': the camera, share
+// sheets, and permission dialogs all background the app while sync cycles and
+// queued writes are mid-statement on this connection, and closeAsync on a busy
+// handle crashes natively on Android. A handle that the OS actually killed is
+// indistinguishable from a healthy one until a call fails, and the lazy heal
+// covers that case without ever closing a connection that has work in flight.
 
 let _db: SQLite.SQLiteDatabase | null = null
 let _opening: Promise<SQLite.SQLiteDatabase> | null = null
@@ -36,10 +38,14 @@ const HEALING_METHODS = new Set<PropertyKey>([
     'getFirstAsync',
     'getEachAsync',
     'prepareAsync',
-    'withTransactionAsync',
-    'withExclusiveTransactionAsync',
     'isInTransactionAsync',
 ])
+
+// Transaction wrappers are never heal-retried: by the time the failure
+// surfaces, an unknown prefix of the callback may have executed, and re-running
+// the whole callback on a fresh connection would double-apply it. They still
+// shed the dead handle so the next attempt reopens cleanly.
+const TRANSACTION_METHODS = new Set<PropertyKey>(['withTransactionAsync', 'withExclusiveTransactionAsync'])
 
 const openConnection = async (): Promise<SQLite.SQLiteDatabase> => {
     if (_db) return _db
@@ -61,10 +67,9 @@ const openConnection = async (): Promise<SQLite.SQLiteDatabase> => {
 // swallow it. Pass the handle that actually failed so concurrent healers don't
 // close a connection a sibling already reopened: if the live handle is no longer
 // the one that failed, another healer has already swapped in a fresh connection
-// and we must leave it alone. Called with no argument for the app-background
-// reset, which always sheds the current handle.
-const resetDbConnection = async (failed?: SQLite.SQLiteDatabase | null): Promise<void> => {
-    if (failed && _db !== failed) return
+// and we must leave it alone.
+const resetDbConnection = async (failed: SQLite.SQLiteDatabase): Promise<void> => {
+    if (_db !== failed) return
     const stale = _db
     _db = null
     _opening = null
@@ -77,39 +82,49 @@ const resetDbConnection = async (failed?: SQLite.SQLiteDatabase | null): Promise
     }
 }
 
-const healingHandler: ProxyHandler<SQLite.SQLiteDatabase> = {
-    get(target, prop, receiver) {
-        const value = Reflect.get(target, prop, receiver)
-        if (typeof value !== 'function') return value
-        if (!HEALING_METHODS.has(prop)) return value.bind(target)
-        return async (...args: unknown[]) => {
-            try {
-                return await value.apply(target, args)
-            } catch (error) {
-                if (!isStaleHandleError(error)) throw error
-                await resetDbConnection(target)
-                const fresh = await openConnection()
-                const method = fresh[prop as keyof SQLite.SQLiteDatabase] as (...a: unknown[]) => unknown
-                return await method.apply(fresh, args)
+// One handler per proxy so the in-transaction flag is scoped to the caller
+// that opened the transaction: its own statements must not heal individually
+// (a lone retry on a fresh connection auto-commits outside the transaction),
+// while unrelated readers on other proxies keep healing as usual.
+const makeHealingHandler = (): ProxyHandler<SQLite.SQLiteDatabase> => {
+    let inTransaction = false
+    return {
+        get(target, prop, receiver) {
+            const value = Reflect.get(target, prop, receiver)
+            if (typeof value !== 'function') return value
+            if (TRANSACTION_METHODS.has(prop)) {
+                return async (...args: unknown[]) => {
+                    inTransaction = true
+                    try {
+                        return await value.apply(target, args)
+                    } catch (error) {
+                        if (isStaleHandleError(error)) await resetDbConnection(target)
+                        throw error
+                    } finally {
+                        inTransaction = false
+                    }
+                }
             }
-        }
-    },
+            if (!HEALING_METHODS.has(prop)) return value.bind(target)
+            return async (...args: unknown[]) => {
+                try {
+                    return await value.apply(target, args)
+                } catch (error) {
+                    if (!isStaleHandleError(error)) throw error
+                    await resetDbConnection(target)
+                    if (inTransaction) throw error
+                    const fresh = await openConnection()
+                    const method = fresh[prop as keyof SQLite.SQLiteDatabase] as (...a: unknown[]) => unknown
+                    return await method.apply(fresh, args)
+                }
+            }
+        },
+    }
 }
 
 export async function getDb(): Promise<SQLite.SQLiteDatabase> {
     const db = await openConnection()
-    return new Proxy(db, healingHandler)
-}
-
-// On Android, shed the connection when the app leaves the foreground; the OS may
-// invalidate it anyway, and reopening on resume is cheap. iOS keeps the handle
-// across background, so resetting there would only risk a redundant reopen.
-if (Platform.OS === 'android') {
-    AppState.addEventListener('change', (state) => {
-        if (state === 'background') {
-            void resetDbConnection()
-        }
-    })
+    return new Proxy(db, makeHealingHandler())
 }
 
 export function useDatabaseInit() {

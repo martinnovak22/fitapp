@@ -6,18 +6,6 @@ const { openDatabaseAsync } = vi.hoisted(() => ({ openDatabaseAsync: vi.fn() }))
 
 vi.mock('expo-sqlite', () => ({ openDatabaseAsync }))
 
-let appStateHandler: ((state: string) => void) | undefined
-
-vi.mock('react-native', () => ({
-    Platform: { OS: 'android' },
-    AppState: {
-        addEventListener: (_event: string, handler: (state: string) => void) => {
-            appStateHandler = handler
-            return { remove: vi.fn() }
-        },
-    },
-}))
-
 vi.mock('../schema', () => ({
     DATABASE_NAME: 'test.db',
     initializeDb: vi.fn(async () => {}),
@@ -29,15 +17,26 @@ let nextError: Error | null = null
 
 const makeFakeDb = () => {
     const id = ++openCount
+    const throwPrimedError = () => {
+        if (nextError) {
+            const error = nextError
+            nextError = null
+            throw error
+        }
+    }
     return {
         id,
         getFirstAsync: vi.fn(async () => {
-            if (nextError) {
-                const error = nextError
-                nextError = null
-                throw error
-            }
+            throwPrimedError()
             return { value: id }
+        }),
+        runAsync: vi.fn(async () => {
+            throwPrimedError()
+            return { changes: 1 }
+        }),
+        withTransactionAsync: vi.fn(async (callback: () => Promise<void>) => {
+            throwPrimedError()
+            await callback()
         }),
         closeAsync: vi.fn(async () => {}),
     }
@@ -48,11 +47,9 @@ let getDb: typeof import('../client').getDb
 beforeEach(async () => {
     openCount = 0
     nextError = null
-    appStateHandler = undefined
     openDatabaseAsync.mockReset()
     openDatabaseAsync.mockImplementation(async () => makeFakeDb())
-    // Fresh module per test: resets the cached connection and re-registers the
-    // AppState listener against this test's handler capture.
+    // Fresh module per test: resets the cached connection.
     vi.resetModules()
     ;({ getDb } = await import('../client'))
 })
@@ -87,26 +84,41 @@ describe('getDb connection handling', () => {
         expect(openDatabaseAsync).toHaveBeenCalledTimes(1)
     })
 
-    it('drops the connection on Android background so the next access reopens', async () => {
-        await (await getDb()).getFirstAsync('SELECT 1')
+    it('does not heal-retry a transaction, but sheds the dead handle for the next attempt', async () => {
+        const db = await getDb()
+        nextError = new Error(STALE_MESSAGE)
+        const callback = vi.fn(async () => {})
+
+        // The transaction fails cleanly — re-running the callback on a fresh
+        // connection could double-apply a partially executed body.
+        await expect(db.withTransactionAsync(callback)).rejects.toThrow(STALE_MESSAGE)
+        expect(callback).not.toHaveBeenCalled()
         expect(openDatabaseAsync).toHaveBeenCalledTimes(1)
 
-        expect(appStateHandler).toBeDefined()
-        appStateHandler?.('background')
-        await Promise.resolve()
-        await Promise.resolve()
-
-        await (await getDb()).getFirstAsync('SELECT 1')
+        // The dead handle was shed, so the next access reopens.
+        const retry = await (await getDb()).getFirstAsync<{ value: number }>('SELECT 1')
         expect(openDatabaseAsync).toHaveBeenCalledTimes(2)
+        expect(retry).toEqual({ value: 2 })
     })
 
-    it('ignores transient inactive transitions', async () => {
-        await (await getDb()).getFirstAsync('SELECT 1')
-        appStateHandler?.('inactive')
-        await Promise.resolve()
+    it('does not heal a statement inside a transaction onto a fresh connection', async () => {
+        const db = await getDb()
 
-        await (await getDb()).getFirstAsync('SELECT 1')
+        // A lone statement retried on a fresh connection would auto-commit
+        // outside the transaction; it must fail the transaction instead.
+        await expect(
+            db.withTransactionAsync(async () => {
+                nextError = new Error(STALE_MESSAGE)
+                await db.runAsync('INSERT INTO t VALUES (1)')
+            })
+        ).rejects.toThrow(STALE_MESSAGE)
         expect(openDatabaseAsync).toHaveBeenCalledTimes(1)
+
+        // Statements outside the transaction heal again as usual.
+        nextError = new Error(STALE_MESSAGE)
+        const result = await db.getFirstAsync<{ value: number }>('SELECT 1')
+        expect(openDatabaseAsync).toHaveBeenCalledTimes(2)
+        expect(result).toEqual({ value: 2 })
     })
 
     it('does not close the fresh connection when a stale handle heals after a prior heal', async () => {
