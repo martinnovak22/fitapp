@@ -259,7 +259,7 @@ export default function WorkoutDashboardScreen() {
     // would render empty) — hold the spinner until the cycle settles.
     if (isHydrating || (isLoading && allWorkouts.length === 0)) {
         return (
-            <ScrollScreenLayout>
+            <ScrollScreenLayout contentContainerStyle={layoutStyles.fillContent} style={layoutStyles.fill}>
                 <View style={layoutStyles.loadingContainer}>
                     <ActivityIndicator size={'large'} color={theme.primary} />
                 </View>
@@ -269,7 +269,7 @@ export default function WorkoutDashboardScreen() {
 
     if (loadError && allWorkouts.length === 0) {
         return (
-            <ScrollScreenLayout>
+            <ScrollScreenLayout contentContainerStyle={layoutStyles.fillContent} style={layoutStyles.fill}>
                 <View style={layoutStyles.loadingContainer}>
                     <EmptyState message={loadError} icon={'exclamation-circle'} />
                     <Button label={t('retry')} onPress={loadData} style={{ marginTop: Spacing.md }} />
@@ -560,6 +560,14 @@ export default function WorkoutDashboardScreen() {
 }
 
 const layoutStyles = StyleSheet.create({
+    // The scroll content and the children wrapper must both stretch, or the
+    // flex:1 loading container has no height to center within.
+    fillContent: {
+        flexGrow: 1,
+    },
+    fill: {
+        flex: 1,
+    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
