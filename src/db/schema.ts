@@ -1,7 +1,7 @@
 import type * as SQLite from 'expo-sqlite'
 
 export const DATABASE_NAME = 'fitapp.db'
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 
 type ColumnDef = {
     name: string
@@ -136,6 +136,16 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       last_success_at TEXT,
       last_attempt_at TEXT,
       last_error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS pull_cursors (
+      user_id TEXT PRIMARY KEY,
+      exercises_updated TEXT,
+      exercises_deleted TEXT,
+      workouts_updated TEXT,
+      workouts_deleted TEXT,
+      sets_updated TEXT,
+      sets_deleted TEXT
     );
   `)
 }

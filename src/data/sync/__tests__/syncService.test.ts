@@ -24,8 +24,14 @@ vi.mock('@/src/modules/auth/authMode', () => ({
     isRemoteDataMode: () => true,
 }))
 
-const { runSync, resetPullCursorsForTest, getSyncState, retryBlockedRows, hasLocalDataForActivePrincipal } =
-    await import('../syncService')
+const {
+    runSync,
+    resetPullCursorsForTest,
+    dropPullCursorCacheForTest,
+    getSyncState,
+    retryBlockedRows,
+    hasLocalDataForActivePrincipal,
+} = await import('../syncService')
 const { syncStatusStore } = await import('../SyncStatus')
 
 let db: TestDb
@@ -51,7 +57,7 @@ beforeEach(async () => {
     db = await createTestDb()
     useTestDb(db)
     fetchCalls.length = 0
-    resetPullCursorsForTest()
+    await resetPullCursorsForTest()
     syncStatusStore.set({ kind: 'idle' })
     refreshMock.mockReset()
     refreshMock.mockResolvedValue(null)
@@ -164,6 +170,52 @@ describe('runSync — issue #26 cheap-exit and cursor', () => {
         const exercisesPull = secondCycleCalls.find(
             (c) => c.url.includes('/exercises?') && c.url.includes('deleted_at=is.null')
         )
+        expect(exercisesPull?.url).toContain('updated_at=gt.2026-02-01T00%3A00%3A00Z')
+    })
+
+    it('reloads the persisted cursor after a cold start so a restart pulls incrementally', async () => {
+        let exCallCount = 0
+        mockFetch((call) => {
+            if (call.url.includes('/exercises?') && call.method === 'GET' && !call.url.includes('deleted_at=not')) {
+                exCallCount += 1
+                if (exCallCount === 1) {
+                    return {
+                        body: [
+                            {
+                                uuid: 'ex-a',
+                                user_id: userId,
+                                name: 'Bench',
+                                type: 'weight',
+                                muscle_group: null,
+                                photo_uri: null,
+                                position: 0,
+                                created_at: '2026-02-01T00:00:00Z',
+                                updated_at: '2026-02-01T00:00:00Z',
+                                deleted_at: null,
+                            },
+                        ],
+                    }
+                }
+            }
+            return { body: [] }
+        })
+
+        // First cycle advances and persists the cursor to 2026-02-01.
+        await runSync()
+
+        // Simulate a process restart: the in-memory cache is gone but the
+        // persisted watermark in SQLite survives.
+        dropPullCursorCacheForTest()
+
+        const callsBefore = fetchCalls.length
+        const afterRestart = await runSync()
+        expect(afterRestart.pulled).toBe(0)
+
+        // The pull must still carry the persisted cursor rather than re-pulling
+        // the whole dataset from scratch.
+        const exercisesPull = fetchCalls
+            .slice(callsBefore)
+            .find((c) => c.url.includes('/exercises?') && c.url.includes('deleted_at=is.null'))
         expect(exercisesPull?.url).toContain('updated_at=gt.2026-02-01T00%3A00%3A00Z')
     })
 
@@ -463,6 +515,95 @@ describe('runSync — pull reconciliation upserts remote rows into local', () =>
             .slice(callsBeforeThird)
             .find((c) => c.method === 'GET' && c.url.includes('/sets?') && c.url.includes('deleted_at=is.null'))
         expect(thirdSetsPull?.url).toContain('updated_at=gt.2026-02-01T00%3A00%3A00Z')
+    })
+
+    it('freezes the sets cursor at the earliest held-back set even when later sets in the same batch link', async () => {
+        // Two sets arrive in one batch ordered by updated_at: the earlier one's
+        // workout is absent (held back), the later one's parents are present.
+        // The batched write must still link the later set yet freeze the cursor
+        // at the earlier held set so it is re-fetched next cycle.
+        const setRow = (uuid: string, workoutUuid: string, updatedAt: string) => ({
+            uuid,
+            user_id: userId,
+            weight: 100,
+            reps: 5,
+            distance: null,
+            duration: null,
+            rpe: 8,
+            position: 0,
+            sub_sets: null,
+            created_at: updatedAt,
+            updated_at: updatedAt,
+            deleted_at: null,
+            workouts: { uuid: workoutUuid },
+            exercises: { uuid: 'ex-a' },
+        })
+
+        mockFetch((call) => {
+            const isUpsertPull = call.method === 'GET' && call.url.includes('deleted_at=is.null')
+            if (isUpsertPull && call.url.includes('updated_at=gt')) return { body: [] }
+            if (isUpsertPull && call.url.includes('/exercises?')) {
+                return {
+                    body: [
+                        {
+                            uuid: 'ex-a',
+                            user_id: userId,
+                            name: 'Bench',
+                            type: 'weight',
+                            muscle_group: null,
+                            photo_uri: null,
+                            position: 0,
+                            created_at: '2026-02-01T00:00:00Z',
+                            updated_at: '2026-02-01T00:00:00Z',
+                            deleted_at: null,
+                        },
+                    ],
+                }
+            }
+            if (isUpsertPull && call.url.includes('/workouts?')) {
+                // Only w-present exists locally; w-missing never arrives.
+                return {
+                    body: [
+                        {
+                            uuid: 'w-present',
+                            user_id: userId,
+                            date: '2026-02-01',
+                            start_time: null,
+                            end_time: null,
+                            status: 'finished',
+                            note: null,
+                            created_at: '2026-02-01T00:00:00Z',
+                            updated_at: '2026-02-01T00:00:00Z',
+                            deleted_at: null,
+                        },
+                    ],
+                }
+            }
+            if (isUpsertPull && call.url.includes('/sets?')) {
+                return {
+                    body: [
+                        setRow('s-early', 'w-missing', '2026-02-02T00:00:00Z'),
+                        setRow('s-late', 'w-present', '2026-02-03T00:00:00Z'),
+                    ],
+                }
+            }
+            return { body: [] }
+        })
+
+        await runSync()
+
+        // The later set linked despite sharing the batch with a held-back set.
+        expect(await db.getFirstAsync('SELECT id FROM sets WHERE uuid = ?', 's-late')).toBeTruthy()
+        expect(await db.getFirstAsync('SELECT id FROM sets WHERE uuid = ?', 's-early')).toBeFalsy()
+
+        // The cursor froze at the earliest held set, so the next cycle re-pulls
+        // without a watermark rather than skipping s-early forever.
+        const callsBefore = fetchCalls.length
+        await runSync()
+        const setsPull = fetchCalls
+            .slice(callsBefore)
+            .find((c) => c.method === 'GET' && c.url.includes('/sets?') && c.url.includes('deleted_at=is.null'))
+        expect(setsPull?.url).not.toContain('updated_at=gt')
     })
 })
 
