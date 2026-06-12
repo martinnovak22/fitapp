@@ -104,9 +104,16 @@ type ExercisePhotoFieldProps = {
     onOpenFullScreen: () => void
     onRemove: () => void
     onPick: () => void
+    onPickFromGallery: () => void
 }
 
-export function ExercisePhotoField({ photoUri, onOpenFullScreen, onRemove, onPick }: ExercisePhotoFieldProps) {
+export function ExercisePhotoField({
+    photoUri,
+    onOpenFullScreen,
+    onRemove,
+    onPick,
+    onPickFromGallery,
+}: ExercisePhotoFieldProps) {
     const { t } = useTranslation()
     const { theme } = useTheme()
     return (
@@ -136,23 +143,39 @@ export function ExercisePhotoField({ photoUri, onOpenFullScreen, onRemove, onPic
                     />
                 </TouchableOpacity>
             ) : (
-                <TouchableOpacity
+                <View
                     style={[
-                        styles.addPhotoButton,
+                        styles.addPhotoBox,
                         {
                             backgroundColor: theme.surfaceSubtle,
                             borderColor: theme.inputBackground,
                         },
                     ]}
-                    onPress={onPick}
-                    accessibilityRole={'button'}
-                    accessibilityLabel={t('photo')}
                 >
-                    <FontAwesome name={'camera'} size={30} color={theme.primary} />
-                    <Typography.Meta style={[styles.addPhotoText, { color: theme.primary }]}>
-                        {t('photo')}
-                    </Typography.Meta>
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.photoSourceButton, { backgroundColor: theme.inputBackground }]}
+                        onPress={onPick}
+                        accessibilityRole={'button'}
+                        accessibilityLabel={t('takePhoto')}
+                    >
+                        <FontAwesome name={'camera'} size={30} color={theme.primary} />
+                        <Typography.Meta style={[styles.photoSourceLabel, { color: theme.primary }]}>
+                            {t('camera')}
+                        </Typography.Meta>
+                    </TouchableOpacity>
+                    <Typography.Meta style={{ color: theme.textSecondary }}>{t('or')}</Typography.Meta>
+                    <TouchableOpacity
+                        style={[styles.photoSourceButton, { backgroundColor: theme.inputBackground }]}
+                        onPress={onPickFromGallery}
+                        accessibilityRole={'button'}
+                        accessibilityLabel={t('pickFromGallery')}
+                    >
+                        <FontAwesome name={'image'} size={30} color={theme.primary} />
+                        <Typography.Meta style={[styles.photoSourceLabel, { color: theme.primary }]}>
+                            {t('gallery')}
+                        </Typography.Meta>
+                    </TouchableOpacity>
+                </View>
             )}
         </Animated.View>
     )
@@ -201,19 +224,28 @@ const styles = StyleSheet.create({
     photoSection: {
         marginBottom: Spacing.sm,
     },
-    addPhotoButton: {
+    addPhotoBox: {
         width: '100%',
         height: 160,
         borderRadius: Radius.md,
         borderWidth: 2,
         borderStyle: 'dashed',
+        flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: Spacing.sm,
+        gap: Spacing.md,
     },
-    addPhotoText: {
-        fontSize: FontSize.sm,
-        fontWeight: FontWeight.semibold,
+    photoSourceButton: {
+        width: 88,
+        height: 80,
+        borderRadius: Radius.md,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: Spacing.xs,
+    },
+    photoSourceLabel: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.medium,
     },
     photoWrapper: {
         width: '100%',

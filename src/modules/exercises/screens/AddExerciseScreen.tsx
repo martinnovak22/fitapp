@@ -94,31 +94,38 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
         }
     }, [isEditing, loadExercise])
 
-    const handlePickImage = async () => {
+    const pickImage = async (source: 'camera' | 'gallery') => {
         try {
-            const { status } = await ImagePicker.requestCameraPermissionsAsync()
-            if (status !== 'granted') {
-                showToast.info({
-                    title: t('permissionNeeded'),
-                    message: t('allowCamera'),
-                })
-                return
+            // The gallery path needs no permission: launchImageLibraryAsync uses the OS photo picker.
+            if (source === 'camera') {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync()
+                if (status !== 'granted') {
+                    showToast.info({
+                        title: t('permissionNeeded'),
+                        message: t('allowCamera'),
+                    })
+                    return
+                }
             }
 
-            const result = await ImagePicker.launchCameraAsync({
+            const options: ImagePicker.ImagePickerOptions = {
                 mediaTypes: ['images'],
                 quality: 0.7,
-            })
+            }
+            const result =
+                source === 'camera'
+                    ? await ImagePicker.launchCameraAsync(options)
+                    : await ImagePicker.launchImageLibraryAsync(options)
 
             const uri = result.canceled ? null : result.assets?.[0]?.uri
             if (uri) {
                 setPhotoUri(uri)
             }
         } catch (error) {
-            console.error('Failed to take photo:', error)
+            console.error('Failed to pick photo:', error)
             showToast.danger({
                 title: t('error'),
-                message: t('cameraFailed'),
+                message: t(source === 'camera' ? 'cameraFailed' : 'galleryFailed'),
             })
         }
     }
@@ -314,7 +321,8 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                         photoUri={photoUri}
                         onOpenFullScreen={() => setShowImageFullScreen(true)}
                         onRemove={() => setPhotoUri(null)}
-                        onPick={handlePickImage}
+                        onPick={() => pickImage('camera')}
+                        onPickFromGallery={() => pickImage('gallery')}
                     />
                 </Animated.View>
                 {photoUri && (
