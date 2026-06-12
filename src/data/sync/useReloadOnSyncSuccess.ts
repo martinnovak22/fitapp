@@ -10,9 +10,13 @@ import { useSync } from './SyncProvider'
  * This bridges that gap: `reload` is invoked whenever a sync cycle reports a
  * new success timestamp. The first observed value is captured without firing,
  * so it never double-loads on top of the focus-effect's initial read.
+ *
+ * Returns `isHydrating` — true while the post-login hydration pull (the first
+ * cycle over an empty principal) is still running — so the landing screen can
+ * hold its loading state instead of rendering empty or partial data.
  */
-export const useReloadOnSyncSuccess = (reload: () => void) => {
-    const { status } = useSync()
+export const useReloadOnSyncSuccess = (reload: () => void): boolean => {
+    const { status, isHydrating } = useSync()
     const lastSeenRef = useRef(status.lastSuccessAt)
 
     useEffect(() => {
@@ -21,4 +25,6 @@ export const useReloadOnSyncSuccess = (reload: () => void) => {
             reload()
         }
     }, [status.lastSuccessAt, reload])
+
+    return isHydrating
 }

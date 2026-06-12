@@ -9,6 +9,7 @@ import Animated, { LinearTransition } from 'react-native-reanimated'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { getRepositories } from '@/src/data/repositories'
+import { deleteLocalPhoto } from '@/src/data/sync/photoStorage'
 import type { ExerciseType } from '@/src/db/exercises'
 import { Card } from '@/src/modules/core/components/Card'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
@@ -73,6 +74,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     const [nameError, setNameError] = useState('')
     const nameInputRef = useRef<TextInput>(null)
     const muscleInputRef = useRef<TextInput>(null)
+    const originalPhotoUriRef = useRef<string | null>(null)
 
     const loadExercise = useCallback(async () => {
         if (!resolvedExerciseId) return
@@ -82,6 +84,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
             setMuscle(exercise.muscle_group || '')
             setType(exercise.type)
             setPhotoUri(exercise.photo_uri || null)
+            originalPhotoUriRef.current = exercise.photo_uri || null
         }
     }, [exerciseRepo, resolvedExerciseId])
 
@@ -92,22 +95,31 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     }, [isEditing, loadExercise])
 
     const handlePickImage = async () => {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync()
-        if (status !== 'granted') {
-            showToast.info({
-                title: t('permissionNeeded'),
-                message: t('allowCamera'),
+        try {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync()
+            if (status !== 'granted') {
+                showToast.info({
+                    title: t('permissionNeeded'),
+                    message: t('allowCamera'),
+                })
+                return
+            }
+
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ['images'],
+                quality: 0.7,
             })
-            return
-        }
 
-        const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
-            quality: 0.7,
-        })
-
-        if (!result.canceled) {
-            setPhotoUri(result.assets[0].uri)
+            const uri = result.canceled ? null : result.assets?.[0]?.uri
+            if (uri) {
+                setPhotoUri(uri)
+            }
+        } catch (error) {
+            console.error('Failed to take photo:', error)
+            showToast.danger({
+                title: t('error'),
+                message: t('cameraFailed'),
+            })
         }
     }
 
@@ -132,6 +144,10 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
 
             if (plan.kind === 'update') {
                 await exerciseRepo.update(plan.exerciseId, payload)
+                if (originalPhotoUriRef.current !== finalPhotoUri) {
+                    await deleteLocalPhoto(originalPhotoUriRef.current)
+                    originalPhotoUriRef.current = finalPhotoUri
+                }
             } else {
                 await exerciseRepo.create(
                     payload.name,
@@ -168,6 +184,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                 onPress: async () => {
                     if (!resolvedExerciseId) return
                     await exerciseRepo.delete(resolvedExerciseId)
+                    await deleteLocalPhoto(originalPhotoUriRef.current)
                     router.dismissAll()
                     router.replace('/(tabs)/exercises')
                     showToast.success({

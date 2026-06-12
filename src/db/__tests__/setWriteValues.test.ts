@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSetMetricColumns, resolveNextSetPosition } from '../setWriteValues'
+import { buildSetMetricColumns, MAX_SUB_SETS_LENGTH, resolveNextSetPosition } from '../setWriteValues'
 
 describe('resolveNextSetPosition', () => {
     it('starts at 0 when there is no prior set', () => {
@@ -41,5 +41,13 @@ describe('buildSetMetricColumns', () => {
             distance: null,
             duration: null,
         })
+    })
+
+    it('rejects sub_sets JSON over the sanity cap so it never reaches the push pipeline', () => {
+        const atCap = '['.padEnd(MAX_SUB_SETS_LENGTH - 1, ' ') + ']'
+        expect(buildSetMetricColumns({ sub_sets: atCap }).sub_sets).toBe(atCap)
+
+        const overCap = '['.padEnd(MAX_SUB_SETS_LENGTH, ' ') + ']'
+        expect(() => buildSetMetricColumns({ sub_sets: overCap })).toThrow(/sub_sets JSON exceeds/)
     })
 })

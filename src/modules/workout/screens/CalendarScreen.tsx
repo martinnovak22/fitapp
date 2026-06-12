@@ -5,10 +5,12 @@ import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
 import { getRepositories } from '@/src/data/repositories'
+import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatLocalDateYYYYMMDD } from '@/src/utils/dateTime'
@@ -51,11 +53,19 @@ export default function CalendarScreen() {
     const [isLoadingSummary, setIsLoadingSummary] = useState(false)
     const [loadError, setLoadError] = useState<string | null>(null)
 
+    const beginLoad = useStaleGuard()
+
     const loadWorkouts = useCallback(async () => {
+        // Focus and the post-sync reload can race; only the most recent run
+        // may commit, or a stale read taken while sync was still writing
+        // would overwrite the fresh calendar.
+        const isStale = beginLoad()
         setLoadError(null)
         setIsLoading(true)
         try {
             const all = await workoutRepo.getAllWorkouts()
+            if (isStale()) return
+
             setWorkouts(all)
 
             const marked: MarkedDates = {}
@@ -72,17 +82,21 @@ export default function CalendarScreen() {
             }
         } catch (error) {
             console.error('Failed to load calendar workouts:', error)
-            setLoadError(t('failedToLoadCalendar'))
+            if (!isStale()) setLoadError(t('failedToLoadCalendar'))
         } finally {
-            setIsLoading(false)
+            if (!isStale()) setIsLoading(false)
         }
-    }, [selectedDate, t, theme.primary, workoutRepo])
+    }, [beginLoad, selectedDate, t, theme.primary, workoutRepo])
 
     useFocusEffect(
         useCallback(() => {
             loadWorkouts()
         }, [loadWorkouts])
     )
+
+    // Reflect rows a background sync just pulled (e.g. right after login)
+    // without making the user pull to refresh.
+    useReloadOnSyncSuccess(loadWorkouts)
 
     const handleDayPress = (day: { dateString: string }) => {
         setSelectedDate(day.dateString)

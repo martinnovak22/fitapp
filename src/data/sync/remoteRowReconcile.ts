@@ -32,18 +32,20 @@ interface ExerciseRowSource {
     name?: string
     type?: string
     muscle_group?: string | null
-    photo_uri?: string | null
+    photo_key?: string | null
     position?: number
     created_at: string | null
     updated_at: string | null
 }
 
+// photo_uri is deliberately absent: it is device-local state. The pull decides
+// separately whether the local file survives (see resolvePulledPhotoUri).
 export interface ExerciseColumns {
     user_id: string
     name: string | null
     type: string
     muscle_group: string | null
-    photo_uri: string | null
+    photo_key: string | null
     position: number
     created_at: string
     updated_at: string
@@ -54,7 +56,7 @@ export const toExerciseColumns = (row: ExerciseRowSource, userId: string): Exerc
     name: row.name ?? null,
     type: row.type ?? 'weight',
     muscle_group: row.muscle_group ?? null,
-    photo_uri: row.photo_uri ?? null,
+    photo_key: row.photo_key ?? null,
     position: row.position ?? 0,
     created_at: toIsoOrNow(row.created_at),
     updated_at: toIsoOrNow(row.updated_at),

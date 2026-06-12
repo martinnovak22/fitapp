@@ -1,7 +1,7 @@
 import type * as SQLite from 'expo-sqlite'
 
 export const DATABASE_NAME = 'fitapp.db'
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 
 type ColumnDef = {
     name: string
@@ -70,6 +70,7 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       type TEXT NOT NULL DEFAULT 'weight',
       muscle_group TEXT,
       photo_uri TEXT,
+      photo_key TEXT,
       position INTEGER DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -137,6 +138,16 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       last_attempt_at TEXT,
       last_error TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS pull_cursors (
+      user_id TEXT PRIMARY KEY,
+      exercises_updated TEXT,
+      exercises_deleted TEXT,
+      workouts_updated TEXT,
+      workouts_deleted TEXT,
+      sets_updated TEXT,
+      sets_deleted TEXT
+    );
   `)
 }
 
@@ -175,6 +186,9 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
     await ensureSyncMetadataColumns(db, 'exercises')
     await ensureSyncMetadataColumns(db, 'workouts')
     await ensureSyncMetadataColumns(db, 'sets')
+    // photo_uri stays device-local; photo_key is the synced storage key for the
+    // photo bytes in the exercise-photos bucket (issue #49).
+    await ensureColumn(db, 'exercises', { name: 'photo_key', sqlType: 'TEXT' })
     await ensureColumn(db, 'deletion_tombstones', {
         name: 'sync_attempts',
         sqlType: 'INTEGER',

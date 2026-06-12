@@ -125,10 +125,11 @@ export default function SettingsScreen() {
                                     <Button
                                         label={t('signOut')}
                                         variant={'outline'}
-                                        onPress={async () => {
-                                            await signOut()
-                                            router.replace('../login')
-                                        }}
+                                        // No explicit navigation: dropping the session flips
+                                        // isAuthenticated and the tabs-layout guard redirects to
+                                        // login once — a second replace would remount it and replay
+                                        // the entrance animations.
+                                        onPress={signOut}
                                     />
                                 </>
                             )}

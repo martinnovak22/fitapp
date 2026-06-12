@@ -1,7 +1,8 @@
 import { buildPrincipalWhereClause, getScopedUserId } from '@/src/data/principal'
+import { buildPhotoKey, nextPhotoKey } from '@/src/data/sync/photoSync'
 import { getDb } from './client'
 import { createEntityUuid, nowIso, type SyncStatus, softDeleteById } from './sync'
-import { executeWrite, executeWriteTransaction } from './writeQueue'
+import { executeWriteTransaction } from './writeQueue'
 
 export type ExerciseType = 'weight' | 'cardio' | 'bodyweight' | 'bodyweight_timer'
 
@@ -13,6 +14,7 @@ export interface Exercise {
     type: ExerciseType
     muscle_group?: string
     photo_uri?: string | null
+    photo_key?: string | null
     position: number
     created_at?: string
     updated_at?: string
@@ -47,22 +49,28 @@ export const ExerciseRepository = {
 
     async create(name: string, type: ExerciseType, muscle_group?: string, photo_uri?: string): Promise<number> {
         return executeWriteTransaction(async (db) => {
+            const scope = buildPrincipalWhereClause('user_id')
             const lastEx = await db.getFirstAsync<{ position: number }>(
-                'SELECT position FROM exercises ORDER BY position DESC LIMIT 1'
+                `SELECT position FROM exercises
+                 WHERE deleted_at IS NULL AND ${scope.clause}
+                 ORDER BY position DESC LIMIT 1`,
+                ...scope.params
             )
             const nextPosition = lastEx ? lastEx.position + 1 : 0
             const now = nowIso()
+            const uuid = createEntityUuid()
 
             const result = await db.runAsync(
                 `INSERT INTO exercises
-                 (uuid, user_id, name, type, muscle_group, photo_uri, position, created_at, updated_at, sync_status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                createEntityUuid(),
+                 (uuid, user_id, name, type, muscle_group, photo_uri, photo_key, position, created_at, updated_at, sync_status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                uuid,
                 getScopedUserId(),
                 name,
                 type.toLowerCase(),
                 muscle_group?.toLowerCase() ?? null,
                 photo_uri ?? null,
+                buildPhotoKey(uuid, photo_uri ?? null),
                 nextPosition,
                 now,
                 now,
@@ -99,20 +107,47 @@ export const ExerciseRepository = {
 
         if (fields.length === 0) return
 
-        fields.push('updated_at = ?')
-        values.push(nowIso())
-        fields.push('sync_status = ?')
-        values.push('dirty')
-
         const scope = buildPrincipalWhereClause('user_id')
-        values.push(id)
-        await executeWrite((innerDb) =>
-            innerDb.runAsync(
+        await executeWriteTransaction(async (db) => {
+            if (data.photo_uri !== undefined) {
+                // The synced photo_key follows the local photo: regenerated when
+                // the photo changed, kept when only metadata changed (see
+                // nextPhotoKey). Read inside the transaction so the key derives
+                // from the exact row this update replaces.
+                const current = await db.getFirstAsync<{
+                    uuid: string
+                    photo_uri: string | null
+                    photo_key: string | null
+                }>(
+                    `SELECT uuid, photo_uri, photo_key FROM exercises
+                     WHERE id = ? AND deleted_at IS NULL AND ${scope.clause}`,
+                    id,
+                    ...scope.params
+                )
+                if (current?.uuid) {
+                    fields.push('photo_key = ?')
+                    values.push(
+                        nextPhotoKey(
+                            current.photo_key ?? null,
+                            current.photo_uri ?? null,
+                            current.uuid,
+                            data.photo_uri ?? null
+                        )
+                    )
+                }
+            }
+
+            fields.push('updated_at = ?')
+            values.push(nowIso())
+            fields.push('sync_status = ?')
+            values.push('dirty')
+            values.push(id)
+            await db.runAsync(
                 `UPDATE exercises SET ${fields.join(', ')} WHERE id = ? AND ${scope.clause}`,
                 ...values,
                 ...scope.params
             )
-        )
+        })
     },
 
     async updatePositions(updates: { id: number; position: number }[]): Promise<void> {
