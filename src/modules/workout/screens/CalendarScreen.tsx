@@ -84,7 +84,7 @@ export default function CalendarScreen() {
             console.error('Failed to load calendar workouts:', error)
             if (!isStale()) setLoadError(t('failedToLoadCalendar'))
         } finally {
-            setIsLoading(false)
+            if (!isStale()) setIsLoading(false)
         }
     }, [beginLoad, selectedDate, t, theme.primary, workoutRepo])
 

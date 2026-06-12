@@ -50,8 +50,10 @@ export default function HistoryScreen() {
                 console.error('Failed to load workouts history:', error)
                 if (!isStale()) setLoadError(t('failedToLoadWorkouts'))
             } finally {
-                if (showRefresh) setRefreshing(false)
-                setInitialLoading(false)
+                if (!isStale()) {
+                    if (showRefresh) setRefreshing(false)
+                    setInitialLoading(false)
+                }
             }
         },
         [beginLoad, t, workoutRepo]

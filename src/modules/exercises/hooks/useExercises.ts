@@ -31,8 +31,10 @@ export function useExercises() {
             console.error('Failed to load exercises:', error)
             if (!isStale()) setLoadError(t('failedToLoadExercises'))
         } finally {
-            setIsLoading(false)
-            setHasLoaded(true)
+            if (!isStale()) {
+                setIsLoading(false)
+                setHasLoaded(true)
+            }
         }
     }, [beginLoad, exerciseRepo, t])
 
