@@ -9,6 +9,7 @@ import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { WorkoutHistoryCard } from './components/WorkoutHistoryCard'
 
@@ -32,22 +33,28 @@ export default function HistoryScreen() {
         }, [navigation])
     )
 
+    const beginLoad = useStaleGuard()
+
     const loadData = useCallback(
         async (showRefresh = false) => {
+            // Focus, pull-to-refresh, and the post-sync reload can race; only
+            // the most recent run may commit, or a stale read taken while sync
+            // was still writing would overwrite the fresh list.
+            const isStale = beginLoad()
             if (showRefresh) setRefreshing(true)
             setLoadError(null)
             try {
                 const data = await workoutRepo.getAllWorkouts()
-                setWorkouts(data)
+                if (!isStale()) setWorkouts(data)
             } catch (error) {
                 console.error('Failed to load workouts history:', error)
-                setLoadError(t('failedToLoadWorkouts'))
+                if (!isStale()) setLoadError(t('failedToLoadWorkouts'))
             } finally {
                 if (showRefresh) setRefreshing(false)
                 setInitialLoading(false)
             }
         },
-        [t, workoutRepo]
+        [beginLoad, t, workoutRepo]
     )
 
     useFocusEffect(

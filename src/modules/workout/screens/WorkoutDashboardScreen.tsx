@@ -15,6 +15,7 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { Appear, ListItemAppear } from '@/src/modules/core/components/motion'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
+import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
@@ -101,16 +102,22 @@ export default function WorkoutDashboardScreen() {
     )
     const previousWorkouts = finishedWorkouts.slice(1, 3)
 
+    const beginLoad = useStaleGuard()
+
     const loadData = useCallback(async () => {
+        // Focus, pull-to-refresh, and the post-sync reload can all call loadData
+        // at once. While the init sync is writing, workouts become readable
+        // before their sets, so an earlier (stale) call can resolve last and
+        // clobber the fresh sets-derived state — the last-workout recap and
+        // muscle balance — with empty data while the week strip looks correct.
+        // Compute into locals and let only the most recent run commit.
+        const isStale = beginLoad()
+
         setLoadError(null)
         setIsLoading(true)
         try {
             const active = await workoutRepo.getActiveWorkout()
-            setActiveWorkout(active)
-
             const all = await workoutRepo.getAllWorkouts()
-            setAllWorkouts(all)
-
             const finished = all.filter((w) => w.status === 'finished' && w.id !== active?.id)
 
             const today = new Date()
@@ -128,19 +135,17 @@ export default function WorkoutDashboardScreen() {
                 weekDates.add(active.date)
             }
 
-            setWeekDays(
-                Array.from({ length: 7 }, (_, i) => {
-                    const d = new Date(weekStart)
-                    d.setDate(weekStart.getDate() + i)
-                    const dateStr = formatLocalDateYYYYMMDD(d)
-                    return {
-                        date: dateStr,
-                        day: formatLocalizedDate(d, i18n.language, { weekday: 'narrow' }),
-                        workedOut: weekDates.has(dateStr),
-                        isToday: dateStr === todayStr,
-                    }
-                })
-            )
+            const nextWeekDays: WeekDay[] = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(weekStart)
+                d.setDate(weekStart.getDate() + i)
+                const dateStr = formatLocalDateYYYYMMDD(d)
+                return {
+                    date: dateStr,
+                    day: formatLocalizedDate(d, i18n.language, { weekday: 'narrow' }),
+                    workedOut: weekDates.has(dateStr),
+                    isToday: dateStr === todayStr,
+                }
+            })
 
             const trainedWeekStarts = new Set(
                 finished.map((w) => formatLocalDateYYYYMMDD(getWeekStart(parseLocalDate(w.date))))
@@ -163,16 +168,13 @@ export default function WorkoutDashboardScreen() {
                 ? Math.round((today.getTime() - parseLocalDate(lastFinished.date).getTime()) / DAY_MS)
                 : null
 
-            setWeekStats({ streak, trainedMin, daysSinceLast })
-
+            let nextLastWorkoutSummary: LastWorkoutSummary | null = null
             if (lastFinished) {
                 const sets = await workoutRepo.getSets(lastFinished.id)
                 const muscleGroups = [...new Set(sets.map((s) => s.muscle_group))].filter(
                     (g): g is string => g !== null
                 )
-                setLastWorkoutSummary({ workout: lastFinished, setCount: sets.length, muscleGroups })
-            } else {
-                setLastWorkoutSummary(null)
+                nextLastWorkoutSummary = { workout: lastFinished, setCount: sets.length, muscleGroups }
             }
 
             const weekSets = (await Promise.all(weekWorkouts.map((w) => workoutRepo.getSets(w.id)))).flat()
@@ -185,18 +187,28 @@ export default function WorkoutDashboardScreen() {
             for (const set of weekSets) {
                 groupCounts.set(set.muscle_group, (groupCounts.get(set.muscle_group) ?? 0) + 1)
             }
-            setMuscleBalance(
-                [...groupCounts.entries()]
-                    .map(([group, count]) => ({ group, count }))
-                    .sort((a, b) => b.count - a.count || (a.group ?? '').localeCompare(b.group ?? ''))
-            )
+            const nextMuscleBalance: MuscleBalanceEntry[] = [...groupCounts.entries()]
+                .map(([group, count]) => ({ group, count }))
+                .sort((a, b) => b.count - a.count || (a.group ?? '').localeCompare(b.group ?? ''))
+
+            // A newer run superseded this one while we were reading; drop these
+            // now-stale results rather than overwrite the fresh ones.
+            if (isStale()) return
+
+            setActiveWorkout(active)
+            setAllWorkouts(all)
+            setWeekDays(nextWeekDays)
+            setWeekStats({ streak, trainedMin, daysSinceLast })
+            setLastWorkoutSummary(nextLastWorkoutSummary)
+            setMuscleBalance(nextMuscleBalance)
         } catch (error) {
+            if (isStale()) return
             console.error('Failed to load workout dashboard:', error)
             setLoadError(t('failedToLoadWorkouts'))
         } finally {
-            setIsLoading(false)
+            if (!isStale()) setIsLoading(false)
         }
-    }, [i18n.language, t, workoutRepo, exerciseRepo])
+    }, [beginLoad, i18n.language, t, workoutRepo, exerciseRepo])
 
     useFocusEffect(
         useCallback(() => {

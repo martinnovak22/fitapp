@@ -2,7 +2,9 @@ import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getRepositories } from '@/src/data/repositories'
+import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Exercise } from '@/src/db/exercises'
+import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 
 export function useExercises() {
     const { exercises: exerciseRepo } = getRepositories()
@@ -13,26 +15,36 @@ export function useExercises() {
     const [hasLoaded, setHasLoaded] = useState(false)
     const [loadError, setLoadError] = useState<string | null>(null)
 
+    const beginLoad = useStaleGuard()
+
     const loadExercises = useCallback(async () => {
+        // Focus, the post-sync reload, and reorder-failure recovery can race;
+        // only the most recent run may commit, or a stale read taken while
+        // sync was still writing would overwrite the fresh list.
+        const isStale = beginLoad()
         setIsLoading(true)
         setLoadError(null)
         try {
             const data = await exerciseRepo.getAll()
-            setExercises(data)
+            if (!isStale()) setExercises(data)
         } catch (error) {
             console.error('Failed to load exercises:', error)
-            setLoadError(t('failedToLoadExercises'))
+            if (!isStale()) setLoadError(t('failedToLoadExercises'))
         } finally {
             setIsLoading(false)
             setHasLoaded(true)
         }
-    }, [exerciseRepo, t])
+    }, [beginLoad, exerciseRepo, t])
 
     useFocusEffect(
         useCallback(() => {
             loadExercises()
         }, [loadExercises])
     )
+
+    // Reflect rows a background sync just pulled (e.g. right after login)
+    // without making the user pull to refresh.
+    useReloadOnSyncSuccess(loadExercises)
 
     const handleReorder = async (newExercises: Exercise[]) => {
         const updated = newExercises.map((ex, idx) => ({ ...ex, position: idx }))
