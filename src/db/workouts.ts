@@ -234,16 +234,17 @@ export const WorkoutRepository = {
     },
 
     async updateSet(setId: number, data: SetData): Promise<void> {
+        const metrics = buildSetMetricColumns(data)
         await executeWrite((db) =>
             db.runAsync(
                 `UPDATE sets
                  SET weight = ?, reps = ?, distance = ?, duration = ?, sub_sets = ?, updated_at = ?, sync_status = ?
                  WHERE id = ? AND ${buildPrincipalWhereClause('user_id').clause}`,
-                data.weight ?? null,
-                data.reps ?? null,
-                data.distance ?? null,
-                data.duration ?? null,
-                data.sub_sets ?? null,
+                metrics.weight,
+                metrics.reps,
+                metrics.distance,
+                metrics.duration,
+                metrics.sub_sets,
                 nowIso(),
                 'dirty',
                 setId,
