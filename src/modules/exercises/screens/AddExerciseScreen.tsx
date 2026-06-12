@@ -50,6 +50,16 @@ async function savePhotoPermanently(uri: string): Promise<string> {
     return dest
 }
 
+async function deleteLocalPhoto(uri: string | null): Promise<void> {
+    const docDir = FileSystem.documentDirectory
+    if (!uri || !docDir || !uri.startsWith(`${docDir}exercises/`)) return
+    try {
+        await FileSystem.deleteAsync(uri, { idempotent: true })
+    } catch (error) {
+        console.warn('Failed to delete exercise photo:', error)
+    }
+}
+
 type ExerciseFormScreenProps = {
     mode?: 'create' | 'edit'
     exerciseId?: number
@@ -73,6 +83,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     const [nameError, setNameError] = useState('')
     const nameInputRef = useRef<TextInput>(null)
     const muscleInputRef = useRef<TextInput>(null)
+    const originalPhotoUriRef = useRef<string | null>(null)
 
     const loadExercise = useCallback(async () => {
         if (!resolvedExerciseId) return
@@ -82,6 +93,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
             setMuscle(exercise.muscle_group || '')
             setType(exercise.type)
             setPhotoUri(exercise.photo_uri || null)
+            originalPhotoUriRef.current = exercise.photo_uri || null
         }
     }, [exerciseRepo, resolvedExerciseId])
 
@@ -141,6 +153,10 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
 
             if (plan.kind === 'update') {
                 await exerciseRepo.update(plan.exerciseId, payload)
+                if (originalPhotoUriRef.current !== finalPhotoUri) {
+                    await deleteLocalPhoto(originalPhotoUriRef.current)
+                    originalPhotoUriRef.current = finalPhotoUri
+                }
             } else {
                 await exerciseRepo.create(
                     payload.name,
@@ -177,6 +193,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                 onPress: async () => {
                     if (!resolvedExerciseId) return
                     await exerciseRepo.delete(resolvedExerciseId)
+                    await deleteLocalPhoto(originalPhotoUriRef.current)
                     router.dismissAll()
                     router.replace('/(tabs)/exercises')
                     showToast.success({
