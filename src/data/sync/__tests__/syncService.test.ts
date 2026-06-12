@@ -24,7 +24,8 @@ vi.mock('@/src/modules/auth/authMode', () => ({
     isRemoteDataMode: () => true,
 }))
 
-const { runSync, resetPullCursorsForTest, getSyncState, retryBlockedRows } = await import('../syncService')
+const { runSync, resetPullCursorsForTest, getSyncState, retryBlockedRows, hasLocalDataForActivePrincipal } =
+    await import('../syncService')
 const { syncStatusStore } = await import('../SyncStatus')
 
 let db: TestDb
@@ -77,6 +78,38 @@ const localStatus = async (uuid: string) => {
     )
     return row?.sync_status
 }
+
+describe('hasLocalDataForActivePrincipal — fresh-login hydration detection', () => {
+    it('reports no data on an empty database', async () => {
+        expect(await hasLocalDataForActivePrincipal()).toBe(false)
+    })
+
+    it('reports data once the active principal has a workout or exercise', async () => {
+        await db.runAsync(
+            `INSERT INTO workouts (uuid, user_id, date, sync_status) VALUES ('w-1', ?, '2026-06-01', 'synced')`,
+            userId
+        )
+        expect(await hasLocalDataForActivePrincipal()).toBe(true)
+    })
+
+    it('ignores rows that belong to other principals, e.g. surviving guest data', async () => {
+        await db.runAsync(
+            `INSERT INTO workouts (uuid, user_id, date, sync_status) VALUES ('w-guest', 'someone-else', '2026-06-01', 'synced')`
+        )
+        await db.runAsync(
+            `INSERT INTO exercises (uuid, user_id, name, type, sync_status) VALUES ('e-guest', NULL, 'Bench', 'weight', 'local')`
+        )
+        expect(await hasLocalDataForActivePrincipal()).toBe(false)
+    })
+
+    it('ignores soft-deleted rows', async () => {
+        await db.runAsync(
+            `INSERT INTO workouts (uuid, user_id, date, sync_status, deleted_at) VALUES ('w-del', ?, '2026-06-01', 'synced', '2026-06-02T00:00:00Z')`,
+            userId
+        )
+        expect(await hasLocalDataForActivePrincipal()).toBe(false)
+    })
+})
 
 describe('runSync — issue #26 cheap-exit and cursor', () => {
     it('skips the push stage entirely when outbox is empty and reports zero work', async () => {

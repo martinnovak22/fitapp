@@ -218,7 +218,7 @@ export default function WorkoutDashboardScreen() {
 
     // Reflect rows a background sync just pulled (e.g. right after login)
     // without making the user pull to refresh.
-    useReloadOnSyncSuccess(loadData)
+    const isHydrating = useReloadOnSyncSuccess(loadData)
 
     const onRefresh = async () => {
         setRefreshing(true)
@@ -254,7 +254,10 @@ export default function WorkoutDashboardScreen() {
 
     const muscleGroupLabel = (group: string | null): string => (group ? capitalizeFirst(group) : t('otherMuscleGroup'))
 
-    if (isLoading && allWorkouts.length === 0) {
+    // While the post-login hydration pull is running, even a non-empty read is
+    // partial (workouts land before their sets, so e.g. the muscle balance
+    // would render empty) — hold the spinner until the cycle settles.
+    if (isHydrating || (isLoading && allWorkouts.length === 0)) {
         return (
             <ScrollScreenLayout>
                 <View style={layoutStyles.loadingContainer}>

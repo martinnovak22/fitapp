@@ -4,7 +4,7 @@ import { AppState } from 'react-native'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { useAuth } from '@/src/modules/auth/useAuth'
 import { type SyncStatusState, syncStatusStore } from './SyncStatus'
-import { getSyncState, retryBlockedRows, runSync } from './syncService'
+import { getSyncState, hasLocalDataForActivePrincipal, retryBlockedRows, runSync } from './syncService'
 
 // Sync polling is the dominant background cost when the user is idle. Issue #26
 // relaxes it from a 20s tick to a 60s base with exponential backoff up to 5min
@@ -25,6 +25,12 @@ type SyncBannerStatus = {
 
 type SyncContextValue = {
     status: SyncBannerStatus
+    // True while the first sync after a fresh login is still running — i.e.
+    // the active principal had no local rows when the cycle started. The
+    // landing screen shows a loading state instead of empty or partial data
+    // until the cycle settles. False on app starts over existing data, so
+    // local-first rendering is untouched there.
+    isHydrating: boolean
     refreshStatus: () => Promise<void>
     triggerSync: () => Promise<void>
     retryBlocked: () => Promise<void>
@@ -44,6 +50,7 @@ const SyncContext = createContext<SyncContextValue | undefined>(undefined)
 
 export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [status, setStatus] = useState<SyncBannerStatus>(DEFAULT_STATUS)
+    const [isHydrating, setIsHydrating] = useState(false)
     const { isAuthenticated, authMode } = useAuth()
 
     const refreshStatus = useCallback(async () => {
@@ -130,7 +137,20 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }, nextDelay())
         }
 
-        void triggerSync().then(schedule)
+        // A first cycle that starts over an empty principal is the post-login
+        // hydration pull. Reads taken mid-pull see partial data (workouts land
+        // before their sets), so the flag holds until the cycle settles —
+        // success or failure, failures show the banner. The emptiness check
+        // runs before the cycle can write, so it cannot see its own pull.
+        const beginCycles = async () => {
+            const hasData = await hasLocalDataForActivePrincipal()
+            if (cancelled) return
+            if (!hasData) setIsHydrating(true)
+            await triggerSync()
+            setIsHydrating(false)
+            schedule()
+        }
+        void beginCycles()
 
         const appStateSub = AppState.addEventListener('change', (state) => {
             if (state === 'active') {
@@ -146,6 +166,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             cancelled = true
             if (timeoutId) clearTimeout(timeoutId)
             appStateSub.remove()
+            setIsHydrating(false)
         }
     }, [authMode, isAuthenticated, triggerSync])
 
@@ -160,11 +181,12 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const value = useMemo<SyncContextValue>(
         () => ({
             status,
+            isHydrating,
             refreshStatus,
             triggerSync,
             retryBlocked,
         }),
-        [refreshStatus, status, triggerSync, retryBlocked]
+        [refreshStatus, status, isHydrating, triggerSync, retryBlocked]
     )
 
     return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>

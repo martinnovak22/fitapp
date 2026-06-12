@@ -745,6 +745,24 @@ export const getSyncState = async (): Promise<SyncState> => {
     }
 }
 
+// Whether the active principal already has rows on this device. Distinguishes
+// a fresh login (nothing local yet — the first pull is a hydration the UI
+// should wait for) from an app start over existing data (local rows are
+// immediately presentable). Deliberately ignores other principals' rows, e.g.
+// guest data surviving a sign-in.
+export const hasLocalDataForActivePrincipal = async (): Promise<boolean> => {
+    const userId = getSupabaseSession()?.userId
+    if (!userId) return false
+    const db = await getDb()
+    const row = await db.getFirstAsync<{ present: number }>(
+        `SELECT EXISTS(SELECT 1 FROM workouts WHERE user_id = ? AND deleted_at IS NULL)
+             OR EXISTS(SELECT 1 FROM exercises WHERE user_id = ? AND deleted_at IS NULL) AS present`,
+        userId,
+        userId
+    )
+    return (row?.present ?? 0) === 1
+}
+
 // Un-parks every blocked row (resets it to 'dirty' with a fresh attempt count)
 // so the next sync re-attempts it. Backs the user-facing "Try again" action.
 export const retryBlockedRows = async (): Promise<void> => {
