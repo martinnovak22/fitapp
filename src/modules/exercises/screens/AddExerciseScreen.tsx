@@ -92,22 +92,31 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     }, [isEditing, loadExercise])
 
     const handlePickImage = async () => {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync()
-        if (status !== 'granted') {
-            showToast.info({
-                title: t('permissionNeeded'),
-                message: t('allowCamera'),
+        try {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync()
+            if (status !== 'granted') {
+                showToast.info({
+                    title: t('permissionNeeded'),
+                    message: t('allowCamera'),
+                })
+                return
+            }
+
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ['images'],
+                quality: 0.7,
             })
-            return
-        }
 
-        const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
-            quality: 0.7,
-        })
-
-        if (!result.canceled) {
-            setPhotoUri(result.assets[0].uri)
+            const uri = result.canceled ? null : result.assets?.[0]?.uri
+            if (uri) {
+                setPhotoUri(uri)
+            }
+        } catch (error) {
+            console.error('Failed to take photo:', error)
+            showToast.danger({
+                title: t('error'),
+                message: t('cameraFailed'),
+            })
         }
     }
 
