@@ -21,7 +21,12 @@ beforeEach(async () => {
     setActivePrincipal({ mode: 'account', userId: 'user-A' })
 })
 
-const insertExercise = async (uuid: string, userId: string | null, position: number, deletedAt: string | null = null) => {
+const insertExercise = async (
+    uuid: string,
+    userId: string | null,
+    position: number,
+    deletedAt: string | null = null
+) => {
     await db.runAsync(
         `INSERT INTO exercises (uuid, user_id, name, type, position, sync_status, created_at, updated_at, deleted_at)
         VALUES (?, ?, ?, 'weight', ?, 'synced', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', ?)`,
@@ -79,10 +84,49 @@ describe('ExerciseRepository.create position assignment', () => {
         const id = await ExerciseRepository.create('Row', 'weight')
 
         expect(await positionOf(id)).toBe(2)
-        const row = await db.getFirstAsync<{ user_id: string | null }>(
-            `SELECT user_id FROM exercises WHERE id = ?`,
-            id
-        )
+        const row = await db.getFirstAsync<{ user_id: string | null }>(`SELECT user_id FROM exercises WHERE id = ?`, id)
         expect(row?.user_id).toBeNull()
+    })
+})
+
+const rowById = (id: number) =>
+    db.getFirstAsync<{ uuid: string; photo_uri: string | null; photo_key: string | null; sync_status: string }>(
+        'SELECT uuid, photo_uri, photo_key, sync_status FROM exercises WHERE id = ?',
+        id
+    )
+
+describe('ExerciseRepository photo_key', () => {
+    it('derives photo_key from the uuid and photo file name on create', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight', undefined, 'file:///doc/exercises/171.jpg')
+        const row = await rowById(id)
+        expect(row?.photo_key).toBe(`${row?.uuid}-171.jpg`)
+    })
+
+    it('leaves photo_key null on create without a photo', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight')
+        expect((await rowById(id))?.photo_key).toBeNull()
+    })
+
+    it('keeps photo_key when an update passes the unchanged photo uri', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight', undefined, 'file:///doc/exercises/171.jpg')
+        const before = await rowById(id)
+        await ExerciseRepository.update(id, { name: 'Bench Press', photo_uri: 'file:///doc/exercises/171.jpg' })
+        expect((await rowById(id))?.photo_key).toBe(before?.photo_key)
+    })
+
+    it('regenerates photo_key when the photo is replaced', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight', undefined, 'file:///doc/exercises/171.jpg')
+        await ExerciseRepository.update(id, { photo_uri: 'file:///doc/exercises/172.jpg' })
+        const row = await rowById(id)
+        expect(row?.photo_key).toBe(`${row?.uuid}-172.jpg`)
+        expect(row?.sync_status).toBe('dirty')
+    })
+
+    it('clears photo_key when the photo is removed', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight', undefined, 'file:///doc/exercises/171.jpg')
+        await ExerciseRepository.update(id, { photo_uri: null })
+        const row = await rowById(id)
+        expect(row?.photo_key).toBeNull()
+        expect(row?.photo_uri).toBeNull()
     })
 })

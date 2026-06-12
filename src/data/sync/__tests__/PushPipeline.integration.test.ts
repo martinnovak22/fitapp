@@ -18,6 +18,7 @@ let db: TestDb
 let adapter: FakeSupabaseAdapter
 const userId = 'user-1'
 const snapshot = () => capturePrincipalSnapshot({ userId, remote: true })
+const noopPhotos = { upload: async () => null, cleanup: async () => {} }
 
 beforeEach(async () => {
     await resetTestDb()
@@ -78,7 +79,7 @@ describe('PushPipeline end-to-end via fake adapter', () => {
         const result = await drainOutbox(
             outbox,
             snapshot(),
-            makePushFn(snapshot(), writer, resolver),
+            makePushFn(snapshot(), writer, resolver, noopPhotos),
             () => ({ userId, remote: true }),
             (batch) => preloadSetParents(resolver, batch)
         )
@@ -96,6 +97,70 @@ describe('PushPipeline end-to-end via fake adapter', () => {
         expect(calls.exercises).toBe(1)
     })
 
+    it('uploads photo bytes before the row push and cleans up superseded objects after persistence', async () => {
+        await db.runAsync(
+            `INSERT INTO exercises (uuid, user_id, name, type, photo_uri, photo_key, sync_status, created_at, updated_at)
+            VALUES ('ex-1', ?, 'Bench', 'weight', 'file:///doc/exercises/171.jpg', 'ex-1-171.jpg', 'dirty', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+            userId
+        )
+        const calls: string[] = []
+        const photos = {
+            upload: async (uid: string, row: { photo_key: string | null }) => {
+                calls.push(`upload:${uid}/${row.photo_key}`)
+                return null
+            },
+            cleanup: async (uid: string, uuid: string, keepKey: string | null) => {
+                calls.push(`cleanup:${uid}/${uuid}:keep=${keepKey}`)
+            },
+        }
+
+        const outbox = createOutbox(db as never, executeWriteTransaction)
+        const writer = createRemoteWriter(adapter)
+        const resolver = createRemoteIdResolver(adapter)
+        const result = await drainOutbox(
+            outbox,
+            snapshot(),
+            makePushFn(snapshot(), writer, resolver, photos),
+            () => ({ userId, remote: true }),
+            (batch) => preloadSetParents(resolver, batch)
+        )
+
+        expect(result.failed).toBe(0)
+        expect(await localStatus('exercises', 'ex-1')).toBe('synced')
+        expect(calls).toEqual(['upload:user-1/ex-1-171.jpg', 'cleanup:user-1/ex-1:keep=ex-1-171.jpg'])
+        // The synced row carries the storage key, never the local file path.
+        const pushed = adapter.snapshot('exercises')[0] as Record<string, unknown>
+        expect(pushed.photo_key).toBe('ex-1-171.jpg')
+        expect(pushed.photo_uri).toBeUndefined()
+    })
+
+    it('fails the row push (and leaves it retryable) when the photo upload fails', async () => {
+        await db.runAsync(
+            `INSERT INTO exercises (uuid, user_id, name, type, photo_uri, photo_key, sync_status, created_at, updated_at)
+            VALUES ('ex-1', ?, 'Bench', 'weight', 'file:///doc/exercises/171.jpg', 'ex-1-171.jpg', 'dirty', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+            userId
+        )
+        const photos = {
+            upload: async () => ({ kind: 'network-error' as const, message: 'offline' }),
+            cleanup: async () => {},
+        }
+
+        const outbox = createOutbox(db as never, executeWriteTransaction)
+        const writer = createRemoteWriter(adapter)
+        const resolver = createRemoteIdResolver(adapter)
+        const result = await drainOutbox(
+            outbox,
+            snapshot(),
+            makePushFn(snapshot(), writer, resolver, photos),
+            () => ({ userId, remote: true }),
+            (batch) => preloadSetParents(resolver, batch)
+        )
+
+        expect(result.failed).toBe(1)
+        expect(await localStatus('exercises', 'ex-1')).toBe('failed')
+        expect(adapter.snapshot('exercises')).toHaveLength(0)
+    })
+
     it('does NOT mark a row synced when the remote silently returns no rows (empty-after-upsert)', async () => {
         await insertDirtyExercise('ex-1')
 
@@ -108,7 +173,7 @@ describe('PushPipeline end-to-end via fake adapter', () => {
         const result = await drainOutbox(
             outbox,
             snapshot(),
-            makePushFn(snapshot(), writer, resolver),
+            makePushFn(snapshot(), writer, resolver, noopPhotos),
             () => ({ userId, remote: true }),
             (batch) => preloadSetParents(resolver, batch)
         )

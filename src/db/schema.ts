@@ -70,6 +70,7 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       type TEXT NOT NULL DEFAULT 'weight',
       muscle_group TEXT,
       photo_uri TEXT,
+      photo_key TEXT,
       position INTEGER DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -185,6 +186,9 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
     await ensureSyncMetadataColumns(db, 'exercises')
     await ensureSyncMetadataColumns(db, 'workouts')
     await ensureSyncMetadataColumns(db, 'sets')
+    // photo_uri stays device-local; photo_key is the synced storage key for the
+    // photo bytes in the exercise-photos bucket (issue #49).
+    await ensureColumn(db, 'exercises', { name: 'photo_key', sqlType: 'TEXT' })
     await ensureColumn(db, 'deletion_tombstones', {
         name: 'sync_attempts',
         sqlType: 'INTEGER',

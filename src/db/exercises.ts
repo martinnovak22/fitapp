@@ -1,4 +1,5 @@
 import { buildPrincipalWhereClause, getScopedUserId } from '@/src/data/principal'
+import { buildPhotoKey, nextPhotoKey } from '@/src/data/sync/photoSync'
 import { getDb } from './client'
 import { createEntityUuid, nowIso, type SyncStatus, softDeleteById } from './sync'
 import { executeWrite, executeWriteTransaction } from './writeQueue'
@@ -13,6 +14,7 @@ export interface Exercise {
     type: ExerciseType
     muscle_group?: string
     photo_uri?: string | null
+    photo_key?: string | null
     position: number
     created_at?: string
     updated_at?: string
@@ -56,17 +58,19 @@ export const ExerciseRepository = {
             )
             const nextPosition = lastEx ? lastEx.position + 1 : 0
             const now = nowIso()
+            const uuid = createEntityUuid()
 
             const result = await db.runAsync(
                 `INSERT INTO exercises
-                 (uuid, user_id, name, type, muscle_group, photo_uri, position, created_at, updated_at, sync_status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                createEntityUuid(),
+                 (uuid, user_id, name, type, muscle_group, photo_uri, photo_key, position, created_at, updated_at, sync_status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                uuid,
                 getScopedUserId(),
                 name,
                 type.toLowerCase(),
                 muscle_group?.toLowerCase() ?? null,
                 photo_uri ?? null,
+                buildPhotoKey(uuid, photo_uri ?? null),
                 nextPosition,
                 now,
                 now,
@@ -95,6 +99,21 @@ export const ExerciseRepository = {
         if (data.photo_uri !== undefined) {
             fields.push('photo_uri = ?')
             values.push(data.photo_uri ?? null)
+
+            // The synced photo_key follows the local photo: regenerated when the
+            // photo changed, kept when only metadata changed (see nextPhotoKey).
+            const current = await ExerciseRepository.getById(id)
+            if (current?.uuid) {
+                fields.push('photo_key = ?')
+                values.push(
+                    nextPhotoKey(
+                        current.photo_key ?? null,
+                        current.photo_uri ?? null,
+                        current.uuid,
+                        data.photo_uri ?? null
+                    )
+                )
+            }
         }
         if (data.position !== undefined) {
             fields.push('position = ?')

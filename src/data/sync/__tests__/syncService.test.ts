@@ -24,6 +24,15 @@ vi.mock('@/src/modules/auth/authMode', () => ({
     isRemoteDataMode: () => true,
 }))
 
+// The photo IO half lives on expo-file-system, which the node test
+// environment cannot load; these tests cover the row pipeline only.
+vi.mock('../photoStorage', () => ({
+    backfillLocalPhotoKeys: async () => {},
+    createExercisePhotoStore: () => ({ upload: async () => null, cleanup: async () => {} }),
+    deleteLocalPhoto: async () => {},
+    hydrateExercisePhotos: async () => 0,
+}))
+
 const {
     runSync,
     resetPullCursorsForTest,
@@ -144,7 +153,7 @@ describe('runSync — issue #26 cheap-exit and cursor', () => {
                                 name: 'Bench',
                                 type: 'weight',
                                 muscle_group: null,
-                                photo_uri: null,
+                                photo_key: null,
                                 position: 0,
                                 created_at: '2026-02-01T00:00:00Z',
                                 updated_at: '2026-02-01T00:00:00Z',
@@ -187,7 +196,7 @@ describe('runSync — issue #26 cheap-exit and cursor', () => {
                                 name: 'Bench',
                                 type: 'weight',
                                 muscle_group: null,
-                                photo_uri: null,
+                                photo_key: null,
                                 position: 0,
                                 created_at: '2026-02-01T00:00:00Z',
                                 updated_at: '2026-02-01T00:00:00Z',
@@ -247,7 +256,7 @@ describe('runSync — issue #26 cheap-exit and cursor', () => {
                                 name: 'Bench',
                                 type: 'weight',
                                 muscle_group: null,
-                                photo_uri: null,
+                                photo_key: null,
                                 position: 0,
                                 created_at: '2026-02-01T00:00:00Z',
                                 updated_at: '2026-02-01T00:00:00Z',
@@ -293,7 +302,7 @@ describe('runSync — pull reconciliation upserts remote rows into local', () =>
                             name: 'Bench',
                             type: 'weight',
                             muscle_group: 'chest',
-                            photo_uri: null,
+                            photo_key: null,
                             position: 0,
                             created_at: '2026-02-01T00:00:00Z',
                             updated_at: '2026-02-01T00:00:00Z',
@@ -387,7 +396,7 @@ describe('runSync — pull reconciliation upserts remote rows into local', () =>
                             name: 'Remote Name',
                             type: 'weight',
                             muscle_group: null,
-                            photo_uri: null,
+                            photo_key: null,
                             position: 0,
                             created_at: '2025-01-01T00:00:00Z',
                             updated_at: '2025-01-01T00:00:00Z',
@@ -425,7 +434,7 @@ describe('runSync — pull reconciliation upserts remote rows into local', () =>
                             name: 'Bench',
                             type: 'weight',
                             muscle_group: 'chest',
-                            photo_uri: null,
+                            photo_key: null,
                             position: 0,
                             created_at: '2026-02-01T00:00:00Z',
                             updated_at: '2026-02-01T00:00:00Z',
@@ -551,7 +560,7 @@ describe('runSync — pull reconciliation upserts remote rows into local', () =>
                             name: 'Bench',
                             type: 'weight',
                             muscle_group: null,
-                            photo_uri: null,
+                            photo_key: null,
                             position: 0,
                             created_at: '2026-02-01T00:00:00Z',
                             updated_at: '2026-02-01T00:00:00Z',

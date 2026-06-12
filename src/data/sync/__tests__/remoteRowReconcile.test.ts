@@ -43,7 +43,7 @@ describe('toExerciseColumns — remote exercise row → local column values', ()
             name: null,
             type: 'weight',
             muscle_group: null,
-            photo_uri: null,
+            photo_key: null,
             position: 0,
         })
         // null created/updated coalesce to a real ISO timestamp.
@@ -57,7 +57,7 @@ describe('toExerciseColumns — remote exercise row → local column values', ()
                 name: 'Bench',
                 type: 'bodyweight',
                 muscle_group: 'chest',
-                photo_uri: 'file://x.png',
+                photo_key: 'ab12-171.jpg',
                 position: 4,
                 created_at: '2026-01-01T00:00:00Z',
                 updated_at: '2026-02-01T00:00:00Z',
@@ -69,7 +69,7 @@ describe('toExerciseColumns — remote exercise row → local column values', ()
             name: 'Bench',
             type: 'bodyweight',
             muscle_group: 'chest',
-            photo_uri: 'file://x.png',
+            photo_key: 'ab12-171.jpg',
             position: 4,
             created_at: '2026-01-01T00:00:00Z',
             updated_at: '2026-02-01T00:00:00Z',

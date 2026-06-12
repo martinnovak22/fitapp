@@ -4,6 +4,8 @@
 
 import { type ExerciseRow, type OutboxRow, type SetRowWithRefs, tableOf, type WorkoutRow } from './Outbox'
 import type { PrincipalSnapshot } from './PrincipalSnapshot'
+import type { ExercisePhotoStore } from './photoStorage'
+import { shouldUploadPhoto } from './photoSync'
 import type { RemoteRow, RemoteTable } from './RemoteAdapter'
 import type { RemoteIdResolver } from './RemoteIdResolver'
 import type { RemoteWriteResult, RemoteWriter } from './RemoteWriter'
@@ -18,7 +20,9 @@ const exerciseToRemote = (snapshot: PrincipalSnapshot, row: ExerciseRow): Remote
     name: row.name,
     type: row.type,
     muscle_group: row.muscle_group,
-    photo_uri: row.photo_uri,
+    // photo_uri is a device-local file path and never syncs; the photo bytes
+    // travel via the storage bucket under photo_key (issue #49).
+    photo_key: row.photo_key,
     position: row.position,
     created_at: toIsoOrNow(row.created_at),
     updated_at: toIsoOrNow(row.updated_at),
@@ -80,7 +84,12 @@ export const preloadSetParents = async (resolver: RemoteIdResolver, batch: Outbo
 }
 
 export const makePushFn =
-    (snapshot: PrincipalSnapshot, writer: RemoteWriter, resolver: RemoteIdResolver): PushFn =>
+    (
+        snapshot: PrincipalSnapshot,
+        writer: RemoteWriter,
+        resolver: RemoteIdResolver,
+        photos: ExercisePhotoStore
+    ): PushFn =>
     async (row) => {
         if (row.kind === 'tombstone') {
             if (!snapshot.userId) {
@@ -94,13 +103,30 @@ export const makePushFn =
                 updated_at: row.deletedAt,
                 sync_status: 'dirty',
             })
+            if (result.kind === 'persisted' && row.entityType === 'exercise') {
+                void photos.cleanup(snapshot.userId, row.uuid, null)
+            }
             return outcomeFromWrite(result)
         }
 
         if (row.entityType === 'exercise') {
+            // The bytes must be in the bucket before the row referencing them
+            // lands remotely; a failed upload fails the row push so the outbox
+            // retry machinery covers both.
+            const ownsPhotoBytes = !!snapshot.userId && shouldUploadPhoto(row.row)
+            if (ownsPhotoBytes) {
+                const uploadFailure = await photos.upload(snapshot.userId as string, row.row)
+                if (uploadFailure) return { kind: 'fail', reason: uploadFailure }
+            }
             const [result] = await writer.upsert('exercises', [exerciseToRemote(snapshot, row.row)])
             if (result.kind === 'persisted') {
                 resolver.record('exercises', [{ uuid: result.uuid, id: result.id }])
+                // Only a fresh upload can supersede an older object, so
+                // metadata-only pushes skip the storage list round trip. A
+                // removed photo's object lingers until the exercise tombstone.
+                if (ownsPhotoBytes) {
+                    void photos.cleanup(snapshot.userId as string, row.uuid, row.row.photo_key)
+                }
             }
             return outcomeFromWrite(result)
         }

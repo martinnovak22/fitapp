@@ -32,6 +32,7 @@ export type ExerciseRow = {
     type: string
     muscle_group: string | null
     photo_uri: string | null
+    photo_key: string | null
     position: number
     created_at: string | null
     updated_at: string | null
@@ -127,7 +128,8 @@ export const DIRTY_STATUSES = `('dirty','failed')`
 export const tableOf = (entityType: OutboxEntityType): EntityTable =>
     entityType === 'exercise' ? 'exercises' : entityType === 'workout' ? 'workouts' : 'sets'
 
-const EXERCISE_COLS = 'uuid, user_id, name, type, muscle_group, photo_uri, position, created_at, updated_at, deleted_at'
+const EXERCISE_COLS =
+    'uuid, user_id, name, type, muscle_group, photo_uri, photo_key, position, created_at, updated_at, deleted_at'
 const WORKOUT_COLS = 'uuid, user_id, date, start_time, end_time, status, note, created_at, updated_at, deleted_at'
 const SET_COLS = `s.uuid, s.user_id, s.workout_id, s.exercise_id, s.weight, s.reps,
     s.distance, s.duration, s.rpe, s.position, s.sub_sets, s.created_at, s.updated_at,

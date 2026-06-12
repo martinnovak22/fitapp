@@ -9,6 +9,7 @@ import Animated, { LinearTransition } from 'react-native-reanimated'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { getRepositories } from '@/src/data/repositories'
+import { deleteLocalPhoto } from '@/src/data/sync/photoStorage'
 import type { ExerciseType } from '@/src/db/exercises'
 import { Card } from '@/src/modules/core/components/Card'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
@@ -48,16 +49,6 @@ async function savePhotoPermanently(uri: string): Promise<string> {
     })
 
     return dest
-}
-
-async function deleteLocalPhoto(uri: string | null): Promise<void> {
-    const docDir = FileSystem.documentDirectory
-    if (!uri || !docDir || !uri.startsWith(`${docDir}exercises/`)) return
-    try {
-        await FileSystem.deleteAsync(uri, { idempotent: true })
-    } catch (error) {
-        console.warn('Failed to delete exercise photo:', error)
-    }
 }
 
 type ExerciseFormScreenProps = {

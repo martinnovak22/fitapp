@@ -9,6 +9,13 @@ import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { createOutbox, DIRTY_STATUSES } from './Outbox'
 import { capturePrincipalSnapshot, type LivePrincipal } from './PrincipalSnapshot'
 import { makePushFn, preloadSetParents } from './PushPipeline'
+import {
+    backfillLocalPhotoKeys,
+    createExercisePhotoStore,
+    deleteLocalPhoto,
+    hydrateExercisePhotos,
+} from './photoStorage'
+import { resolvePulledPhotoUri } from './photoSync'
 import type { RemoteAdapter } from './RemoteAdapter'
 import { RemoteRequestError } from './RemoteAdapter'
 import { createRemoteIdResolver } from './RemoteIdResolver'
@@ -63,7 +70,7 @@ type RemoteSimpleRow = {
     name?: string
     type?: string
     muscle_group?: string | null
-    photo_uri?: string | null
+    photo_key?: string | null
     position?: number
     date?: string
     start_time?: string | null
@@ -385,19 +392,26 @@ const chunk = <T>(items: T[], size: number): T[][] => {
 const applyRemoteDeletions = async (
     table: string,
     deleted: DeletedRow[],
-    initialCursor: string | null
+    initialCursor: string | null,
+    // Lets a caller harvest one column off each row that gets deleted (e.g.
+    // exercises' local photo path) without this helper knowing about entity
+    // specifics. Values arrive while the transaction runs — act on them only
+    // after this function returns.
+    collectStale?: { column: string; sink: (value: string) => void }
 ): Promise<string | null> => {
     let nextDeleted: string | null = initialCursor
     for (const rows of chunk(deleted, PULL_CHUNK_SIZE)) {
+        const staleColumn = collectStale ? `, ${collectStale.column}` : ''
         await executeWriteTransaction(async (db) => {
             for (const row of rows) {
-                const local = await db.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
-                    `SELECT updated_at, sync_status FROM ${table} WHERE uuid = ? LIMIT 1`,
-                    row.uuid
-                )
+                const local = await db.getFirstAsync<
+                    { updated_at: string | null; sync_status: string | null } & Record<string, string | null>
+                >(`SELECT updated_at, sync_status${staleColumn} FROM ${table} WHERE uuid = ? LIMIT 1`, row.uuid)
                 if (!local) continue
                 const localIsDirty = local.sync_status === 'dirty' || local.sync_status === 'failed'
                 if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) continue
+                const staleValue = collectStale ? local[collectStale.column] : null
+                if (staleValue) collectStale?.sink(staleValue)
                 await db.runAsync(`DELETE FROM ${table} WHERE uuid = ?`, row.uuid)
             }
         })
@@ -420,27 +434,39 @@ const pullExercises = async (userId: string): Promise<number> => {
 
     let nextUpdated = cursors.exercisesUpdated
     for (const rows of chunk(remote, PULL_CHUNK_SIZE)) {
+        // Local photo files invalidated by a pulled key change are deleted
+        // only after the row writes commit; hydration re-downloads the new
+        // bytes after the pull.
+        const stalePhotoUris: string[] = []
         await executeWriteTransaction(async (innerDb) => {
             for (const row of rows) {
                 const local = await innerDb.getFirstAsync<{
                     id: number
                     updated_at: string | null
                     sync_status: string
-                }>('SELECT id, updated_at, sync_status FROM exercises WHERE uuid = ? LIMIT 1', row.uuid)
+                    photo_key: string | null
+                    photo_uri: string | null
+                }>(
+                    'SELECT id, updated_at, sync_status, photo_key, photo_uri FROM exercises WHERE uuid = ? LIMIT 1',
+                    row.uuid
+                )
                 if (shouldSkipRemoteRow(local, row.updated_at)) continue
 
                 const cols = toExerciseColumns(row, userId)
                 if (local) {
+                    const photo = resolvePulledPhotoUri(local.photo_key, local.photo_uri, cols.photo_key)
+                    if (photo.staleUri) stalePhotoUris.push(photo.staleUri)
                     await innerDb.runAsync(
                         `UPDATE exercises
-           SET user_id = ?, name = ?, type = ?, muscle_group = ?, photo_uri = ?, position = ?, created_at = ?, updated_at = ?,
+           SET user_id = ?, name = ?, type = ?, muscle_group = ?, photo_key = ?, photo_uri = ?, position = ?, created_at = ?, updated_at = ?,
                deleted_at = NULL, sync_status = 'synced', last_synced_at = ?
            WHERE uuid = ?`,
                         cols.user_id,
                         cols.name,
                         cols.type,
                         cols.muscle_group,
-                        cols.photo_uri,
+                        cols.photo_key,
+                        photo.photoUri,
                         cols.position,
                         cols.created_at,
                         cols.updated_at,
@@ -450,14 +476,14 @@ const pullExercises = async (userId: string): Promise<number> => {
                 } else {
                     await innerDb.runAsync(
                         `INSERT INTO exercises
-           (uuid, user_id, name, type, muscle_group, photo_uri, position, created_at, updated_at, deleted_at, sync_status, last_synced_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced', ?)`,
+           (uuid, user_id, name, type, muscle_group, photo_key, photo_uri, position, created_at, updated_at, deleted_at, sync_status, last_synced_at)
+           VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, 'synced', ?)`,
                         row.uuid,
                         cols.user_id,
                         cols.name,
                         cols.type,
                         cols.muscle_group,
-                        cols.photo_uri,
+                        cols.photo_key,
                         cols.position,
                         cols.created_at,
                         cols.updated_at,
@@ -466,6 +492,7 @@ const pullExercises = async (userId: string): Promise<number> => {
                 }
             }
         })
+        for (const uri of stalePhotoUris) await deleteLocalPhoto(uri)
         for (const row of rows) nextUpdated = maxIso(nextUpdated, row.updated_at)
     }
 
@@ -477,7 +504,14 @@ const pullExercises = async (userId: string): Promise<number> => {
             order: 'deleted_at.asc',
         },
     })
-    const nextDeleted = await applyRemoteDeletions('exercises', deleted, cursors.exercisesDeleted)
+    // Deleted exercise rows may hold a local photo file; the files are removed
+    // only after the row deletes commit.
+    const deletedPhotoUris: string[] = []
+    const nextDeleted = await applyRemoteDeletions('exercises', deleted, cursors.exercisesDeleted, {
+        column: 'photo_uri',
+        sink: (uri) => deletedPhotoUris.push(uri),
+    })
+    for (const uri of deletedPhotoUris) await deleteLocalPhoto(uri)
 
     await setCursors(userId, {
         ...cursors,
@@ -720,6 +754,10 @@ export const runSync = async (): Promise<SyncCycleResult> => {
 
         try {
             const db = await getDb()
+            // Normalize rows from before photo sync existed (photo_uri without
+            // a photo_key) ahead of the outbox snapshot, so their uploads ride
+            // this same cycle.
+            await backfillLocalPhotoKeys(snapshot.userId as string)
             // Short-circuit the push half of the cycle when the outbox is
             // empty. Avoids creating the adapter, resolver, and write
             // transactions for `drainOutbox` — the cheap exit path described
@@ -737,7 +775,7 @@ export const runSync = async (): Promise<SyncCycleResult> => {
                 const result = await drainOutbox(
                     outbox,
                     snapshot,
-                    makePushFn(snapshot, writer, resolver),
+                    makePushFn(snapshot, writer, resolver, createExercisePhotoStore()),
                     livePrincipalFromSession,
                     (batch) => preloadSetParents(resolver, batch)
                 )
@@ -762,6 +800,15 @@ export const runSync = async (): Promise<SyncCycleResult> => {
                 const wkPulled = await pullWorkouts(snapshot.userId as string)
                 const stPulled = await pullSets(snapshot.userId as string)
                 pulled = exPulled + wkPulled + stPulled
+
+                // Photo bytes hydrate in the background — rows whose photo_key
+                // has no local file yet get their download after the pull, and
+                // the cycle result never waits on it.
+                void hydrateExercisePhotos(snapshot.userId as string)
+                    .then((hydrated) => {
+                        if (hydrated > 0) invalidateExercisesCache()
+                    })
+                    .catch(() => {})
             }
 
             if (retryableFailures.length > 0 || aborted) {
