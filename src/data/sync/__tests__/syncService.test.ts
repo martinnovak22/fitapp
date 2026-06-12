@@ -134,6 +134,20 @@ describe('runSync — issue #26 cheap-exit and cursor', () => {
         expect(exercisesPull?.url).toContain('updated_at=gt.2026-02-01T00%3A00%3A00Z')
     })
 
+    it('orders deletion pulls by deleted_at so a truncated response cannot advance the cursor past unseen rows', async () => {
+        mockFetch(() => ({ body: [] }))
+
+        await runSync()
+
+        // The upsert pulls are cursor-safe under server-side truncation because
+        // they are sorted ascending; the deletion pulls need the same guarantee.
+        const deletionPulls = fetchCalls.filter((c) => c.method === 'GET' && c.url.includes('deleted_at=not.is.null'))
+        expect(deletionPulls.length).toBe(3)
+        for (const call of deletionPulls) {
+            expect(call.url).toContain('order=deleted_at.asc')
+        }
+    })
+
     it('clears the pull cursor on a principal change so the next pull starts from scratch', async () => {
         let exCallCount = 0
         mockFetch((call) => {
@@ -308,6 +322,114 @@ describe('runSync — pull reconciliation upserts remote rows into local', () =>
         )
         // Remote name was NOT applied; the newer local copy won the merge.
         expect(exercise?.name).toBe('ex-keep')
+    })
+
+    it('does not advance the sets cursor past a set whose parent workout is absent, and links it once the parent arrives', async () => {
+        let workoutPresent = false
+        mockFetch((call) => {
+            const isUpsertPull = call.method === 'GET' && call.url.includes('deleted_at=is.null')
+            // Cursored re-pulls return nothing new; only the initial (uncursored)
+            // pull of each table serves rows.
+            if (isUpsertPull && call.url.includes('updated_at=gt')) return { body: [] }
+            if (isUpsertPull && call.url.includes('/exercises?')) {
+                return {
+                    body: [
+                        {
+                            uuid: 'ex-a',
+                            user_id: userId,
+                            name: 'Bench',
+                            type: 'weight',
+                            muscle_group: 'chest',
+                            photo_uri: null,
+                            position: 0,
+                            created_at: '2026-02-01T00:00:00Z',
+                            updated_at: '2026-02-01T00:00:00Z',
+                            deleted_at: null,
+                        },
+                    ],
+                }
+            }
+            if (isUpsertPull && call.url.includes('/workouts?')) {
+                if (!workoutPresent) return { body: [] }
+                return {
+                    body: [
+                        {
+                            uuid: 'w-a',
+                            user_id: userId,
+                            date: '2026-02-01',
+                            start_time: '08:00',
+                            end_time: null,
+                            status: 'in_progress',
+                            note: null,
+                            created_at: '2026-02-01T00:00:00Z',
+                            updated_at: '2026-02-01T00:00:00Z',
+                            deleted_at: null,
+                        },
+                    ],
+                }
+            }
+            if (isUpsertPull && call.url.includes('/sets?')) {
+                return {
+                    body: [
+                        {
+                            uuid: 's-a',
+                            user_id: userId,
+                            weight: 100,
+                            reps: 5,
+                            distance: null,
+                            duration: null,
+                            rpe: 8,
+                            position: 0,
+                            sub_sets: null,
+                            created_at: '2026-02-01T00:00:00Z',
+                            updated_at: '2026-02-01T00:00:00Z',
+                            deleted_at: null,
+                            workouts: { uuid: 'w-a' },
+                            exercises: { uuid: 'ex-a' },
+                        },
+                    ],
+                }
+            }
+            return { body: [] }
+        })
+
+        // Cycle 1: the set arrives but its parent workout does not, so the set
+        // cannot link and must be skipped without consuming the cursor.
+        await runSync()
+        expect(await db.getFirstAsync('SELECT id FROM sets WHERE uuid = ?', 's-a')).toBeFalsy()
+
+        // Cycle 2: the sets pull must NOT carry an updated_at cursor past the
+        // skipped set — it has to be re-fetched.
+        workoutPresent = true
+        const callsBefore = fetchCalls.length
+        await runSync()
+
+        const secondCycleCalls = fetchCalls.slice(callsBefore)
+        const setsPull = secondCycleCalls.find(
+            (c) => c.method === 'GET' && c.url.includes('/sets?') && c.url.includes('deleted_at=is.null')
+        )
+        expect(setsPull).toBeDefined()
+        expect(setsPull?.url).not.toContain('updated_at=gt')
+
+        // With the workout now present, the re-fetched set links and persists.
+        const set = await db.getFirstAsync<{ sync_status: string; workout_uuid: string; exercise_uuid: string }>(
+            `SELECT s.sync_status, w.uuid AS workout_uuid, e.uuid AS exercise_uuid
+             FROM sets s
+             JOIN workouts w ON w.id = s.workout_id
+             JOIN exercises e ON e.id = s.exercise_id
+             WHERE s.uuid = ?`,
+            's-a'
+        )
+        expect(set).toMatchObject({ sync_status: 'synced', workout_uuid: 'w-a', exercise_uuid: 'ex-a' })
+
+        // Cycle 3: the set was upserted in cycle 2, so the cursor has advanced
+        // and the sets pull is now filtered past it.
+        const callsBeforeThird = fetchCalls.length
+        await runSync()
+        const thirdSetsPull = fetchCalls
+            .slice(callsBeforeThird)
+            .find((c) => c.method === 'GET' && c.url.includes('/sets?') && c.url.includes('deleted_at=is.null'))
+        expect(thirdSetsPull?.url).toContain('updated_at=gt.2026-02-01T00%3A00%3A00Z')
     })
 })
 

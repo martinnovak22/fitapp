@@ -385,6 +385,7 @@ const pullExercises = async (userId: string): Promise<number> => {
             select: 'uuid,deleted_at',
             user_id: `eq.${userId}`,
             deleted_at: cursors.exercisesDeleted ? `gt.${cursors.exercisesDeleted}` : 'not.is.null',
+            order: 'deleted_at.asc',
         },
     })
     const nextDeleted = await applyRemoteDeletions('exercises', deleted, cursors.exercisesDeleted)
@@ -463,6 +464,7 @@ const pullWorkouts = async (userId: string): Promise<number> => {
             select: 'uuid,deleted_at',
             user_id: `eq.${userId}`,
             deleted_at: cursors.workoutsDeleted ? `gt.${cursors.workoutsDeleted}` : 'not.is.null',
+            order: 'deleted_at.asc',
         },
     })
     const nextDeleted = await applyRemoteDeletions('workouts', deleted, cursors.workoutsDeleted)
@@ -495,18 +497,31 @@ const pullSets = async (userId: string): Promise<number> => {
     })
 
     let nextUpdated = cursors.setsUpdated
+    // Once a set is held back because its parent isn't local yet, the cursor
+    // must stop advancing entirely: rows arrive ordered by updated_at asc, so
+    // letting a later row move the watermark would still skip past the held
+    // set and it would never be re-fetched.
+    let cursorStalled = false
     for (const row of remote) {
-        nextUpdated = maxIso(nextUpdated, row.updated_at)
         const workoutUuid = toSingleRef(row.workouts)?.uuid
         const exerciseUuid = toSingleRef(row.exercises)?.uuid
-        if (!workoutUuid || !exerciseUuid) continue
+        if (!workoutUuid || !exerciseUuid) {
+            // No parent refs on the server side at all — terminal, not
+            // transient; the set will be removed by delete propagation.
+            if (!cursorStalled) nextUpdated = maxIso(nextUpdated, row.updated_at)
+            continue
+        }
 
+        let parentMissing = false
         await executeWriteTransaction(async (db) => {
             const [workoutLocal, exerciseLocal] = await Promise.all([
                 db.getFirstAsync<{ id: number }>('SELECT id FROM workouts WHERE uuid = ? LIMIT 1', workoutUuid),
                 db.getFirstAsync<{ id: number }>('SELECT id FROM exercises WHERE uuid = ? LIMIT 1', exerciseUuid),
             ])
-            if (!workoutLocal?.id || !exerciseLocal?.id) return
+            if (!workoutLocal?.id || !exerciseLocal?.id) {
+                parentMissing = true
+                return
+            }
 
             const local = await db.getFirstAsync<{ id: number; updated_at: string | null; sync_status: string }>(
                 'SELECT id, updated_at, sync_status FROM sets WHERE uuid = ? LIMIT 1',
@@ -558,6 +573,12 @@ const pullSets = async (userId: string): Promise<number> => {
                 )
             }
         })
+
+        if (parentMissing) {
+            cursorStalled = true
+            continue
+        }
+        if (!cursorStalled) nextUpdated = maxIso(nextUpdated, row.updated_at)
     }
 
     const deleted = await request<DeletedRow[]>('sets', {
@@ -565,6 +586,7 @@ const pullSets = async (userId: string): Promise<number> => {
             select: 'uuid,deleted_at',
             user_id: `eq.${userId}`,
             deleted_at: cursors.setsDeleted ? `gt.${cursors.setsDeleted}` : 'not.is.null',
+            order: 'deleted_at.asc',
         },
     })
     const nextDeleted = await applyRemoteDeletions('sets', deleted, cursors.setsDeleted)
