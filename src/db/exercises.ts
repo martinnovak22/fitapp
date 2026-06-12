@@ -47,8 +47,12 @@ export const ExerciseRepository = {
 
     async create(name: string, type: ExerciseType, muscle_group?: string, photo_uri?: string): Promise<number> {
         return executeWriteTransaction(async (db) => {
+            const scope = buildPrincipalWhereClause('user_id')
             const lastEx = await db.getFirstAsync<{ position: number }>(
-                'SELECT position FROM exercises ORDER BY position DESC LIMIT 1'
+                `SELECT position FROM exercises
+                 WHERE deleted_at IS NULL AND ${scope.clause}
+                 ORDER BY position DESC LIMIT 1`,
+                ...scope.params
             )
             const nextPosition = lastEx ? lastEx.position + 1 : 0
             const now = nowIso()
