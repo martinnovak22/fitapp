@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite'
 import { useEffect, useState } from 'react'
+import { log } from '@/src/modules/core/utils/logger'
 import { DATABASE_NAME, initializeDb } from './schema'
 
 // expo-sqlite caches a single native connection behind this handle. On Android
@@ -140,7 +141,7 @@ export function useDatabaseInit() {
             } catch (e) {
                 const error = e instanceof Error ? e : new Error(String(e))
                 setError(error)
-                console.error('Database initialization failed:', error)
+                log('error', 'Database initialization failed', error)
             }
         }
 

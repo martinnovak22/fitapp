@@ -12,6 +12,7 @@ import { FontWeight } from '@/src/constants/Typography'
 import { initializeDataLayer } from '@/src/data/bootstrap'
 import { SyncProvider } from '@/src/data/sync/SyncProvider'
 import { SyncStatusBanner } from '@/src/data/sync/SyncStatusBanner'
+import { log } from '@/src/modules/core/utils/logger'
 import { useDatabaseInit } from '@/src/db/client'
 import { AuthProvider, useAuth } from '@/src/modules/auth/useAuth'
 import { toastConfig } from '@/src/modules/core/components/ToastConfig'
@@ -43,7 +44,7 @@ export default function RootLayout() {
 
     useEffect(() => {
         if (fontError) throw fontError
-        if (dbError) console.error('DB Init Error: ', dbError)
+        if (dbError) log('error', 'DB Init Error', dbError)
     }, [fontError, dbError])
 
     if (!fontsLoaded || !dbLoaded) {

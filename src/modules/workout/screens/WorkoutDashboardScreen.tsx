@@ -17,6 +17,7 @@ import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
 
@@ -203,7 +204,7 @@ export default function WorkoutDashboardScreen() {
             setMuscleBalance(nextMuscleBalance)
         } catch (error) {
             if (isStale()) return
-            console.error('Failed to load workout dashboard:', error)
+            log('error', 'Failed to load workout dashboard', error)
             setLoadError(t('failedToLoadWorkouts'))
         } finally {
             if (!isStale()) setIsLoading(false)
@@ -239,7 +240,7 @@ export default function WorkoutDashboardScreen() {
             const id = await workoutRepo.create(today)
             router.push(`/(tabs)/workout/${id}`)
         } catch (error) {
-            console.error('Failed to start workout:', error)
+            log('error', 'Failed to start workout', error)
             showToast.danger({ title: t('error'), message: t('failedToStartWorkout') })
         } finally {
             setIsStartingWorkout(false)

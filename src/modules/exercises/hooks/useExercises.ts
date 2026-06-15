@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { getRepositories } from '@/src/data/repositories'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Exercise } from '@/src/db/exercises'
+import { log } from '@/src/modules/core/utils/logger'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 
 export function useExercises() {
@@ -28,7 +29,7 @@ export function useExercises() {
             const data = await exerciseRepo.getAll()
             if (!isStale()) setExercises(data)
         } catch (error) {
-            console.error('Failed to load exercises:', error)
+            log('error', 'Failed to load exercises', error)
             if (!isStale()) setLoadError(t('failedToLoadExercises'))
         } finally {
             if (!isStale()) {
@@ -56,7 +57,7 @@ export function useExercises() {
         try {
             await exerciseRepo.updatePositions(updated.map((ex) => ({ id: ex.id, position: ex.position })))
         } catch (error) {
-            console.error('Failed to update positions:', error)
+            log('error', 'Failed to update positions', error)
             setLoadError(t('failedToReorderExercises'))
             loadExercises()
         } finally {

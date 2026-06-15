@@ -12,6 +12,7 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatLocalDateYYYYMMDD } from '@/src/utils/dateTime'
 import { CalendarCard, type MarkedDates } from './components/CalendarCard'
@@ -81,7 +82,7 @@ export default function CalendarScreen() {
                 setDayWorkouts(all.filter((w) => w.date === selectedDate))
             }
         } catch (error) {
-            console.error('Failed to load calendar workouts:', error)
+            log('error', 'Failed to load calendar workouts', error)
             if (!isStale()) setLoadError(t('failedToLoadCalendar'))
         } finally {
             if (!isStale()) setIsLoading(false)
@@ -122,7 +123,7 @@ export default function CalendarScreen() {
             )
             setWorkoutSets(summary)
         } catch (error) {
-            console.error('Failed to load workout summary:', error)
+            log('error', 'Failed to load workout summary', error)
             setWorkoutSets([])
             showToast.danger({ title: t('error'), message: t('failedToLoadWorkoutSummary') })
         } finally {

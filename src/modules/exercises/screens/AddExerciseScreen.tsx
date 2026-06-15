@@ -15,6 +15,7 @@ import { Card } from '@/src/modules/core/components/Card'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { ScrollScreenLayout } from '../../core/components/ScreenLayout'
 import {
@@ -122,7 +123,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                 setPhotoUri(uri)
             }
         } catch (error) {
-            console.error('Failed to pick photo:', error)
+            log('error', 'Failed to pick photo', error)
             showToast.danger({
                 title: t('error'),
                 message: t(source === 'camera' ? 'cameraFailed' : 'galleryFailed'),
@@ -170,7 +171,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                 message: `${toast.name} ${t(toast.messageNameKey)}`,
             })
         } catch (error) {
-            console.error('Failed to save exercise:', error)
+            log('error', 'Failed to save exercise', error)
             showToast.danger({
                 title: t('error'),
                 message: t('failedToSaveExercise'),

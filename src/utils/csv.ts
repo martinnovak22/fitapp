@@ -5,6 +5,7 @@ import { Platform } from 'react-native'
 import { getRepositories } from '@/src/data/repositories'
 import type { Exercise } from '@/src/db/exercises'
 import i18n from '@/src/modules/core/utils/i18n'
+import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { buildExerciseKey, parseExercisesCsv } from '@/src/utils/exercisesCsvParser'
 
@@ -97,7 +98,7 @@ export const exportExercisesToCSV = async (exercises: Exercise[], options?: { an
         if (error instanceof Error && error.message === 'DOWNLOADS_PERMISSION_DENIED') {
             return
         }
-        console.error('Export failed', error)
+        log('error', 'Export failed', error)
         showToast.danger({
             title: i18n.t('error'),
             message: i18n.t('exportFailed'),
@@ -172,7 +173,7 @@ export const importExercisesFromCSV = async (
         })
         onComplete()
     } catch (error) {
-        console.error('Import failed', error)
+        log('error', 'Import failed', error)
         showToast.danger({
             title: i18n.t('error'),
             message: i18n.t('importFailed'),

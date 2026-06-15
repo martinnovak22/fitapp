@@ -8,6 +8,7 @@ import {
     getSupabaseOAuthAuthorizeUrl,
     SupabaseAuthError,
 } from '@/src/data/remote/supabase/auth'
+import { log } from '@/src/modules/core/utils/logger'
 import { hasLocalUserData } from '@/src/db/reset'
 import { useAuth } from '@/src/modules/auth/useAuth'
 import { showToast } from '@/src/modules/core/utils/toast'
@@ -89,7 +90,7 @@ export const useLoginForm = (): UseLoginForm => {
                 setGuestDataExists(hasData)
                 setMergeGuestDataOnSignIn(hasData && isSignUp)
             } catch (error) {
-                console.error('Failed to detect local guest data:', error)
+                log('error', 'Failed to detect local guest data', error)
                 setGuestDataExists(false)
                 setMergeGuestDataOnSignIn(false)
             }

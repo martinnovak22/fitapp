@@ -9,6 +9,7 @@ import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { log } from '@/src/modules/core/utils/logger'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { WorkoutHistoryCard } from './components/WorkoutHistoryCard'
@@ -47,7 +48,7 @@ export default function HistoryScreen() {
                 const data = await workoutRepo.getAllWorkouts()
                 if (!isStale()) setWorkouts(data)
             } catch (error) {
-                console.error('Failed to load workouts history:', error)
+                log('error', 'Failed to load workouts history', error)
                 if (!isStale()) setLoadError(t('failedToLoadWorkouts'))
             } finally {
                 if (!isStale()) {

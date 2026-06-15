@@ -15,6 +15,7 @@ import { Appear } from '@/src/modules/core/components/motion'
 import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { type BestSetEntry, ExerciseStats, type SessionSummary } from '@/src/modules/exercises/ExerciseStats'
 import type { PrimaryMetric } from '@/src/modules/exercises/ExerciseTypeMetadata'
@@ -52,7 +53,7 @@ export default function ExerciseDetailScreen() {
                 setHistorySummary(summary)
                 setDominantMetric(dominant)
             } catch (error) {
-                console.error('Failed to load exercise history:', error)
+                log('error', 'Failed to load exercise history', error)
                 setHistoryData([])
                 setHistorySummary(null)
                 setDominantMetric(null)
@@ -87,7 +88,7 @@ export default function ExerciseDetailScreen() {
             setExercise(nextExercise)
             await loadHistory(nextExercise.id)
         } catch (error) {
-            console.error('Failed to load exercise detail:', error)
+            log('error', 'Failed to load exercise detail', error)
             setExercise(null)
             setHistoryData([])
             setHistorySummary(null)
