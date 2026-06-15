@@ -11,7 +11,6 @@ export function useExercises() {
     const exerciseRepo = useExerciseRepo()
     const { t } = useTranslation()
     const [exercises, setExercises] = useState<Exercise[]>([])
-    const [isLoading, setIsLoading] = useState(false)
     const [isReordering, setIsReordering] = useState(false)
     const [hasLoaded, setHasLoaded] = useState(false)
     const [loadError, setLoadError] = useState<string | null>(null)
@@ -23,7 +22,6 @@ export function useExercises() {
         // only the most recent run may commit, or a stale read taken while
         // sync was still writing would overwrite the fresh list.
         const isStale = beginLoad()
-        setIsLoading(true)
         setLoadError(null)
         try {
             const data = await exerciseRepo.getAll()
@@ -33,7 +31,6 @@ export function useExercises() {
             if (!isStale()) setLoadError(t('failedToLoadExercises'))
         } finally {
             if (!isStale()) {
-                setIsLoading(false)
                 setHasLoaded(true)
             }
         }
@@ -67,12 +64,10 @@ export function useExercises() {
 
     return {
         exercises,
-        isLoading,
         isReordering,
         hasLoaded,
         loadError,
         loadExercises,
         handleReorder,
-        setExercises,
     }
 }

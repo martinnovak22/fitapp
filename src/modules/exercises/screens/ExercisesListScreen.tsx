@@ -3,7 +3,16 @@ import { router, useFocusEffect, useNavigation } from 'expo-router'
 import type { TFunction } from 'i18next'
 import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Image, Modal, Platform, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native'
+import {
+    ActivityIndicator,
+    Image,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    TouchableOpacity,
+    View,
+} from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
 import type { ThemeType } from '@/src/constants/Colors'
@@ -203,8 +212,6 @@ export default function ExercisesListScreen() {
                     <EmptyState message={loadError} icon={'exclamation-circle'} />
                     <Button label={t('retry')} onPress={loadExercises} style={{ marginTop: Spacing.md }} />
                 </View>
-            ) : exercises.length === 0 ? (
-                <EmptyState message={t('noExercises')} subMessage={t('addFirstExercise')} icon={'list'} />
             ) : (
                 <ReorderableList
                     data={exercises}
@@ -217,6 +224,9 @@ export default function ExercisesListScreen() {
                     shouldUpdateActiveItem
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 80 }}
+                    ListEmptyComponent={
+                        <EmptyState message={t('noExercises')} subMessage={t('addFirstExercise')} icon={'list'} />
+                    }
                 />
             )}
             {isReordering && (
