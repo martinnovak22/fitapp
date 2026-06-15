@@ -14,7 +14,7 @@ export type ExerciseFormFields = {
     photoUri: string | null
 }
 
-export type ExerciseFormValidation = { ok: true } | { ok: false; nameError: string }
+export type ExerciseFormValidation = { ok: true } | { ok: false; nameError: 'enterName' }
 
 /**
  * Validates the exercise form. The only required field is the name; an empty or
@@ -64,7 +64,7 @@ export function shouldPersistPhoto(photoUri: string | null, docDir: string | nul
  * `create`/`update` tell the screen which write path to take.
  */
 export type ExerciseSavePlan =
-    | { kind: 'invalid'; nameError: string }
+    | { kind: 'invalid'; nameError: 'enterName' }
     | { kind: 'create' }
     | { kind: 'update'; exerciseId: number }
     | { kind: 'noop' }
@@ -89,8 +89,8 @@ export function resolveExerciseSavePlan(input: {
 
 /** Translation keys + interpolated name for the success toast after a save. */
 export type ExerciseSavedToast = {
-    titleKey: string
-    messageNameKey: string
+    titleKey: 'exerciseUpdated' | 'exerciseCreated'
+    messageNameKey: 'updated' | 'ready'
     name: string
 }
 
@@ -107,7 +107,7 @@ export function resolveExerciseSavedToast(isEditing: boolean, name: string): Exe
 /** A selectable exercise type chip with its active state for the current type. */
 export type ExerciseTypeOption = {
     value: ExerciseType
-    labelKey: string
+    labelKey: 'typeWeight' | 'typeCardio' | 'typeBodyweight'
     isActive: boolean
 }
 
@@ -116,21 +116,18 @@ export type ExerciseTypeOption = {
  * shares the `bodyweight` chip, so that chip reads active for both bodyweight modes.
  */
 export function resolveExerciseTypeOptions(type: ExerciseType): ExerciseTypeOption[] {
-    return [
-        { value: 'weight', labelKey: 'typeWeight' },
-        { value: 'cardio', labelKey: 'typeCardio' },
-        { value: 'bodyweight', labelKey: 'typeBodyweight' },
-    ].map((option) => ({
-        ...option,
-        value: option.value as ExerciseType,
-        isActive: type === option.value || (option.value === 'bodyweight' && type === 'bodyweight_timer'),
-    }))
+    const options: ExerciseTypeOption[] = [
+        { value: 'weight', labelKey: 'typeWeight', isActive: type === 'weight' },
+        { value: 'cardio', labelKey: 'typeCardio', isActive: type === 'cardio' },
+        { value: 'bodyweight', labelKey: 'typeBodyweight', isActive: type === 'bodyweight' || type === 'bodyweight_timer' },
+    ]
+    return options
 }
 
 /** A reps/timer tracking-mode toggle option with its active state. */
 export type TrackingModeOption = {
     value: Extract<ExerciseType, 'bodyweight' | 'bodyweight_timer'>
-    labelKey: string
+    labelKey: 'reps' | 'timer'
     isActive: boolean
 }
 

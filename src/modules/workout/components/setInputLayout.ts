@@ -5,7 +5,7 @@ export type SetFieldKey = keyof SetFormValues
 
 export type SetInputField = {
     key: SetFieldKey
-    labelKey: string
+    labelKey: 'weightKg' | 'reps' | 'distM' | 'minutes' | 'seconds'
     placeholder: string
     returnKey: 'next' | 'done'
     minWidth: `${number}%`

@@ -4,8 +4,10 @@ export const formatDuration = (minutes: number): string => {
     return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-export const formatExerciseType = (type?: string): string => {
-    if (!type) return ''
+export const formatExerciseType = (
+    type?: string
+): 'typeWeight' | 'typeCardio' | 'typeBodyweight' | 'typeBodyweightTimer' => {
+    if (!type) return 'typeWeight'
     const normalized = type.toLowerCase()
     switch (normalized) {
         case 'weight':
@@ -17,7 +19,7 @@ export const formatExerciseType = (type?: string): string => {
         case 'bodyweight_timer':
             return 'typeBodyweightTimer'
         default:
-            return type
+            return 'typeWeight'
     }
 }
 

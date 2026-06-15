@@ -1,3 +1,5 @@
+import type { TFunction } from 'i18next'
+
 // Pure login-form rules: validation, submit gating, and auth-error mapping.
 // Deliberately framework-free so it can be unit-tested without rendering.
 
@@ -42,7 +44,7 @@ export const validateLoginForm = ({
 }
 
 // Translates a raw auth error message into a user-facing string.
-export const mapAuthErrorToMessage = (message: string, t: (key: string) => string): string => {
+export const mapAuthErrorToMessage = (message: string, t: TFunction): string => {
     const normalized = message.toLowerCase()
     if (normalized.includes('invalid login credentials')) return t('authInvalidCredentials')
     if (normalized.includes('email not confirmed')) return t('authEmailNotConfirmed')
