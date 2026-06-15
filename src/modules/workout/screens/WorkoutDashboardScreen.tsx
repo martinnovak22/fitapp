@@ -2,7 +2,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native'
+import { RefreshControl, StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
@@ -16,6 +16,7 @@ import { Appear, ListItemAppear } from '@/src/modules/core/components/motion'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
+import { WorkoutDashboardSkeleton } from './components/WorkoutDashboardSkeleton'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
@@ -258,13 +259,11 @@ export default function WorkoutDashboardScreen() {
 
     // While the post-login hydration pull is running, even a non-empty read is
     // partial (workouts land before their sets, so e.g. the muscle balance
-    // would render empty) — hold the spinner until the cycle settles.
+    // would render empty) — hold the skeleton until the cycle settles.
     if (isHydrating || (isLoading && allWorkouts.length === 0)) {
         return (
-            <ScrollScreenLayout contentContainerStyle={layoutStyles.fillContent} style={layoutStyles.fill}>
-                <View style={layoutStyles.loadingContainer}>
-                    <ActivityIndicator size={'large'} color={theme.primary} />
-                </View>
+            <ScrollScreenLayout>
+                <WorkoutDashboardSkeleton />
             </ScrollScreenLayout>
         )
     }
@@ -562,8 +561,6 @@ export default function WorkoutDashboardScreen() {
 }
 
 const layoutStyles = StyleSheet.create({
-    // The scroll content and the children wrapper must both stretch, or the
-    // flex:1 loading container has no height to center within.
     fillContent: {
         flexGrow: 1,
     },
