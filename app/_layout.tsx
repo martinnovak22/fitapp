@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { PortalHost, PortalProvider } from 'react-native-teleport'
 import Toast from 'react-native-toast-message'
 import { FontWeight } from '@/src/constants/Typography'
+import { RepositoryProvider } from '@/src/data/RepositoryContext'
 import { initializeDataLayer } from '@/src/data/bootstrap'
 import { SyncProvider } from '@/src/data/sync/SyncProvider'
 import { SyncStatusBanner } from '@/src/data/sync/SyncStatusBanner'
@@ -54,8 +55,9 @@ export default function RootLayout() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <PortalProvider>
-                <CustomThemeProvider>
-                    <AuthProvider>
+                <RepositoryProvider>
+                    <CustomThemeProvider>
+                        <AuthProvider>
                         <TimerProvider>
                             <SyncProvider>
                                 <SyncStatusBanner />
@@ -63,8 +65,9 @@ export default function RootLayout() {
                                 <TimerPill />
                             </SyncProvider>
                         </TimerProvider>
-                    </AuthProvider>
-                </CustomThemeProvider>
+                        </AuthProvider>
+                    </CustomThemeProvider>
+                </RepositoryProvider>
                 <PortalHost style={StyleSheet.absoluteFillObject} name="overlay" />
             </PortalProvider>
         </GestureHandlerRootView>

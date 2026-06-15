@@ -8,7 +8,7 @@ import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
-import { getRepositories } from '@/src/data/repositories'
+import { useExerciseRepo } from '@/src/data/RepositoryContext'
 import { deleteLocalPhoto } from '@/src/data/sync/photoStorage'
 import type { ExerciseType } from '@/src/db/exercises'
 import { Card } from '@/src/modules/core/components/Card'
@@ -58,7 +58,7 @@ type ExerciseFormScreenProps = {
 }
 
 export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseFormScreenProps) {
-    const { exercises: exerciseRepo } = getRepositories()
+    const exerciseRepo = useExerciseRepo()
     const { t } = useTranslation()
     const { theme } = useTheme()
     const navigation = useNavigation()

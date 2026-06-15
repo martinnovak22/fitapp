@@ -1,14 +1,14 @@
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getRepositories } from '@/src/data/repositories'
+import { useExerciseRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Exercise } from '@/src/db/exercises'
 import { log } from '@/src/modules/core/utils/logger'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 
 export function useExercises() {
-    const { exercises: exerciseRepo } = getRepositories()
+    const exerciseRepo = useExerciseRepo()
     const { t } = useTranslation()
     const [exercises, setExercises] = useState<Exercise[]>([])
     const [isLoading, setIsLoading] = useState(false)

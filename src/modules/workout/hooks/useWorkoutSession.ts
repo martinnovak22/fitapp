@@ -1,7 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getRepositories } from '@/src/data/repositories'
+import { useExerciseRepo, useWorkoutRepo } from '@/src/data/RepositoryContext'
 import type { Exercise } from '@/src/db/exercises'
 import type { SetData, Workout, Set as WorkoutSet } from '@/src/db/workouts'
 import { log } from '@/src/modules/core/utils/logger'
@@ -11,7 +11,8 @@ type SetWithExercise = WorkoutSet & { exercise_name: string }
 type SessionOrigin = 'workout' | 'history'
 
 export function useWorkoutSession(origin: SessionOrigin = 'workout') {
-    const { exercises: exerciseRepo, workouts: workoutRepo } = getRepositories()
+    const workoutRepo = useWorkoutRepo()
+    const exerciseRepo = useExerciseRepo()
     const { t } = useTranslation()
     const { id } = useLocalSearchParams()
     const workoutId = Number(id)

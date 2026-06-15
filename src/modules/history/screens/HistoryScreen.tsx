@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
-import { getRepositories } from '@/src/data/repositories'
+import { useWorkoutRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
@@ -15,7 +15,7 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { WorkoutHistoryCard } from './components/WorkoutHistoryCard'
 
 export default function HistoryScreen() {
-    const { workouts: workoutRepo } = getRepositories()
+    const workoutRepo = useWorkoutRepo()
     const { t } = useTranslation()
     const { theme } = useTheme()
     const navigation = useNavigation()

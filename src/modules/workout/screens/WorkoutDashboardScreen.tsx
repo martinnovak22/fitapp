@@ -6,7 +6,7 @@ import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-nativ
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
-import { getRepositories } from '@/src/data/repositories'
+import { useExerciseRepo, useWorkoutRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
@@ -72,7 +72,8 @@ interface MuscleBalanceEntry {
 }
 
 export default function WorkoutDashboardScreen() {
-    const { workouts: workoutRepo, exercises: exerciseRepo } = getRepositories()
+    const workoutRepo = useWorkoutRepo()
+    const exerciseRepo = useExerciseRepo()
     const { t, i18n } = useTranslation()
     const { theme } = useTheme()
     const navigation = useNavigation()

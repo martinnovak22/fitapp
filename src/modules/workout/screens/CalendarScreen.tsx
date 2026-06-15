@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
-import { getRepositories } from '@/src/data/repositories'
+import { useWorkoutRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
@@ -20,7 +20,7 @@ import { CalendarDayDetail } from './components/CalendarDayDetail'
 import { WorkoutSummaryModal } from './components/WorkoutSummaryModal'
 
 export default function CalendarScreen() {
-    const { workouts: workoutRepo } = getRepositories()
+    const workoutRepo = useWorkoutRepo()
     const { t } = useTranslation()
     const { theme } = useTheme()
     const navigation = useNavigation()
