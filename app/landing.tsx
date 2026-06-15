@@ -10,13 +10,13 @@ import Animated, {
     withSpring,
     withTiming,
 } from 'react-native-reanimated'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
 
 const { width } = Dimensions.get('window')
 
-const BACKGROUND_COLOR = '#607d8b'
-
 export default function LandingScreen() {
     const router = useRouter()
+    const { theme } = useTheme()
 
     const progress = useSharedValue(0)
     const iconScale = useSharedValue(0.95)
@@ -60,13 +60,13 @@ export default function LandingScreen() {
     }, [iconScale, navigateToMain, progress])
 
     return (
-        <View style={styles.container}>
-            <Animated.View style={[styles.iconContainer, iconStyle]}>
+        <View style={[styles.container, { backgroundColor: theme.iconBackground }]}>
+            <Animated.View style={[styles.iconContainer, iconStyle, { backgroundColor: theme.iconBackground }]}>
                 <Image source={require('../assets/images/icon.png')} style={styles.icon} resizeMode="contain" />
             </Animated.View>
 
             <View style={styles.loaderTrack}>
-                <Animated.View style={[styles.loaderBar, progressBarStyle]} />
+                <Animated.View style={[styles.loaderBar, progressBarStyle, { backgroundColor: theme.primary }]} />
             </View>
         </View>
     )
@@ -75,14 +75,12 @@ export default function LandingScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: BACKGROUND_COLOR,
         justifyContent: 'center',
         alignItems: 'center',
     },
     iconContainer: {
         width: width * 0.55,
         height: width * 0.55,
-        backgroundColor: BACKGROUND_COLOR,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -101,6 +99,5 @@ const styles = StyleSheet.create({
     },
     loaderBar: {
         height: '100%',
-        backgroundColor: '#4ADE80',
     },
 })
