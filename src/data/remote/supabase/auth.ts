@@ -9,6 +9,18 @@ export type SupabaseAuthSessionData = {
 }
 
 export const EMAIL_CONFIRMATION_REQUIRED_CODE = 'email_confirmation_required'
+export const RATE_LIMITED_CODE = 'rate_limited'
+
+let lastAuthAttemptAt = 0
+const AUTH_COOLDOWN_MS = 2000
+
+const guardRateLimit = (): void => {
+    const now = Date.now()
+    if (now - lastAuthAttemptAt < AUTH_COOLDOWN_MS) {
+        throw new SupabaseAuthError(RATE_LIMITED_CODE, 'Please wait before trying again.')
+    }
+    lastAuthAttemptAt = now
+}
 
 export class SupabaseAuthError extends Error {
     readonly code: string
@@ -99,6 +111,7 @@ const requireConfig = (): SupabaseConfig => {
 }
 
 export const signInWithEmailPassword = async (email: string, password: string): Promise<SupabaseAuthSessionData> => {
+    guardRateLimit()
     const config = requireConfig()
     const payload = await authRequest<SupabaseAuthApiResponse>(config, 'token?grant_type=password', {
         body: { email, password },
@@ -107,6 +120,7 @@ export const signInWithEmailPassword = async (email: string, password: string): 
 }
 
 export const signUpWithEmailPassword = async (email: string, password: string): Promise<SupabaseAuthSessionData> => {
+    guardRateLimit()
     const config = requireConfig()
     const body: Record<string, unknown> = { email, password }
     if (config.emailRedirectTo) {

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import {
     EMAIL_CONFIRMATION_REQUIRED_CODE,
     getSupabaseOAuthAuthorizeUrl,
+    RATE_LIMITED_CODE,
     SupabaseAuthError,
 } from '@/src/data/remote/supabase/auth'
 import { log } from '@/src/modules/core/utils/logger'
@@ -202,6 +203,10 @@ export const useLoginForm = (): UseLoginForm => {
                 setMode('signin')
                 setPassword('')
                 setConfirmPassword('')
+                return
+            }
+            if (error instanceof SupabaseAuthError && error.code === RATE_LIMITED_CODE) {
+                setErrorMessage(t('authRateLimited'))
                 return
             }
             const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError')
