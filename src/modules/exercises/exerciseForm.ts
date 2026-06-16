@@ -119,7 +119,11 @@ export function resolveExerciseTypeOptions(type: ExerciseType): ExerciseTypeOpti
     const options: ExerciseTypeOption[] = [
         { value: 'weight', labelKey: 'typeWeight', isActive: type === 'weight' },
         { value: 'cardio', labelKey: 'typeCardio', isActive: type === 'cardio' },
-        { value: 'bodyweight', labelKey: 'typeBodyweight', isActive: type === 'bodyweight' || type === 'bodyweight_timer' },
+        {
+            value: 'bodyweight',
+            labelKey: 'typeBodyweight',
+            isActive: type === 'bodyweight' || type === 'bodyweight_timer',
+        },
     ]
     return options
 }

@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useExerciseRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Exercise } from '@/src/db/exercises'
-import { log } from '@/src/modules/core/utils/logger'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
+import { log } from '@/src/modules/core/utils/logger'
 
 export function useExercises() {
     const exerciseRepo = useExerciseRepo()

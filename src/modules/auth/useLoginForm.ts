@@ -9,9 +9,9 @@ import {
     RATE_LIMITED_CODE,
     SupabaseAuthError,
 } from '@/src/data/remote/supabase/auth'
-import { log } from '@/src/modules/core/utils/logger'
 import { hasLocalUserData } from '@/src/db/reset'
 import { useAuth } from '@/src/modules/auth/useAuth'
+import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { canSubmitLoginForm, mapAuthErrorToMessage, validateLoginForm } from './loginFormLogic'
 

@@ -47,13 +47,14 @@ export const SyncStatusBanner: React.FC = () => {
         case 'blocked':
             content = (
                 <View
-                    style={[
-                        styles.banner,
-                        { backgroundColor: theme.surface, paddingTop: insets.top + Spacing.sm },
-                    ]}
+                    style={[styles.banner, { backgroundColor: theme.surface, paddingTop: insets.top + Spacing.sm }]}
                     accessibilityLiveRegion="polite"
                 >
-                    <Typography.Label size="xs" style={[styles.message, { color: theme.textSecondary }]} numberOfLines={2}>
+                    <Typography.Label
+                        size="xs"
+                        style={[styles.message, { color: theme.textSecondary }]}
+                        numberOfLines={2}
+                    >
                         {banner.summary}
                     </Typography.Label>
                     <Button

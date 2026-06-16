@@ -16,11 +16,11 @@ import { Appear, ListItemAppear } from '@/src/modules/core/components/motion'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
-import { WorkoutDashboardSkeleton } from './components/WorkoutDashboardSkeleton'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
+import { WorkoutDashboardSkeleton } from './components/WorkoutDashboardSkeleton'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
