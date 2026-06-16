@@ -9,14 +9,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { PortalHost, PortalProvider } from 'react-native-teleport'
 import Toast from 'react-native-toast-message'
 import { FontWeight } from '@/src/constants/Typography'
-import { RepositoryProvider } from '@/src/data/RepositoryContext'
 import { initializeDataLayer } from '@/src/data/bootstrap'
+import { RepositoryProvider } from '@/src/data/RepositoryContext'
 import { SyncProvider } from '@/src/data/sync/SyncProvider'
 import { SyncStatusBanner } from '@/src/data/sync/SyncStatusBanner'
-import { log } from '@/src/modules/core/utils/logger'
 import { useDatabaseInit } from '@/src/db/client'
 import { AuthProvider, useAuth } from '@/src/modules/auth/useAuth'
 import { toastConfig } from '@/src/modules/core/components/ToastConfig'
+import { log } from '@/src/modules/core/utils/logger'
 import { TimerPill } from '@/src/modules/timer/components/TimerPill'
 import { TimerProvider } from '@/src/modules/timer/TimerProvider'
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../src/modules/core/hooks/useTheme'
@@ -58,13 +58,13 @@ export default function RootLayout() {
                 <RepositoryProvider>
                     <CustomThemeProvider>
                         <AuthProvider>
-                        <TimerProvider>
-                            <SyncProvider>
-                                <SyncStatusBanner />
-                                <RootLayoutNav />
-                                <TimerPill />
-                            </SyncProvider>
-                        </TimerProvider>
+                            <TimerProvider>
+                                <SyncProvider>
+                                    <SyncStatusBanner />
+                                    <RootLayoutNav />
+                                    <TimerPill />
+                                </SyncProvider>
+                            </TimerProvider>
                         </AuthProvider>
                     </CustomThemeProvider>
                 </RepositoryProvider>
@@ -107,6 +107,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="landing" options={{ headerShown: false, animation: 'fade' }} />
                 <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
             </Stack>
             <Toast config={toastConfig} />
         </ThemeProvider>

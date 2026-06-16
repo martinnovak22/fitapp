@@ -240,5 +240,14 @@
     "holdToDrag": "Hold to drag",
     "oops": "Oops!",
     "screenNotFound": "This screen doesn't exist.",
-    "goHome": "Go to home screen!"
+    "goHome": "Go to home screen!",
+    "onboardingWorkoutTitle": "Track Your Workouts",
+    "onboardingWorkoutDesc": "Log sets, reps, and weights. Track your progress over time with detailed workout history.",
+    "onboardingExercisesTitle": "Exercise Library",
+    "onboardingExercisesDesc": "Browse and manage your exercise catalog. Filter by muscle group, type, and more.",
+    "onboardingSyncTitle": "Cloud Sync",
+    "onboardingSyncDesc": "Sign in to sync your data across devices. Your workouts are always backed up.",
+    "onboardingSkip": "Skip",
+    "onboardingNext": "Next",
+    "onboardingGetStarted": "Get Started"
 }

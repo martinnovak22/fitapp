@@ -11,6 +11,7 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { isOnboardingCompleted } from '@/src/modules/core/utils/onboarding'
 
 const { width } = Dimensions.get('window')
 
@@ -33,8 +34,9 @@ export default function LandingScreen() {
         }
     })
 
-    const navigateToMain = useCallback(() => {
-        router.replace('/(tabs)/workout')
+    const navigateToMain = useCallback(async () => {
+        const done = await isOnboardingCompleted()
+        router.replace(done ? '/(tabs)/workout' : '/onboarding')
     }, [router])
 
     useEffect(() => {

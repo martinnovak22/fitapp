@@ -1,5 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { Redirect, Tabs } from 'expo-router'
+import { Redirect, Tabs, useRouter } from 'expo-router'
+import { useEffect } from 'react'
 import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -16,10 +17,17 @@ export default function TabLayout() {
     const { theme } = useTheme()
     const insets = useSafeAreaInsets()
     const { isAuthRequired, isAuthenticated, isInitialized } = useAuth()
+    const router = useRouter()
+
+    useEffect(() => {
+        if (isAuthRequired && isInitialized && !isAuthenticated) {
+            router.replace('/login')
+        }
+    }, [isAuthRequired, isInitialized, isAuthenticated, router])
 
     if (isAuthRequired) {
         if (!isInitialized) return null
-        if (!isAuthenticated) return <Redirect href={'../login'} />
+        if (!isAuthenticated) return <Redirect href={'/login'} />
     }
 
     return (

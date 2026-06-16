@@ -241,5 +241,14 @@
     "holdToDrag": "Podržte pro přesunutí",
     "oops": "Jejda!",
     "screenNotFound": "Tato obrazovka neexistuje.",
-    "goHome": "Přejít na hlavní obrazovku!"
+    "goHome": "Přejít na hlavní obrazovku!",
+    "onboardingWorkoutTitle": "Sledujte své tréninky",
+    "onboardingWorkoutDesc": "Zapisujte série, opakování a váhy. Sledujte svůj pokrok díky podrobné historii tréninků.",
+    "onboardingExercisesTitle": "Knihovna cviků",
+    "onboardingExercisesDesc": "Prohlížejte a spravujte svůj katalog cviků. Filtrujte podle svalové skupiny, typu a dalšího.",
+    "onboardingSyncTitle": "Cloudová synchronizace",
+    "onboardingSyncDesc": "Přihlaste se pro synchronizaci dat napříč zařízeními. Vaše tréninky jsou vždy zálohovány.",
+    "onboardingSkip": "Přeskočit",
+    "onboardingNext": "Další",
+    "onboardingGetStarted": "Začít"
 }
