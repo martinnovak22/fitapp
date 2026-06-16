@@ -69,8 +69,10 @@ describe('Outbox.nextBatch', () => {
         await insertExercise('ex-1', 'Bench')
         await insertWorkout('wk-1')
         const wk = await db.getFirstAsync<{ id: number }>('SELECT id FROM workouts WHERE uuid = ?', 'wk-1')
+        if (!wk) throw new Error('expected wk-1')
         const ex = await db.getFirstAsync<{ id: number }>('SELECT id FROM exercises WHERE uuid = ?', 'ex-1')
-        await insertSet('set-1', wk!.id, ex!.id)
+        if (!ex) throw new Error('expected ex-1')
+        await insertSet('set-1', wk.id, ex.id)
         await db.runAsync(
             `INSERT INTO deletion_tombstones (entity_type, entity_uuid, user_id, deleted_at, sync_status)
             VALUES ('exercise', 'ex-deleted', ?, '2026-01-02T00:00:00Z', 'dirty')`,

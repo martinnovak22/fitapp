@@ -7,9 +7,11 @@ export type SyncBannerModel = {
     summary: string
 }
 
-// Pure mapping from sync state → banner display. Transient failures still being
-// retried take precedence and get the prominent alert; rows that were given up
-// on (blocked) are reported quietly, never both.
+// Pure mapping from the observable sync state plus the blocked-row count to a
+// banner model. Transient failures (observable.kind === 'failed') take
+// precedence and get the prominent alert; rows that were given up on (blocked)
+// surface as a quiet indicator even when the observable is idle/running, never
+// both at once.
 export const resolveSyncBanner = (state: SyncStatusState, blockedCount: number): SyncBannerModel | null => {
     switch (state.kind) {
         case 'failed': {

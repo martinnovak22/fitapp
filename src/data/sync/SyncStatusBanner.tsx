@@ -1,5 +1,4 @@
 import type React from 'react'
-import { useCallback } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Radius } from '@/src/constants/Radius'
@@ -15,13 +14,6 @@ export const SyncStatusBanner: React.FC = () => {
     const { status, triggerSync, retryBlocked } = useSync()
     const { theme } = useTheme()
     const insets = useSafeAreaInsets()
-    const handleRetry = useCallback(() => {
-        void triggerSync()
-    }, [triggerSync])
-
-    const handleRetryBlocked = useCallback(() => {
-        void retryBlocked()
-    }, [retryBlocked])
 
     const banner = resolveSyncBanner(status.observable, status.blockedCount)
     if (!banner) return null
@@ -42,7 +34,7 @@ export const SyncStatusBanner: React.FC = () => {
                     </Typography.Label>
                     <Button
                         label="Retry"
-                        onPress={handleRetry}
+                        onPress={() => triggerSync()}
                         accessibilityLabel="Retry sync"
                         variant="text"
                         size="sm"
@@ -66,7 +58,7 @@ export const SyncStatusBanner: React.FC = () => {
                     </Typography.Label>
                     <Button
                         label="Try again"
-                        onPress={handleRetryBlocked}
+                        onPress={() => retryBlocked()}
                         accessibilityLabel="Retry items that couldn't sync"
                         variant="text"
                         size="sm"
