@@ -1,6 +1,7 @@
 import { buildPrincipalWhereClause } from '@/src/data/principal'
 import { getDb } from '@/src/db/client'
 import { type Exercise, ExerciseRepository, type ExerciseType } from '@/src/db/exercises'
+// biome-ignore lint/suspicious/noShadowRestrictedNames: domain model, not JS Set
 import type { Set } from '@/src/db/workouts'
 import {
     bestSetComparatorFor,

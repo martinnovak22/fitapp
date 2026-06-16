@@ -56,9 +56,13 @@ describe('test harness smoke', () => {
 
         const acks = await adapter.upsert('exercises', [
             {
+                // biome-ignore lint/style/noNonNullAssertion: guarded by expect().not.toBeNull()
                 uuid: local!.uuid,
+                // biome-ignore lint/style/noNonNullAssertion: guarded by expect().not.toBeNull()
                 user_id: local!.user_id,
+                // biome-ignore lint/style/noNonNullAssertion: guarded by expect().not.toBeNull()
                 name: local!.name,
+                // biome-ignore lint/style/noNonNullAssertion: guarded by expect().not.toBeNull()
                 updated_at: local!.updated_at,
             },
         ])

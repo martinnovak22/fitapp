@@ -13,6 +13,7 @@ export function ExercisesListSkeleton() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
             {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
                 <View
+                    // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
                     key={i}
                     style={[skeletonStyles.cardInner, { backgroundColor: theme.card, borderColor: theme.border }]}
                 >

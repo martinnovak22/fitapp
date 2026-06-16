@@ -109,9 +109,7 @@ export default function SettingsScreen() {
                                     </View>
                                     <Button
                                         label={t('createAccount')}
-                                        onPress={() =>
-                                            router.push({ pathname: '../login', params: { mode: 'signup' } })
-                                        }
+                                        onPress={() => router.push('../login?mode=signup')}
                                     />
                                 </>
                             ) : (

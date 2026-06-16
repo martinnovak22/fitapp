@@ -1,14 +1,8 @@
-import { useEffect } from 'react'
+import { LinearGradient } from 'expo-linear-gradient'
+import { useCallback, useEffect } from 'react'
 import type { DimensionValue, LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native'
 import { StyleSheet, View } from 'react-native'
-import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withTiming,
-} from 'react-native-reanimated'
-import { LinearGradient } from 'expo-linear-gradient'
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
 import { Radius } from '@/src/constants/Radius'
 import { useTheme } from '../hooks/useTheme'
 
@@ -26,22 +20,26 @@ export function SkeletonBlock({ width, height = 20, borderRadius = Radius.sm, st
     const shimmerX = useSharedValue(-SHIMMER_WIDTH)
     const blockWidth = useSharedValue(200)
 
-    const startShimmer = (w: number) => {
-        shimmerX.value = -SHIMMER_WIDTH
-        shimmerX.value = withRepeat(
-            withTiming(w + SHIMMER_WIDTH, {
-                duration: 1400,
-                easing: Easing.bezier(0.4, 0, 0.2, 1),
-            }),
-            -1,
-            false
-        )
-    }
+    const startShimmer = useCallback(
+        (w: number) => {
+            shimmerX.value = -SHIMMER_WIDTH
+            shimmerX.value = withRepeat(
+                withTiming(w + SHIMMER_WIDTH, {
+                    duration: 1400,
+                    easing: Easing.bezier(0.4, 0, 0.2, 1),
+                }),
+                -1,
+                false
+            )
+        },
+        [shimmerX]
+    )
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: blockWidth.value read in effect, not render; adding it to deps would read .value during render and trigger Reanimated warning
     useEffect(() => {
         startShimmer(blockWidth.value)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [startShimmer])
 
     const onLayout = (e: LayoutChangeEvent) => {
         const w = e.nativeEvent.layout.width

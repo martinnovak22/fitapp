@@ -3,16 +3,7 @@ import { router, useFocusEffect, useNavigation } from 'expo-router'
 import type { TFunction } from 'i18next'
 import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-    ActivityIndicator,
-    Image,
-    Modal,
-    Platform,
-    Pressable,
-    StyleSheet,
-    TouchableOpacity,
-    View,
-} from 'react-native'
+import { ActivityIndicator, Image, Modal, Platform, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
 import type { ThemeType } from '@/src/constants/Colors'

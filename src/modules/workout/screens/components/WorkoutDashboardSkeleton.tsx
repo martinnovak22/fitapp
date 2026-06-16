@@ -14,7 +14,11 @@ export function WorkoutDashboardSkeleton() {
                 <SkeletonBlock width={80} height={18} />
                 <View style={skeletonStyles.weekRow}>
                     {Array.from({ length: 7 }).map((_, i) => (
-                        <View key={i} style={skeletonStyles.dayCol}>
+                        <View
+                            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
+                            key={i}
+                            style={skeletonStyles.dayCol}
+                        >
                             <SkeletonBlock width={28} height={28} borderRadius={Radius.sm} />
                             <SkeletonBlock width={14} height={10} borderRadius={2} style={{ marginTop: Spacing.sm }} />
                         </View>
@@ -23,7 +27,11 @@ export function WorkoutDashboardSkeleton() {
                 <View style={[skeletonStyles.divider, { backgroundColor: theme.hairline }]} />
                 <View style={skeletonStyles.statsRow}>
                     {Array.from({ length: 3 }).map((_, i) => (
-                        <View key={i} style={skeletonStyles.statItem}>
+                        <View
+                            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
+                            key={i}
+                            style={skeletonStyles.statItem}
+                        >
                             <SkeletonBlock width={54} height={22} />
                             <SkeletonBlock width={40} height={11} borderRadius={2} style={{ marginTop: Spacing.xs }} />
                         </View>
@@ -57,7 +65,11 @@ export function WorkoutDashboardSkeleton() {
             <Card>
                 <SkeletonBlock width={110} height={18} />
                 {Array.from({ length: 4 }).map((_, i) => (
-                    <View key={i} style={skeletonStyles.balanceRow}>
+                    <View
+                        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
+                        key={i}
+                        style={skeletonStyles.balanceRow}
+                    >
                         <SkeletonBlock width={80} height={13} borderRadius={2} />
                         <View style={skeletonStyles.balanceTrack}>
                             <SkeletonBlock width="100%" height={6} borderRadius={3} />

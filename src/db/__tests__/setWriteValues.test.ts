@@ -44,10 +44,10 @@ describe('buildSetMetricColumns', () => {
     })
 
     it('rejects sub_sets JSON over the sanity cap so it never reaches the push pipeline', () => {
-        const atCap = '['.padEnd(MAX_SUB_SETS_LENGTH - 1, ' ') + ']'
+        const atCap = `${'['.padEnd(MAX_SUB_SETS_LENGTH - 1, ' ')}]`
         expect(buildSetMetricColumns({ sub_sets: atCap }).sub_sets).toBe(atCap)
 
-        const overCap = '['.padEnd(MAX_SUB_SETS_LENGTH, ' ') + ']'
+        const overCap = `${'['.padEnd(MAX_SUB_SETS_LENGTH, ' ')}]`
         expect(() => buildSetMetricColumns({ sub_sets: overCap })).toThrow(/sub_sets JSON exceeds/)
     })
 })

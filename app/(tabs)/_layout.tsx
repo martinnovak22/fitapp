@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Redirect, Tabs, useRouter } from 'expo-router'
-import { useEffect } from 'react'
 import type React from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/src/modules/auth/useAuth'
