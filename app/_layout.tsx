@@ -22,10 +22,7 @@ import { TimerProvider } from '@/src/modules/timer/TimerProvider'
 import { ThemeProvider as CustomThemeProvider, useTheme } from '../src/modules/core/hooks/useTheme'
 import '../src/modules/core/utils/i18n'
 
-export {
-    // Catch any errors thrown by the Layout component.
-    ErrorBoundary,
-} from 'expo-router'
+export { ErrorBoundary } from '@/src/modules/core/components/ErrorBoundary'
 
 export const unstable_settings = {
     initialRouteName: '(tabs)',

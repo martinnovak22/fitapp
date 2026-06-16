@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/src/modules/auth/useAuth'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 
+export { ErrorBoundary } from '@/src/modules/core/components/ErrorBoundary'
+
 const TAB_BAR_BASE_HEIGHT = 80
 
 function TabBarIcon(props: { name: React.ComponentProps<typeof FontAwesome>['name']; color: string }) {

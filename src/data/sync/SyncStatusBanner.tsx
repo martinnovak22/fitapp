@@ -26,43 +26,60 @@ export const SyncStatusBanner: React.FC = () => {
     const banner = resolveSyncBanner(status.observable, status.blockedCount)
     if (!banner) return null
 
-    const content =
-        banner.variant === 'failed' ? (
-            <View
-                style={[styles.banner, { backgroundColor: theme.errorSurface, paddingTop: insets.top + Spacing.sm }]}
-                accessibilityRole="alert"
-            >
-                <Typography.Label size="xs" style={[styles.message, { color: 'white' }]} numberOfLines={2}>
-                    {banner.summary}
-                </Typography.Label>
-                <Button
-                    label="Retry"
-                    onPress={handleRetry}
-                    accessibilityLabel="Retry sync"
-                    variant="text"
-                    size="sm"
-                    style={styles.retry}
-                    labelStyle={styles.retryText}
-                />
-            </View>
-        ) : (
-            <View
-                style={[styles.banner, { backgroundColor: theme.surface, paddingTop: insets.top + Spacing.sm }]}
-                accessibilityLiveRegion="polite"
-            >
-                <Typography.Label size="xs" style={[styles.message, { color: theme.textSecondary }]} numberOfLines={2}>
-                    {banner.summary}
-                </Typography.Label>
-                <Button
-                    label="Try again"
-                    onPress={handleRetryBlocked}
-                    accessibilityLabel="Retry items that couldn't sync"
-                    variant="text"
-                    size="sm"
-                    labelStyle={{ color: theme.primary }}
-                />
-            </View>
-        )
+    let content: React.ReactNode
+    switch (banner.variant) {
+        case 'failed':
+            content = (
+                <View
+                    style={[
+                        styles.banner,
+                        { backgroundColor: theme.errorSurface, paddingTop: insets.top + Spacing.sm },
+                    ]}
+                    accessibilityRole="alert"
+                >
+                    <Typography.Label size="xs" style={[styles.message, { color: 'white' }]} numberOfLines={2}>
+                        {banner.summary}
+                    </Typography.Label>
+                    <Button
+                        label="Retry"
+                        onPress={handleRetry}
+                        accessibilityLabel="Retry sync"
+                        variant="text"
+                        size="sm"
+                        style={styles.retry}
+                        labelStyle={styles.retryText}
+                    />
+                </View>
+            )
+            break
+        case 'blocked':
+            content = (
+                <View
+                    style={[
+                        styles.banner,
+                        { backgroundColor: theme.surface, paddingTop: insets.top + Spacing.sm },
+                    ]}
+                    accessibilityLiveRegion="polite"
+                >
+                    <Typography.Label size="xs" style={[styles.message, { color: theme.textSecondary }]} numberOfLines={2}>
+                        {banner.summary}
+                    </Typography.Label>
+                    <Button
+                        label="Try again"
+                        onPress={handleRetryBlocked}
+                        accessibilityLabel="Retry items that couldn't sync"
+                        variant="text"
+                        size="sm"
+                        labelStyle={{ color: theme.primary }}
+                    />
+                </View>
+            )
+            break
+        default: {
+            const _exhaustive: never = banner.variant
+            return _exhaustive
+        }
+    }
 
     // Appear owns the fixed positioning so the banner fades in/out (and swaps
     // between failed/blocked via the key) instead of popping.
