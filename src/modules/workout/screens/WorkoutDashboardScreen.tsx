@@ -2,11 +2,11 @@ import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native'
+import { RefreshControl, StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
-import { getRepositories } from '@/src/data/repositories'
+import { useExerciseRepo, useWorkoutRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
@@ -17,8 +17,10 @@ import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
+import { WorkoutDashboardSkeleton } from './components/WorkoutDashboardSkeleton'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -71,7 +73,8 @@ interface MuscleBalanceEntry {
 }
 
 export default function WorkoutDashboardScreen() {
-    const { workouts: workoutRepo, exercises: exerciseRepo } = getRepositories()
+    const workoutRepo = useWorkoutRepo()
+    const exerciseRepo = useExerciseRepo()
     const { t, i18n } = useTranslation()
     const { theme } = useTheme()
     const navigation = useNavigation()
@@ -203,7 +206,7 @@ export default function WorkoutDashboardScreen() {
             setMuscleBalance(nextMuscleBalance)
         } catch (error) {
             if (isStale()) return
-            console.error('Failed to load workout dashboard:', error)
+            log('error', 'Failed to load workout dashboard', error)
             setLoadError(t('failedToLoadWorkouts'))
         } finally {
             if (!isStale()) setIsLoading(false)
@@ -239,7 +242,7 @@ export default function WorkoutDashboardScreen() {
             const id = await workoutRepo.create(today)
             router.push(`/(tabs)/workout/${id}`)
         } catch (error) {
-            console.error('Failed to start workout:', error)
+            log('error', 'Failed to start workout', error)
             showToast.danger({ title: t('error'), message: t('failedToStartWorkout') })
         } finally {
             setIsStartingWorkout(false)
@@ -256,13 +259,11 @@ export default function WorkoutDashboardScreen() {
 
     // While the post-login hydration pull is running, even a non-empty read is
     // partial (workouts land before their sets, so e.g. the muscle balance
-    // would render empty) — hold the spinner until the cycle settles.
+    // would render empty) — hold the skeleton until the cycle settles.
     if (isHydrating || (isLoading && allWorkouts.length === 0)) {
         return (
-            <ScrollScreenLayout contentContainerStyle={layoutStyles.fillContent} style={layoutStyles.fill}>
-                <View style={layoutStyles.loadingContainer}>
-                    <ActivityIndicator size={'large'} color={theme.primary} />
-                </View>
+            <ScrollScreenLayout>
+                <WorkoutDashboardSkeleton />
             </ScrollScreenLayout>
         )
     }
@@ -560,8 +561,6 @@ export default function WorkoutDashboardScreen() {
 }
 
 const layoutStyles = StyleSheet.create({
-    // The scroll content and the children wrapper must both stretch, or the
-    // flex:1 loading container has no height to center within.
     fillContent: {
         flexGrow: 1,
     },

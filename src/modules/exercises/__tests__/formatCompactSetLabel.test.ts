@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+// biome-ignore lint/suspicious/noShadowRestrictedNames: domain model, not JS Set
 import type { Set } from '@/src/db/workouts'
 import { formatCompactSetLabel } from '../ExerciseTypeMetadata'
 

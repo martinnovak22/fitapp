@@ -20,6 +20,7 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv'
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
 import { useExercises } from '../hooks/useExercises'
+import { ExercisesListSkeleton } from './components/ExercisesListSkeleton'
 
 const ExerciseListItem = React.memo(
     ({
@@ -195,16 +196,12 @@ export default function ExercisesListScreen() {
     return (
         <ScreenLayout>
             {!hasLoaded ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size={'large'} color={theme.primary} />
-                </View>
+                <ExercisesListSkeleton />
             ) : loadError && exercises.length === 0 ? (
                 <View style={styles.loadingContainer}>
                     <EmptyState message={loadError} icon={'exclamation-circle'} />
                     <Button label={t('retry')} onPress={loadExercises} style={{ marginTop: Spacing.md }} />
                 </View>
-            ) : exercises.length === 0 ? (
-                <EmptyState message={t('noExercises')} subMessage={t('addFirstExercise')} icon={'list'} />
             ) : (
                 <ReorderableList
                     data={exercises}
@@ -217,6 +214,9 @@ export default function ExercisesListScreen() {
                     shouldUpdateActiveItem
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 80 }}
+                    ListEmptyComponent={
+                        <EmptyState message={t('noExercises')} subMessage={t('addFirstExercise')} icon={'list'} />
+                    }
                 />
             )}
             {isReordering && (

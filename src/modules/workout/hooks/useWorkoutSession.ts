@@ -1,16 +1,18 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getRepositories } from '@/src/data/repositories'
+import { useExerciseRepo, useWorkoutRepo } from '@/src/data/RepositoryContext'
 import type { Exercise } from '@/src/db/exercises'
 import type { SetData, Workout, Set as WorkoutSet } from '@/src/db/workouts'
+import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 
 type SetWithExercise = WorkoutSet & { exercise_name: string }
 type SessionOrigin = 'workout' | 'history'
 
 export function useWorkoutSession(origin: SessionOrigin = 'workout') {
-    const { exercises: exerciseRepo, workouts: workoutRepo } = getRepositories()
+    const workoutRepo = useWorkoutRepo()
+    const exerciseRepo = useExerciseRepo()
     const { t } = useTranslation()
     const { id } = useLocalSearchParams()
     const workoutId = Number(id)
@@ -57,7 +59,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             setSets(s as SetWithExercise[])
             setExercises(ex)
         } catch (e) {
-            console.error('Failed to load workout session:', e)
+            log('error', 'Failed to load workout session', e)
             setLoadError(t('failedToLoadWorkoutSession'))
         } finally {
             setLoading(false)
@@ -79,7 +81,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
                 showToast.success({ title: t('success'), message: successMessage })
                 return true
             } catch (e) {
-                console.error('Failed to persist set mutation:', e)
+                log('error', 'Failed to persist set mutation', e)
                 await loadData()
                 showToast.danger({ title: t('error'), message: t('failedToSaveSet') })
                 return false
@@ -112,7 +114,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
                         await loadSets()
                         showToast.success({ title: t('setDeleted'), message: t('setRemoved') })
                     } catch (e) {
-                        console.error('Failed to delete set:', e)
+                        log('error', 'Failed to delete set', e)
                         await loadData()
                         showToast.danger({ title: t('error'), message: t('failedToSaveSet') })
                     }
@@ -135,7 +137,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
                         router.dismissTo(originTabRoot)
                         showToast.success({ title: t('workoutFinished'), message: t('greatJob') })
                     } catch (e) {
-                        console.error('Failed to finish workout:', e)
+                        log('error', 'Failed to finish workout', e)
                         showToast.danger({ title: t('error'), message: t('failedToFinishWorkout') })
                     } finally {
                         setIsFinishingWorkout(false)
@@ -165,7 +167,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
                         }
                         showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') })
                     } catch (e) {
-                        console.error('Failed to delete workout:', e)
+                        log('error', 'Failed to delete workout', e)
                         showToast.danger({ title: t('error'), message: t('failedToDeleteWorkout') })
                     } finally {
                         setIsDeletingWorkout(false)
@@ -184,7 +186,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
                 showToast.success({ title: t('success'), message: t('changesSaved') })
                 return true
             } catch (e) {
-                console.error('Failed to update workout timing:', e)
+                log('error', 'Failed to update workout timing', e)
                 showToast.danger({ title: t('error'), message: t('failedToSaveWorkoutTime') })
                 return false
             } finally {
@@ -234,7 +236,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
                 const setsToUpdate = allNewSets.filter((item) => item.exercise_name === exerciseName)
                 await Promise.all(setsToUpdate.map((item) => workoutRepo.updateSetPosition(item.id, item.position)))
             } catch (e) {
-                console.error('Failed to update positions', e)
+                log('error', 'Failed to update positions', e)
                 setSets(previousSets)
                 await loadData()
             }

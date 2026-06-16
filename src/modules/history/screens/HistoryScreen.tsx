@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
-import { getRepositories } from '@/src/data/repositories'
+import { useWorkoutRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
@@ -11,10 +11,11 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { log } from '@/src/modules/core/utils/logger'
 import { WorkoutHistoryCard } from './components/WorkoutHistoryCard'
 
 export default function HistoryScreen() {
-    const { workouts: workoutRepo } = getRepositories()
+    const workoutRepo = useWorkoutRepo()
     const { t } = useTranslation()
     const { theme } = useTheme()
     const navigation = useNavigation()
@@ -47,7 +48,7 @@ export default function HistoryScreen() {
                 const data = await workoutRepo.getAllWorkouts()
                 if (!isStale()) setWorkouts(data)
             } catch (error) {
-                console.error('Failed to load workouts history:', error)
+                log('error', 'Failed to load workouts history', error)
                 if (!isStale()) setLoadError(t('failedToLoadWorkouts'))
             } finally {
                 if (!isStale()) {

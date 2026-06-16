@@ -1,11 +1,11 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { useIsFocused } from '@react-navigation/native'
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
-import { getRepositories } from '@/src/data/repositories'
+import { useExerciseRepo } from '@/src/data/RepositoryContext'
+import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Exercise } from '@/src/db/exercises'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
@@ -14,7 +14,9 @@ import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenIm
 import { Appear } from '@/src/modules/core/components/motion'
 import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
+import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { type BestSetEntry, ExerciseStats, type SessionSummary } from '@/src/modules/exercises/ExerciseStats'
 import type { PrimaryMetric } from '@/src/modules/exercises/ExerciseTypeMetadata'
@@ -22,7 +24,7 @@ import { ExerciseHistorySection } from './components/ExerciseHistorySection'
 import { ExerciseInfoRow } from './components/ExerciseInfoRow'
 
 export default function ExerciseDetailScreen() {
-    const { exercises: exerciseRepo } = getRepositories()
+    const exerciseRepo = useExerciseRepo()
     const { t } = useTranslation()
     const navigation = useNavigation()
     const { id } = useLocalSearchParams()
@@ -35,8 +37,8 @@ export default function ExerciseDetailScreen() {
     const [loadError, setLoadError] = useState<string | null>(null)
     const [historyLoading, setHistoryLoading] = useState(false)
     const [historyError, setHistoryError] = useState<string | null>(null)
-    const isFocused = useIsFocused()
     const { theme } = useTheme()
+    const beginLoad = useStaleGuard()
 
     const loadHistory = useCallback(
         async (exerciseId: number) => {
@@ -52,7 +54,7 @@ export default function ExerciseDetailScreen() {
                 setHistorySummary(summary)
                 setDominantMetric(dominant)
             } catch (error) {
-                console.error('Failed to load exercise history:', error)
+                log('error', 'Failed to load exercise history', error)
                 setHistoryData([])
                 setHistorySummary(null)
                 setDominantMetric(null)
@@ -65,11 +67,13 @@ export default function ExerciseDetailScreen() {
     )
 
     const loadData = useCallback(async () => {
+        const isStale = beginLoad()
         setIsLoading(true)
         setLoadError(null)
 
         try {
             if (!id) {
+                if (isStale()) return
                 setExercise(null)
                 setHistoryData([])
                 setHistorySummary(null)
@@ -79,6 +83,7 @@ export default function ExerciseDetailScreen() {
             }
 
             const nextExercise = await exerciseRepo.getById(Number(id))
+            if (isStale()) return
             if (!nextExercise) {
                 router.replace('/(tabs)/exercises')
                 return
@@ -87,21 +92,26 @@ export default function ExerciseDetailScreen() {
             setExercise(nextExercise)
             await loadHistory(nextExercise.id)
         } catch (error) {
-            console.error('Failed to load exercise detail:', error)
+            if (isStale()) return
+            log('error', 'Failed to load exercise detail', error)
             setExercise(null)
             setHistoryData([])
             setHistorySummary(null)
             setLoadError(t('failedToLoadExerciseDetails'))
         } finally {
-            setIsLoading(false)
+            if (!isStale()) setIsLoading(false)
         }
-    }, [exerciseRepo, id, loadHistory, t])
+    }, [beginLoad, exerciseRepo, id, loadHistory, t])
 
-    useEffect(() => {
-        if (isFocused) {
+    useFocusEffect(
+        useCallback(() => {
             loadData()
-        }
-    }, [isFocused, loadData])
+        }, [loadData])
+    )
+
+    // Reflect data a background sync just pulled (e.g. right after login)
+    // without making the user pull to refresh.
+    useReloadOnSyncSuccess(loadData)
 
     const handleDelete = useCallback(() => {
         showToast.confirm({

@@ -1,4 +1,5 @@
 import type { ExerciseType } from '@/src/db/exercises'
+// biome-ignore lint/suspicious/noShadowRestrictedNames: domain model, not JS Set
 import type { Set } from '@/src/db/workouts'
 import { formatDuration } from '@/src/utils/formatters'
 

@@ -1,5 +1,4 @@
 import type React from 'react'
-import { useCallback } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Radius } from '@/src/constants/Radius'
@@ -15,54 +14,65 @@ export const SyncStatusBanner: React.FC = () => {
     const { status, triggerSync, retryBlocked } = useSync()
     const { theme } = useTheme()
     const insets = useSafeAreaInsets()
-    const handleRetry = useCallback(() => {
-        void triggerSync()
-    }, [triggerSync])
-
-    const handleRetryBlocked = useCallback(() => {
-        void retryBlocked()
-    }, [retryBlocked])
 
     const banner = resolveSyncBanner(status.observable, status.blockedCount)
     if (!banner) return null
 
-    const content =
-        banner.variant === 'failed' ? (
-            <View
-                style={[styles.banner, { backgroundColor: theme.errorSurface, paddingTop: insets.top + Spacing.sm }]}
-                accessibilityRole="alert"
-            >
-                <Typography.Label size="xs" style={[styles.message, { color: 'white' }]} numberOfLines={2}>
-                    {banner.summary}
-                </Typography.Label>
-                <Button
-                    label="Retry"
-                    onPress={handleRetry}
-                    accessibilityLabel="Retry sync"
-                    variant="text"
-                    size="sm"
-                    style={styles.retry}
-                    labelStyle={styles.retryText}
-                />
-            </View>
-        ) : (
-            <View
-                style={[styles.banner, { backgroundColor: theme.surface, paddingTop: insets.top + Spacing.sm }]}
-                accessibilityLiveRegion="polite"
-            >
-                <Typography.Label size="xs" style={[styles.message, { color: theme.textSecondary }]} numberOfLines={2}>
-                    {banner.summary}
-                </Typography.Label>
-                <Button
-                    label="Try again"
-                    onPress={handleRetryBlocked}
-                    accessibilityLabel="Retry items that couldn't sync"
-                    variant="text"
-                    size="sm"
-                    labelStyle={{ color: theme.primary }}
-                />
-            </View>
-        )
+    let content: React.ReactNode
+    switch (banner.variant) {
+        case 'failed':
+            content = (
+                <View
+                    style={[
+                        styles.banner,
+                        { backgroundColor: theme.errorSurface, paddingTop: insets.top + Spacing.sm },
+                    ]}
+                    accessibilityRole="alert"
+                >
+                    <Typography.Label size="xs" style={[styles.message, { color: 'white' }]} numberOfLines={2}>
+                        {banner.summary}
+                    </Typography.Label>
+                    <Button
+                        label="Retry"
+                        onPress={() => triggerSync()}
+                        accessibilityLabel="Retry sync"
+                        variant="text"
+                        size="sm"
+                        style={styles.retry}
+                        labelStyle={styles.retryText}
+                    />
+                </View>
+            )
+            break
+        case 'blocked':
+            content = (
+                <View
+                    style={[styles.banner, { backgroundColor: theme.surface, paddingTop: insets.top + Spacing.sm }]}
+                    accessibilityLiveRegion="polite"
+                >
+                    <Typography.Label
+                        size="xs"
+                        style={[styles.message, { color: theme.textSecondary }]}
+                        numberOfLines={2}
+                    >
+                        {banner.summary}
+                    </Typography.Label>
+                    <Button
+                        label="Try again"
+                        onPress={() => retryBlocked()}
+                        accessibilityLabel="Retry items that couldn't sync"
+                        variant="text"
+                        size="sm"
+                        labelStyle={{ color: theme.primary }}
+                    />
+                </View>
+            )
+            break
+        default: {
+            const _exhaustive: never = banner.variant
+            return _exhaustive
+        }
+    }
 
     // Appear owns the fixed positioning so the banner fades in/out (and swaps
     // between failed/blocked via the key) instead of popping.

@@ -10,20 +10,19 @@ import { PortalHost, PortalProvider } from 'react-native-teleport'
 import Toast from 'react-native-toast-message'
 import { FontWeight } from '@/src/constants/Typography'
 import { initializeDataLayer } from '@/src/data/bootstrap'
+import { RepositoryProvider } from '@/src/data/RepositoryContext'
 import { SyncProvider } from '@/src/data/sync/SyncProvider'
 import { SyncStatusBanner } from '@/src/data/sync/SyncStatusBanner'
 import { useDatabaseInit } from '@/src/db/client'
 import { AuthProvider, useAuth } from '@/src/modules/auth/useAuth'
 import { toastConfig } from '@/src/modules/core/components/ToastConfig'
+import { ThemeProvider as CustomThemeProvider, useTheme } from '@/src/modules/core/hooks/useTheme'
+import { log } from '@/src/modules/core/utils/logger'
 import { TimerPill } from '@/src/modules/timer/components/TimerPill'
 import { TimerProvider } from '@/src/modules/timer/TimerProvider'
-import { ThemeProvider as CustomThemeProvider, useTheme } from '../src/modules/core/hooks/useTheme'
-import '../src/modules/core/utils/i18n'
+import '@/src/modules/core/utils/i18n'
 
-export {
-    // Catch any errors thrown by the Layout component.
-    ErrorBoundary,
-} from 'expo-router'
+export { ErrorBoundary } from '@/src/modules/core/components/ErrorBoundary'
 
 export const unstable_settings = {
     initialRouteName: '(tabs)',
@@ -43,7 +42,7 @@ export default function RootLayout() {
 
     useEffect(() => {
         if (fontError) throw fontError
-        if (dbError) console.error('DB Init Error: ', dbError)
+        if (dbError) log('error', 'DB Init Error', dbError)
     }, [fontError, dbError])
 
     if (!fontsLoaded || !dbLoaded) {
@@ -53,17 +52,19 @@ export default function RootLayout() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <PortalProvider>
-                <CustomThemeProvider>
-                    <AuthProvider>
-                        <TimerProvider>
-                            <SyncProvider>
-                                <SyncStatusBanner />
-                                <RootLayoutNav />
-                                <TimerPill />
-                            </SyncProvider>
-                        </TimerProvider>
-                    </AuthProvider>
-                </CustomThemeProvider>
+                <RepositoryProvider>
+                    <CustomThemeProvider>
+                        <AuthProvider>
+                            <TimerProvider>
+                                <SyncProvider>
+                                    <SyncStatusBanner />
+                                    <RootLayoutNav />
+                                    <TimerPill />
+                                </SyncProvider>
+                            </TimerProvider>
+                        </AuthProvider>
+                    </CustomThemeProvider>
+                </RepositoryProvider>
                 <PortalHost style={StyleSheet.absoluteFillObject} name="overlay" />
             </PortalProvider>
         </GestureHandlerRootView>
@@ -103,6 +104,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="landing" options={{ headerShown: false, animation: 'fade' }} />
                 <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
             </Stack>
             <Toast config={toastConfig} />
         </ThemeProvider>

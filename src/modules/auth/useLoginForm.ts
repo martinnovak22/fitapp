@@ -6,10 +6,12 @@ import { useTranslation } from 'react-i18next'
 import {
     EMAIL_CONFIRMATION_REQUIRED_CODE,
     getSupabaseOAuthAuthorizeUrl,
+    RATE_LIMITED_CODE,
     SupabaseAuthError,
 } from '@/src/data/remote/supabase/auth'
 import { hasLocalUserData } from '@/src/db/reset'
 import { useAuth } from '@/src/modules/auth/useAuth'
+import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { canSubmitLoginForm, mapAuthErrorToMessage, validateLoginForm } from './loginFormLogic'
 
@@ -89,7 +91,7 @@ export const useLoginForm = (): UseLoginForm => {
                 setGuestDataExists(hasData)
                 setMergeGuestDataOnSignIn(hasData && isSignUp)
             } catch (error) {
-                console.error('Failed to detect local guest data:', error)
+                log('error', 'Failed to detect local guest data', error)
                 setGuestDataExists(false)
                 setMergeGuestDataOnSignIn(false)
             }
@@ -201,6 +203,10 @@ export const useLoginForm = (): UseLoginForm => {
                 setMode('signin')
                 setPassword('')
                 setConfirmPassword('')
+                return
+            }
+            if (error instanceof SupabaseAuthError && error.code === RATE_LIMITED_CODE) {
+                setErrorMessage(t('authRateLimited'))
                 return
             }
             const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError')

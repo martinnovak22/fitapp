@@ -85,7 +85,11 @@ function WorkoutSetItemInner<T extends WorkoutSet = WorkoutSet>({
 
                     {set.sub_sets &&
                         parseSubSets(set.sub_sets).map((ss, idx) => (
-                            <View key={idx} style={styles.subSetRow}>
+                            <View
+                                // biome-ignore lint/suspicious/noArrayIndexKey: sub-set order is stable
+                                key={idx}
+                                style={styles.subSetRow}
+                            >
                                 <View style={[styles.indentLine, { backgroundColor: theme.primary }]} />
                                 <Typography.Meta weight="semibold">
                                     {t('drop')} {idx + 1}: {ss.weight ?? 0}

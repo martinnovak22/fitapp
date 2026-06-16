@@ -1,6 +1,7 @@
 export const Colors = {
     dark: {
         background: '#121212',
+        iconBackground: '#607d8b',
         surface: '#252525',
         surfaceMuted: 'rgba(255,255,255,0.05)',
         surfaceSubtle: 'rgba(255,255,255,0.03)',
@@ -25,6 +26,7 @@ export const Colors = {
     },
     light: {
         background: '#F8F9FA',
+        iconBackground: '#607d8b',
         surface: '#FFFFFF',
         surfaceMuted: '#F0F0F0',
         surfaceSubtle: 'rgba(0,0,0,0.03)',

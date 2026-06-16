@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import { describe, expect, it } from 'vitest'
 import {
     canSubmitLoginForm,
@@ -8,7 +9,7 @@ import {
 } from '../loginFormLogic'
 
 // Stub translator: returns the key so assertions stay readable and stable.
-const t = (key: string) => key
+const t: TFunction = ((key: string) => key) as TFunction
 
 describe('isValidEmail', () => {
     it('accepts a well-formed address', () => {
