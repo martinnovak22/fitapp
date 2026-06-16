@@ -19,8 +19,8 @@ import { toastConfig } from '@/src/modules/core/components/ToastConfig'
 import { log } from '@/src/modules/core/utils/logger'
 import { TimerPill } from '@/src/modules/timer/components/TimerPill'
 import { TimerProvider } from '@/src/modules/timer/TimerProvider'
-import { ThemeProvider as CustomThemeProvider, useTheme } from '../src/modules/core/hooks/useTheme'
-import '../src/modules/core/utils/i18n'
+import { ThemeProvider as CustomThemeProvider, useTheme } from '@/src/modules/core/hooks/useTheme'
+import '@/src/modules/core/utils/i18n'
 
 export { ErrorBoundary } from '@/src/modules/core/components/ErrorBoundary'
 
