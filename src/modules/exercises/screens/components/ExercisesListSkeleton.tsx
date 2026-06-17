@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
@@ -8,9 +9,16 @@ const SKELETON_ROW_COUNT = 8
 
 export function ExercisesListSkeleton() {
     const { theme } = useTheme()
+    const { t } = useTranslation()
 
     return (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+        <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 80 }}
+            accessibilityRole="progressbar"
+            accessibilityLabel={t('loading')}
+            aria-busy
+        >
             {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
                 <View
                     // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list

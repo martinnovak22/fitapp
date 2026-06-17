@@ -2,7 +2,14 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useCallback, useEffect } from 'react'
 import type { DimensionValue, LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native'
 import { StyleSheet, View } from 'react-native'
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
+import Animated, {
+    cancelAnimation,
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withTiming,
+} from 'react-native-reanimated'
 import { Radius } from '@/src/constants/Radius'
 import { useTheme } from '../hooks/useTheme'
 
@@ -38,6 +45,9 @@ export function SkeletonBlock({ width, height = 20, borderRadius = Radius.sm, st
     // biome-ignore lint/correctness/useExhaustiveDependencies: blockWidth.value read in effect, not render; adding it to deps would read .value during render and trigger Reanimated warning
     useEffect(() => {
         startShimmer(blockWidth.value)
+        // Stop the infinite shimmer loop when the skeleton unmounts (after the
+        // real content loads), otherwise the animation leaks on a detached node.
+        return () => cancelAnimation(shimmerX)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [startShimmer])
 
@@ -59,6 +69,10 @@ export function SkeletonBlock({ width, height = 20, borderRadius = Radius.sm, st
     return (
         <View
             onLayout={onLayout}
+            // Individual shimmer blocks are decorative; the surrounding skeleton
+            // container owns the single "loading" announcement for screen readers.
+            accessible={false}
+            importantForAccessibility="no-hide-descendants"
             style={[
                 {
                     width,
