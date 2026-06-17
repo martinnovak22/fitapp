@@ -40,8 +40,21 @@ export const isOnboardingCompleted = async (): Promise<boolean> => {
 
     try {
         const remote = await fetchRemoteOnboardingCompleted(session.userId)
-        if (remote) await writeLocal()
-        return remote
+        if (remote) {
+            await writeLocal()
+            return true
+        }
+
+        // Carry a completion done in guest/local mode over to the freshly
+        // signed-in account, so onboarding isn't shown again after sign-up.
+        if (await readLocal()) {
+            void markRemoteOnboardingCompleted(session.userId).catch((error) =>
+                log('warn', 'carryOnboardingFlag', error)
+            )
+            return true
+        }
+
+        return false
     } catch (error) {
         // Offline or transient failure: fall back to the cached local flag rather
         // than forcing a logged-in user back through onboarding.
