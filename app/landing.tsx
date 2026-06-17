@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Dimensions, Image, StyleSheet, View } from 'react-native'
 import Animated, {
     Easing,
@@ -10,6 +10,7 @@ import Animated, {
     withSpring,
     withTiming,
 } from 'react-native-reanimated'
+import { useAuth } from '@/src/modules/auth/useAuth'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { isOnboardingCompleted } from '@/src/modules/core/utils/onboarding'
 
@@ -18,6 +19,11 @@ const { width } = Dimensions.get('window')
 export default function LandingScreen() {
     const router = useRouter()
     const { theme } = useTheme()
+    // The onboarding flag is account-scoped, so the auth session must be resolved
+    // before we read it; otherwise an account user could be misrouted.
+    const { isInitialized } = useAuth()
+    const [animationDone, setAnimationDone] = useState(false)
+    const hasNavigatedRef = useRef(false)
 
     const progress = useSharedValue(0)
     const iconScale = useSharedValue(0.95)
@@ -35,6 +41,8 @@ export default function LandingScreen() {
     })
 
     const navigateToMain = useCallback(async () => {
+        if (hasNavigatedRef.current) return
+        hasNavigatedRef.current = true
         const done = await isOnboardingCompleted()
         router.replace(done ? '/(tabs)/workout' : '/onboarding')
     }, [router])
@@ -55,11 +63,19 @@ export default function LandingScreen() {
             },
             (finished) => {
                 if (finished) {
-                    runOnJS(navigateToMain)()
+                    runOnJS(setAnimationDone)(true)
                 }
             }
         )
-    }, [iconScale, navigateToMain, progress])
+    }, [iconScale, progress])
+
+    // Navigate once the intro animation has played AND auth has resolved, so the
+    // account-scoped onboarding check reads a settled session.
+    useEffect(() => {
+        if (animationDone && isInitialized) {
+            navigateToMain()
+        }
+    }, [animationDone, isInitialized, navigateToMain])
 
     return (
         <View style={[styles.container, { backgroundColor: theme.iconBackground }]}>

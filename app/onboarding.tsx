@@ -119,6 +119,11 @@ export default function OnboardingScreen() {
                 bounces={false}
                 onMomentumScrollEnd={onMomentumScrollEnd}
                 scrollEventThrottle={16}
+                onScrollToIndexFailed={({ index }) => {
+                    // Slides are full-width and few; on a fast "Next" tap before
+                    // layout settles, retry the scroll on the next frame.
+                    requestAnimationFrame(() => flatListRef.current?.scrollToIndex({ index, animated: true }))
+                }}
             />
 
             <View style={styles.footer}>
