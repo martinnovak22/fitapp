@@ -23,6 +23,8 @@ export const Colors = {
         overlayScrimLight: 'rgba(0,0,0,0.4)',
         overlayChip: 'rgba(0,0,0,0.6)',
         hairline: 'rgba(255,255,255,0.08)',
+        skeletonBase: '#2C2C2C',
+        skeletonHighlight: 'rgba(255,255,255,0.12)',
     },
     light: {
         background: '#F8F9FA',
@@ -48,6 +50,8 @@ export const Colors = {
         overlayScrimLight: 'rgba(0,0,0,0.4)',
         overlayChip: 'rgba(0,0,0,0.6)',
         hairline: 'rgba(255,255,255,0.08)',
+        skeletonBase: '#D4D4D4',
+        skeletonHighlight: 'rgba(255,255,255,0.6)',
     },
 }
 
