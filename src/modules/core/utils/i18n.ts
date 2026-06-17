@@ -5,6 +5,7 @@ import { initReactI18next } from 'react-i18next'
 
 import cs from '@/src/locales/cs.json'
 import en from '@/src/locales/en.json'
+import { log } from '@/src/modules/core/utils/logger'
 
 const resources = {
     en: { translation: en },
@@ -27,7 +28,9 @@ const languageDetector = {
     },
     init: () => {},
     cacheUserLanguage: (language: string) => {
-        AsyncStorage.setItem(LANGUAGE_KEY, language)
+        // i18next never awaits this, so handle the rejection here rather than
+        // letting a failed storage write become an unhandled promise rejection.
+        AsyncStorage.setItem(LANGUAGE_KEY, language).catch((error) => log('error', 'cacheUserLanguage', error))
     },
 }
 
