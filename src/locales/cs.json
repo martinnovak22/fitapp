@@ -221,6 +221,7 @@
     "typeCardio": "Kardio",
     "typeBodyweight": "Vlastní váha",
     "typeBodyweightTimer": "Vlastní váha (Časovač)",
+    "typeUnknown": "Jiné",
     "placeholderName": "např. Bench Press",
     "placeholderMuscle": "např. Hrudník",
     "set_one": "série",

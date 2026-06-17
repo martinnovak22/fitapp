@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
@@ -7,9 +8,10 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 
 export function WorkoutDashboardSkeleton() {
     const { theme } = useTheme()
+    const { t } = useTranslation()
 
     return (
-        <View>
+        <View accessibilityRole="progressbar" accessibilityLabel={t('loading')} aria-busy>
             <Card>
                 <SkeletonBlock width={80} height={18} />
                 <View style={skeletonStyles.weekRow}>

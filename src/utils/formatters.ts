@@ -6,7 +6,9 @@ export const formatDuration = (minutes: number): string => {
 
 export const formatExerciseType = (
     type?: string
-): 'typeWeight' | 'typeCardio' | 'typeBodyweight' | 'typeBodyweightTimer' => {
+): 'typeWeight' | 'typeCardio' | 'typeBodyweight' | 'typeBodyweightTimer' | 'typeUnknown' => {
+    // Legacy untyped rows default to Weight (the original convention); a present
+    // but unrecognized value is surfaced as Unknown rather than silently mislabeled.
     if (!type) return 'typeWeight'
     const normalized = type.toLowerCase()
     switch (normalized) {
@@ -19,7 +21,7 @@ export const formatExerciseType = (
         case 'bodyweight_timer':
             return 'typeBodyweightTimer'
         default:
-            return 'typeWeight'
+            return 'typeUnknown'
     }
 }
 

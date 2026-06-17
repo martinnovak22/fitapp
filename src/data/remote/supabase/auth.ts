@@ -11,15 +11,19 @@ export type SupabaseAuthSessionData = {
 export const EMAIL_CONFIRMATION_REQUIRED_CODE = 'email_confirmation_required'
 export const RATE_LIMITED_CODE = 'rate_limited'
 
-let lastAuthAttemptAt = 0
 const AUTH_COOLDOWN_MS = 2000
+// Per-operation timestamps so a sign-in attempt doesn't throttle an immediate
+// sign-up (and vice-versa). NOTE: this is a client-side UX debounce only — it
+// is reset by any app reload and is not a security control. Real brute-force
+// protection must be enforced server-side.
+const lastAuthAttemptAt: Record<'signIn' | 'signUp', number> = { signIn: 0, signUp: 0 }
 
-const guardRateLimit = (): void => {
+const guardRateLimit = (operation: 'signIn' | 'signUp'): void => {
     const now = Date.now()
-    if (now - lastAuthAttemptAt < AUTH_COOLDOWN_MS) {
+    if (now - lastAuthAttemptAt[operation] < AUTH_COOLDOWN_MS) {
         throw new SupabaseAuthError(RATE_LIMITED_CODE, 'Please wait before trying again.')
     }
-    lastAuthAttemptAt = now
+    lastAuthAttemptAt[operation] = now
 }
 
 export class SupabaseAuthError extends Error {
@@ -111,7 +115,7 @@ const requireConfig = (): SupabaseConfig => {
 }
 
 export const signInWithEmailPassword = async (email: string, password: string): Promise<SupabaseAuthSessionData> => {
-    guardRateLimit()
+    guardRateLimit('signIn')
     const config = requireConfig()
     const payload = await authRequest<SupabaseAuthApiResponse>(config, 'token?grant_type=password', {
         body: { email, password },
@@ -120,7 +124,7 @@ export const signInWithEmailPassword = async (email: string, password: string): 
 }
 
 export const signUpWithEmailPassword = async (email: string, password: string): Promise<SupabaseAuthSessionData> => {
-    guardRateLimit()
+    guardRateLimit('signUp')
     const config = requireConfig()
     const body: Record<string, unknown> = { email, password }
     if (config.emailRedirectTo) {

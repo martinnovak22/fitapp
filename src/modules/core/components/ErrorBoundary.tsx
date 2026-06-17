@@ -1,5 +1,4 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
-import { useCallback } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
@@ -12,9 +11,8 @@ interface ErrorBoundaryProps {
     retry: () => void
 }
 
-export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({ error, retry }) => {
+export const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
     const { theme } = useTheme()
-    const handleRetry = useCallback(() => retry(), [retry])
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -29,7 +27,7 @@ export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({ error, retry }) =>
                     {error.message || 'An unexpected error occurred.'}
                 </Typography.Body>
 
-                <Button label="Try again" onPress={handleRetry} variant="primary" />
+                <Button label="Try again" onPress={retry} variant="primary" />
             </View>
         </View>
     )

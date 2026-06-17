@@ -1,10 +1,21 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
 import type { TFunction } from 'i18next'
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Image, Modal, Platform, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native'
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import {
+    ActivityIndicator,
+    Image,
+    Modal,
+    Platform,
+    Pressable,
+    RefreshControl,
+    StyleSheet,
+    TouchableOpacity,
+    View,
+} from 'react-native'
+import { Gesture } from 'react-native-gesture-handler'
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
 import type { ThemeType } from '@/src/constants/Colors'
 import { Duration, Motion } from '@/src/constants/Motion'
@@ -98,7 +109,13 @@ const ExerciseListItem = React.memo(
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        onPressIn={drag}
+                        // Hold-to-drag: the pan gesture defers via activateAfterLongPress so a
+                        // plain swipe scrolls / pulls to refresh; the handle starts the reorder
+                        // on long-press (delay kept just under the pan's activation threshold).
+                        onLongPress={drag}
+                        delayLongPress={500}
+                        // hitSlop expands the touch area so the small grip icon is easy to land on.
+                        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
                         accessibilityRole={'button'}
                         accessibilityLabel={t('reorder')}
                         accessibilityHint={t('holdToDrag')}
@@ -120,6 +137,40 @@ export default function ExercisesListScreen() {
     const animatedItemIdsRef = useRef<Set<number>>(new Set())
     const [showAndroidExportSheet, setShowAndroidExportSheet] = useState(false)
     const [isImporting, setIsImporting] = useState(false)
+    const [refreshing, setRefreshing] = useState(false)
+    // On Android the RefreshControl pull and the reorder drag fight; the library
+    // recipe is to disable the refresh for the duration of a drag (and leave it
+    // enabled mid-refresh, where it can't conflict). No-op on iOS.
+    const [refreshEnabled, setRefreshEnabled] = useState(true)
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true)
+        try {
+            await loadExercises()
+        } finally {
+            setRefreshing(false)
+        }
+    }, [loadExercises])
+
+    const handleDragStart = useCallback(() => {
+        'worklet'
+        if (Platform.OS === 'android' && !refreshing) {
+            runOnJS(setRefreshEnabled)(false)
+        }
+    }, [refreshing])
+
+    const handleDragEnd = useCallback(() => {
+        'worklet'
+        if (Platform.OS === 'android') {
+            runOnJS(setRefreshEnabled)(true)
+        }
+    }, [])
+
+    // Defer drag activation so a plain vertical swipe is left to the scroll /
+    // RefreshControl instead of being captured by the reorder pan (the Android
+    // gesture conflict that otherwise makes the list non-responsive). Kept just
+    // above the handle's delayLongPress so the drag picks up as the pan engages.
+    const panGesture = useMemo(() => Gesture.Pan().activateAfterLongPress(520), [])
 
     const handleExportPress = useCallback(() => {
         if (Platform.OS === 'android') {
@@ -209,11 +260,23 @@ export default function ExercisesListScreen() {
                         const newData = reorderItems(exercises, from, to)
                         handleReorder(newData)
                     }}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                    panGesture={panGesture}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderItem}
                     shouldUpdateActiveItem
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: 80 }}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            enabled={refreshEnabled}
+                            tintColor={theme.primary}
+                            colors={[theme.primary]}
+                        />
+                    }
                     ListEmptyComponent={
                         <EmptyState message={t('noExercises')} subMessage={t('addFirstExercise')} icon={'list'} />
                     }
