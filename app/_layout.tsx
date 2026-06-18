@@ -1,7 +1,8 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
+import * as Sentry from '@sentry/react-native'
 import { useFonts } from 'expo-font'
-import { Stack } from 'expo-router'
+import { Stack, useNavigationContainerRef } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { useEffect } from 'react'
 import { StyleSheet } from 'react-native'
@@ -18,6 +19,7 @@ import { AuthProvider, useAuth } from '@/src/modules/auth/useAuth'
 import { toastConfig } from '@/src/modules/core/components/ToastConfig'
 import { ThemeProvider as CustomThemeProvider, useTheme } from '@/src/modules/core/hooks/useTheme'
 import { log } from '@/src/modules/core/utils/logger'
+import { initSentry, navigationIntegration } from '@/src/modules/core/utils/sentry'
 import { TimerPill } from '@/src/modules/timer/components/TimerPill'
 import { TimerProvider } from '@/src/modules/timer/TimerProvider'
 import '@/src/modules/core/utils/i18n'
@@ -30,9 +32,16 @@ export const unstable_settings = {
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync()
+initSentry()
 initializeDataLayer()
 
-export default function RootLayout() {
+function RootLayout() {
+    const navigationRef = useNavigationContainerRef()
+
+    useEffect(() => {
+        navigationIntegration.registerNavigationContainer(navigationRef)
+    }, [navigationRef])
+
     const [fontsLoaded, fontError] = useFonts({
         SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
         ...FontAwesome.font,
@@ -110,3 +119,5 @@ function RootLayoutNav() {
         </ThemeProvider>
     )
 }
+
+export default Sentry.wrap(RootLayout)

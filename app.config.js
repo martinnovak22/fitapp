@@ -1,10 +1,12 @@
+const { withSentry } = require('@sentry/react-native/expo')
+
 const dataMode = (process.env.EXPO_PUBLIC_DATA_MODE || 'remote').toLowerCase()
 
-module.exports = {
+const config = {
     expo: {
         name: 'FitApp',
         slug: 'fitapp',
-        version: '0.5.5',
+        version: '0.5.6',
         orientation: 'portrait',
         icon: './assets/images/icon.png',
         scheme: 'fitapp',
@@ -22,7 +24,7 @@ module.exports = {
         android: {
             edgeToEdgeEnabled: true,
             package: 'com.martinnovak22.fitapp',
-            versionCode: 55,
+            versionCode: 56,
         },
         web: {
             bundler: 'metro',
@@ -42,3 +44,14 @@ module.exports = {
         },
     },
 }
+
+// withSentry adds the build-time hook that uploads source maps so production
+// crash reports show readable stack traces. Org/project come from the
+// environment (see .env / EAS secrets); SENTRY_AUTH_TOKEN is read automatically.
+module.exports = withSentry(config, {
+    // EU region — your DSN points at ingest.de.sentry.io, so source-map upload
+    // must use the matching regional endpoint.
+    url: 'https://de.sentry.io/',
+    organization: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+})
