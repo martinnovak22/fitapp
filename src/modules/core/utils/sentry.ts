@@ -10,17 +10,17 @@ export const navigationIntegration = Sentry.reactNavigationIntegration({
 /**
  * Initialise Sentry. Called once at module load before the app renders.
  *
- * Reporting is enabled whenever a DSN is present, so it works in dev (to verify
- * the integration) and in release builds. If `EXPO_PUBLIC_SENTRY_DSN` is unset,
- * the SDK no-ops and the app behaves exactly as before.
+ * Reporting is enabled only in release builds (never in dev) and only when a
+ * DSN is present. If either condition fails the SDK no-ops and the app behaves
+ * exactly as before.
  */
 export function initSentry() {
     Sentry.init({
         dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-        enabled: Boolean(process.env.EXPO_PUBLIC_SENTRY_DSN),
-        // Performance tracing: full sampling in dev, a fraction in production to
-        // stay within the free-tier quota.
-        tracesSampleRate: __DEV__ ? 1.0 : 0.2,
+        enabled: !__DEV__ && Boolean(process.env.EXPO_PUBLIC_SENTRY_DSN),
+        // Sample a fraction of transactions in production to stay within the
+        // free-tier quota.
+        tracesSampleRate: 0.2,
         enableNativeFramesTracking: !isRunningInExpoGo(),
         integrations: [navigationIntegration],
     })
