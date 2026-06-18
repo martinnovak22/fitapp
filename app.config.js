@@ -6,7 +6,7 @@ const config = {
     expo: {
         name: 'FitApp',
         slug: 'fitapp',
-        version: '0.5.6',
+        version: '0.5.7',
         orientation: 'portrait',
         icon: './assets/images/icon.png',
         scheme: 'fitapp',
@@ -24,7 +24,7 @@ const config = {
         android: {
             edgeToEdgeEnabled: true,
             package: 'com.martinnovak22.fitapp',
-            versionCode: 56,
+            versionCode: 57,
         },
         web: {
             bundler: 'metro',
