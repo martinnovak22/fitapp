@@ -28,6 +28,7 @@ import {
     planAuthInitialization,
 } from '@/src/modules/auth/authInitialization'
 import { isRemoteDataMode } from '@/src/modules/auth/authMode'
+import { setSentryUser } from '@/src/modules/core/utils/sentry'
 
 type AuthContextValue = {
     isAuthRequired: boolean
@@ -156,6 +157,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setActivePrincipal({ mode: 'signed-out', userId: null })
     }, [authMode, isRemoteMode, session?.userId])
+
+    // Tag Sentry events with the active user so crash reports are attributable.
+    // Guests have no account id, so they surface under a stable 'guest' marker.
+    useEffect(() => {
+        if (session?.userId) {
+            setSentryUser({ id: session.userId, email: session.email })
+        } else if (authMode === 'guest') {
+            setSentryUser({ id: 'guest' })
+        } else {
+            setSentryUser(null)
+        }
+    }, [authMode, session?.userId, session?.email])
 
     const currentIdentity = useCallback((): PrincipalIdentity => {
         if (authMode === 'guest') return { kind: 'guest' }
