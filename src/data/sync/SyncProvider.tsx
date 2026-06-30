@@ -1,7 +1,6 @@
 import type React from 'react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { AppState } from 'react-native'
-import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { useAuth } from '@/src/modules/auth/useAuth'
 import { type SyncStatusState, syncStatusStore } from './SyncStatus'
 import { getSyncState, hasLocalDataForActivePrincipal, retryBlockedRows, runSync } from './syncService'
@@ -112,7 +111,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [refreshStatus])
 
     useEffect(() => {
-        if (!isRemoteDataMode() || !isAuthenticated || authMode !== 'account') return
+        if (!isAuthenticated || authMode !== 'account') return
 
         idleCyclesRef.current = 0
         lastCycleWasIdleRef.current = false
@@ -171,7 +170,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [authMode, isAuthenticated, triggerSync])
 
     useEffect(() => {
-        if (!isRemoteDataMode() || authMode !== 'account' || !isAuthenticated) {
+        if (authMode !== 'account' || !isAuthenticated) {
             setStatus(DEFAULT_STATUS)
             return
         }

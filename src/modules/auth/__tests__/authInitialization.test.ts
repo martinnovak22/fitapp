@@ -14,11 +14,10 @@ const session = (overrides: Partial<SupabaseAuthSessionData> = {}): SupabaseAuth
 })
 
 describe('planAuthInitialization', () => {
-    describe('local mode (auth not required, not remote)', () => {
+    describe('auth not required (guest mode)', () => {
         it('clears the session, sets no session, and marks initialized', () => {
             const plan = planAuthInitialization({
                 isAuthRequired: false,
-                isRemoteMode: false,
                 storedAuthMode: null,
                 storedSession: null,
                 now: NOW,
@@ -35,7 +34,6 @@ describe('planAuthInitialization', () => {
         it('clears the session and sets auth mode to guest', () => {
             const plan = planAuthInitialization({
                 isAuthRequired: true,
-                isRemoteMode: true,
                 storedAuthMode: 'guest',
                 storedSession: session(),
                 now: NOW,
@@ -48,11 +46,10 @@ describe('planAuthInitialization', () => {
         })
     })
 
-    describe('account mode (auth required, remote, stored account)', () => {
+    describe('account mode (auth required, stored account)', () => {
         it('with no stored session: sets account mode, clears session', () => {
             const plan = planAuthInitialization({
                 isAuthRequired: true,
-                isRemoteMode: true,
                 storedAuthMode: 'account',
                 storedSession: null,
                 now: NOW,
@@ -68,7 +65,6 @@ describe('planAuthInitialization', () => {
             const stored = session()
             const plan = planAuthInitialization({
                 isAuthRequired: true,
-                isRemoteMode: true,
                 storedAuthMode: 'account',
                 storedSession: stored,
                 now: NOW,
@@ -87,7 +83,6 @@ describe('planAuthInitialization', () => {
             const stored = session({ expiresAt: NOW + 30 * 1000 })
             const plan = planAuthInitialization({
                 isAuthRequired: true,
-                isRemoteMode: true,
                 storedAuthMode: 'account',
                 storedSession: stored,
                 now: NOW,
@@ -100,11 +95,10 @@ describe('planAuthInitialization', () => {
         })
     })
 
-    describe('defaulting of stored auth mode in remote mode', () => {
+    describe('defaulting of stored auth mode', () => {
         it('treats an unknown stored mode as account', () => {
             const plan = planAuthInitialization({
                 isAuthRequired: true,
-                isRemoteMode: true,
                 storedAuthMode: 'something-else',
                 storedSession: null,
                 now: NOW,

@@ -13,7 +13,6 @@ const REFRESH_BUFFER_MS = 60 * 1000
 
 export type AuthInitializationInput = {
     isAuthRequired: boolean
-    isRemoteMode: boolean
     /** Raw value read from auth-mode storage; null when absent. */
     storedAuthMode: string | null
     storedSession: SupabaseAuthSessionData | null
@@ -58,9 +57,9 @@ export const planAuthInitialization = (input: AuthInitializationInput): AuthInit
         }
     }
 
-    const storedMode = input.isRemoteMode ? normalizeStoredAuthMode(input.storedAuthMode) : 'account'
+    const storedMode = normalizeStoredAuthMode(input.storedAuthMode)
 
-    if (input.isRemoteMode && storedMode === 'guest') {
+    if (storedMode === 'guest') {
         return {
             authMode: 'guest',
             session: null,

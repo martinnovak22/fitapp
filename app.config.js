@@ -1,7 +1,5 @@
 const { withSentry } = require('@sentry/react-native/expo')
 
-const dataMode = (process.env.EXPO_PUBLIC_DATA_MODE || 'remote').toLowerCase()
-
 const config = {
     expo: {
         name: 'FitApp',
@@ -36,7 +34,6 @@ const config = {
             typedRoutes: true,
         },
         extra: {
-            dataMode,
             router: {},
             eas: {
                 projectId: '66cc05d1-9eb9-457a-b100-f0fa864d965f',

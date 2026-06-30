@@ -8,7 +8,6 @@ import { Duration } from '@/src/constants/Motion'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
-import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { useAuth } from '@/src/modules/auth/useAuth'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
@@ -21,7 +20,7 @@ export default function SettingsScreen() {
     const { t, i18n } = useTranslation()
     const { mode, setMode, theme } = useTheme()
     const { authMode, isAuthRequired, userEmail, signOut } = useAuth()
-    const isGuestMode = isRemoteDataMode() && authMode === 'guest'
+    const isGuestMode = authMode === 'guest'
     const appVersion = Constants.expoConfig?.version ?? 'dev'
 
     const languages = [

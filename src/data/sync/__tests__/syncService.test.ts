@@ -20,10 +20,6 @@ vi.mock('@/src/data/remote/supabase/session', () => ({
     refreshSupabaseAccessToken: () => refreshMock(),
 }))
 
-vi.mock('@/src/modules/auth/authMode', () => ({
-    isRemoteDataMode: () => true,
-}))
-
 // The photo IO half lives on expo-file-system, which the node test
 // environment cannot load; these tests cover the row pipeline only.
 vi.mock('../photoStorage', () => ({
