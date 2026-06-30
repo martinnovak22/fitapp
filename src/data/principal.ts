@@ -1,6 +1,4 @@
-import { isRemoteDataMode } from '@/src/modules/auth/authMode'
-
-type PrincipalMode = 'local' | 'guest' | 'account' | 'signed-out'
+type PrincipalMode = 'guest' | 'account' | 'signed-out'
 
 type PrincipalState = {
     mode: PrincipalMode
@@ -8,7 +6,7 @@ type PrincipalState = {
 }
 
 let principalState: PrincipalState = {
-    mode: isRemoteDataMode() ? 'signed-out' : 'local',
+    mode: 'signed-out',
     userId: null,
 }
 
@@ -33,15 +31,10 @@ export const setActivePrincipal = (next: PrincipalState) => {
 export const getActivePrincipal = (): PrincipalState => principalState
 
 export const getScopedUserId = (): string | null => {
-    if (!isRemoteDataMode()) return null
     return principalState.mode === 'account' ? principalState.userId : null
 }
 
 export const buildPrincipalWhereClause = (column = 'user_id') => {
-    if (!isRemoteDataMode()) {
-        return { clause: '1 = 1', params: [] as (string | number | null)[] }
-    }
-
     if (principalState.mode === 'account' && principalState.userId) {
         return { clause: `${column} = ?`, params: [principalState.userId] as (string | number | null)[] }
     }

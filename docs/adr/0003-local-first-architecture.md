@@ -4,7 +4,9 @@ status: accepted
 
 # Local-first architecture: SQLite is the source of truth
 
-On-device SQLite is the system of record. Every read and write hits SQLite directly and synchronously — the UI never waits on the network. A remote (Supabase) is an **optional** mirror that a background sync reconciles into and out of via a push Outbox and a pull cursor. The app is fully usable with no account (a Guest syncs anonymously) and remote can be disabled entirely at build time (`EXPO_PUBLIC_DATA_MODE=local`).
+On-device SQLite is the system of record. Every read and write hits SQLite directly and synchronously — the UI never waits on the network. A remote (Supabase) is an **optional** mirror that a background sync reconciles into and out of via a push Outbox and a pull cursor. The app is fully usable with no account (a Guest syncs anonymously).
+
+> Note: this originally described a build-time `EXPO_PUBLIC_DATA_MODE=local` toggle that disabled remote entirely. That toggle and the dormant `local` Principal mode it drove have since been removed; remote is always available in the shipping configuration. The local-first guarantees above (synchronous SQLite reads/writes, offline usability) are unchanged.
 
 ## Considered options
 
