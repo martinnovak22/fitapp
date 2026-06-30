@@ -6,7 +6,12 @@ Status: **draft / not started**. Intended to be picked up in a fresh context. Re
 
 - ✅ Domain language fixed (`CONTEXT.md`) and the data/sync decisions recorded (ADR-0002 migration policy, ADR-0003 local-first, ADR-0004 outbox give-up).
 - ✅ `'blocked'` added to the `SyncStatus` type (#61) — that folded-in cleanup is **done**; treat it as complete below.
-- ⬜ Everything else in this plan is still to do.
+- ✅ Open questions resolved and recorded ([ADR-0005](../adr/0005-exercise-deduplication.md), #63).
+- ✅ Dormant `local` Principal mode removed (#64).
+- ✅ **Phase 1 — Detection** shipped (#65): `findDuplicateExerciseGroups` + `normalizeExerciseName` in `src/data/dedup/exerciseDedup.ts`.
+- ✅ **Phase 3 — Merge execution** shipped: `mergeDuplicateExercises` (re-point Sets → tombstone+delete duplicates, cascade-safe ordering), `getExerciseSetCounts`, and the `findDuplicateExercises` read side in `src/data/dedup/mergeExercises.ts`.
+- ⬜ **Phase 2 — Review UI** — not started (needs design + Android verification).
+- ⬜ **Phase 4 — Workout collapse** (stretch) — not started.
 
 ## Problem
 
