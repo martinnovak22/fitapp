@@ -74,6 +74,18 @@ _Avoid_: merge strategy
 The user-facing label for choosing the `preserve` Migration Policy when a Guest signs into an Account. Opt-in and device-scoped.
 _Avoid_: treating this as a separate mechanism from the Migration Policy
 
+**Duplicate Group**:
+Two or more same-principal Exercises sharing a normalized name (diacritic-folded, case- and whitespace-insensitive), surfaced together for review. ExerciseType and muscle_group are shown as hints but are not part of the match.
+_Avoid_: collision set, dupe cluster
+
+**Survivor**:
+The single Exercise kept when a Duplicate Group is merged; the others are soft-deleted (via Deletion Tombstone) and their Sets re-pointed onto it. Chosen by a deterministic default (oldest first) but always user-overridable.
+_Avoid_: winner, primary, canonical exercise
+
+**Exercise De-duplication**:
+The standalone, user-initiated, re-runnable maintenance action that finds Duplicate Groups and merges each confirmed group onto a Survivor. Decoupled from the Principal Transition — it never runs automatically.
+_Avoid_: merge (that names the Migration Policy), dedupe-on-sign-in
+
 **Sync Status**:
 The per-row lifecycle state of an Exercise/Workout/Set/Tombstone: `dirty` (local change awaiting push) → `synced` (acknowledged by remote); on failure `failed` (retryable, capped at 5 attempts) → `blocked` (terminal, given up on). `local` is a legacy initial state (pre sync-metadata backfill) and a retirement candidate.
 _Avoid_: confusing with the app-level sync indicator (see below)
@@ -109,4 +121,3 @@ _Avoid_: sync status (that is the per-row term)
 - "Session" was used for three things: an in-progress **Workout** (`activeSession`, `finishSessionConfirm` copy), the **Auth Session** (Supabase login), and UI edit state (`useWorkoutSession`, `WorkoutSessionScreen`). Resolved: the entity is always **Workout**; "Session" is reserved for the **Auth Session**. The `useWorkoutSession`/`WorkoutSessionScreen` names predate this resolution — treat as legacy aliases, not a domain entity.
 - "local" names two unrelated things: the legacy **Principal** mode and a row's `sync_status = 'local'` (the pre-sync initial row state). Both are legacy/retirement candidates. Different axes — identity vs row sync state.
 - "sync status" names two unrelated things: the per-row **Sync Status** (`dirty`/`synced`/`failed`/`blocked`) and the app-level `SyncStatusState` indicator (idle/syncing) shown in the UI. Different axes — row state vs process state.
-- The `SyncStatus` type at `src/db/sync.ts` omits `'blocked'`, even though `'blocked'` is a live persisted row state used throughout `syncService.ts`. The type is out of date — fix candidate.
