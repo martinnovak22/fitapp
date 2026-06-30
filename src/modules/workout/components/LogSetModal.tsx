@@ -271,7 +271,7 @@ export const LogSetModal = ({
                                                 activeOpacity={0.7}
                                             >
                                                 <Typography.Meta weight="heavy" style={styles.pyramidTitle}>
-                                                    {t('pyramidSet')} {subSets.length > 0 ? `(${subSets.length})` : ''}
+                                                    {t('dropSets')} {subSets.length > 0 ? `(${subSets.length})` : ''}
                                                 </Typography.Meta>
                                                 <FontAwesome
                                                     name={isExpanded ? 'chevron-up' : 'chevron-down'}
