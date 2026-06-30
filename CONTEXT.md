@@ -1,6 +1,6 @@
 # FitApp
 
-A local-first fitness tracker: workouts and exercises are recorded into an on-device SQLite database and optionally synced to a remote account. This glossary fixes the domain language so code and copy stay consistent.
+A local-first fitness tracker: workouts and exercises are recorded into an on-device SQLite database and optionally synced to a remote account (see [ADR-0003](docs/adr/0003-local-first-architecture.md)). This glossary fixes the domain language so code and copy stay consistent.
 
 ## Language
 
@@ -79,7 +79,7 @@ The per-row lifecycle state of an Exercise/Workout/Set/Tombstone: `dirty` (local
 _Avoid_: confusing with the app-level sync indicator (see below)
 
 **Outbox**:
-The queue of rows eligible to push — those whose Sync Status is `dirty` or `failed`. `blocked` and `synced` rows are excluded.
+The queue of rows eligible to push — those whose Sync Status is `dirty` or `failed`. `blocked` and `synced` rows are excluded. The give-up rule that parks rows as `blocked` is [ADR-0004](docs/adr/0004-outbox-give-up-policy.md).
 _Avoid_: queue, push list
 
 **Deletion Tombstone**:
