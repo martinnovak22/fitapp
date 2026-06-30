@@ -19,7 +19,7 @@ export function log(level: LogLevel, operation: string, error?: unknown) {
     // Forward warnings and errors to Sentry. No-ops when Sentry is disabled
     // (no DSN), so this is safe in every environment.
     if (level === 'warn' || level === 'error') {
-        Sentry.withScope(scope => {
+        Sentry.withScope((scope) => {
             scope.setTag('operation', operation)
             scope.setLevel(SENTRY_LEVELS[level])
             if (error instanceof Error) {
