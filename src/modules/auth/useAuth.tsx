@@ -27,7 +27,6 @@ import {
     normalizeStoredAuthMode,
     planAuthInitialization,
 } from '@/src/modules/auth/authInitialization'
-import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { setSentryUser } from '@/src/modules/core/utils/sentry'
 
 type AuthContextValue = {
@@ -109,8 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isInitialized, setIsInitialized] = useState(false)
     const [session, setSession] = useState<SupabaseAuthSessionData | null>(null)
     const [authMode, setAuthMode] = useState<'guest' | 'account'>('account')
-    const isRemoteMode = isRemoteDataMode()
-    const isAuthRequired = isRemoteMode && authMode === 'account'
+    const isAuthRequired = authMode === 'account'
 
     // The registered token refresher and the periodic refresh both read the
     // live session through this ref, so neither closes over a stale token.
@@ -143,10 +141,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [refreshAccountSession])
 
     useEffect(() => {
-        if (!isRemoteMode) {
-            setActivePrincipal({ mode: 'local', userId: null })
-            return
-        }
         if (authMode === 'guest') {
             setActivePrincipal({ mode: 'guest', userId: null })
             return
@@ -156,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return
         }
         setActivePrincipal({ mode: 'signed-out', userId: null })
-    }, [authMode, isRemoteMode, session?.userId])
+    }, [authMode, session?.userId])
 
     // Tag Sentry events with the active user so crash reports are attributable.
     // Guests have no account id, so they surface under a stable 'guest' marker.
@@ -178,13 +172,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const transitionTo = useCallback(
         async (to: PrincipalIdentity, policy: MigrationPolicy) => {
-            if (!isRemoteMode) return
             const outcome = await runPrincipalTransition({ from: currentIdentity(), to, policy })
             if (outcome.kind === 'error') {
                 throw new Error(`Principal transition failed: ${outcome.message}`)
             }
         },
-        [currentIdentity, isRemoteMode]
+        [currentIdentity]
     )
 
     useEffect(() => {
@@ -194,7 +187,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (!isAuthRequired) {
                 const plan = planAuthInitialization({
                     isAuthRequired,
-                    isRemoteMode,
                     storedAuthMode: null,
                     storedSession: null,
                     now: Date.now(),
@@ -208,12 +200,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             try {
-                const storedAuthMode = isRemoteMode ? await AsyncStorage.getItem(AUTH_MODE_STORAGE_KEY) : null
-                const isGuest = isRemoteMode && normalizeStoredAuthMode(storedAuthMode) === 'guest'
+                const storedAuthMode = await AsyncStorage.getItem(AUTH_MODE_STORAGE_KEY)
+                const isGuest = normalizeStoredAuthMode(storedAuthMode) === 'guest'
                 const storedSession = isGuest ? null : await loadStoredSession()
                 const plan = planAuthInitialization({
                     isAuthRequired,
-                    isRemoteMode,
                     storedAuthMode,
                     storedSession,
                     now: Date.now(),
@@ -237,10 +228,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => {
             isMounted = false
         }
-    }, [isAuthRequired, isRemoteMode])
+    }, [isAuthRequired])
 
     useEffect(() => {
-        if (!isRemoteMode || authMode !== 'account' || !session) return
+        if (authMode !== 'account' || !session) return
 
         const ensureFreshSession = async () => {
             if (!shouldRefresh(session)) return
@@ -257,7 +248,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => {
             clearInterval(intervalId)
         }
-    }, [authMode, isRemoteMode, session])
+    }, [authMode, session])
 
     const adoptAccountSession = useCallback(async (nextSession: SupabaseAuthSessionData) => {
         await AsyncStorage.setItem(AUTH_MODE_STORAGE_KEY, 'account')

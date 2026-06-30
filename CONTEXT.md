@@ -45,7 +45,7 @@ The derived headline metric of an Exercise — one of `weight`, `reps`, `distanc
 _Avoid_: main metric, dominant (when referring to the metric itself)
 
 **Principal**:
-The current identity that owns local data and drives sync. Has one of four modes: `guest`, `account`, `signed-out`, `local`. Distinct from the Auth Session (the login mechanism).
+The current identity that owns local data and drives sync. Has one of three modes: `guest`, `account`, `signed-out`. Distinct from the Auth Session (the login mechanism).
 _Avoid_: user (when you mean the owning identity), current user
 
 **Guest**:
@@ -58,10 +58,6 @@ _Avoid_: registered user, member
 
 **Signed-out**:
 The non-syncing Principal mode when remote is available but no one is logged in.
-
-**local (legacy mode)**:
-A non-syncing Principal mode forced by the build-time env toggle `EXPO_PUBLIC_DATA_MODE=local`; predates accounts and is unused in the shipping (`remote`) config. Functionally equivalent to **Signed-out**.
-_Avoid_: relying on this as a distinct runtime state — it is a dormant build mode
 
 **Principal Transition**:
 An atomic change of Principal (guest↔account, account switch, sign-out). Applies a Migration Policy and runs in a single SQLite transaction. See [ADR-0002](docs/adr/0002-guest-to-account-data-migration.md).
@@ -119,5 +115,5 @@ _Avoid_: sync status (that is the per-row term)
 ## Flagged ambiguities
 
 - "Session" was used for three things: an in-progress **Workout** (`activeSession`, `finishSessionConfirm` copy), the **Auth Session** (Supabase login), and UI edit state (`useWorkoutSession`, `WorkoutSessionScreen`). Resolved: the entity is always **Workout**; "Session" is reserved for the **Auth Session**. The `useWorkoutSession`/`WorkoutSessionScreen` names predate this resolution — treat as legacy aliases, not a domain entity.
-- "local" names two unrelated things: the legacy **Principal** mode and a row's `sync_status = 'local'` (the pre-sync initial row state). Both are legacy/retirement candidates. Different axes — identity vs row sync state.
+- "local" formerly named two unrelated things: a legacy **Principal** mode and a row's `sync_status = 'local'` (the pre-sync initial row state). The Principal mode has been removed (the `EXPO_PUBLIC_DATA_MODE` build toggle is gone); only the legacy row `sync_status = 'local'` remains, itself a retirement candidate.
 - "sync status" names two unrelated things: the per-row **Sync Status** (`dirty`/`synced`/`failed`/`blocked`) and the app-level `SyncStatusState` indicator (idle/syncing) shown in the UI. Different axes — row state vs process state.

@@ -5,7 +5,6 @@ import { getSupabaseSession, refreshSupabaseAccessToken } from '@/src/data/remot
 import { getDb } from '@/src/db/client'
 import { nowIso } from '@/src/db/sync'
 import { executeWriteTransaction } from '@/src/db/writeQueue'
-import { isRemoteDataMode } from '@/src/modules/auth/authMode'
 import { createOutbox, DIRTY_STATUSES } from './Outbox'
 import { capturePrincipalSnapshot, type LivePrincipal } from './PrincipalSnapshot'
 import { makePushFn, preloadSetParents } from './PushPipeline'
@@ -100,8 +99,6 @@ const IDLE_RESULT: SyncCycleResult = {
 
 let currentRun: Promise<SyncCycleResult> | null = null
 
-const shouldUseRemoteSync = () => isRemoteDataMode()
-
 const buildQuery = (params: Record<string, string | undefined>) => {
     const query = new URLSearchParams()
     Object.entries(params).forEach(([key, value]) => {
@@ -171,7 +168,7 @@ const request = async <T>(
 
 const countRowsByStatus = async (statusClause: string, userId?: string) => {
     const db = await getDb()
-    const shouldScopeByUser = shouldUseRemoteSync() && !!userId
+    const shouldScopeByUser = !!userId
     const userScopeClause = shouldScopeByUser ? 'AND user_id = ?' : ''
     const userScopeParams = shouldScopeByUser ? [userId as string] : []
     const tables = ['exercises', 'workouts', 'sets', 'deletion_tombstones'] as const
@@ -741,11 +738,10 @@ const pullSets = async (userId: string): Promise<number> => {
 
 const livePrincipalFromSession = (): LivePrincipal => {
     const session = getSupabaseSession()
-    return { userId: session?.userId ?? null, remote: shouldUseRemoteSync() }
+    return { userId: session?.userId ?? null, remote: true }
 }
 
 export const runSync = async (): Promise<SyncCycleResult> => {
-    if (!shouldUseRemoteSync()) return IDLE_RESULT
     const live = livePrincipalFromSession()
     const config = getSupabaseConfig()
     if (!config || !live.userId) return IDLE_RESULT
@@ -920,7 +916,7 @@ export const hasLocalDataForActivePrincipal = async (): Promise<boolean> => {
 // so the next sync re-attempts it. Backs the user-facing "Try again" action.
 export const retryBlockedRows = async (): Promise<void> => {
     const userId = getSupabaseSession()?.userId
-    const shouldScopeByUser = shouldUseRemoteSync() && !!userId
+    const shouldScopeByUser = !!userId
     const userScopeClause = shouldScopeByUser ? 'AND user_id = ?' : ''
     const userScopeParams = shouldScopeByUser ? [userId as string] : []
     const tables = ['exercises', 'workouts', 'sets', 'deletion_tombstones'] as const
