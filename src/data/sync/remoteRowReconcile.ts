@@ -10,7 +10,7 @@ export const parseIsoMillis = (value: string | null | undefined): number => {
     return Number.isFinite(parsed) ? parsed : 0
 }
 
-export const toIsoOrNow = (value?: string | null): string => value ?? new Date().toISOString()
+const toIsoOrNow = (value?: string | null): string => value ?? new Date().toISOString()
 
 export interface LocalSyncRow {
     updated_at: string | null
