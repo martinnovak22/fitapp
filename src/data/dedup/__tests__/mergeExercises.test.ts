@@ -17,7 +17,12 @@ beforeEach(async () => {
     setActivePrincipal({ mode: 'account', userId: 'user-A' })
 })
 
-const insertExercise = async (uuid: string, name: string, userId: string | null = 'user-A', createdAt = '2026-01-01T00:00:00Z') => {
+const insertExercise = async (
+    uuid: string,
+    name: string,
+    userId: string | null = 'user-A',
+    createdAt = '2026-01-01T00:00:00Z'
+) => {
     const result = await db.runAsync(
         `INSERT INTO exercises (uuid, user_id, name, type, position, sync_status, created_at, updated_at)
          VALUES (?, ?, ?, 'weight', 0, 'synced', ?, ?)`,
@@ -145,7 +150,9 @@ describe('mergeDuplicateExercises', () => {
         expect(result.exercisesDeleted).toBe(0)
         // The foreign exercise and its Set are untouched.
         expect((await setRow('s-foreign'))?.exercise_id).toBe(foreignDup)
-        const foreignStill = await db.getFirstAsync<{ id: number }>(`SELECT id FROM exercises WHERE uuid = 'ex-foreign'`)
+        const foreignStill = await db.getFirstAsync<{ id: number }>(
+            `SELECT id FROM exercises WHERE uuid = 'ex-foreign'`
+        )
         expect(foreignStill?.id).toBe(foreignDup)
         const tombCount = await db.getFirstAsync<{ c: number }>(`SELECT COUNT(*) c FROM deletion_tombstones`)
         expect(tombCount?.c).toBe(0)
