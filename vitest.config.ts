@@ -7,6 +7,10 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname),
+            // @sentry/react-native transitively imports react-native's Flow-typed
+            // entry, which rolldown can't parse in the node env. Swap in a no-op
+            // stub so logger-importing tests load. See src/test/sentry-stub.ts.
+            '@sentry/react-native': path.resolve(__dirname, 'src/test/sentry-stub.ts'),
         },
     },
     test: {
