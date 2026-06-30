@@ -2,6 +2,12 @@
 
 Status: **draft / not started**. Intended to be picked up in a fresh context. Read `CONTEXT.md` and `docs/adr/0001`–`0004` first.
 
+## Progress
+
+- ✅ Domain language fixed (`CONTEXT.md`) and the data/sync decisions recorded (ADR-0002 migration policy, ADR-0003 local-first, ADR-0004 outbox give-up).
+- ✅ `'blocked'` added to the `SyncStatus` type (#61) — that folded-in cleanup is **done**; treat it as complete below.
+- ⬜ Everything else in this plan is still to do.
+
 ## Problem
 
 Guest→Account migration is purely additive and keyed by `uuid` (see [ADR-0002](../adr/0002-guest-to-account-data-migration.md)). When a Guest who has built up data signs into an Account that **already holds data**, overlapping records are duplicated — most visibly the Exercise catalog ("Bench Press" ×2), but the same shape applies to the whole data layer. The original task scoped this to Exercises only; the decision now is to treat it as **one coherent data-layer merge problem** across Exercises, Workouts, and Sets, rather than a per-entity patch.
@@ -46,7 +52,7 @@ These live in the same auth/data layer and are cheaper to do alongside this work
 
 - **Remove the dormant `local` Principal mode** — `isRemoteDataMode()` / `EXPO_PUBLIC_DATA_MODE=local` threads through ~8 files + 3 tests (`useAuth.tsx`, `principal.ts`, `SyncProvider.tsx`, `syncService.ts`, `authInitialization.ts`, `LoginModeSwitch.tsx`, `settings/index.tsx`). With remote always on, every `if (!isRemoteMode)` branch is dead and can be collapsed; drop `'local'` from `PrincipalMode`. Confirmed unused by the owner.
 - **Retire the legacy `local` row `sync_status`** — pre-backfill initial state; verify no live writes still produce it before removing.
-- **Add `'blocked'` to the `SyncStatus` type** (`src/db/sync.ts`) — live persisted state missing from the union (may already be handled in a separate worktree).
+- ~~Add `'blocked'` to the `SyncStatus` type~~ — **done in #61**; `src/db/sync.ts` now includes `'blocked'`.
 
 ## Testing & rollout
 
