@@ -17,7 +17,7 @@ const { makePushFn, preloadSetParents } = await import('../PushPipeline')
 let db: TestDb
 let adapter: FakeSupabaseAdapter
 const userId = 'user-1'
-const snapshot = () => capturePrincipalSnapshot({ userId, remote: true })
+const snapshot = () => capturePrincipalSnapshot({ userId })
 const noopPhotos = { upload: async () => null, cleanup: async () => {} }
 
 beforeEach(async () => {
@@ -83,7 +83,7 @@ describe('PushPipeline end-to-end via fake adapter', () => {
             outbox,
             snapshot(),
             makePushFn(snapshot(), writer, resolver, noopPhotos),
-            () => ({ userId, remote: true }),
+            () => ({ userId }),
             (batch) => preloadSetParents(resolver, batch)
         )
 
@@ -124,7 +124,7 @@ describe('PushPipeline end-to-end via fake adapter', () => {
             outbox,
             snapshot(),
             makePushFn(snapshot(), writer, resolver, photos),
-            () => ({ userId, remote: true }),
+            () => ({ userId }),
             (batch) => preloadSetParents(resolver, batch)
         )
 
@@ -155,7 +155,7 @@ describe('PushPipeline end-to-end via fake adapter', () => {
             outbox,
             snapshot(),
             makePushFn(snapshot(), writer, resolver, photos),
-            () => ({ userId, remote: true }),
+            () => ({ userId }),
             (batch) => preloadSetParents(resolver, batch)
         )
 
@@ -177,7 +177,7 @@ describe('PushPipeline end-to-end via fake adapter', () => {
             outbox,
             snapshot(),
             makePushFn(snapshot(), writer, resolver, noopPhotos),
-            () => ({ userId, remote: true }),
+            () => ({ userId }),
             (batch) => preloadSetParents(resolver, batch)
         )
 

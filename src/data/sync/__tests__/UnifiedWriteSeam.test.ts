@@ -32,7 +32,7 @@ describe('unified write seam: concurrent user-write + sync-ack', () => {
         )
 
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snapshot = capturePrincipalSnapshot({ userId, remote: true })
+        const snapshot = capturePrincipalSnapshot({ userId })
         const batch = await outbox.nextBatch(snapshot)
         expect(batch).toHaveLength(1)
 
@@ -73,7 +73,7 @@ describe('unified write seam: concurrent user-write + sync-ack', () => {
         )
 
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snapshot = capturePrincipalSnapshot({ userId, remote: true })
+        const snapshot = capturePrincipalSnapshot({ userId })
         const batch = await outbox.nextBatch(snapshot)
 
         const ack = outbox.ack(batch)

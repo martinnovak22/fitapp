@@ -80,7 +80,7 @@ describe('Outbox.nextBatch', () => {
         )
 
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const snap = capturePrincipalSnapshot({ userId })
         const batch = await outbox.nextBatch(snap)
 
         const kinds = batch.map((r) => (r.kind === 'entity' ? r.entityType : `tombstone:${r.entityType}`))
@@ -97,7 +97,7 @@ describe('Outbox.nextBatch', () => {
         )
 
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const guestSnap = capturePrincipalSnapshot({ userId: null, remote: true })
+        const guestSnap = capturePrincipalSnapshot({ userId: null })
         const batch = await outbox.nextBatch(guestSnap)
         expect(batch.map((r) => r.uuid)).toEqual(['ex-guest'])
     })
@@ -112,7 +112,7 @@ describe('Outbox.nextBatch', () => {
             '2026-01-01T00:00:00Z'
         )
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const snap = capturePrincipalSnapshot({ userId })
         const batch = await outbox.nextBatch(snap)
         expect(batch.map((r) => r.uuid)).toEqual(['ex-dirty'])
     })
@@ -122,7 +122,7 @@ describe('Outbox.ack', () => {
     it('marks rows synced when updated_at has not changed since the batch was drawn', async () => {
         await insertExercise('ex-1', 'Bench', '2026-01-01T00:00:00Z')
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const snap = capturePrincipalSnapshot({ userId })
         const batch = await outbox.nextBatch(snap)
 
         await outbox.ack(batch)
@@ -135,7 +135,7 @@ describe('Outbox.ack', () => {
     it('does NOT mark synced if the row was re-dirtied (updated_at advanced) since the batch', async () => {
         await insertExercise('ex-1', 'Bench', '2026-01-01T00:00:00Z')
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const snap = capturePrincipalSnapshot({ userId })
         const batch = await outbox.nextBatch(snap)
 
         // Simulate a concurrent re-dirty: the row was edited again mid-cycle.
@@ -156,7 +156,7 @@ describe('Outbox.fail', () => {
     it('marks rows failed and exposes a structured reason to the caller', async () => {
         await insertExercise('ex-1', 'Bench')
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const snap = capturePrincipalSnapshot({ userId })
         const batch = await outbox.nextBatch(snap)
 
         const reason = { kind: 'network-error', message: 'timed out' } as const
@@ -182,7 +182,7 @@ describe('Outbox.fail', () => {
     it('parks a row as blocked immediately on a permanent rejection', async () => {
         await insertExercise('ex-1', 'Bench')
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const snap = capturePrincipalSnapshot({ userId })
         const batch = await outbox.nextBatch(snap)
 
         const dispositions = await outbox.fail(batch, {
@@ -198,7 +198,7 @@ describe('Outbox.fail', () => {
     it('retries a transient failure until MAX_SYNC_ATTEMPTS, then blocks it', async () => {
         await insertExercise('ex-1', 'Bench')
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const snap = capturePrincipalSnapshot({ userId })
         const reason = { kind: 'network-error', message: 'timed out' } as const
 
         for (let i = 1; i < MAX_SYNC_ATTEMPTS; i++) {
@@ -221,7 +221,7 @@ describe('Outbox.fail', () => {
     it('resets the attempt counter when a previously failed row finally acks', async () => {
         await insertExercise('ex-1', 'Bench')
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const snap = capturePrincipalSnapshot({ userId })
 
         await outbox.fail(await outbox.nextBatch(snap), { kind: 'network-error', message: 'blip' })
         expect(await getAttempts('ex-1')).toBe(1)

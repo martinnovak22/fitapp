@@ -38,14 +38,14 @@ describe('drainOutbox — mid-cycle principal divergence', () => {
         await insertDirtyExercise('ex-c', '2026-01-01T00:00:02Z')
 
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const snap = capturePrincipalSnapshot({ userId })
 
-        let live: { userId: string | null; remote: boolean } = { userId, remote: true }
+        let live: { userId: string | null } = { userId }
         let pushed = 0
         const push = async () => {
             pushed += 1
             // Mid-cycle: after the first row pushes, the user signs out.
-            if (pushed === 1) live = { userId: null, remote: true }
+            if (pushed === 1) live = { userId: null }
             return { kind: 'ack' as const }
         }
 
@@ -66,13 +66,13 @@ describe('drainOutbox — mid-cycle principal divergence', () => {
         await insertDirtyExercise('ex-b', '2026-01-01T00:00:01Z')
 
         const outbox = createOutbox(db as never, executeWriteTransaction)
-        const snap = capturePrincipalSnapshot({ userId, remote: true })
+        const snap = capturePrincipalSnapshot({ userId })
 
         const result = await drainOutbox(
             outbox,
             snap,
             async () => ({ kind: 'ack' as const }),
-            () => ({ userId, remote: true })
+            () => ({ userId })
         )
 
         expect(result.aborted).toBe(false)

@@ -750,7 +750,7 @@ const pullSets = async (userId: string): Promise<number> => {
 
 const livePrincipalFromSession = (): LivePrincipal => {
     const session = getSupabaseSession()
-    return { userId: session?.userId ?? null, remote: true }
+    return { userId: session?.userId ?? null }
 }
 
 export const runSync = async (): Promise<SyncCycleResult> => {
