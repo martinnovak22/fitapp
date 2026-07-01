@@ -1,7 +1,7 @@
 import { useFocusEffect, useNavigation } from 'expo-router'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native'
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
 import { useWorkoutRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
@@ -10,14 +10,14 @@ import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
-import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { shouldShowSkeleton } from '@/src/modules/core/utils/loadingGate'
 import { log } from '@/src/modules/core/utils/logger'
+import { HistoryListSkeleton } from './components/HistoryListSkeleton'
 import { WorkoutHistoryCard } from './components/WorkoutHistoryCard'
 
 export default function HistoryScreen() {
     const workoutRepo = useWorkoutRepo()
     const { t } = useTranslation()
-    const { theme } = useTheme()
     const navigation = useNavigation()
     const [workouts, setWorkouts] = useState<Workout[]>([])
     const [initialLoading, setInitialLoading] = useState(true)
@@ -82,12 +82,16 @@ export default function HistoryScreen() {
         return <WorkoutHistoryCard item={item} index={index} canAnimate={canAnimate} />
     }
 
+    // isHydrating and hasLoadedOnce are hardcoded placeholders: History only
+    // tracks a single one-way initialLoading flag today, so this reduces to
+    // initialLoading for now, but documents the shape #78 will wire real
+    // hydration/latch state into once it extracts a dedicated hook.
+    const showSkeleton = shouldShowSkeleton({ isHydrating: false, isLoading: initialLoading, hasLoadedOnce: false })
+
     return (
         <ScreenLayout>
-            {initialLoading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size={'large'} color={theme.primary} />
-                </View>
+            {showSkeleton ? (
+                <HistoryListSkeleton />
             ) : loadError && workouts.length === 0 ? (
                 <View style={styles.loadingContainer}>
                     <EmptyState message={loadError} icon={'exclamation-circle'} />
