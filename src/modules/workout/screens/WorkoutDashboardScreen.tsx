@@ -92,7 +92,13 @@ export default function WorkoutDashboardScreen() {
     const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null)
     const [allWorkouts, setAllWorkouts] = useState<Workout[]>([])
     const [refreshing, setRefreshing] = useState(false)
-    const [isLoading, setIsLoading] = useState(true)
+    // Tracks whether at least one full load has committed. The skeleton is only
+    // shown before this flag flips — subsequent focus re-fetches keep the
+    // existing content visible while the new data arrives in the background.
+    // Without this flag, an empty guest list satisfies the old
+    // `isLoading && allWorkouts.length === 0` guard on every focus, flashing
+    // the skeleton over the empty-state content on every tab switch.
+    const [hasLoaded, setHasLoaded] = useState(false)
     const [isStartingWorkout, setIsStartingWorkout] = useState(false)
     const [loadError, setLoadError] = useState<string | null>(null)
     const [weekDays, setWeekDays] = useState<WeekDay[]>([])
@@ -117,7 +123,6 @@ export default function WorkoutDashboardScreen() {
         const isStale = beginLoad()
 
         setLoadError(null)
-        setIsLoading(true)
         try {
             const active = await workoutRepo.getActiveWorkout()
             const all = await workoutRepo.getAllWorkouts()
@@ -209,7 +214,7 @@ export default function WorkoutDashboardScreen() {
             log('error', 'Failed to load workout dashboard', error)
             setLoadError(t('failedToLoadWorkouts'))
         } finally {
-            if (!isStale()) setIsLoading(false)
+            if (!isStale()) setHasLoaded(true)
         }
     }, [beginLoad, i18n.language, t, workoutRepo, exerciseRepo])
 
@@ -260,7 +265,10 @@ export default function WorkoutDashboardScreen() {
     // While the post-login hydration pull is running, even a non-empty read is
     // partial (workouts land before their sets, so e.g. the muscle balance
     // would render empty) — hold the skeleton until the cycle settles.
-    if (isHydrating || (isLoading && allWorkouts.length === 0)) {
+    // On re-focus the existing content stays visible while the refresh runs
+    // in the background; only the very first cold load (hasLoaded=false)
+    // or an active hydration cycle shows the skeleton.
+    if (isHydrating || !hasLoaded) {
         return (
             <ScrollScreenLayout>
                 <WorkoutDashboardSkeleton />

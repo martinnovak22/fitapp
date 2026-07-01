@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getCachedExercises } from '@/src/data/exercisesCache'
 import { useExerciseRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Exercise } from '@/src/db/exercises'
@@ -10,9 +11,14 @@ import { log } from '@/src/modules/core/utils/logger'
 export function useExercises() {
     const exerciseRepo = useExerciseRepo()
     const { t } = useTranslation()
-    const [exercises, setExercises] = useState<Exercise[]>([])
+    // Seed from the in-memory cache so that on any mount where data is already
+    // available (including an empty guest list) we skip the skeleton entirely.
+    // The cache is principal-keyed, so a guest→account transition is a miss and
+    // hasLoaded correctly starts false for the new principal.
+    const cached = getCachedExercises()
+    const [exercises, setExercises] = useState<Exercise[]>(cached ?? [])
     const [isReordering, setIsReordering] = useState(false)
-    const [hasLoaded, setHasLoaded] = useState(false)
+    const [hasLoaded, setHasLoaded] = useState(cached !== null)
     const [loadError, setLoadError] = useState<string | null>(null)
 
     const beginLoad = useStaleGuard()

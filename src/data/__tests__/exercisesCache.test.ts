@@ -38,6 +38,19 @@ beforeEach(async () => {
 })
 
 describe('exercisesCache', () => {
+    // getCachedExercises is the synchronous read that useExercises uses to seed
+    // its initial state on mount. If it returns a non-null value (even an empty
+    // array) the screen skips the skeleton — a guest with zero exercises must
+    // not trigger a skeleton flash on every tab switch.
+    it('returns an empty array (not null) after a load with no rows', async () => {
+        // guest principal — no rows exist in the DB
+        setActivePrincipal({ mode: 'guest', userId: null })
+        await loadExercisesCached()
+        const hit = getCachedExercises()
+        expect(hit).not.toBeNull()
+        expect(hit).toEqual([])
+    })
+
     it('serves the second read from cache without re-running getAll', async () => {
         await seedExercise('Bench')
         const spy = vi.spyOn(ExerciseRepository, 'getAll')
