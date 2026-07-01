@@ -19,7 +19,7 @@ export const EmailField = forwardRef<TextInput, EmailFieldProps>(function EmailF
 
     return (
         <>
-            <Typography.Label>{t('email')}</Typography.Label>
+            <Typography.Label style={styles.label}>{t('email')}</Typography.Label>
             <TextInput
                 ref={ref}
                 value={value}
@@ -46,12 +46,15 @@ export const EmailField = forwardRef<TextInput, EmailFieldProps>(function EmailF
 })
 
 const styles = StyleSheet.create({
+    label: {
+        marginBottom: Spacing.xs,
+    },
     input: {
         borderWidth: 1,
         borderRadius: Radius.sm,
         minHeight: 48,
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,
-        marginBottom: Spacing.sm,
+        marginBottom: Spacing.md,
     },
 })

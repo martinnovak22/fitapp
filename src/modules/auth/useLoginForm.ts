@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { MigrationPolicy } from '@/src/data/principal/PrincipalTransition'
 import {
     EMAIL_CONFIRMATION_REQUIRED_CODE,
     getSupabaseOAuthAuthorizeUrl,
@@ -48,7 +49,7 @@ export type UseLoginForm = {
 // screen renders over this; rule decisions live in the pure loginFormLogic unit.
 export const useLoginForm = (): UseLoginForm => {
     const { t } = useTranslation()
-    const { authMode, isAuthenticated, continueAsGuest, signIn, signInWithOAuthRedirectUrl, signUp } = useAuth()
+    const { authMode, continueAsGuest, signIn, signInWithOAuthRedirectUrl, signUp } = useAuth()
     const { mode: modeParam } = useLocalSearchParams<{ mode?: string | string[] }>()
 
     const [mode, setMode] = useState<AuthMode>('signin')
@@ -66,11 +67,9 @@ export const useLoginForm = (): UseLoginForm => {
 
     const isSignUp = mode === 'signup'
 
-    useEffect(() => {
-        if (isAuthenticated && authMode === 'account') {
-            router.replace('/landing')
-        }
-    }, [authMode, isAuthenticated])
+    // Post-auth navigation is owned by landAfterAuth (called from submit and the
+    // OAuth completion), which routes to /merge-review or /landing. No effect
+    // redirects on auth state here, so it can't race that decision.
 
     useEffect(() => {
         const requestedMode = Array.isArray(modeParam) ? modeParam[0] : modeParam
@@ -79,6 +78,10 @@ export const useLoginForm = (): UseLoginForm => {
     }, [modeParam])
 
     useEffect(() => {
+        // Guard against a stale run winning: switching to sign-up re-fires this
+        // while a prior sign-in run's hasLocalUserData() is still pending, and
+        // without this the older result could overwrite the sign-up default.
+        let active = true
         const refreshGuestDataState = async () => {
             if (authMode !== 'guest') {
                 setGuestDataExists(false)
@@ -88,9 +91,11 @@ export const useLoginForm = (): UseLoginForm => {
 
             try {
                 const hasData = await hasLocalUserData()
+                if (!active) return
                 setGuestDataExists(hasData)
                 setMergeGuestDataOnSignIn(hasData && isSignUp)
             } catch (error) {
+                if (!active) return
                 log('error', 'Failed to detect local guest data', error)
                 setGuestDataExists(false)
                 setMergeGuestDataOnSignIn(false)
@@ -98,12 +103,23 @@ export const useLoginForm = (): UseLoginForm => {
         }
 
         void refreshGuestDataState()
+        return () => {
+            active = false
+        }
     }, [authMode, isSignUp])
 
     const canSubmit = useMemo(
         () => canSubmitLoginForm({ email, password, confirmPassword, isSignUp }),
         [confirmPassword, email, isSignUp, password]
     )
+
+    // A preserve merge re-owns the guest's rows, but the account's remote rows
+    // aren't local yet, so duplicates can't be detected here. Route to the
+    // merge-review step (ADR-0005), which pulls, detects, and either shows the
+    // review or lands. Every other case lands directly.
+    const landAfterAuth = useCallback((migrationPolicy: MigrationPolicy) => {
+        router.replace(migrationPolicy === 'preserve' ? '/merge-review' : '/landing')
+    }, [])
 
     const showEmailConfirmationToast = (value: string) => {
         showToast.info({
@@ -125,7 +141,7 @@ export const useLoginForm = (): UseLoginForm => {
                     migrationPolicy: mergeGuestDataOnSignIn ? 'preserve' : 'clear',
                 })
                 if (!applied) return false
-                router.replace('/landing')
+                await landAfterAuth(mergeGuestDataOnSignIn ? 'preserve' : 'clear')
                 return true
             } catch (error) {
                 const message = error instanceof Error ? mapAuthErrorToMessage(error.message, t) : t('authUnknownError')
@@ -135,7 +151,7 @@ export const useLoginForm = (): UseLoginForm => {
                 setIsGoogleSubmitting(false)
             }
         },
-        [mergeGuestDataOnSignIn, signInWithOAuthRedirectUrl, t]
+        [landAfterAuth, mergeGuestDataOnSignIn, signInWithOAuthRedirectUrl, t]
     )
 
     useEffect(() => {
@@ -188,15 +204,13 @@ export const useLoginForm = (): UseLoginForm => {
         setIsSubmitting(true)
         setErrorMessage(null)
         try {
+            const migrationPolicy: MigrationPolicy = mergeGuestDataOnSignIn ? 'preserve' : 'clear'
             if (isSignUp) {
-                await signUp(normalizedEmail, password)
-                router.replace('/landing')
+                await signUp(normalizedEmail, password, { migrationPolicy })
             } else {
-                await signIn(normalizedEmail, password, {
-                    migrationPolicy: mergeGuestDataOnSignIn ? 'preserve' : 'clear',
-                })
-                router.replace('/landing')
+                await signIn(normalizedEmail, password, { migrationPolicy })
             }
+            await landAfterAuth(migrationPolicy)
         } catch (error) {
             if (error instanceof SupabaseAuthError && error.code === EMAIL_CONFIRMATION_REQUIRED_CODE) {
                 showEmailConfirmationToast(normalizedEmail)

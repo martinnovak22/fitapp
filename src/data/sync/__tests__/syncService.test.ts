@@ -20,10 +20,6 @@ vi.mock('@/src/data/remote/supabase/session', () => ({
     refreshSupabaseAccessToken: () => refreshMock(),
 }))
 
-vi.mock('@/src/modules/auth/authMode', () => ({
-    isRemoteDataMode: () => true,
-}))
-
 // The photo IO half lives on expo-file-system, which the node test
 // environment cannot load; these tests cover the row pipeline only.
 vi.mock('../photoStorage', () => ({
@@ -379,6 +375,43 @@ describe('runSync — pull reconciliation upserts remote rows into local', () =>
             's-a'
         )
         expect(set).toMatchObject({ weight: 100, reps: 5, rpe: 8, sync_status: 'synced' })
+    })
+
+    it('does not re-insert a remote exercise that has a pending local deletion tombstone', async () => {
+        // A merged-away duplicate: deleted locally with a tombstone that has not
+        // pushed yet (here the push fails), so the server still returns it.
+        await db.runAsync(
+            `INSERT INTO deletion_tombstones (entity_type, entity_uuid, user_id, deleted_at, sync_status)
+             VALUES ('exercise', 'ex-dup', ?, '2026-02-02T00:00:00Z', 'dirty')`,
+            userId
+        )
+        mockFetch((call) => {
+            if (call.method !== 'GET') return { ok: false, status: 500 }
+            if (isExercisesUpsertPull(call)) {
+                return {
+                    body: [
+                        {
+                            uuid: 'ex-dup',
+                            user_id: userId,
+                            name: 'Bench',
+                            type: 'weight',
+                            muscle_group: 'chest',
+                            photo_key: null,
+                            position: 0,
+                            created_at: '2026-02-01T00:00:00Z',
+                            updated_at: '2026-02-01T00:00:00Z',
+                            deleted_at: null,
+                        },
+                    ],
+                }
+            }
+            return { body: [] }
+        })
+
+        await runSync()
+
+        const row = await db.getFirstAsync<{ uuid: string }>('SELECT uuid FROM exercises WHERE uuid = ?', 'ex-dup')
+        expect(row).toBeNull()
     })
 
     it('keeps a dirty local row that is newer than the incoming remote row (last-writer-wins)', async () => {

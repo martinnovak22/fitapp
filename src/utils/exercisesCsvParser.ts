@@ -3,7 +3,7 @@ import type { ExerciseType } from '@/src/db/exercises'
 const VALID_TYPES: ExerciseType[] = ['weight', 'cardio', 'bodyweight', 'bodyweight_timer']
 const VALID_TYPE_SET = new Set<ExerciseType>(VALID_TYPES)
 
-export const normalize = (value?: string | null) => value?.trim().toLowerCase() ?? ''
+const normalize = (value?: string | null) => value?.trim().toLowerCase() ?? ''
 
 /**
  * Case/whitespace-insensitive identity for an exercise. Shared with the

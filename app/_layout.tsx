@@ -113,6 +113,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="landing" options={{ headerShown: false, animation: 'fade' }} />
                 <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
+                <Stack.Screen name="merge-review" options={{ headerShown: false, animation: 'fade' }} />
                 <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
             </Stack>
             <Toast config={toastConfig} />
