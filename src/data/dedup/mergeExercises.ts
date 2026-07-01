@@ -1,4 +1,6 @@
+import { invalidateExercisesCache } from '@/src/data/exercisesCache'
 import { buildPrincipalWhereClause } from '@/src/data/principal'
+import { buildPhotoKey } from '@/src/data/sync/photoSync'
 import { getDb } from '@/src/db/client'
 import { ExerciseRepository } from '@/src/db/exercises'
 import { nowIso, recordDeletionTombstone } from '@/src/db/sync'
@@ -45,10 +47,20 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
     const duplicateIds = input.duplicateIds.filter((id) => id !== input.survivorId)
     if (duplicateIds.length === 0) return { setsRepointed: 0, exercisesDeleted: 0 }
 
-    return executeWriteTransaction(async (db) => {
+    const result = await executeWriteTransaction(async (db) => {
         const now = nowIso()
         const placeholders = duplicateIds.map(() => '?').join(', ')
         const scope = buildPrincipalWhereClause('user_id')
+
+        const survivor = await db.getFirstAsync<{
+            uuid: string
+            photo_uri: string | null
+            muscle_group: string | null
+        }>(
+            `SELECT uuid, photo_uri, muscle_group FROM exercises WHERE id = ? AND ${scope.clause}`,
+            input.survivorId,
+            ...scope.params
+        )
 
         const repoint = await db.runAsync(
             `UPDATE sets SET exercise_id = ?, updated_at = ?, sync_status = 'dirty'
@@ -59,14 +71,26 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
             ...scope.params
         )
 
+        // Back-fill fields the survivor is missing from the losers, so keeping
+        // one row never silently drops a photo or muscle group the other had.
+        let fillPhotoUri = survivor?.photo_uri ?? null
+        let fillMuscleGroup = survivor?.muscle_group ?? null
+
         let exercisesDeleted = 0
         for (const duplicateId of duplicateIds) {
-            const row = await db.getFirstAsync<{ uuid: string; user_id: string | null }>(
-                `SELECT uuid, user_id FROM exercises WHERE id = ? AND ${scope.clause}`,
+            const row = await db.getFirstAsync<{
+                uuid: string
+                user_id: string | null
+                photo_uri: string | null
+                muscle_group: string | null
+            }>(
+                `SELECT uuid, user_id, photo_uri, muscle_group FROM exercises WHERE id = ? AND ${scope.clause}`,
                 duplicateId,
                 ...scope.params
             )
             if (!row?.uuid) continue
+            if (!fillPhotoUri && row.photo_uri) fillPhotoUri = row.photo_uri
+            if (!fillMuscleGroup && row.muscle_group) fillMuscleGroup = row.muscle_group
             await recordDeletionTombstone(db, 'exercise', row.uuid, row.user_id)
             const deleted = await db.runAsync(
                 `DELETE FROM exercises WHERE id = ? AND ${scope.clause}`,
@@ -76,6 +100,30 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
             exercisesDeleted += deleted.changes
         }
 
+        const gainsPhoto = !survivor?.photo_uri && !!fillPhotoUri
+        const gainsMuscle = !survivor?.muscle_group && !!fillMuscleGroup
+        if (survivor && (gainsPhoto || gainsMuscle)) {
+            await db.runAsync(
+                `UPDATE exercises
+                 SET photo_uri = ?, photo_key = ?, muscle_group = ?, updated_at = ?, sync_status = 'dirty'
+                 WHERE id = ? AND ${scope.clause}`,
+                fillPhotoUri,
+                buildPhotoKey(survivor.uuid, fillPhotoUri),
+                fillMuscleGroup,
+                now,
+                input.survivorId,
+                ...scope.params
+            )
+        }
+
         return { setsRepointed: repoint.changes, exercisesDeleted }
     })
+
+    // The raw merge bypasses the cached repository, so the exercises list cache
+    // must be invalidated explicitly or the deleted duplicate lingers in the UI
+    // until the next principal change or sync pull.
+    if (result.exercisesDeleted > 0 || result.setsRepointed > 0) {
+        invalidateExercisesCache()
+    }
+    return result
 }

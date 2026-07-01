@@ -79,8 +79,8 @@ The single Exercise kept when a Duplicate Group is merged; the others are soft-d
 _Avoid_: winner, primary, canonical exercise
 
 **Exercise De-duplication**:
-The standalone, user-initiated, re-runnable maintenance action that finds Duplicate Groups and merges each confirmed group onto a Survivor. Decoupled from the Principal Transition — it never runs automatically.
-_Avoid_: merge (that names the Migration Policy), dedupe-on-sign-in
+The review step in the guest→account sign-in flow that, after the Principal Transition commits, finds Duplicate Groups and merges each confirmed group onto a Survivor. Runs after (not inside) the atomic transition, only when duplicates exist, and is skippable.
+_Avoid_: merge (that names the Migration Policy), maintenance action (it is not standalone or re-runnable)
 
 **Sync Status**:
 The per-row lifecycle state of an Exercise/Workout/Set/Tombstone: `dirty` (local change awaiting push) → `synced` (acknowledged by remote); on failure `failed` (retryable, capped at 5 attempts) → `blocked` (terminal, given up on). `local` is a legacy initial state (pre sync-metadata backfill) and a retirement candidate.

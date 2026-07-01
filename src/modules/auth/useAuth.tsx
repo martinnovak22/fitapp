@@ -36,7 +36,7 @@ type AuthContextValue = {
     authMode: 'guest' | 'account'
     userEmail: string | null
     signIn: (email: string, password: string, options?: { migrationPolicy?: MigrationPolicy }) => Promise<void>
-    signUp: (email: string, password: string) => Promise<void>
+    signUp: (email: string, password: string, options?: { migrationPolicy?: MigrationPolicy }) => Promise<void>
     signInWithOAuthRedirectUrl: (url: string, options?: { migrationPolicy?: MigrationPolicy }) => Promise<boolean>
     continueAsGuest: () => Promise<void>
     signOut: () => Promise<void>
@@ -268,9 +268,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     )
 
     const signUp = useCallback(
-        async (email: string, password: string) => {
+        async (email: string, password: string, options?: { migrationPolicy?: MigrationPolicy }) => {
             const nextSession = await signUpWithEmailPassword(email.trim(), password)
-            await transitionTo({ kind: 'account', userId: nextSession.userId }, 'preserve')
+            await transitionTo({ kind: 'account', userId: nextSession.userId }, options?.migrationPolicy ?? 'preserve')
             await adoptAccountSession(nextSession)
         },
         [adoptAccountSession, transitionTo]

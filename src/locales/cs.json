@@ -251,5 +251,14 @@
     "onboardingSyncDesc": "Přihlaste se pro synchronizaci dat napříč zařízeními. Vaše tréninky jsou vždy zálohovány.",
     "onboardingSkip": "Přeskočit",
     "onboardingNext": "Další",
-    "onboardingGetStarted": "Začít"
+    "onboardingGetStarted": "Začít",
+    "dedupTitle": "Sloučit duplicitní cviky",
+    "dedupDescription": "Sloučení dat hosta vytvořilo cviky, které vypadají jako duplicity. V každé skupině vyberte ten, který si ponecháte — jeho série se přesunou na něj a ostatní se odstraní.",
+    "dedupKeepLabel": "Ponechat tento",
+    "dedupMerge": "Sloučit",
+    "dedupSkip": "Přeskočit",
+    "dedupSetsCount": "{{count}} sérií",
+    "dedupChecking": "Kontrola duplicit…",
+    "dedupFinishing": "Ukládání změn…",
+    "signingIn": "Přihlašování…"
 }

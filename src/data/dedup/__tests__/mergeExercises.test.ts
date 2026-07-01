@@ -5,6 +5,11 @@ vi.mock('@/src/db/client', () => ({
     getDb: async () => getTestDb(),
 }))
 
+const invalidateExercisesCache = vi.fn()
+vi.mock('@/src/data/exercisesCache', () => ({
+    invalidateExercisesCache: () => invalidateExercisesCache(),
+}))
+
 const { getExerciseSetCounts, mergeDuplicateExercises, findDuplicateExercises } = await import('../mergeExercises')
 const { setActivePrincipal } = await import('@/src/data/principal')
 
@@ -15,6 +20,7 @@ beforeEach(async () => {
     db = await createTestDb()
     useTestDb(db)
     setActivePrincipal({ mode: 'account', userId: 'user-A' })
+    invalidateExercisesCache.mockClear()
 })
 
 const insertExercise = async (
@@ -136,6 +142,60 @@ describe('mergeDuplicateExercises', () => {
 
         expect(result).toEqual({ setsRepointed: 0, exercisesDeleted: 0 })
         expect((await setRow('s-1'))?.sync_status).toBe('synced')
+        expect(invalidateExercisesCache).not.toHaveBeenCalled()
+    })
+
+    it('invalidates the exercises cache so the merged-away duplicate leaves the UI', async () => {
+        const survivor = await insertExercise('ex-survivor', 'Bench Press')
+        const duplicate = await insertExercise('ex-dup', 'Bench Press')
+
+        await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [duplicate] })
+
+        expect(invalidateExercisesCache).toHaveBeenCalled()
+    })
+
+    it('back-fills a photo and muscle group the survivor lacks from a loser', async () => {
+        const survivor = await insertExercise('ex-survivor', 'Bench Press')
+        const duplicate = await insertExercise('ex-dup', 'Bench Press')
+        await db.runAsync(
+            `UPDATE exercises SET photo_uri = 'file:///dup.jpg', muscle_group = 'chest' WHERE id = ?`,
+            duplicate
+        )
+
+        await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [duplicate] })
+
+        const kept = await db.getFirstAsync<{
+            photo_uri: string | null
+            photo_key: string | null
+            muscle_group: string | null
+            sync_status: string
+        }>(`SELECT photo_uri, photo_key, muscle_group, sync_status FROM exercises WHERE id = ?`, survivor)
+        expect(kept?.photo_uri).toBe('file:///dup.jpg')
+        expect(kept?.photo_key).toBe('ex-survivor-dup.jpg')
+        expect(kept?.muscle_group).toBe('chest')
+        expect(kept?.sync_status).toBe('dirty')
+    })
+
+    it('keeps the survivor’s own photo and muscle group when it already has them', async () => {
+        const survivor = await insertExercise('ex-survivor', 'Bench Press')
+        const duplicate = await insertExercise('ex-dup', 'Bench Press')
+        await db.runAsync(
+            `UPDATE exercises SET photo_uri = 'file:///keep.jpg', muscle_group = 'chest' WHERE id = ?`,
+            survivor
+        )
+        await db.runAsync(
+            `UPDATE exercises SET photo_uri = 'file:///dup.jpg', muscle_group = 'back' WHERE id = ?`,
+            duplicate
+        )
+
+        await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [duplicate] })
+
+        const kept = await db.getFirstAsync<{ photo_uri: string | null; muscle_group: string | null }>(
+            `SELECT photo_uri, muscle_group FROM exercises WHERE id = ?`,
+            survivor
+        )
+        expect(kept?.photo_uri).toBe('file:///keep.jpg')
+        expect(kept?.muscle_group).toBe('chest')
     })
 
     it('never touches another principal’s rows, even if their ids are passed in', async () => {
