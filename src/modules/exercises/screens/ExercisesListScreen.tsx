@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
 import type { TFunction } from 'i18next'
-import React, { useCallback, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     ActivityIndicator,
@@ -135,6 +135,13 @@ export default function ExercisesListScreen() {
     const { exercises, hasLoaded, loadError, loadExercises, handleReorder, isReordering } = useExercises()
     const { theme } = useTheme()
     const animatedItemIdsRef = useRef<Set<number>>(new Set())
+    // The skeleton is the screen's entrance. Once the first list appears, don't
+    // float that initial batch in on top of it — that reads as a flash. Items
+    // that first appear later (e.g. a just-added exercise) still animate.
+    const hasRevealedRef = useRef(false)
+    useEffect(() => {
+        if (hasLoaded) hasRevealedRef.current = true
+    }, [hasLoaded])
     const [showAndroidExportSheet, setShowAndroidExportSheet] = useState(false)
     const [isImporting, setIsImporting] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
@@ -234,11 +241,14 @@ export default function ExercisesListScreen() {
     const renderItem = useCallback(
         ({ item, index }: { item: Exercise; index: number }) => {
             // Cap at the stagger ceiling so a long list doesn't fire dozens of
-            // simultaneous entrances on first load (mirrors HistoryScreen).
-            const animateOnEnter = index < 8 && !animatedItemIdsRef.current.has(item.id)
-            if (animateOnEnter) {
+            // simultaneous entrances (mirrors HistoryScreen). Mark items seen on
+            // first render but only animate once the initial reveal has passed,
+            // so the first batch doesn't float in over the skeleton (a flash).
+            const firstSeen = !animatedItemIdsRef.current.has(item.id)
+            if (firstSeen) {
                 animatedItemIdsRef.current.add(item.id)
             }
+            const animateOnEnter = hasRevealedRef.current && firstSeen && index < 8
             return <ExerciseListItem item={item} index={index} theme={theme} t={t} animateOnEnter={animateOnEnter} />
         },
         [theme, t]

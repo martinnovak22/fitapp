@@ -93,6 +93,11 @@ export default function WorkoutDashboardScreen() {
     const [allWorkouts, setAllWorkouts] = useState<Workout[]>([])
     const [refreshing, setRefreshing] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
+    // One-way latch: true after the first load settles. The skeleton is gated on
+    // this (not on isLoading, which every focus-reload flips back to true) so a
+    // revisit shows the existing dashboard while it refreshes instead of flashing
+    // the skeleton back in. Mirrors useExercises' hasLoaded.
+    const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
     const [isStartingWorkout, setIsStartingWorkout] = useState(false)
     const [loadError, setLoadError] = useState<string | null>(null)
     const [weekDays, setWeekDays] = useState<WeekDay[]>([])
@@ -209,7 +214,10 @@ export default function WorkoutDashboardScreen() {
             log('error', 'Failed to load workout dashboard', error)
             setLoadError(t('failedToLoadWorkouts'))
         } finally {
-            if (!isStale()) setIsLoading(false)
+            if (!isStale()) {
+                setIsLoading(false)
+                setHasLoadedOnce(true)
+            }
         }
     }, [beginLoad, i18n.language, t, workoutRepo, exerciseRepo])
 
@@ -260,7 +268,7 @@ export default function WorkoutDashboardScreen() {
     // While the post-login hydration pull is running, even a non-empty read is
     // partial (workouts land before their sets, so e.g. the muscle balance
     // would render empty) — hold the skeleton until the cycle settles.
-    if (isHydrating || (isLoading && allWorkouts.length === 0)) {
+    if (isHydrating || (isLoading && !hasLoadedOnce)) {
         return (
             <ScrollScreenLayout>
                 <WorkoutDashboardSkeleton />
