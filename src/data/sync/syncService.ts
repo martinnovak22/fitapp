@@ -456,6 +456,18 @@ const pullExercises = async (userId: string): Promise<number> => {
                 )
                 if (shouldSkipRemoteRow(local, row.updated_at)) continue
 
+                // Don't resurrect a row we've locally deleted but not yet pushed
+                // the tombstone for (e.g. a merged-away duplicate). Without this
+                // the live-rows pull re-inserts it before the tombstone reaches
+                // the server, so the duplicate reappears after every sync.
+                if (!local) {
+                    const pendingTombstone = await innerDb.getFirstAsync<{ one: number }>(
+                        `SELECT 1 AS one FROM deletion_tombstones WHERE entity_type = 'exercise' AND entity_uuid = ? LIMIT 1`,
+                        row.uuid
+                    )
+                    if (pendingTombstone) continue
+                }
+
                 const cols = toExerciseColumns(row, userId)
                 if (local) {
                     const photo = resolvePulledPhotoUri(local.photo_key, local.photo_uri, cols.photo_key)
