@@ -9,6 +9,7 @@ import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { useRevealOnce } from '@/src/modules/core/hooks/useRevealOnce'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { shouldShowSkeleton } from '@/src/modules/core/utils/loadingGate'
 import { log } from '@/src/modules/core/utils/logger'
@@ -24,6 +25,10 @@ export default function HistoryScreen() {
     const [loadError, setLoadError] = useState<string | null>(null)
     const [refreshing, setRefreshing] = useState(false)
     const animatedItemIdsRef = useRef<Set<number>>(new Set())
+    // The skeleton is the screen's entrance. Once the list first loads, don't
+    // float that initial batch in on top of it — that reads as a flash. Items
+    // that first appear later (e.g. a just-finished workout) still animate.
+    const hasRevealed = useRevealOnce(!initialLoading)
 
     useFocusEffect(
         useCallback(() => {
@@ -75,10 +80,11 @@ export default function HistoryScreen() {
     }
 
     const renderItem = ({ item, index }: { item: Workout; index: number }) => {
-        const canAnimate = index < 8 && !animatedItemIdsRef.current.has(item.id)
-        if (canAnimate) {
+        const firstSeen = !animatedItemIdsRef.current.has(item.id)
+        if (firstSeen) {
             animatedItemIdsRef.current.add(item.id)
         }
+        const canAnimate = hasRevealed.current && firstSeen && index < 8
         return <WorkoutHistoryCard item={item} index={index} canAnimate={canAnimate} />
     }
 
