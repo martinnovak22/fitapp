@@ -39,7 +39,7 @@ export function PasswordField({
 
     return (
         <View style={containerStyle}>
-            <Typography.Label>{label}</Typography.Label>
+            <Typography.Label style={styles.label}>{label}</Typography.Label>
             <View style={styles.passwordInputContainer}>
                 <TextInput
                     value={value}
@@ -78,13 +78,16 @@ export function PasswordField({
 }
 
 const styles = StyleSheet.create({
+    label: {
+        marginBottom: Spacing.xs,
+    },
     input: {
         borderWidth: 1,
         borderRadius: Radius.sm,
         minHeight: 48,
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,
-        marginBottom: Spacing.sm,
+        marginBottom: Spacing.md,
     },
     passwordInputContainer: {
         position: 'relative',
@@ -97,7 +100,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         right: Spacing.md,
         top: 0,
-        bottom: Spacing.sm,
+        bottom: Spacing.md,
         justifyContent: 'center',
     },
 })

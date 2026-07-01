@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+    ActivityIndicator,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
@@ -165,7 +166,7 @@ export default function LoginScreen() {
                                 <LoginFormStatus errorMessage={errorMessage} isSignUp={isSignUp} />
 
                                 <GuestMergeToggle
-                                    visible={isGuest && guestDataExists && !isSignUp}
+                                    visible={isGuest && guestDataExists}
                                     checked={mergeGuestDataOnSignIn}
                                     onToggle={toggleMergeGuestData}
                                 />
@@ -198,6 +199,13 @@ export default function LoginScreen() {
                     </ScrollView>
                 </KeyboardAvoidingView>
             </TouchableWithoutFeedback>
+
+            {(isSubmitting || isGoogleSubmitting) && (
+                <View style={[styles.busyOverlay, { backgroundColor: theme.background }]}>
+                    <ActivityIndicator color={theme.primary} />
+                    <Typography.Meta style={{ color: theme.textSecondary }}>{t('signingIn')}</Typography.Meta>
+                </View>
+            )}
         </ScreenLayout>
     )
 }
@@ -216,9 +224,7 @@ const styles = StyleSheet.create({
         maxWidth: cardMaxWidth,
         alignSelf: 'center',
     },
-    fieldGroup: {
-        gap: Spacing.sm,
-    },
+    fieldGroup: {},
     card: {
         marginBottom: 0,
     },
@@ -242,5 +248,11 @@ const styles = StyleSheet.create({
     submitButton: {
         marginTop: Spacing.sm,
         marginBottom: Spacing.md,
+    },
+    busyOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.md,
     },
 })
