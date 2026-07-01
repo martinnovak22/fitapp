@@ -3,7 +3,7 @@ import { capturePrincipalSnapshot, principalHasDiverged } from '../PrincipalSnap
 
 describe('PrincipalSnapshot', () => {
     it('captures an account snapshot with user-scoped clause and is frozen', () => {
-        const snap = capturePrincipalSnapshot({ userId: 'user-1', remote: true })
+        const snap = capturePrincipalSnapshot({ userId: 'user-1' })
         expect(snap.mode).toBe('account')
         expect(snap.userId).toBe('user-1')
         expect(snap.scopeClause).toBe('user_id = ?')
@@ -12,21 +12,17 @@ describe('PrincipalSnapshot', () => {
         expect(Object.isFrozen(snap.scopeParams)).toBe(true)
     })
 
-    it('captures a guest snapshot when not remote or no userId', () => {
-        const guest = capturePrincipalSnapshot({ userId: null, remote: true })
+    it('captures a guest snapshot when no userId', () => {
+        const guest = capturePrincipalSnapshot({ userId: null })
         expect(guest.mode).toBe('guest')
         expect(guest.scopeClause).toBe('user_id IS NULL')
         expect(guest.scopeParams).toEqual([])
-
-        const localOnly = capturePrincipalSnapshot({ userId: 'u', remote: false })
-        expect(localOnly.mode).toBe('guest')
     })
 
     it('detects divergence when mode or userId differs from live principal', () => {
-        const snap = capturePrincipalSnapshot({ userId: 'user-1', remote: true })
-        expect(principalHasDiverged(snap, { userId: 'user-1', remote: true })).toBe(false)
-        expect(principalHasDiverged(snap, { userId: 'user-2', remote: true })).toBe(true)
-        expect(principalHasDiverged(snap, { userId: null, remote: true })).toBe(true)
-        expect(principalHasDiverged(snap, { userId: 'user-1', remote: false })).toBe(true)
+        const snap = capturePrincipalSnapshot({ userId: 'user-1' })
+        expect(principalHasDiverged(snap, { userId: 'user-1' })).toBe(false)
+        expect(principalHasDiverged(snap, { userId: 'user-2' })).toBe(true)
+        expect(principalHasDiverged(snap, { userId: null })).toBe(true)
     })
 })
