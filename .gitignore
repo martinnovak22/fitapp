@@ -57,3 +57,6 @@ imports/
 
 .vscode/
 .claude/scheduled_tasks.lock
+
+# db backups (contain production data, never commit)
+/backups/
