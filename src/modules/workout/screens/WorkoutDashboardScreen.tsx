@@ -15,6 +15,7 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { Appear, ListItemAppear } from '@/src/modules/core/components/motion'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
+import { useMinimumSkeleton } from '@/src/modules/core/hooks/useMinimumSkeleton'
 import { useRevealOnce } from '@/src/modules/core/hooks/useRevealOnce'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
@@ -236,6 +237,9 @@ export default function WorkoutDashboardScreen() {
     // without making the user pull to refresh.
     const isHydrating = useReloadOnSyncSuccess(loadData)
 
+    // Hold the skeleton briefly once shown so a fast load doesn't flash it.
+    const showSkeleton = useMinimumSkeleton(shouldShowSkeleton({ isHydrating, isLoading, hasLoadedOnce }))
+
     const onRefresh = async () => {
         setRefreshing(true)
         await loadData()
@@ -273,7 +277,7 @@ export default function WorkoutDashboardScreen() {
     // While the post-login hydration pull is running, even a non-empty read is
     // partial (workouts land before their sets, so e.g. the muscle balance
     // would render empty) — hold the skeleton until the cycle settles.
-    if (shouldShowSkeleton({ isHydrating, isLoading, hasLoadedOnce })) {
+    if (showSkeleton) {
         return (
             <ScrollScreenLayout>
                 <WorkoutDashboardSkeleton />

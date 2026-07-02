@@ -164,7 +164,14 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                     payload.photo_uri ?? undefined
                 )
             }
-            router.replace('/(tabs)/exercises')
+            // Pop back to the already-mounted list instead of replacing it, so it
+            // reloads in place (the new/edited row just appears) rather than
+            // remounting and re-flashing its skeleton. Mirrors the header back.
+            if (router.canGoBack()) {
+                router.back()
+            } else {
+                router.replace('/(tabs)/exercises')
+            }
             const toast = resolveExerciseSavedToast(isEditing, name)
             showToast.success({
                 title: t(toast.titleKey),
@@ -193,8 +200,14 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                     if (!resolvedExerciseId) return
                     await exerciseRepo.delete(resolvedExerciseId)
                     await deleteLocalPhoto(originalPhotoUriRef.current)
-                    router.dismissAll()
-                    router.replace('/(tabs)/exercises')
+                    // Pop the detail/edit stack back to the already-mounted list so
+                    // it reloads in place (the row disappears) instead of remounting
+                    // and re-flashing its skeleton. Mirrors the save path.
+                    if (router.canDismiss()) {
+                        router.dismissAll()
+                    } else {
+                        router.replace('/(tabs)/exercises')
+                    }
                     showToast.success({
                         title: t('exerciseDeleted'),
                         message: t('exerciseRemoved'),

@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
 import type { TFunction } from 'i18next'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     ActivityIndicator,
@@ -18,7 +18,7 @@ import { Gesture } from 'react-native-gesture-handler'
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list'
 import type { ThemeType } from '@/src/constants/Colors'
-import { Duration, Motion } from '@/src/constants/Motion'
+import { Duration } from '@/src/constants/Motion'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
@@ -27,106 +27,90 @@ import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
+import { useMinimumSkeleton } from '@/src/modules/core/hooks/useMinimumSkeleton'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv'
 import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
 import { useExercises } from '../hooks/useExercises'
 import { ExercisesListSkeleton } from './components/ExercisesListSkeleton'
 
-const ExerciseListItem = React.memo(
-    ({
-        item,
-        index,
-        theme,
-        t,
-        animateOnEnter,
-    }: {
-        item: Exercise
-        index: number
-        theme: ThemeType
-        t: TFunction
-        animateOnEnter: boolean
-    }) => {
-        const drag = useReorderableDrag()
-        const isDragged = useIsActive()
-        const scale = useSharedValue(1)
+const ExerciseListItem = React.memo(({ item, theme, t }: { item: Exercise; theme: ThemeType; t: TFunction }) => {
+    const drag = useReorderableDrag()
+    const isDragged = useIsActive()
+    const scale = useSharedValue(1)
 
-        React.useEffect(() => {
-            // Snappy drag-pickup feedback; fast is the tightest shared token.
-            scale.value = withTiming(isDragged ? 0.9 : 1, { duration: Duration.fast })
-        }, [isDragged, scale])
+    React.useEffect(() => {
+        // Snappy drag-pickup feedback; fast is the tightest shared token.
+        scale.value = withTiming(isDragged ? 0.9 : 1, { duration: Duration.fast })
+    }, [isDragged, scale])
 
-        const animatedStyle = useAnimatedStyle(() => ({
-            transform: [{ scale: scale.value }],
-        }))
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+    }))
 
-        return (
+    return (
+        <View style={styles.itemEnterWrapper}>
             <Animated.View
-                entering={animateOnEnter ? Motion.listItem(index) : undefined}
-                style={styles.itemEnterWrapper}
+                style={[
+                    GlobalStyles.card,
+                    styles.cardInner,
+                    {
+                        backgroundColor: isDragged ? theme.surface : theme.card,
+                        borderColor: theme.border,
+                    },
+                    animatedStyle,
+                ]}
             >
-                <Animated.View
-                    style={[
-                        GlobalStyles.card,
-                        styles.cardInner,
-                        {
-                            backgroundColor: isDragged ? theme.surface : theme.card,
-                            borderColor: theme.border,
-                        },
-                        animatedStyle,
-                    ]}
+                <TouchableOpacity
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                    onPress={() => router.push(`/(tabs)/exercises/${item.id}`)}
+                    disabled={isDragged}
+                    accessibilityRole={'button'}
+                    accessibilityLabel={`${item.name}, ${t(formatExerciseType(item.type))}`}
+                    accessibilityHint={t('details')}
                 >
-                    <TouchableOpacity
-                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
-                        onPress={() => router.push(`/(tabs)/exercises/${item.id}`)}
-                        disabled={isDragged}
-                        accessibilityRole={'button'}
-                        accessibilityLabel={`${item.name}, ${t(formatExerciseType(item.type))}`}
-                        accessibilityHint={t('details')}
-                    >
-                        {item.photo_uri ? (
-                            <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
-                        ) : (
-                            <View
-                                style={[
-                                    styles.thumbnail,
-                                    styles.placeholderThumbnail,
-                                    { backgroundColor: theme.surface, borderColor: theme.border },
-                                ]}
-                            >
-                                <FontAwesome name={'camera'} size={20} color={`${theme.textSecondary}40`} />
-                            </View>
-                        )}
-                        <View style={styles.content}>
-                            <Typography.Body weight="bold" style={styles.title}>
-                                {item.name}
-                            </Typography.Body>
-                            <Typography.Meta style={styles.subtitle}>
-                                {item.muscle_group ? `${formatMuscleGroup(item.muscle_group)} • ` : ''}
-                                {t(formatExerciseType(item.type))}
-                            </Typography.Meta>
+                    {item.photo_uri ? (
+                        <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} />
+                    ) : (
+                        <View
+                            style={[
+                                styles.thumbnail,
+                                styles.placeholderThumbnail,
+                                { backgroundColor: theme.surface, borderColor: theme.border },
+                            ]}
+                        >
+                            <FontAwesome name={'camera'} size={20} color={`${theme.textSecondary}40`} />
                         </View>
-                    </TouchableOpacity>
+                    )}
+                    <View style={styles.content}>
+                        <Typography.Body weight="bold" style={styles.title}>
+                            {item.name}
+                        </Typography.Body>
+                        <Typography.Meta style={styles.subtitle}>
+                            {item.muscle_group ? `${formatMuscleGroup(item.muscle_group)} • ` : ''}
+                            {t(formatExerciseType(item.type))}
+                        </Typography.Meta>
+                    </View>
+                </TouchableOpacity>
 
-                    <TouchableOpacity
-                        // Hold-to-drag: the pan gesture defers via activateAfterLongPress so a
-                        // plain swipe scrolls / pulls to refresh; the handle starts the reorder
-                        // on long-press (delay kept just under the pan's activation threshold).
-                        onLongPress={drag}
-                        delayLongPress={500}
-                        // hitSlop expands the touch area so the small grip icon is easy to land on.
-                        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-                        accessibilityRole={'button'}
-                        accessibilityLabel={t('reorder')}
-                        accessibilityHint={t('holdToDrag')}
-                    >
-                        <FontAwesome name={'bars'} size={20} color={theme.textSecondary} />
-                    </TouchableOpacity>
-                </Animated.View>
+                <TouchableOpacity
+                    // Hold-to-drag: the pan gesture defers via activateAfterLongPress so a
+                    // plain swipe scrolls / pulls to refresh; the handle starts the reorder
+                    // on long-press (delay kept just under the pan's activation threshold).
+                    onLongPress={drag}
+                    delayLongPress={500}
+                    // hitSlop expands the touch area so the small grip icon is easy to land on.
+                    hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+                    accessibilityRole={'button'}
+                    accessibilityLabel={t('reorder')}
+                    accessibilityHint={t('holdToDrag')}
+                >
+                    <FontAwesome name={'bars'} size={20} color={theme.textSecondary} />
+                </TouchableOpacity>
             </Animated.View>
-        )
-    }
-)
+        </View>
+    )
+})
 ExerciseListItem.displayName = 'ExerciseListItem'
 
 export default function ExercisesListScreen() {
@@ -134,14 +118,10 @@ export default function ExercisesListScreen() {
     const navigation = useNavigation()
     const { exercises, hasLoaded, loadError, loadExercises, handleReorder, isReordering } = useExercises()
     const { theme } = useTheme()
-    const animatedItemIdsRef = useRef<Set<number>>(new Set())
-    // The skeleton is the screen's entrance. Once the first list appears, don't
-    // float that initial batch in on top of it — that reads as a flash. Items
-    // that first appear later (e.g. a just-added exercise) still animate.
-    const hasRevealedRef = useRef(false)
-    useEffect(() => {
-        if (hasLoaded) hasRevealedRef.current = true
-    }, [hasLoaded])
+    // The skeleton is the screen's entrance; the list then renders statically (no
+    // per-item float-in). useMinimumSkeleton holds the skeleton briefly so a
+    // cached load doesn't flash it for a few frames.
+    const showSkeleton = useMinimumSkeleton(!hasLoaded)
     const [showAndroidExportSheet, setShowAndroidExportSheet] = useState(false)
     const [isImporting, setIsImporting] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
@@ -239,24 +219,13 @@ export default function ExercisesListScreen() {
     )
 
     const renderItem = useCallback(
-        ({ item, index }: { item: Exercise; index: number }) => {
-            // Cap at the stagger ceiling so a long list doesn't fire dozens of
-            // simultaneous entrances (mirrors HistoryScreen). Mark items seen on
-            // first render but only animate once the initial reveal has passed,
-            // so the first batch doesn't float in over the skeleton (a flash).
-            const firstSeen = !animatedItemIdsRef.current.has(item.id)
-            if (firstSeen) {
-                animatedItemIdsRef.current.add(item.id)
-            }
-            const animateOnEnter = hasRevealedRef.current && firstSeen && index < 8
-            return <ExerciseListItem item={item} index={index} theme={theme} t={t} animateOnEnter={animateOnEnter} />
-        },
+        ({ item }: { item: Exercise }) => <ExerciseListItem item={item} theme={theme} t={t} />,
         [theme, t]
     )
 
     return (
         <ScreenLayout>
-            {!hasLoaded ? (
+            {showSkeleton ? (
                 <ExercisesListSkeleton />
             ) : loadError && exercises.length === 0 ? (
                 <View style={styles.loadingContainer}>
