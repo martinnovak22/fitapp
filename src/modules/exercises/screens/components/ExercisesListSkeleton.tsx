@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { SkeletonBlock } from '@/src/modules/core/components/Skeleton'
+import { SkeletonBlock, SkeletonPulse } from '@/src/modules/core/components/Skeleton'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 
 const SKELETON_ROW_COUNT = 8
@@ -19,20 +19,22 @@ export function ExercisesListSkeleton() {
             accessibilityLabel={t('loading')}
             aria-busy
         >
-            {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
-                <View
-                    // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-                    key={i}
-                    style={[skeletonStyles.cardInner, { backgroundColor: theme.card, borderColor: theme.border }]}
-                >
-                    <SkeletonBlock width={44} height={44} borderRadius={Radius.sm} />
-                    <View style={skeletonStyles.content}>
-                        <SkeletonBlock width="65%" height={16} borderRadius={2} />
-                        <SkeletonBlock width="45%" height={13} borderRadius={2} style={{ marginTop: Spacing.xs }} />
+            <SkeletonPulse>
+                {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
+                    <View
+                        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+                        key={i}
+                        style={[skeletonStyles.cardInner, { backgroundColor: theme.card, borderColor: theme.border }]}
+                    >
+                        <SkeletonBlock width={44} height={44} borderRadius={Radius.sm} />
+                        <View style={skeletonStyles.content}>
+                            <SkeletonBlock width="65%" height={16} borderRadius={2} />
+                            <SkeletonBlock width="45%" height={13} borderRadius={2} style={{ marginTop: Spacing.xs }} />
+                        </View>
+                        <SkeletonBlock width={20} height={20} borderRadius={4} />
                     </View>
-                    <SkeletonBlock width={20} height={20} borderRadius={4} />
-                </View>
-            ))}
+                ))}
+            </SkeletonPulse>
         </ScrollView>
     )
 }

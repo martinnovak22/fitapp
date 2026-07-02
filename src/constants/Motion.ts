@@ -16,9 +16,10 @@ export const Duration = {
     fast: 150,
     base: 200,
     slow: 320,
-    // Skeleton shimmer sweep — an infinite withRepeat, not an enter/exit/layout
-    // primitive, but still shares the one clock so every skeleton pulses in sync.
-    shimmer: 1400,
+    // Skeleton pulse — one infinite withRepeat opacity loop per skeleton (see
+    // SkeletonPulse), not an enter/exit/layout primitive, but still on the one
+    // clock so every skeleton breathes in sync.
+    shimmer: 800,
 } as const
 
 // List/stagger tuning: each item is offset by STEP, capped at MAX so long

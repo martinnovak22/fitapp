@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { Card } from '@/src/modules/core/components/Card'
-import { SkeletonBlock } from '@/src/modules/core/components/Skeleton'
+import { SkeletonBlock, SkeletonPulse } from '@/src/modules/core/components/Skeleton'
 
 const SKELETON_ROW_COUNT = 8
 
@@ -21,21 +21,23 @@ export function HistoryListSkeleton() {
             accessibilityLabel={t('loading')}
             aria-busy
         >
-            {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
-                <Card
-                    // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-                    key={i}
-                    style={styles.workoutCard}
-                >
-                    <View style={styles.workoutItem}>
-                        <View style={styles.workoutInfo}>
-                            <SkeletonBlock width="70%" height={16} borderRadius={2} />
-                            <SkeletonBlock width="35%" height={13} borderRadius={2} style={styles.timeBlock} />
+            <SkeletonPulse>
+                {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
+                    <Card
+                        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+                        key={i}
+                        style={styles.workoutCard}
+                    >
+                        <View style={styles.workoutItem}>
+                            <View style={styles.workoutInfo}>
+                                <SkeletonBlock width="70%" height={16} borderRadius={2} />
+                                <SkeletonBlock width="35%" height={13} borderRadius={2} style={styles.timeBlock} />
+                            </View>
+                            <SkeletonBlock width={20} height={20} borderRadius={Radius.sm} />
                         </View>
-                        <SkeletonBlock width={20} height={20} borderRadius={Radius.sm} />
-                    </View>
-                </Card>
-            ))}
+                    </Card>
+                ))}
+            </SkeletonPulse>
         </ScrollView>
     )
 }
