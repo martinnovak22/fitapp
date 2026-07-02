@@ -1,7 +1,6 @@
-import { LinearGradient } from 'expo-linear-gradient'
-import { useCallback, useEffect } from 'react'
-import type { DimensionValue, LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native'
-import { StyleSheet, View } from 'react-native'
+import { type ReactNode, useEffect } from 'react'
+import type { DimensionValue, StyleProp, ViewStyle } from 'react-native'
+import { View } from 'react-native'
 import Animated, {
     cancelAnimation,
     Easing,
@@ -10,10 +9,9 @@ import Animated, {
     withRepeat,
     withTiming,
 } from 'react-native-reanimated'
+import { Duration } from '@/src/constants/Motion'
 import { Radius } from '@/src/constants/Radius'
 import { useTheme } from '../hooks/useTheme'
-
-const SHIMMER_WIDTH = 160
 
 interface SkeletonBlockProps {
     width?: DimensionValue
@@ -22,74 +20,43 @@ interface SkeletonBlockProps {
     style?: StyleProp<ViewStyle>
 }
 
+// A skeleton placeholder block. Deliberately a plain, non-animated View: the
+// pulse is owned by a single SkeletonPulse driver at the skeleton root. A
+// screenful of ~30 blocks therefore mounts as ~30 plain views instead of ~30
+// reanimated views — the latter cost 1.5–3s to commit on a cold navigation,
+// which was the first-navigation freeze.
 export function SkeletonBlock({ width, height = 20, borderRadius = Radius.sm, style }: SkeletonBlockProps) {
     const { theme } = useTheme()
-    const shimmerX = useSharedValue(-SHIMMER_WIDTH)
-    const blockWidth = useSharedValue(200)
-
-    const startShimmer = useCallback(
-        (w: number) => {
-            shimmerX.value = -SHIMMER_WIDTH
-            shimmerX.value = withRepeat(
-                withTiming(w + SHIMMER_WIDTH, {
-                    duration: 1400,
-                    easing: Easing.bezier(0.4, 0, 0.2, 1),
-                }),
-                -1,
-                false
-            )
-        },
-        [shimmerX]
-    )
-
-    // biome-ignore lint/correctness/useExhaustiveDependencies: blockWidth.value read in effect, not render; adding it to deps would read .value during render and trigger Reanimated warning
-    useEffect(() => {
-        startShimmer(blockWidth.value)
-        // Stop the infinite shimmer loop when the skeleton unmounts (after the
-        // real content loads), otherwise the animation leaks on a detached node.
-        return () => cancelAnimation(shimmerX)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [startShimmer])
-
-    const onLayout = (e: LayoutChangeEvent) => {
-        const w = e.nativeEvent.layout.width
-        if (w !== blockWidth.value) {
-            blockWidth.value = w
-            startShimmer(w)
-        }
-    }
-
-    const shimmerStyle = useAnimatedStyle(() => ({
-        transform: [{ translateX: shimmerX.value }],
-    }))
-
     return (
         <View
-            onLayout={onLayout}
-            // Individual shimmer blocks are decorative; the surrounding skeleton
-            // container owns the single "loading" announcement for screen readers.
+            // Individual blocks are decorative; the surrounding skeleton container
+            // owns the single "loading" announcement for screen readers.
             accessible={false}
             importantForAccessibility="no-hide-descendants"
-            style={[
-                {
-                    width,
-                    height,
-                    borderRadius,
-                    backgroundColor: theme.skeletonBase,
-                    overflow: 'hidden',
-                },
-                style,
-            ]}
-        >
-            <Animated.View style={[StyleSheet.absoluteFill, shimmerStyle, { width: SHIMMER_WIDTH }]}>
-                <LinearGradient
-                    colors={['transparent', theme.skeletonHighlight, 'transparent']}
-                    locations={[0, 0.45, 1]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={StyleSheet.absoluteFill}
-                />
-            </Animated.View>
-        </View>
+            style={[{ width, height, borderRadius, backgroundColor: theme.skeletonBase }, style]}
+        />
     )
+}
+
+// Single animation driver for a whole skeleton. Wrap a skeleton's blocks in one
+// SkeletonPulse and the entire subtree gently breathes on ONE reanimated opacity
+// loop, instead of every block running its own — which is what keeps the mount
+// cheap. Uses the shared shimmer token so every skeleton pulses on one clock.
+export function SkeletonPulse({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+    const opacity = useSharedValue(0.3)
+
+    useEffect(() => {
+        opacity.value = withRepeat(
+            withTiming(1, { duration: Duration.shimmer, easing: Easing.inOut(Easing.ease) }),
+            -1,
+            true
+        )
+        // Stop the loop when the skeleton unmounts (after the real content loads),
+        // otherwise the animation leaks on a detached node.
+        return () => cancelAnimation(opacity)
+    }, [opacity])
+
+    const pulseStyle = useAnimatedStyle(() => ({ opacity: opacity.value }))
+
+    return <Animated.View style={[pulseStyle, style]}>{children}</Animated.View>
 }
