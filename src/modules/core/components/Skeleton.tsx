@@ -10,6 +10,7 @@ import Animated, {
     withRepeat,
     withTiming,
 } from 'react-native-reanimated'
+import { Duration } from '@/src/constants/Motion'
 import { Radius } from '@/src/constants/Radius'
 import { useTheme } from '../hooks/useTheme'
 
@@ -32,7 +33,7 @@ export function SkeletonBlock({ width, height = 20, borderRadius = Radius.sm, st
             shimmerX.value = -SHIMMER_WIDTH
             shimmerX.value = withRepeat(
                 withTiming(w + SHIMMER_WIDTH, {
-                    duration: 1400,
+                    duration: Duration.shimmer,
                     easing: Easing.bezier(0.4, 0, 0.2, 1),
                 }),
                 -1,

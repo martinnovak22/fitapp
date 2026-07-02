@@ -15,8 +15,10 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { Appear, ListItemAppear } from '@/src/modules/core/components/motion'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
+import { useRevealOnce } from '@/src/modules/core/hooks/useRevealOnce'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { nextHasLoadedOnce, shouldShowSkeleton } from '@/src/modules/core/utils/loadingGate'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
@@ -111,6 +113,9 @@ export default function WorkoutDashboardScreen() {
     const previousWorkouts = finishedWorkouts.slice(1, 3)
 
     const beginLoad = useStaleGuard()
+    // The skeleton is the screen's entrance. Once the dashboard first loads,
+    // don't float the section cards in on top of it — that reads as a flash.
+    const hasRevealed = useRevealOnce(hasLoadedOnce)
 
     const loadData = useCallback(async () => {
         // Focus, pull-to-refresh, and the post-sync reload can all call loadData
@@ -216,7 +221,7 @@ export default function WorkoutDashboardScreen() {
         } finally {
             if (!isStale()) {
                 setIsLoading(false)
-                setHasLoadedOnce(true)
+                setHasLoadedOnce((current) => nextHasLoadedOnce(current, true))
             }
         }
     }, [beginLoad, i18n.language, t, workoutRepo, exerciseRepo])
@@ -268,7 +273,7 @@ export default function WorkoutDashboardScreen() {
     // While the post-login hydration pull is running, even a non-empty read is
     // partial (workouts land before their sets, so e.g. the muscle balance
     // would render empty) — hold the skeleton until the cycle settles.
-    if (isHydrating || (isLoading && !hasLoadedOnce)) {
+    if (shouldShowSkeleton({ isHydrating, isLoading, hasLoadedOnce })) {
         return (
             <ScrollScreenLayout>
                 <WorkoutDashboardSkeleton />
@@ -293,7 +298,7 @@ export default function WorkoutDashboardScreen() {
         <ScrollScreenLayout
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         >
-            <ListItemAppear index={0}>
+            <ListItemAppear index={0} animateOnEnter={hasRevealed.current}>
                 <Card
                     onPress={() => router.push('/workout/calendar')}
                     style={layoutStyles.heroCard}
@@ -370,7 +375,7 @@ export default function WorkoutDashboardScreen() {
                 </Card>
             </ListItemAppear>
 
-            <ListItemAppear index={1}>
+            <ListItemAppear index={1} animateOnEnter={hasRevealed.current}>
                 <Card style={[layoutStyles.activeCard, { borderLeftColor: theme.primary }]}>
                     {activeWorkout ? (
                         <Appear key="active">
@@ -416,7 +421,7 @@ export default function WorkoutDashboardScreen() {
                 </Card>
             </ListItemAppear>
 
-            <ListItemAppear index={2}>
+            <ListItemAppear index={2} animateOnEnter={hasRevealed.current}>
                 <Card>
                     {lastWorkoutSummary ? (
                         <>
@@ -528,7 +533,7 @@ export default function WorkoutDashboardScreen() {
             </ListItemAppear>
 
             {muscleBalance.length > 0 && (
-                <ListItemAppear index={3}>
+                <ListItemAppear index={3} animateOnEnter={hasRevealed.current}>
                     <Card>
                         <Typography.Subtitle size="md" weight="bold" style={{ marginBottom: Spacing.md }}>
                             {t('muscleBalance')}

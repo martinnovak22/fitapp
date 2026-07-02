@@ -14,6 +14,9 @@ type AppearProps = {
     // Animate this view's own box when its size/position changes. Use only on
     // the single element that owns a resize — never nest two of these.
     animateLayout?: boolean
+    // Suppress the entrance animation (e.g. a screen's initial content reveal,
+    // via useRevealOnce) while keeping the built-in exit. Defaults to true.
+    animateOnEnter?: boolean
     style?: StyleProp<ViewStyle>
 }
 
@@ -28,6 +31,7 @@ export function Appear({
     delayMs = 0,
     durationMs = Duration.base,
     animateLayout = false,
+    animateOnEnter = true,
     style,
 }: AppearProps) {
     const entering = (variant === 'down' ? FadeInDown : FadeIn).duration(durationMs).delay(delayMs)
@@ -35,7 +39,7 @@ export function Appear({
 
     return (
         <Animated.View
-            entering={entering}
+            entering={animateOnEnter ? entering : undefined}
             exiting={exiting}
             layout={animateLayout ? LinearTransition.duration(Duration.base) : undefined}
             style={style}
