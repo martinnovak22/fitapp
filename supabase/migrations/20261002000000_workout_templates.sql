@@ -10,7 +10,7 @@
 -- The client tolerates a missing workout_templates table on pull and omits a
 -- NULL template_uuid on push, so Unplanned Workouts keep syncing. But every
 -- Template push and every Planned Workout push is rejected and parked as
--- 'blocked' until the migration lands and the user taps "Try again".
+-- 'blocked' (their Sets too, after 5 missing-parent attempts) until the migration lands and the user taps "Try again".
 
 begin;
 

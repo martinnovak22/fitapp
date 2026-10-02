@@ -291,7 +291,7 @@
     "startPlannedHint": "Starts a workout offering only this plan's exercises",
     "pickerFromPlan": "Exercises from plan {{name}}",
     "pickerPlanFallback": "The plan is no longer available, showing all exercises",
-    "templateGoneWhileEditing": "This plan was deleted on another device, so your changes could not be saved.",
+    "templateGoneWhileEditing": "This plan no longer exists, so your changes could not be saved.",
     "goToExercises": "Go to Exercises",
     "workoutAlreadyRunningTitle": "Workout already running",
     "workoutAlreadyRunning": "Finish it before starting a new one."

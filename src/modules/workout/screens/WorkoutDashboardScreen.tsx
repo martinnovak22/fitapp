@@ -26,6 +26,7 @@ import { showToast } from '@/src/modules/core/utils/toast'
 import { TemplateRow } from '@/src/modules/templates/components/TemplateRow'
 import { summarizeTemplates, type TemplateSummary } from '@/src/modules/templates/templateSummary'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
+import { formatMuscleGroup } from '@/src/utils/formatters'
 import { StartWorkoutSheet } from '../components/StartWorkoutSheet'
 import { WorkoutDashboardSkeleton } from './components/WorkoutDashboardSkeleton'
 
@@ -52,8 +53,6 @@ const workoutMinutes = (workout: Workout): number => {
         Math.round((new Date(workout.end_time).getTime() - new Date(workout.start_time).getTime()) / 60000)
     )
 }
-
-const capitalizeFirst = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1)
 
 interface WeekDay {
     date: string
@@ -302,7 +301,8 @@ export default function WorkoutDashboardScreen() {
         return h > 0 ? `${h} h ${m} ${t('min')}` : `${m} ${t('min')}`
     }
 
-    const muscleGroupLabel = (group: string | null): string => (group ? capitalizeFirst(group) : t('otherMuscleGroup'))
+    const muscleGroupLabel = (group: string | null): string =>
+        group ? formatMuscleGroup(group) : t('otherMuscleGroup')
 
     // While the post-login hydration pull is running, even a non-empty read is
     // partial (workouts land before their sets, so e.g. the muscle balance
@@ -729,7 +729,6 @@ const layoutStyles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: Spacing.sm,
     },
-
     activeHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',

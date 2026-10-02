@@ -295,7 +295,7 @@
     "startPlannedHint": "Spustí trénink, který nabízí jen cviky z tohoto plánu",
     "pickerFromPlan": "Cviky z plánu {{name}}",
     "pickerPlanFallback": "Plán už neexistuje, zobrazují se všechny cviky",
-    "templateGoneWhileEditing": "Plán byl mezitím smazán na jiném zařízení, změny se proto nepodařilo uložit.",
+    "templateGoneWhileEditing": "Tento plán už neexistuje, změny se proto nepodařilo uložit.",
     "goToExercises": "Přejít na cviky",
     "workoutAlreadyRunningTitle": "Trénink už běží",
     "workoutAlreadyRunning": "Nejdřív ho dokončete, pak můžete začít nový."

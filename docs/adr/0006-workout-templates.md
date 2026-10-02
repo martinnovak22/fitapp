@@ -33,4 +33,4 @@ Workouts used to be fully ad hoc: every Set offered the principal's whole Exerci
 - Stale uuids of deleted Exercises stay in `exercise_uuids` indefinitely. This is harmless, because every reader resolves them away.
 - **Deploy order:** the Supabase migration adding `workout_templates` and `workouts.template_uuid` must be applied before any client running this code syncs.
   - What still works: the client treats a missing `workout_templates` table as empty on pull, and omits a NULL `template_uuid` on push. Unplanned Workouts and every pull therefore keep working.
-  - What gets parked: Template pushes and Planned Workout pushes are rejected and parked as `blocked` until the migration lands. They can then be recovered with "Try again" ([ADR-0004](0004-outbox-give-up-policy.md)).
+  - What gets parked: Template pushes and Planned Workout pushes are rejected and parked as `blocked` until the migration lands, and so are those Workouts' Sets after 5 `missing-parent` attempts. They can then be recovered with "Try again" ([ADR-0004](0004-outbox-give-up-policy.md)).
