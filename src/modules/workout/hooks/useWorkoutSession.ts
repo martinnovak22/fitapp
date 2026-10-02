@@ -1,11 +1,13 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useExerciseRepo, useWorkoutRepo } from '@/src/data/RepositoryContext'
+import { useExerciseRepo, useWorkoutRepo, useWorkoutTemplateRepo } from '@/src/data/RepositoryContext'
 import type { Exercise } from '@/src/db/exercises'
 import type { SetData, Workout, Set as WorkoutSet } from '@/src/db/workouts'
+import type { WorkoutTemplate } from '@/src/db/workoutTemplates'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
+import { resolvePickerExercises } from '../plannedExercises'
 
 type SetWithExercise = WorkoutSet & { exercise_name: string }
 type SessionOrigin = 'workout' | 'history'
@@ -13,6 +15,7 @@ type SessionOrigin = 'workout' | 'history'
 export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const workoutRepo = useWorkoutRepo()
     const exerciseRepo = useExerciseRepo()
+    const templateRepo = useWorkoutTemplateRepo()
     const { t } = useTranslation()
     const { id } = useLocalSearchParams()
     const workoutId = Number(id)
@@ -21,6 +24,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const [workout, setWorkout] = useState<Workout | null>(null)
     const [sets, setSets] = useState<SetWithExercise[]>([])
     const [exercises, setExercises] = useState<Exercise[]>([])
+    const [template, setTemplate] = useState<WorkoutTemplate | null>(null)
     const [loading, setLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
     const [isSavingSet, setIsSavingSet] = useState(false)
@@ -55,7 +59,12 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
                 return
             }
 
+            // Read on every load so edits made to the Template elsewhere apply
+            // to the picker of a Workout that is still running.
+            const nextTemplate = w.template_uuid ? await templateRepo.getByUuid(w.template_uuid) : null
+
             setWorkout(w)
+            setTemplate(nextTemplate)
             setSets(s as SetWithExercise[])
             setExercises(ex)
         } catch (e) {
@@ -64,7 +73,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         } finally {
             setLoading(false)
         }
-    }, [exerciseRepo, originTabRoot, t, workoutId, workoutRepo])
+    }, [exerciseRepo, originTabRoot, t, templateRepo, workoutId, workoutRepo])
 
     useFocusEffect(
         useCallback(() => {
@@ -196,6 +205,18 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         [loadData, t, workoutId, workoutRepo]
     )
 
+    // A Planned Workout's picker offers only its Template's Exercises (ADR-0006).
+    const picker = useMemo(
+        () =>
+            resolvePickerExercises({
+                exercises,
+                templateUuid: workout?.template_uuid,
+                template,
+                loggedExerciseIds: sets.map((s) => s.exercise_id),
+            }),
+        [exercises, sets, template, workout?.template_uuid]
+    )
+
     const exerciseNamesOrder = [...new Set(sets.map((s) => s.exercise_name))]
     const groupedSets = sets.reduce(
         (acc, set) => {
@@ -248,6 +269,8 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         workout,
         sets,
         exercises,
+        pickerExercises: picker.exercises,
+        pickerScope: picker.scope,
         loading,
         loadError,
         isSavingSet,

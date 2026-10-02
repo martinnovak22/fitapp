@@ -49,7 +49,7 @@ export const Colors = {
         overlayBackdrop: 'rgba(0,0,0,0.85)',
         overlayScrimLight: 'rgba(0,0,0,0.4)',
         overlayChip: 'rgba(0,0,0,0.6)',
-        hairline: 'rgba(255,255,255,0.08)',
+        hairline: 'rgba(0,0,0,0.08)',
         skeletonBase: '#D4D4D4',
         skeletonHighlight: 'rgba(255,255,255,0.6)',
     },

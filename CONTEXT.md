@@ -44,6 +44,18 @@ _Avoid_: using "Tracking Mode" for weight/cardio or as a stored field
 The derived headline metric of an Exercise — one of `weight`, `reps`, `distance`, `duration` — computed from ExerciseType. Drives which inputs a Set shows and how the best Set is chosen.
 _Avoid_: main metric, dominant (when referring to the metric itself)
 
+**Workout Template**:
+A named, reusable list of Exercises owned by a principal (e.g. "Push A"). It is membership only: no order, no targets, no date. Shown in the UI as "Plan". See [ADR-0006](docs/adr/0006-workout-templates.md).
+_Avoid_: routine, program, plan (in code; "Plan" is the UI label only)
+
+**Planned Workout**:
+A Workout started from a Workout Template (`template_uuid` set). Its exercise picker offers only the Template's Exercises, plus any Exercise that already has a Set in it.
+_Avoid_: template workout, scheduled workout (there is no date-based scheduling)
+
+**Unplanned Workout**:
+A Workout with no Workout Template (`template_uuid IS NULL`). The picker offers every Exercise. All pre-template Workouts are Unplanned. Shown in the UI as "Free workout" ("Volný trénink").
+_Avoid_: free workout (in code; it is the UI label only), ad-hoc session
+
 **Principal**:
 The current identity that owns local data and drives sync. Has one of three modes: `guest`, `account`, `signed-out`. Distinct from the Auth Session (the login mechanism).
 _Avoid_: user (when you mean the owning identity), current user
@@ -102,7 +114,8 @@ _Avoid_: sync status (that is the per-row term)
 
 - A **Workout** has many **Sets**
 - A **Set** belongs to one **Exercise** and has zero or more **SubSets**
-- Every **Workout**, **Exercise**, and **Set** is owned by a **Principal** (`user_id` = the Account's id, or NULL for a Guest)
+- A **Workout Template** references many **Exercises** by uuid; a **Workout** references at most one **Workout Template** by uuid
+- Every **Workout**, **Exercise**, **Set**, and **Workout Template** is owned by a **Principal** (`user_id` = the Account's id, or NULL for a Guest)
 
 ## Example dialogue
 

@@ -6,6 +6,7 @@ import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { Gesture } from 'react-native-gesture-handler'
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import { NestedReorderableList, reorderItems, ScrollViewContainer } from 'react-native-reorderable-list'
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import type { Set as WorkoutSet } from '@/src/db/workouts'
@@ -22,6 +23,7 @@ import { EditTimingModal } from '../components/EditTimingModal'
 import { LogSetModal } from '../components/LogSetModal'
 import { WorkoutSetItem } from '../components/WorkoutSetItem'
 import { useWorkoutSession } from '../hooks/useWorkoutSession'
+import { pickerCaption, resolveAddSelection } from '../plannedExercises'
 import { buildSetPayload, type SetFormValues } from '../setPayload'
 import {
     canEditFinishedWorkout as deriveCanEditFinishedWorkout,
@@ -43,6 +45,8 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     const {
         workout,
         exercises,
+        pickerExercises,
+        pickerScope,
         loading,
         loadError,
         loadData,
@@ -78,18 +82,30 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
     // We can allow default selection once exercises are loaded
     useEffect(() => {
-        if (!selectedExerciseId && exercises.length > 0) {
-            dispatch({ type: 'SELECT_DEFAULT_EXERCISE', exerciseId: exercises[0].id })
+        if (!selectedExerciseId && pickerExercises.length > 0) {
+            dispatch({ type: 'SELECT_DEFAULT_EXERCISE', exerciseId: pickerExercises[0].id })
         }
-    }, [exercises, selectedExerciseId])
+    }, [pickerExercises, selectedExerciseId])
 
     const updateInput = (key: keyof SetFormValues, value: string) => {
         dispatch({ type: 'UPDATE_INPUT', key, value })
     }
 
     const handleOpenAddModal = () => {
+        const nextSelection = resolveAddSelection(selectedExerciseId, pickerExercises)
+        if (nextSelection !== selectedExerciseId) {
+            dispatch({ type: 'SET_SELECTED_EXERCISE', exerciseId: nextSelection })
+        }
         dispatch({ type: 'OPEN_ADD_MODAL' })
     }
+
+    const templateName = pickerScope.kind === 'unplanned' ? null : pickerScope.templateName
+    const caption = pickerCaption(pickerScope)
+    const pickerCaptionText = caption
+        ? caption.key === 'pickerFromPlan'
+            ? t('pickerFromPlan', { name: caption.name })
+            : t('pickerPlanFallback')
+        : null
 
     const handleOpenEditModal = (s: WorkoutSet) => {
         dispatch({ type: 'OPEN_EDIT_MODAL', set: s })
@@ -324,6 +340,8 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                         onSave={handleSaveSet}
                         editingSetId={editingSetId}
                         exercises={exercises}
+                        pickerExercises={pickerExercises}
+                        pickerCaption={pickerCaptionText}
                         selectedExerciseId={selectedExerciseId}
                         setSelectedExerciseId={(exerciseId) => dispatch({ type: 'SET_SELECTED_EXERCISE', exerciseId })}
                         subSets={subSets}
@@ -342,6 +360,14 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 </>
             }
         >
+            {templateName && (
+                <View style={[styles.templateTag, { backgroundColor: `${theme.primary}1A` }]}>
+                    <FontAwesome name={'list-alt'} size={12} color={theme.primary} />
+                    <Typography.Meta color={'primary'} weight={'bold'} numberOfLines={1} style={styles.templateTagText}>
+                        {templateName}
+                    </Typography.Meta>
+                </View>
+            )}
             {canEditFinishedWorkout && (
                 <Card style={[styles.timingCard, { borderColor: theme.border, backgroundColor: theme.surfaceSubtle }]}>
                     <View style={styles.timingHeader}>
@@ -499,6 +525,20 @@ const styles = StyleSheet.create({
     },
     timingCard: {
         marginBottom: Spacing.md,
+    },
+    templateTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: Spacing.xs,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: Spacing.xs,
+        borderRadius: Radius.pill,
+        marginBottom: Spacing.md,
+        maxWidth: '100%',
+    },
+    templateTagText: {
+        flexShrink: 1,
     },
     timingHeader: {
         flexDirection: 'row',

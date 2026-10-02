@@ -1,3 +1,4 @@
+import type { SQLiteDatabase } from 'expo-sqlite'
 import { invalidateExercisesCache } from '@/src/data/exercisesCache'
 import { onPrincipalChange } from '@/src/data/principal'
 import { getSupabaseConfig } from '@/src/data/remote/supabase/config'
@@ -25,6 +26,7 @@ import {
     toExerciseColumns,
     toSetColumns,
     toWorkoutColumns,
+    toWorkoutTemplateColumns,
 } from './remoteRowReconcile'
 import { type CycleResult, drainOutbox } from './SyncCycle'
 import { type SyncFailure, syncStatusStore } from './SyncStatus'
@@ -76,6 +78,9 @@ type RemoteSimpleRow = {
     end_time?: string | null
     status?: 'in_progress' | 'finished'
     note?: string | null
+    template_uuid?: string | null
+    // workout_templates: a jsonb array of Exercise uuids (ADR-0006).
+    exercise_uuids?: unknown
     created_at: string | null
     updated_at: string | null
     deleted_at: string | null
@@ -171,7 +176,7 @@ const countRowsByStatus = async (statusClause: string, userId?: string) => {
     const shouldScopeByUser = !!userId
     const userScopeClause = shouldScopeByUser ? 'AND user_id = ?' : ''
     const userScopeParams = shouldScopeByUser ? [userId as string] : []
-    const tables = ['exercises', 'workouts', 'sets', 'deletion_tombstones'] as const
+    const tables = ['exercises', 'workouts', 'sets', 'workout_templates', 'deletion_tombstones'] as const
     const counts = await Promise.all(
         tables.map((table) =>
             db.getFirstAsync<{ count: number }>(
@@ -260,6 +265,8 @@ type PullCursors = {
     workoutsDeleted: string | null
     setsUpdated: string | null
     setsDeleted: string | null
+    templatesUpdated: string | null
+    templatesDeleted: string | null
 }
 
 const EMPTY_CURSORS: PullCursors = {
@@ -269,6 +276,8 @@ const EMPTY_CURSORS: PullCursors = {
     workoutsDeleted: null,
     setsUpdated: null,
     setsDeleted: null,
+    templatesUpdated: null,
+    templatesDeleted: null,
 }
 
 const pullCursorsByUser = new Map<string, PullCursors>()
@@ -292,6 +301,8 @@ const loadCursors = async (userId: string): Promise<void> => {
         workouts_deleted: string | null
         sets_updated: string | null
         sets_deleted: string | null
+        templates_updated: string | null
+        templates_deleted: string | null
     }>('SELECT * FROM pull_cursors WHERE user_id = ? LIMIT 1', userId)
     // A reset that fired while we were reading invalidates the row we hold;
     // leave the cache empty so this pull starts from scratch instead of
@@ -307,6 +318,8 @@ const loadCursors = async (userId: string): Promise<void> => {
                   workoutsDeleted: row.workouts_deleted,
                   setsUpdated: row.sets_updated,
                   setsDeleted: row.sets_deleted,
+                  templatesUpdated: row.templates_updated,
+                  templatesDeleted: row.templates_deleted,
               }
             : { ...EMPTY_CURSORS }
     )
@@ -317,22 +330,27 @@ const setCursors = async (userId: string, cursors: PullCursors): Promise<void> =
     await executeWriteTransaction((db) =>
         db.runAsync(
             `INSERT INTO pull_cursors
-       (user_id, exercises_updated, exercises_deleted, workouts_updated, workouts_deleted, sets_updated, sets_deleted)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+       (user_id, exercises_updated, exercises_deleted, workouts_updated, workouts_deleted, sets_updated, sets_deleted,
+        templates_updated, templates_deleted)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(user_id) DO UPDATE SET
          exercises_updated = excluded.exercises_updated,
          exercises_deleted = excluded.exercises_deleted,
          workouts_updated = excluded.workouts_updated,
          workouts_deleted = excluded.workouts_deleted,
          sets_updated = excluded.sets_updated,
-         sets_deleted = excluded.sets_deleted`,
+         sets_deleted = excluded.sets_deleted,
+         templates_updated = excluded.templates_updated,
+         templates_deleted = excluded.templates_deleted`,
             userId,
             cursors.exercisesUpdated,
             cursors.exercisesDeleted,
             cursors.workoutsUpdated,
             cursors.workoutsDeleted,
             cursors.setsUpdated,
-            cursors.setsDeleted
+            cursors.setsDeleted,
+            cursors.templatesUpdated,
+            cursors.templatesDeleted
         )
     )
 }
@@ -460,13 +478,7 @@ const pullExercises = async (userId: string): Promise<number> => {
                 // the tombstone for (e.g. a merged-away duplicate). Without this
                 // the live-rows pull re-inserts it before the tombstone reaches
                 // the server, so the duplicate reappears after every sync.
-                if (!local) {
-                    const pendingTombstone = await innerDb.getFirstAsync<{ one: number }>(
-                        `SELECT 1 AS one FROM deletion_tombstones WHERE entity_type = 'exercise' AND entity_uuid = ? LIMIT 1`,
-                        row.uuid
-                    )
-                    if (pendingTombstone) continue
-                }
+                if (!local && (await hasPendingTombstone(innerDb, 'exercise', row.uuid))) continue
 
                 const cols = toExerciseColumns(row, userId)
                 if (local) {
@@ -564,7 +576,7 @@ const pullWorkouts = async (userId: string): Promise<number> => {
                 if (local) {
                     await db.runAsync(
                         `UPDATE workouts
-           SET user_id = ?, date = ?, start_time = ?, end_time = ?, status = ?, note = ?,
+           SET user_id = ?, date = ?, start_time = ?, end_time = ?, status = ?, note = ?, template_uuid = ?,
                created_at = ?, updated_at = ?, deleted_at = NULL, sync_status = 'synced', last_synced_at = ?
            WHERE uuid = ?`,
                         cols.user_id,
@@ -573,6 +585,7 @@ const pullWorkouts = async (userId: string): Promise<number> => {
                         cols.end_time,
                         cols.status,
                         cols.note,
+                        cols.template_uuid,
                         cols.created_at,
                         cols.updated_at,
                         nowIso(),
@@ -581,8 +594,8 @@ const pullWorkouts = async (userId: string): Promise<number> => {
                 } else {
                     await db.runAsync(
                         `INSERT INTO workouts
-           (uuid, user_id, date, start_time, end_time, status, note, created_at, updated_at, deleted_at, sync_status, last_synced_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced', ?)`,
+           (uuid, user_id, date, start_time, end_time, status, note, template_uuid, created_at, updated_at, deleted_at, sync_status, last_synced_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced', ?)`,
                         row.uuid,
                         cols.user_id,
                         cols.date,
@@ -590,6 +603,7 @@ const pullWorkouts = async (userId: string): Promise<number> => {
                         cols.end_time,
                         cols.status,
                         cols.note,
+                        cols.template_uuid,
                         cols.created_at,
                         cols.updated_at,
                         nowIso()
@@ -614,6 +628,111 @@ const pullWorkouts = async (userId: string): Promise<number> => {
         ...cursors,
         workoutsUpdated: nextUpdated,
         workoutsDeleted: nextDeleted,
+    })
+
+    return remote.length + deleted.length
+}
+
+// PostgREST answers 404 for a table it does not know. A backend that has not
+// applied the workout_templates migration yet must not stall the Workout and
+// Set pulls that follow, so the Templates pull treats it as "nothing to pull".
+const isMissingRemoteTable = (error: unknown): boolean => error instanceof RemoteRequestError && error.status === 404
+
+// A row deleted locally whose tombstone has not reached the server yet must
+// not be re-inserted by a live-rows pull.
+const hasPendingTombstone = async (
+    db: Pick<SQLiteDatabase, 'getFirstAsync'>,
+    entityType: 'exercise' | 'workout_template',
+    uuid: string
+): Promise<boolean> =>
+    !!(await db.getFirstAsync<{ one: number }>(
+        `SELECT 1 AS one FROM deletion_tombstones WHERE entity_type = ? AND entity_uuid = ? LIMIT 1`,
+        entityType,
+        uuid
+    ))
+
+const pullWorkoutTemplates = async (userId: string): Promise<number> => {
+    const cursors = getCursors(userId)
+    let remote: RemoteSimpleRow[]
+    try {
+        remote = await request<RemoteSimpleRow[]>('workout_templates', {
+            query: {
+                select: '*',
+                user_id: `eq.${userId}`,
+                deleted_at: 'is.null',
+                order: 'updated_at.asc',
+                ...(cursors.templatesUpdated ? { updated_at: `gt.${cursors.templatesUpdated}` } : {}),
+            },
+        })
+    } catch (error) {
+        if (isMissingRemoteTable(error)) return 0
+        throw error
+    }
+
+    let nextUpdated = cursors.templatesUpdated
+    for (const rows of chunk(remote, PULL_CHUNK_SIZE)) {
+        await executeWriteTransaction(async (db) => {
+            for (const row of rows) {
+                const local = await db.getFirstAsync<{ id: number; updated_at: string | null; sync_status: string }>(
+                    'SELECT id, updated_at, sync_status FROM workout_templates WHERE uuid = ? LIMIT 1',
+                    row.uuid
+                )
+                if (shouldSkipRemoteRow(local, row.updated_at)) continue
+
+                // A Template deleted here must not be resurrected before its
+                // tombstone lands remotely.
+                if (!local && (await hasPendingTombstone(db, 'workout_template', row.uuid))) continue
+
+                const cols = toWorkoutTemplateColumns(row, userId)
+                if (local) {
+                    await db.runAsync(
+                        `UPDATE workout_templates
+           SET user_id = ?, name = ?, exercise_uuids = ?, position = ?, created_at = ?, updated_at = ?,
+               deleted_at = NULL, sync_status = 'synced', last_synced_at = ?
+           WHERE uuid = ?`,
+                        cols.user_id,
+                        cols.name,
+                        cols.exercise_uuids,
+                        cols.position,
+                        cols.created_at,
+                        cols.updated_at,
+                        nowIso(),
+                        row.uuid
+                    )
+                } else {
+                    await db.runAsync(
+                        `INSERT INTO workout_templates
+           (uuid, user_id, name, exercise_uuids, position, created_at, updated_at, deleted_at, sync_status, last_synced_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 'synced', ?)`,
+                        row.uuid,
+                        cols.user_id,
+                        cols.name,
+                        cols.exercise_uuids,
+                        cols.position,
+                        cols.created_at,
+                        cols.updated_at,
+                        nowIso()
+                    )
+                }
+            }
+        })
+        for (const row of rows) nextUpdated = maxIso(nextUpdated, row.updated_at)
+    }
+
+    const deleted = await request<DeletedRow[]>('workout_templates', {
+        query: {
+            select: 'uuid,deleted_at',
+            user_id: `eq.${userId}`,
+            deleted_at: cursors.templatesDeleted ? `gt.${cursors.templatesDeleted}` : 'not.is.null',
+            order: 'deleted_at.asc',
+        },
+    })
+    const nextDeleted = await applyRemoteDeletions('workout_templates', deleted, cursors.templatesDeleted)
+
+    await setCursors(userId, {
+        ...cursors,
+        templatesUpdated: nextUpdated,
+        templatesDeleted: nextDeleted,
     })
 
     return remote.length + deleted.length
@@ -812,9 +931,10 @@ export const runSync = async (): Promise<SyncCycleResult> => {
                 // the cached repository wrapper. Invalidate explicitly so the
                 // next read reflects server changes.
                 if (exPulled > 0) invalidateExercisesCache()
+                const tpPulled = await pullWorkoutTemplates(snapshot.userId as string)
                 const wkPulled = await pullWorkouts(snapshot.userId as string)
                 const stPulled = await pullSets(snapshot.userId as string)
-                pulled = exPulled + wkPulled + stPulled
+                pulled = exPulled + tpPulled + wkPulled + stPulled
 
                 // Photo bytes hydrate in the background — rows whose photo_key
                 // has no local file yet get their download after the pull, and
@@ -931,7 +1051,7 @@ export const retryBlockedRows = async (): Promise<void> => {
     const shouldScopeByUser = !!userId
     const userScopeClause = shouldScopeByUser ? 'AND user_id = ?' : ''
     const userScopeParams = shouldScopeByUser ? [userId as string] : []
-    const tables = ['exercises', 'workouts', 'sets', 'deletion_tombstones'] as const
+    const tables = ['exercises', 'workouts', 'sets', 'workout_templates', 'deletion_tombstones'] as const
     await executeWriteTransaction(async (db) => {
         for (const table of tables) {
             await db.runAsync(

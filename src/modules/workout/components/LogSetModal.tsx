@@ -52,6 +52,11 @@ type Props = {
     onSave: () => void
     editingSetId: number | null
     exercises: Exercise[]
+    // The subset offered by the picker (a Planned Workout's Template). Defaults
+    // to every Exercise; `exercises` still resolves the selected one.
+    pickerExercises?: Exercise[]
+    // Shown above the picker to explain a narrowed list, e.g. the plan name.
+    pickerCaption?: string | null
     selectedExerciseId: number | null
     setSelectedExerciseId: (id: number) => void
     subSets: SubSet[]
@@ -67,6 +72,8 @@ export const LogSetModal = ({
     onSave,
     editingSetId,
     exercises,
+    pickerExercises = exercises,
+    pickerCaption,
     selectedExerciseId,
     setSelectedExerciseId,
     subSets,
@@ -232,8 +239,20 @@ export const LogSetModal = ({
                     <View style={styles.body}>
                         {!editingSetId && (
                             <Animated.View entering={ENTER}>
+                                {pickerCaption ? (
+                                    <View style={styles.pickerCaption}>
+                                        <FontAwesome name={'list-alt'} size={12} color={theme.primary} />
+                                        <Typography.Meta
+                                            color={'textSecondary'}
+                                            numberOfLines={1}
+                                            style={styles.pickerCaptionText}
+                                        >
+                                            {pickerCaption}
+                                        </Typography.Meta>
+                                    </View>
+                                ) : null}
                                 <ExercisePicker
-                                    exercises={exercises}
+                                    exercises={pickerExercises}
                                     selectedId={selectedExerciseId}
                                     onPick={(exercise) => {
                                         setSelectedExerciseId(exercise.id)
@@ -548,6 +567,15 @@ const SetInputFields = React.memo(function SetInputFields({
 })
 
 const styles = StyleSheet.create({
+    pickerCaption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+        marginTop: Spacing.sm,
+    },
+    pickerCaptionText: {
+        flexShrink: 1,
+    },
     modalRoot: {
         flex: 1,
         justifyContent: 'flex-end',

@@ -52,6 +52,27 @@ export function WorkoutDashboardSkeleton() {
                     </View>
                 </Card>
 
+                {/* Plans (Workout Templates) card. */}
+                <Card>
+                    <View style={skeletonStyles.headerRow}>
+                        <SkeletonBlock width={60} height={18} />
+                        <SkeletonBlock width={96} height={32} borderRadius={Radius.sm} />
+                    </View>
+                    {Array.from({ length: 2 }).map((_, i) => (
+                        <View
+                            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
+                            key={i}
+                            style={skeletonStyles.templateRow}
+                        >
+                            <SkeletonBlock width={36} height={36} borderRadius={Radius.sm} />
+                            <View style={skeletonStyles.templateText}>
+                                <SkeletonBlock width="50%" height={16} />
+                                <SkeletonBlock width="70%" height={12} borderRadius={2} />
+                            </View>
+                        </View>
+                    ))}
+                </Card>
+
                 <Card>
                     <SkeletonBlock width="55%" height={18} />
                     <SkeletonBlock width="45%" height={14} style={{ marginTop: Spacing.md }} />
@@ -104,6 +125,22 @@ export function WorkoutDashboardSkeleton() {
 }
 
 const skeletonStyles = StyleSheet.create({
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.sm,
+    },
+    templateRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        paddingVertical: Spacing.sm,
+    },
+    templateText: {
+        flex: 1,
+        gap: Spacing.xs,
+    },
     weekRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',

@@ -1,14 +1,15 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshControl, StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
-import { useExerciseRepo, useWorkoutRepo } from '@/src/data/RepositoryContext'
+import { useExerciseRepo, useWorkoutRepo, useWorkoutTemplateRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
+import type { WorkoutTemplate } from '@/src/db/workoutTemplates'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -22,7 +23,11 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { nextHasLoadedOnce, shouldShowSkeleton } from '@/src/modules/core/utils/loadingGate'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
+import { TemplateRow } from '@/src/modules/templates/components/TemplateRow'
+import { summarizeTemplates, type TemplateSummary } from '@/src/modules/templates/templateSummary'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
+import { formatMuscleGroup } from '@/src/utils/formatters'
+import { StartWorkoutSheet } from '../components/StartWorkoutSheet'
 import { WorkoutDashboardSkeleton } from './components/WorkoutDashboardSkeleton'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -48,8 +53,6 @@ const workoutMinutes = (workout: Workout): number => {
         Math.round((new Date(workout.end_time).getTime() - new Date(workout.start_time).getTime()) / 60000)
     )
 }
-
-const capitalizeFirst = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1)
 
 interface WeekDay {
     date: string
@@ -78,6 +81,7 @@ interface MuscleBalanceEntry {
 export default function WorkoutDashboardScreen() {
     const workoutRepo = useWorkoutRepo()
     const exerciseRepo = useExerciseRepo()
+    const templateRepo = useWorkoutTemplateRepo()
     const { t, i18n } = useTranslation()
     const { theme } = useTheme()
     const navigation = useNavigation()
@@ -107,6 +111,9 @@ export default function WorkoutDashboardScreen() {
     const [weekStats, setWeekStats] = useState<WeekStats>({ streak: 0, trainedMin: 0, daysSinceLast: null })
     const [lastWorkoutSummary, setLastWorkoutSummary] = useState<LastWorkoutSummary | null>(null)
     const [muscleBalance, setMuscleBalance] = useState<MuscleBalanceEntry[]>([])
+    const [templates, setTemplates] = useState<TemplateSummary[]>([])
+    const [startSheetVisible, setStartSheetVisible] = useState(false)
+    const startInFlightRef = useRef(false)
 
     const finishedWorkouts = allWorkouts.filter(
         (workout) => workout.status === 'finished' && workout.id !== activeWorkout?.id
@@ -193,7 +200,7 @@ export default function WorkoutDashboardScreen() {
 
             const weekSets = (await Promise.all(weekWorkouts.map((w) => workoutRepo.getSets(w.id)))).flat()
             // Seed every known muscle group at 0 so untrained groups stay visible in the balance.
-            const allExercises = await exerciseRepo.getAll()
+            const [allExercises, allTemplates] = await Promise.all([exerciseRepo.getAll(), templateRepo.getAll()])
             const groupCounts = new Map<string | null, number>()
             for (const exercise of allExercises) {
                 if (exercise.muscle_group) groupCounts.set(exercise.muscle_group, 0)
@@ -215,6 +222,7 @@ export default function WorkoutDashboardScreen() {
             setWeekStats({ streak, trainedMin, daysSinceLast })
             setLastWorkoutSummary(nextLastWorkoutSummary)
             setMuscleBalance(nextMuscleBalance)
+            setTemplates(summarizeTemplates(allTemplates, allExercises))
         } catch (error) {
             if (isStale()) return
             log('error', 'Failed to load workout dashboard', error)
@@ -225,7 +233,7 @@ export default function WorkoutDashboardScreen() {
                 setHasLoadedOnce((current) => nextHasLoadedOnce(current, true))
             }
         }
-    }, [beginLoad, i18n.language, t, workoutRepo, exerciseRepo])
+    }, [beginLoad, i18n.language, t, workoutRepo, exerciseRepo, templateRepo])
 
     useFocusEffect(
         useCallback(() => {
@@ -246,24 +254,45 @@ export default function WorkoutDashboardScreen() {
         setRefreshing(false)
     }
 
-    const handleStartWorkout = async () => {
+    const handleStartWorkout = () => {
         if (isStartingWorkout) return
-        setIsStartingWorkout(true)
         if (activeWorkout) {
             router.push(`/(tabs)/workout/${activeWorkout.id}`)
-            setIsStartingWorkout(false)
             return
         }
+        // Every new Workout forks here: Unplanned or Planned (ADR-0006).
+        setStartSheetVisible(true)
+    }
+
+    // template null = Unplanned Workout.
+    const startWorkout = async (template: WorkoutTemplate | null) => {
+        // A ref, not the state flag: two taps in the same frame both still see
+        // isStartingWorkout === false and would each create a Workout.
+        if (startInFlightRef.current) return
+        startInFlightRef.current = true
+        setIsStartingWorkout(true)
         try {
-            const today = formatLocalDateYYYYMMDD()
-            const id = await workoutRepo.create(today)
+            // Re-check: a Workout may have been started elsewhere (another
+            // device, via sync) since the dashboard loaded.
+            const running = await workoutRepo.getActiveWorkout()
+            const id = running?.id ?? (await workoutRepo.create(formatLocalDateYYYYMMDD(), template?.uuid ?? null))
+            setStartSheetVisible(false)
             router.push(`/(tabs)/workout/${id}`)
+            if (running) {
+                showToast.info({ title: t('workoutAlreadyRunningTitle'), message: t('workoutAlreadyRunning') })
+            }
         } catch (error) {
             log('error', 'Failed to start workout', error)
             showToast.danger({ title: t('error'), message: t('failedToStartWorkout') })
         } finally {
+            startInFlightRef.current = false
             setIsStartingWorkout(false)
         }
+    }
+
+    const openCreateTemplate = () => {
+        setStartSheetVisible(false)
+        router.push('/(tabs)/workout/templates/new')
     }
 
     const formatTrainedTime = (minutes: number): string => {
@@ -272,7 +301,8 @@ export default function WorkoutDashboardScreen() {
         return h > 0 ? `${h} h ${m} ${t('min')}` : `${m} ${t('min')}`
     }
 
-    const muscleGroupLabel = (group: string | null): string => (group ? capitalizeFirst(group) : t('otherMuscleGroup'))
+    const muscleGroupLabel = (group: string | null): string =>
+        group ? formatMuscleGroup(group) : t('otherMuscleGroup')
 
     // While the post-login hydration pull is running, even a non-empty read is
     // partial (workouts land before their sets, so e.g. the muscle balance
@@ -380,6 +410,43 @@ export default function WorkoutDashboardScreen() {
             </ListItemAppear>
 
             <ListItemAppear index={1} animateOnEnter={hasRevealed.current}>
+                <Card>
+                    <View style={layoutStyles.templatesHeader}>
+                        <Typography.Subtitle size="md" weight="bold">
+                            {t('plans')}
+                        </Typography.Subtitle>
+                        <Button
+                            label={t('newTemplate')}
+                            leftIcon={'plus'}
+                            variant={'secondary'}
+                            size={'sm'}
+                            onPress={() => router.push('/(tabs)/workout/templates/new')}
+                        />
+                    </View>
+                    {templates.length === 0 ? (
+                        <Typography.Meta color={'textSecondary'} size={'sm'}>
+                            {t('plansEmptyHint')}
+                        </Typography.Meta>
+                    ) : (
+                        <View>
+                            {templates.map((summary, index) => (
+                                <View
+                                    key={summary.template.id}
+                                    style={index > 0 && { borderTopWidth: 1, borderTopColor: theme.hairline }}
+                                >
+                                    <TemplateRow
+                                        summary={summary}
+                                        onPress={() => router.push(`/(tabs)/workout/templates/${summary.template.id}`)}
+                                        accessibilityHint={t('editTemplate')}
+                                    />
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </Card>
+            </ListItemAppear>
+
+            <ListItemAppear index={2} animateOnEnter={hasRevealed.current}>
                 <Card style={[layoutStyles.activeCard, { borderLeftColor: theme.primary }]}>
                     {activeWorkout ? (
                         <Appear key="active">
@@ -425,7 +492,7 @@ export default function WorkoutDashboardScreen() {
                 </Card>
             </ListItemAppear>
 
-            <ListItemAppear index={2} animateOnEnter={hasRevealed.current}>
+            <ListItemAppear index={3} animateOnEnter={hasRevealed.current}>
                 <Card>
                     {lastWorkoutSummary ? (
                         <>
@@ -537,7 +604,7 @@ export default function WorkoutDashboardScreen() {
             </ListItemAppear>
 
             {muscleBalance.length > 0 && (
-                <ListItemAppear index={3} animateOnEnter={hasRevealed.current}>
+                <ListItemAppear index={4} animateOnEnter={hasRevealed.current}>
                     <Card>
                         <Typography.Subtitle size="md" weight="bold" style={{ marginBottom: Spacing.md }}>
                             {t('muscleBalance')}
@@ -573,6 +640,16 @@ export default function WorkoutDashboardScreen() {
                     </Card>
                 </ListItemAppear>
             )}
+
+            <StartWorkoutSheet
+                visible={startSheetVisible}
+                templates={templates}
+                isStarting={isStartingWorkout}
+                onClose={() => setStartSheetVisible(false)}
+                onStartUnplanned={() => startWorkout(null)}
+                onStartPlanned={startWorkout}
+                onCreateTemplate={openCreateTemplate}
+            />
         </ScrollScreenLayout>
     )
 }
@@ -645,6 +722,12 @@ const layoutStyles = StyleSheet.create({
     },
     activeCard: {
         borderLeftWidth: 4,
+    },
+    templatesHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.sm,
     },
     activeHeader: {
         flexDirection: 'row',

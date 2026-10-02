@@ -4,9 +4,9 @@
 import type * as SQLite from 'expo-sqlite'
 import type { PrincipalSnapshot } from './PrincipalSnapshot'
 
-export type OutboxEntityType = 'exercise' | 'workout' | 'set'
+export type OutboxEntityType = 'exercise' | 'workout' | 'set' | 'workout_template'
 
-export type EntityTable = 'exercises' | 'workouts' | 'sets'
+export type EntityTable = 'exercises' | 'workouts' | 'sets' | 'workout_templates'
 
 export type SyncFailureKind =
     | 'network-error'
@@ -47,6 +47,19 @@ export type WorkoutRow = {
     end_time: string | null
     status: 'in_progress' | 'finished'
     note: string | null
+    template_uuid: string | null
+    created_at: string | null
+    updated_at: string | null
+    deleted_at: string | null
+}
+
+export type WorkoutTemplateRow = {
+    uuid: string
+    user_id: string | null
+    name: string
+    // JSON array of Exercise uuids, as stored locally (ADR-0006).
+    exercise_uuids: string | null
+    position: number
     created_at: string | null
     updated_at: string | null
     deleted_at: string | null
@@ -92,6 +105,7 @@ export type OutboxRow =
     | EntityVariant<'exercise', ExerciseRow>
     | EntityVariant<'workout', WorkoutRow>
     | EntityVariant<'set', SetRowWithRefs>
+    | EntityVariant<'workout_template', WorkoutTemplateRow>
     | TombstoneVariant
 
 type SqliteLike = Pick<SQLite.SQLiteDatabase, 'getAllAsync' | 'runAsync'>
@@ -125,12 +139,20 @@ const classifyFailure = (reasonKind: SyncFailureKind, attempts: number): FailSta
 // parked row stops re-failing every cycle (and stops inflating the outbox size).
 export const DIRTY_STATUSES = `('dirty','failed')`
 
-export const tableOf = (entityType: OutboxEntityType): EntityTable =>
-    entityType === 'exercise' ? 'exercises' : entityType === 'workout' ? 'workouts' : 'sets'
+const TABLE_BY_ENTITY: Record<OutboxEntityType, EntityTable> = {
+    exercise: 'exercises',
+    workout: 'workouts',
+    set: 'sets',
+    workout_template: 'workout_templates',
+}
+
+export const tableOf = (entityType: OutboxEntityType): EntityTable => TABLE_BY_ENTITY[entityType]
 
 const EXERCISE_COLS =
     'uuid, user_id, name, type, muscle_group, photo_uri, photo_key, position, created_at, updated_at, deleted_at'
-const WORKOUT_COLS = 'uuid, user_id, date, start_time, end_time, status, note, created_at, updated_at, deleted_at'
+const WORKOUT_COLS =
+    'uuid, user_id, date, start_time, end_time, status, note, template_uuid, created_at, updated_at, deleted_at'
+const TEMPLATE_COLS = 'uuid, user_id, name, exercise_uuids, position, created_at, updated_at, deleted_at'
 const SET_COLS = `s.uuid, s.user_id, s.workout_id, s.exercise_id, s.weight, s.reps,
     s.distance, s.duration, s.rpe, s.position, s.sub_sets, s.created_at, s.updated_at,
     s.deleted_at, w.uuid as workout_uuid, e.uuid as exercise_uuid`
@@ -202,6 +224,7 @@ const readAttempts = async (
 export const createOutbox = (read: SqliteLike, write: RunWrite): Outbox => ({
     async nextBatch(snapshot) {
         const exercises = await selectDirty<ExerciseRow>(read, 'exercises', EXERCISE_COLS, snapshot)
+        const templates = await selectDirty<WorkoutTemplateRow>(read, 'workout_templates', TEMPLATE_COLS, snapshot)
         const workouts = await selectDirty<WorkoutRow>(read, 'workouts', WORKOUT_COLS, snapshot)
         const sets = await selectDirtySets(read, snapshot)
         const tombstones = await read.getAllAsync<{
@@ -223,6 +246,15 @@ export const createOutbox = (read: SqliteLike, write: RunWrite): Outbox => ({
                 (row): OutboxRow => ({
                     kind: 'entity',
                     entityType: 'exercise',
+                    uuid: row.uuid,
+                    updatedAt: row.updated_at,
+                    row,
+                })
+            ),
+            ...templates.map(
+                (row): OutboxRow => ({
+                    kind: 'entity',
+                    entityType: 'workout_template',
                     uuid: row.uuid,
                     updatedAt: row.updated_at,
                     row,

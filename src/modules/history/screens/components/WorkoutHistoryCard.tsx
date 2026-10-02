@@ -12,12 +12,14 @@ import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime'
 
 interface WorkoutHistoryCardProps {
     item: Workout
+    // Name of the Workout Template a Planned Workout came from, if it still exists.
+    templateName?: string
 }
 
 // One row of the workout-history list. Owns the date/time formatting and all the
 // status/note conditional rendering. Renders statically — the skeleton is the
 // list's entrance, so rows don't float in.
-export function WorkoutHistoryCard({ item }: WorkoutHistoryCardProps) {
+export function WorkoutHistoryCard({ item, templateName }: WorkoutHistoryCardProps) {
     const { t, i18n } = useTranslation()
     const { theme } = useTheme()
 
@@ -44,6 +46,19 @@ export function WorkoutHistoryCard({ item }: WorkoutHistoryCardProps) {
                         {item.start_time ? formatHourMinute(item.start_time) : ''}
                         {item.end_time ? ` - ${formatHourMinute(item.end_time)}` : ` (${t('inProgress')})`}
                     </Typography.Meta>
+                    {templateName && (
+                        <View style={styles.templateRow}>
+                            <FontAwesome name={'list-alt'} size={11} color={theme.primary} />
+                            <Typography.Meta
+                                color={'primary'}
+                                weight={'bold'}
+                                numberOfLines={1}
+                                style={styles.templateName}
+                            >
+                                {templateName}
+                            </Typography.Meta>
+                        </View>
+                    )}
                     {item.note && (
                         <Typography.Meta style={styles.workoutNote}>
                             {'"'}
@@ -63,6 +78,15 @@ export function WorkoutHistoryCard({ item }: WorkoutHistoryCardProps) {
 }
 
 const styles = StyleSheet.create({
+    templateRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+        marginTop: Spacing.xs2,
+    },
+    templateName: {
+        flexShrink: 1,
+    },
     workoutItem: {
         flexDirection: 'row',
         justifyContent: 'space-between',

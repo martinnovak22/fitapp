@@ -1,8 +1,10 @@
 // Pure reconciliation seam shared by the per-entity pulls. The pull arrows keep
 // their SQL; the conflict decision and the remote-row → column-value fan-out
 // live here so they are tested directly and the arrows stay thin. The module is
-// intentionally dependency-free (no DB layer) so it runs under the node test
-// environment without the expo-sqlite / react-native chain.
+// intentionally free of expo-sqlite / react-native imports (it only uses pure
+// helpers such as templateMembership) so it runs under the node test environment.
+
+import { parseExerciseUuids, serializeExerciseUuids } from '@/src/db/templateMembership'
 
 export const parseIsoMillis = (value: string | null | undefined): number => {
     if (!value) return 0
@@ -68,6 +70,7 @@ interface WorkoutRowSource {
     end_time?: string | null
     status?: 'in_progress' | 'finished'
     note?: string | null
+    template_uuid?: string | null
     created_at: string | null
     updated_at: string | null
 }
@@ -79,6 +82,7 @@ export interface WorkoutColumns {
     end_time: string | null
     status: 'in_progress' | 'finished'
     note: string | null
+    template_uuid: string | null
     created_at: string
     updated_at: string
 }
@@ -90,6 +94,35 @@ export const toWorkoutColumns = (row: WorkoutRowSource, userId: string): Workout
     end_time: row.end_time ?? null,
     status: row.status ?? 'finished',
     note: row.note ?? null,
+    template_uuid: row.template_uuid ?? null,
+    created_at: toIsoOrNow(row.created_at),
+    updated_at: toIsoOrNow(row.updated_at),
+})
+
+interface WorkoutTemplateRowSource {
+    name?: string
+    exercise_uuids?: unknown
+    position?: number
+    created_at: string | null
+    updated_at: string | null
+}
+
+export interface WorkoutTemplateColumns {
+    user_id: string
+    name: string
+    // Serialized for the local TEXT column; the remote jsonb array is parsed
+    // and canonicalized on the way in.
+    exercise_uuids: string
+    position: number
+    created_at: string
+    updated_at: string
+}
+
+export const toWorkoutTemplateColumns = (row: WorkoutTemplateRowSource, userId: string): WorkoutTemplateColumns => ({
+    user_id: userId,
+    name: row.name ?? '',
+    exercise_uuids: serializeExerciseUuids(parseExerciseUuids(row.exercise_uuids)),
+    position: row.position ?? 0,
     created_at: toIsoOrNow(row.created_at),
     updated_at: toIsoOrNow(row.updated_at),
 })

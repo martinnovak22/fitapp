@@ -36,6 +36,7 @@ create table if not exists public.workouts (
   end_time timestamptz,
   status text not null default 'finished' check (status in ('in_progress','finished')),
   note text,
+  template_uuid text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
@@ -56,6 +57,20 @@ create table if not exists public.sets (
   rpe integer,
   position integer not null default 0,
   sub_sets text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  sync_status text not null default 'local' check (sync_status in ('local','dirty','synced','failed')),
+  last_synced_at timestamptz
+);
+
+create table if not exists public.workout_templates (
+  id bigint generated always as identity primary key,
+  uuid text unique,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  exercise_uuids jsonb not null default '[]'::jsonb check (jsonb_typeof(exercise_uuids) = 'array'),
+  position integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
@@ -92,6 +107,10 @@ create index if not exists idx_workouts_uuid on public.workouts(uuid);
 create index if not exists idx_sets_user_workout_position on public.sets(user_id, workout_id, position);
 create index if not exists idx_sets_user_exercise on public.sets(user_id, exercise_id);
 create index if not exists idx_sets_uuid on public.sets(uuid);
+create index if not exists idx_workouts_user_template on public.workouts(user_id, template_uuid);
+create index if not exists idx_workout_templates_user_pos_name on public.workout_templates(user_id, position, name);
+create index if not exists idx_workout_templates_uuid on public.workout_templates(uuid);
+create index if not exists idx_workout_templates_user_updated on public.workout_templates(user_id, updated_at);
 create index if not exists idx_tombstones_user_status on public.deletion_tombstones(user_id, sync_status, deleted_at);
 create index if not exists idx_tombstones_entity on public.deletion_tombstones(entity_type, entity_uuid);
 create index if not exists idx_sync_queue_queued_at on public.sync_queue(queued_at);
@@ -124,11 +143,16 @@ drop trigger if exists trg_sets_updated_at on public.sets;
 create trigger trg_sets_updated_at before update on public.sets
 for each row execute function public.set_updated_at();
 
+drop trigger if exists trg_workout_templates_updated_at on public.workout_templates;
+create trigger trg_workout_templates_updated_at before update on public.workout_templates
+for each row execute function public.set_updated_at();
+
 -- Enable RLS
 alter table public.profiles enable row level security;
 alter table public.exercises enable row level security;
 alter table public.workouts enable row level security;
 alter table public.sets enable row level security;
+alter table public.workout_templates enable row level security;
 alter table public.deletion_tombstones enable row level security;
 alter table public.sync_queue enable row level security;
 
@@ -156,6 +180,10 @@ for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "sets_own_all" on public.sets;
 create policy "sets_own_all" on public.sets
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "workout_templates_own_all" on public.workout_templates;
+create policy "workout_templates_own_all" on public.workout_templates
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "tombstones_own_all" on public.deletion_tombstones;
