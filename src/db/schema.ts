@@ -1,7 +1,7 @@
 import type * as SQLite from 'expo-sqlite'
 
 export const DATABASE_NAME = 'fitapp.db'
-const SCHEMA_VERSION = 4
+const SCHEMA_VERSION = 5
 
 type ColumnDef = {
     name: string
@@ -89,6 +89,7 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       end_time TEXT,
       status TEXT DEFAULT 'finished',
       note TEXT,
+      template_uuid TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       deleted_at TEXT,
@@ -120,6 +121,21 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS workout_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      uuid TEXT UNIQUE,
+      user_id TEXT,
+      name TEXT NOT NULL,
+      exercise_uuids TEXT NOT NULL DEFAULT '[]',
+      position INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TEXT,
+      sync_status TEXT DEFAULT 'local',
+      last_synced_at TEXT,
+      sync_attempts INTEGER DEFAULT 0
+    );
+
     CREATE TABLE IF NOT EXISTS deletion_tombstones (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       entity_type TEXT NOT NULL,
@@ -146,7 +162,9 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       workouts_updated TEXT,
       workouts_deleted TEXT,
       sets_updated TEXT,
-      sets_deleted TEXT
+      sets_deleted TEXT,
+      templates_updated TEXT,
+      templates_deleted TEXT
     );
   `)
 }
@@ -158,6 +176,10 @@ const createIndexes = async (db: SQLite.SQLiteDatabase) => {
 
     CREATE INDEX IF NOT EXISTS idx_workouts_date_status ON workouts(date, status);
     CREATE INDEX IF NOT EXISTS idx_workouts_uuid ON workouts(uuid);
+    CREATE INDEX IF NOT EXISTS idx_workouts_template ON workouts(template_uuid);
+
+    CREATE INDEX IF NOT EXISTS idx_workout_templates_position_name ON workout_templates(position, name);
+    CREATE INDEX IF NOT EXISTS idx_workout_templates_uuid ON workout_templates(uuid);
 
     CREATE INDEX IF NOT EXISTS idx_sets_workout_position ON sets(workout_id, position);
     CREATE INDEX IF NOT EXISTS idx_sets_exercise ON sets(exercise_id);
@@ -189,6 +211,11 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
     // photo_uri stays device-local; photo_key is the synced storage key for the
     // photo bytes in the exercise-photos bucket (issue #49).
     await ensureColumn(db, 'exercises', { name: 'photo_key', sqlType: 'TEXT' })
+    // Workout Templates (ADR-0006): a Workout records the Template it was
+    // started from by uuid. Existing Workouts stay NULL, i.e. Unplanned.
+    await ensureColumn(db, 'workouts', { name: 'template_uuid', sqlType: 'TEXT' })
+    await ensureColumn(db, 'pull_cursors', { name: 'templates_updated', sqlType: 'TEXT' })
+    await ensureColumn(db, 'pull_cursors', { name: 'templates_deleted', sqlType: 'TEXT' })
     await ensureColumn(db, 'deletion_tombstones', {
         name: 'sync_attempts',
         sqlType: 'INTEGER',

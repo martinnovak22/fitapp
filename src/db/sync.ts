@@ -3,7 +3,7 @@ import { buildPrincipalWhereClause } from '@/src/data/principal'
 import { executeWriteTransaction } from './writeQueue'
 
 export type SyncStatus = 'local' | 'dirty' | 'synced' | 'failed' | 'blocked'
-export type SyncEntityType = 'exercise' | 'workout' | 'set'
+export type SyncEntityType = 'exercise' | 'workout' | 'set' | 'workout_template'
 
 export const nowIso = () => new Date().toISOString()
 

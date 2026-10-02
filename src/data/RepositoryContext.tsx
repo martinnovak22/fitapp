@@ -4,6 +4,7 @@ import {
     type ExerciseRepositoryPort,
     getRepositories,
     type WorkoutRepositoryPort,
+    type WorkoutTemplateRepositoryPort,
 } from '@/src/data/repositories'
 
 const RepositoryContext = createContext<DataRepositories | null>(null)
@@ -23,4 +24,10 @@ export function useExerciseRepo(): ExerciseRepositoryPort {
     const ctx = useContext(RepositoryContext)
     if (!ctx) throw new Error('useExerciseRepo must be used within a RepositoryProvider')
     return ctx.exercises
+}
+
+export function useWorkoutTemplateRepo(): WorkoutTemplateRepositoryPort {
+    const ctx = useContext(RepositoryContext)
+    if (!ctx) throw new Error('useWorkoutTemplateRepo must be used within a RepositoryProvider')
+    return ctx.templates
 }

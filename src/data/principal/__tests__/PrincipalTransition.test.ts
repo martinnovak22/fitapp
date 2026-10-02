@@ -63,6 +63,38 @@ describe('runPrincipalTransition', () => {
         expect(row?.sync_status).toBe('dirty')
     })
 
+    it('guest → account with preserve: re-owns guest Workout Templates and queues them for push', async () => {
+        await db.runAsync(
+            `INSERT INTO workout_templates (uuid, user_id, name, exercise_uuids, sync_status)
+            VALUES ('t-1', NULL, 'Push', '["ex-1"]', 'synced')`
+        )
+
+        await runPrincipalTransition({
+            from: { kind: 'guest' },
+            to: { kind: 'account', userId: 'user-A' },
+            policy: 'preserve',
+        })
+
+        const row = await db.getFirstAsync<{ user_id: string; sync_status: string }>(
+            `SELECT user_id, sync_status FROM workout_templates WHERE uuid = 't-1'`
+        )
+        expect(row).toEqual({ user_id: 'user-A', sync_status: 'dirty' })
+    })
+
+    it('account → account with clear: wipes Workout Templates too', async () => {
+        await db.runAsync(
+            `INSERT INTO workout_templates (uuid, user_id, name, sync_status) VALUES ('t-1', 'user-A', 'Push', 'synced')`
+        )
+
+        await runPrincipalTransition({
+            from: { kind: 'account', userId: 'user-A' },
+            to: { kind: 'account', userId: 'user-B' },
+            policy: 'clear',
+        })
+
+        expect(await countOf('workout_templates')).toBe(0)
+    })
+
     it('account-A → account-B with clear: empties all data tables', async () => {
         await insertAccountWorkout('wk-1', 'user-A')
         await insertAccountWorkout('wk-2', 'user-A')

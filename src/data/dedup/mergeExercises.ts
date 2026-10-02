@@ -4,6 +4,7 @@ import { buildPhotoKey } from '@/src/data/sync/photoSync'
 import { getDb } from '@/src/db/client'
 import { ExerciseRepository } from '@/src/db/exercises'
 import { nowIso, recordDeletionTombstone } from '@/src/db/sync'
+import { repointExerciseUuids } from '@/src/db/templateMembership'
 import { executeWriteTransaction } from '@/src/db/writeQueue'
 import { type DuplicateGroup, findDuplicateExerciseGroups } from './exerciseDedup'
 
@@ -15,6 +16,7 @@ export type MergeExercisesInput = {
 export type MergeExercisesResult = {
     setsRepointed: number
     exercisesDeleted: number
+    templatesRepointed: number
 }
 
 // Live referencing-Set counts per exercise id, within the active principal
@@ -45,7 +47,7 @@ export const findDuplicateExercises = async (): Promise<DuplicateGroup[]> => {
 // principal-scoped (ADR-0005).
 export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promise<MergeExercisesResult> => {
     const duplicateIds = input.duplicateIds.filter((id) => id !== input.survivorId)
-    if (duplicateIds.length === 0) return { setsRepointed: 0, exercisesDeleted: 0 }
+    if (duplicateIds.length === 0) return { setsRepointed: 0, exercisesDeleted: 0, templatesRepointed: 0 }
 
     const result = await executeWriteTransaction(async (db) => {
         const now = nowIso()
@@ -77,6 +79,7 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
         let fillMuscleGroup = survivor?.muscle_group ?? null
 
         let exercisesDeleted = 0
+        const duplicateUuids = new Set<string>()
         for (const duplicateId of duplicateIds) {
             const row = await db.getFirstAsync<{
                 uuid: string
@@ -89,6 +92,7 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
                 ...scope.params
             )
             if (!row?.uuid) continue
+            duplicateUuids.add(row.uuid)
             if (!fillPhotoUri && row.photo_uri) fillPhotoUri = row.photo_uri
             if (!fillMuscleGroup && row.muscle_group) fillMuscleGroup = row.muscle_group
             await recordDeletionTombstone(db, 'exercise', row.uuid, row.user_id)
@@ -116,7 +120,30 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
             )
         }
 
-        return { setsRepointed: repoint.changes, exercisesDeleted }
+        // Workout Templates reference Exercises by uuid, so membership follows
+        // the merge onto the Survivor the same way Sets do (ADR-0006).
+        let templatesRepointed = 0
+        if (survivor?.uuid && duplicateUuids.size > 0) {
+            const templates = await db.getAllAsync<{ id: number; exercise_uuids: string | null }>(
+                `SELECT id, exercise_uuids FROM workout_templates WHERE ${scope.clause}`,
+                ...scope.params
+            )
+            for (const template of templates) {
+                const next = repointExerciseUuids(template.exercise_uuids, duplicateUuids, survivor.uuid)
+                if (next === null) continue
+                await db.runAsync(
+                    `UPDATE workout_templates SET exercise_uuids = ?, updated_at = ?, sync_status = 'dirty'
+                     WHERE id = ? AND ${scope.clause}`,
+                    next,
+                    now,
+                    template.id,
+                    ...scope.params
+                )
+                templatesRepointed += 1
+            }
+        }
+
+        return { setsRepointed: repoint.changes, exercisesDeleted, templatesRepointed }
     })
 
     // The raw merge bypasses the cached repository, so the exercises list cache

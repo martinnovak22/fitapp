@@ -30,8 +30,8 @@ export type TransitionOutcome =
 
 type SqliteWrite = Pick<SQLite.SQLiteDatabase, 'runAsync'>
 
-type DataTable = 'sets' | 'workouts' | 'exercises' | 'deletion_tombstones'
-const DATA_TABLES: DataTable[] = ['sets', 'workouts', 'exercises', 'deletion_tombstones']
+type DataTable = 'sets' | 'workouts' | 'exercises' | 'workout_templates' | 'deletion_tombstones'
+const DATA_TABLES: DataTable[] = ['sets', 'workouts', 'exercises', 'workout_templates', 'deletion_tombstones']
 
 const sameIdentity = (a: PrincipalIdentity, b: PrincipalIdentity): boolean => {
     if (a.kind !== b.kind) return false
@@ -51,14 +51,16 @@ const clearLocal = async (db: SqliteWrite): Promise<number> => {
              last_success_at = NULL, last_attempt_at = NULL, last_error = NULL
          WHERE id = 1`
     )
-    await db.runAsync(`DELETE FROM sqlite_sequence WHERE name IN ('sets','workouts','exercises','deletion_tombstones')`)
+    await db.runAsync(
+        `DELETE FROM sqlite_sequence WHERE name IN ('sets','workouts','exercises','workout_templates','deletion_tombstones')`
+    )
     return total
 }
 
 const migrateGuestToAccount = async (db: SqliteWrite, userId: string): Promise<number> => {
     const now = nowIso()
     let migrated = 0
-    for (const table of ['exercises', 'workouts', 'sets'] as const) {
+    for (const table of ['exercises', 'workouts', 'sets', 'workout_templates'] as const) {
         const result = await db.runAsync(
             `UPDATE ${table}
              SET user_id = ?, updated_at = ?, sync_status = 'dirty'

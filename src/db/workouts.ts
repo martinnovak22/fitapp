@@ -13,6 +13,9 @@ export interface Workout {
     end_time?: string
     status: 'in_progress' | 'finished'
     note?: string
+    // The Workout Template this Workout was started from (ADR-0006). NULL for
+    // an Unplanned Workout; may point at a since-deleted Template.
+    template_uuid?: string | null
     created_at?: string
     updated_at?: string
     deleted_at?: string | null
@@ -61,18 +64,19 @@ export interface SetWithExerciseName extends Set {
 }
 
 export const WorkoutRepository = {
-    async create(date: string): Promise<number> {
+    async create(date: string, templateUuid?: string | null): Promise<number> {
         return executeWrite(async (db) => {
             const now = nowIso()
             const result = await db.runAsync(
                 `INSERT INTO workouts
-                 (uuid, user_id, date, start_time, status, created_at, updated_at, sync_status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                 (uuid, user_id, date, start_time, status, template_uuid, created_at, updated_at, sync_status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 createEntityUuid(),
                 getScopedUserId(),
                 date,
                 now,
                 'in_progress',
+                templateUuid ?? null,
                 now,
                 now,
                 'dirty'

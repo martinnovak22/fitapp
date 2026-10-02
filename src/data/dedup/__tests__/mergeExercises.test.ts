@@ -140,7 +140,7 @@ describe('mergeDuplicateExercises', () => {
 
         const result = await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [survivor] })
 
-        expect(result).toEqual({ setsRepointed: 0, exercisesDeleted: 0 })
+        expect(result).toEqual({ setsRepointed: 0, exercisesDeleted: 0, templatesRepointed: 0 })
         expect((await setRow('s-1'))?.sync_status).toBe('synced')
         expect(invalidateExercisesCache).not.toHaveBeenCalled()
     })
@@ -216,6 +216,53 @@ describe('mergeDuplicateExercises', () => {
         expect(foreignStill?.id).toBe(foreignDup)
         const tombCount = await db.getFirstAsync<{ c: number }>(`SELECT COUNT(*) c FROM deletion_tombstones`)
         expect(tombCount?.c).toBe(0)
+    })
+})
+
+describe('mergeDuplicateExercises — Workout Template membership', () => {
+    const insertTemplate = async (uuid: string, exerciseUuids: string[], userId: string | null = 'user-A') => {
+        await db.runAsync(
+            `INSERT INTO workout_templates (uuid, user_id, name, exercise_uuids, sync_status, created_at, updated_at)
+             VALUES (?, ?, ?, ?, 'synced', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+            uuid,
+            userId,
+            uuid,
+            JSON.stringify(exerciseUuids)
+        )
+    }
+
+    const templateRow = (uuid: string) =>
+        db.getFirstAsync<{ exercise_uuids: string; sync_status: string }>(
+            'SELECT exercise_uuids, sync_status FROM workout_templates WHERE uuid = ?',
+            uuid
+        )
+
+    it('re-points a duplicate onto the survivor, collapsing the resulting repeat', async () => {
+        const survivor = await insertExercise('ex-keep', 'Bench Press')
+        const dup = await insertExercise('ex-dup', 'Bench Press')
+        await insertExercise('ex-squat', 'Squat')
+        await insertTemplate('t-push', ['ex-dup', 'ex-squat', 'ex-keep'])
+        await insertTemplate('t-legs', ['ex-squat'])
+
+        const result = await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [dup] })
+
+        expect(result.templatesRepointed).toBe(1)
+        const push = await templateRow('t-push')
+        expect(JSON.parse(push?.exercise_uuids ?? '[]')).toEqual(['ex-keep', 'ex-squat'])
+        expect(push?.sync_status).toBe('dirty')
+        // Templates that never referenced the duplicate are not rewritten.
+        expect((await templateRow('t-legs'))?.sync_status).toBe('synced')
+    })
+
+    it('leaves another principal’s Template alone', async () => {
+        const survivor = await insertExercise('ex-keep', 'Bench Press')
+        const dup = await insertExercise('ex-dup', 'Bench Press')
+        await insertTemplate('t-foreign', ['ex-dup'], 'user-B')
+
+        const result = await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [dup] })
+
+        expect(result.templatesRepointed).toBe(0)
+        expect(JSON.parse((await templateRow('t-foreign'))?.exercise_uuids ?? '[]')).toEqual(['ex-dup'])
     })
 })
 

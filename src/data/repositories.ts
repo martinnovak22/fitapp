@@ -1,6 +1,7 @@
 import { createCachedExerciseRepository } from '@/src/data/exercisesCache'
 import { type Exercise, ExerciseRepository } from '@/src/db/exercises'
 import { type SetData, type SetWithExerciseName, type Workout, WorkoutRepository } from '@/src/db/workouts'
+import { type WorkoutTemplate, type WorkoutTemplateInput, WorkoutTemplateRepository } from '@/src/db/workoutTemplates'
 
 export interface ExerciseRepositoryPort {
     getAll: () => Promise<Exercise[]>
@@ -12,7 +13,7 @@ export interface ExerciseRepositoryPort {
 }
 
 export interface WorkoutRepositoryPort {
-    create: (date: string) => Promise<number>
+    create: (date: string, templateUuid?: string | null) => Promise<number>
     finish: (id: number) => Promise<void>
     delete: (id: number) => Promise<void>
     getById: (id: number) => Promise<Workout | null>
@@ -31,14 +32,25 @@ export interface WorkoutRepositoryPort {
     updateTiming: (id: number, date: string, startTime: string, endTime?: string) => Promise<void>
 }
 
+export interface WorkoutTemplateRepositoryPort {
+    getAll: () => Promise<WorkoutTemplate[]>
+    getById: (id: number) => Promise<WorkoutTemplate | null>
+    getByUuid: (uuid: string) => Promise<WorkoutTemplate | null>
+    create: (input: WorkoutTemplateInput) => Promise<number>
+    update: (id: number, input: Partial<WorkoutTemplateInput>) => Promise<void>
+    delete: (id: number) => Promise<void>
+}
+
 export interface DataRepositories {
     exercises: ExerciseRepositoryPort
     workouts: WorkoutRepositoryPort
+    templates: WorkoutTemplateRepositoryPort
 }
 
 const localRepositories: DataRepositories = {
     exercises: createCachedExerciseRepository(ExerciseRepository),
     workouts: WorkoutRepository,
+    templates: WorkoutTemplateRepository,
 }
 
 let activeRepositories: DataRepositories = localRepositories
