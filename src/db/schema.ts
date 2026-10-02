@@ -27,14 +27,17 @@ const getColumnDefinitions = async (db: SQLite.SQLiteDatabase, table: string) =>
     return db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`)
 }
 
-const ensureColumn = async (db: SQLite.SQLiteDatabase, table: string, column: ColumnDef) => {
+// Returns whether the column was added, so a one-off backfill can key off the
+// upgrade that introduced it.
+const ensureColumn = async (db: SQLite.SQLiteDatabase, table: string, column: ColumnDef): Promise<boolean> => {
     const columns = await getColumnDefinitions(db, table)
     if (columns.some((existing) => existing.name === column.name)) {
-        return
+        return false
     }
 
     const defaultClause = column.defaultValue ? ` DEFAULT ${column.defaultValue}` : ''
     await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${column.name} ${column.sqlType}${defaultClause};`)
+    return true
 }
 
 const ensureSyncMetadataColumns = async (db: SQLite.SQLiteDatabase, table: 'exercises' | 'workouts' | 'sets') => {
@@ -213,7 +216,13 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
     await ensureColumn(db, 'exercises', { name: 'photo_key', sqlType: 'TEXT' })
     // Workout Templates (ADR-0006): a Workout records the Template it was
     // started from by uuid. Existing Workouts stay NULL, i.e. Unplanned.
-    await ensureColumn(db, 'workouts', { name: 'template_uuid', sqlType: 'TEXT' })
+    const addedTemplateUuid = await ensureColumn(db, 'workouts', { name: 'template_uuid', sqlType: 'TEXT' })
+    if (addedTemplateUuid) {
+        // Workouts pulled before this column existed had their template_uuid
+        // dropped on the floor, and the incremental cursor is already past
+        // them. Re-pull every Workout once so the links land locally.
+        await db.execAsync(`UPDATE pull_cursors SET workouts_updated = NULL;`)
+    }
     await ensureColumn(db, 'pull_cursors', { name: 'templates_updated', sqlType: 'TEXT' })
     await ensureColumn(db, 'pull_cursors', { name: 'templates_deleted', sqlType: 'TEXT' })
     await ensureColumn(db, 'deletion_tombstones', {

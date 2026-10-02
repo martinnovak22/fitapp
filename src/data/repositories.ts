@@ -37,7 +37,7 @@ export interface WorkoutTemplateRepositoryPort {
     getById: (id: number) => Promise<WorkoutTemplate | null>
     getByUuid: (uuid: string) => Promise<WorkoutTemplate | null>
     create: (input: WorkoutTemplateInput) => Promise<number>
-    update: (id: number, input: Partial<WorkoutTemplateInput>) => Promise<void>
+    update: (id: number, input: Partial<WorkoutTemplateInput>) => Promise<number>
     delete: (id: number) => Promise<void>
 }
 

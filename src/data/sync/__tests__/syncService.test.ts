@@ -885,6 +885,74 @@ describe('runSync — Workout Templates (ADR-0006)', () => {
         expect(await templateRow('t-del')).toBeNull()
     })
 
+    it('omits a NULL template_uuid so an Unplanned or not-yet-linked copy never clears the server link', async () => {
+        await db.runAsync(
+            `INSERT INTO workouts (uuid, user_id, date, status, sync_status, created_at, updated_at)
+             VALUES ('w-plain', ?, '2026-01-02', 'finished', 'dirty', '2026-01-02T00:00:00Z', '2026-01-02T00:00:00Z')`,
+            userId
+        )
+        mockFetchWithBodies()
+
+        await runSync()
+
+        const workoutUpsert = bodyCalls.find((c) => c.method === 'POST' && c.url.includes('/workouts?'))
+        const [row] = workoutUpsert?.body as Record<string, unknown>[]
+        expect(row.uuid).toBe('w-plain')
+        expect(row).not.toHaveProperty('template_uuid')
+    })
+
+    it('keeps pulling Workouts when the backend has no workout_templates table yet', async () => {
+        bodyCalls.length = 0
+        globalThis.fetch = vi.fn(async (url: string | URL | Request) => {
+            const u = typeof url === 'string' ? url : url.toString()
+            if (u.includes('/workout_templates?')) {
+                return new Response(JSON.stringify({ code: 'PGRST205', message: 'Could not find the table' }), {
+                    status: 404,
+                })
+            }
+            if (u.includes('/workouts?') && u.includes('deleted_at=is.null')) {
+                return new Response(
+                    JSON.stringify([
+                        {
+                            uuid: 'w-old-backend',
+                            user_id: userId,
+                            date: '2026-03-02',
+                            status: 'finished',
+                            created_at: '2026-03-02T00:00:00Z',
+                            updated_at: '2026-03-02T00:00:00Z',
+                            deleted_at: null,
+                        },
+                    ]),
+                    { status: 200 }
+                )
+            }
+            return new Response('[]', { status: 200 })
+        }) as typeof fetch
+
+        const result = await runSync()
+
+        expect(result).toMatchObject({ failed: 0, aborted: false })
+        const workout = await db.getFirstAsync<{ template_uuid: string | null }>(
+            `SELECT template_uuid FROM workouts WHERE uuid = 'w-old-backend'`
+        )
+        expect(workout).toEqual({ template_uuid: null })
+    })
+
+    it('un-parks a blocked Template on retryBlockedRows', async () => {
+        await db.runAsync(
+            `INSERT INTO workout_templates (uuid, user_id, name, sync_status, sync_attempts)
+             VALUES ('t-blocked', ?, 'X', 'blocked', 5)`,
+            userId
+        )
+
+        await retryBlockedRows()
+
+        const row = await db.getFirstAsync<{ sync_status: string; sync_attempts: number }>(
+            `SELECT sync_status, sync_attempts FROM workout_templates WHERE uuid = 't-blocked'`
+        )
+        expect(row).toEqual({ sync_status: 'dirty', sync_attempts: 0 })
+    })
+
     it('counts a dirty Template in the outbox size', async () => {
         await db.runAsync(
             `INSERT INTO workout_templates (uuid, user_id, name, sync_status) VALUES ('t-out', ?, 'X', 'dirty')`,

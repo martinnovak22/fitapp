@@ -3,6 +3,7 @@ import {
     normalizeExerciseUuids,
     parseExerciseUuids,
     repointExerciseUuids,
+    resolveMembers,
     serializeExerciseUuids,
 } from '../templateMembership'
 
@@ -25,6 +26,11 @@ describe('templateMembership', () => {
 
     it('serializes canonically', () => {
         expect(serializeExerciseUuids(['b', 'a', 'b'])).toBe('["b","a"]')
+    })
+
+    it('resolves members in Exercise-list order, skipping uuids that are not live here', () => {
+        const exercises = [{ uuid: 'a' }, { uuid: 'b' }, { uuid: null }, { uuid: 'c' }]
+        expect(resolveMembers(['c', 'gone', 'a'], exercises)).toEqual([{ uuid: 'a' }, { uuid: 'c' }])
     })
 
     it('re-points merged uuids onto the survivor and collapses the repeat', () => {

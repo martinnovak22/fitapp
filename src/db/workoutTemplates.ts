@@ -26,9 +26,9 @@ export interface WorkoutTemplateInput {
     exerciseUuids: string[]
 }
 
-type WorkoutTemplateRow = Omit<WorkoutTemplate, 'exercise_uuids'> & { exercise_uuids: string | null }
+type WorkoutTemplateDbRow = Omit<WorkoutTemplate, 'exercise_uuids'> & { exercise_uuids: string | null }
 
-const fromRow = (row: WorkoutTemplateRow): WorkoutTemplate => ({
+const fromRow = (row: WorkoutTemplateDbRow): WorkoutTemplate => ({
     ...row,
     exercise_uuids: parseExerciseUuids(row.exercise_uuids),
 })
@@ -37,7 +37,7 @@ export const WorkoutTemplateRepository = {
     async getAll(): Promise<WorkoutTemplate[]> {
         const db = await getDb()
         const scope = buildPrincipalWhereClause('user_id')
-        const rows = await db.getAllAsync<WorkoutTemplateRow>(
+        const rows = await db.getAllAsync<WorkoutTemplateDbRow>(
             `SELECT * FROM workout_templates
              WHERE deleted_at IS NULL AND ${scope.clause}
              ORDER BY position ASC, name COLLATE NOCASE ASC`,
@@ -49,7 +49,7 @@ export const WorkoutTemplateRepository = {
     async getById(id: number): Promise<WorkoutTemplate | null> {
         const db = await getDb()
         const scope = buildPrincipalWhereClause('user_id')
-        const row = await db.getFirstAsync<WorkoutTemplateRow>(
+        const row = await db.getFirstAsync<WorkoutTemplateDbRow>(
             `SELECT * FROM workout_templates
              WHERE id = ? AND deleted_at IS NULL AND ${scope.clause}`,
             id,
@@ -61,7 +61,7 @@ export const WorkoutTemplateRepository = {
     async getByUuid(uuid: string): Promise<WorkoutTemplate | null> {
         const db = await getDb()
         const scope = buildPrincipalWhereClause('user_id')
-        const row = await db.getFirstAsync<WorkoutTemplateRow>(
+        const row = await db.getFirstAsync<WorkoutTemplateDbRow>(
             `SELECT * FROM workout_templates
              WHERE uuid = ? AND deleted_at IS NULL AND ${scope.clause}`,
             uuid,
@@ -97,7 +97,9 @@ export const WorkoutTemplateRepository = {
         })
     },
 
-    async update(id: number, input: Partial<WorkoutTemplateInput>): Promise<void> {
+    // Resolves to the number of rows written: 0 means the Template is gone (for
+    // example deleted on another device and removed by sync meanwhile).
+    async update(id: number, input: Partial<WorkoutTemplateInput>): Promise<number> {
         const fields: string[] = []
         const values: (string | number | null)[] = []
         if (input.name !== undefined) {
@@ -108,10 +110,10 @@ export const WorkoutTemplateRepository = {
             fields.push('exercise_uuids = ?')
             values.push(serializeExerciseUuids(input.exerciseUuids))
         }
-        if (fields.length === 0) return
+        if (fields.length === 0) return 0
 
         const scope = buildPrincipalWhereClause('user_id')
-        await executeWriteTransaction((db) =>
+        const result = await executeWriteTransaction((db) =>
             db.runAsync(
                 `UPDATE workout_templates
                  SET ${fields.join(', ')}, updated_at = ?, sync_status = 'dirty'
@@ -122,6 +124,7 @@ export const WorkoutTemplateRepository = {
                 ...scope.params
             )
         )
+        return result.changes
     },
 
     // Workouts started from this Template keep their template_uuid; it just no

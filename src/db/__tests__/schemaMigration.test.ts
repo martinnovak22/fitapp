@@ -37,7 +37,10 @@ const createV4Db = async () => {
         `INSERT INTO workouts (uuid, user_id, date, status, sync_status, updated_at)
          VALUES ('w-1', 'user-A', '2026-09-01', 'finished', 'synced', '2026-09-01T10:00:00Z')`
     )
-    await db.runAsync(`INSERT INTO pull_cursors (user_id, workouts_updated) VALUES ('user-A', '2026-09-01T10:00:00Z')`)
+    await db.runAsync(
+        `INSERT INTO pull_cursors (user_id, workouts_updated, exercises_updated)
+         VALUES ('user-A', '2026-09-01T10:00:00Z', '2026-09-02T00:00:00Z')`
+    )
     return db
 }
 
@@ -69,23 +72,27 @@ describe('initializeDb upgrade from schema v4', () => {
         })
         const exercise = await db.getFirstAsync<{ name: string }>(`SELECT name FROM exercises WHERE uuid = 'ex-1'`)
         expect(exercise?.name).toBe('Bench')
-        // The incremental pull watermark survives, so the update causes no full re-pull.
-        const cursor = await db.getFirstAsync<{ workouts_updated: string }>(
-            `SELECT workouts_updated FROM pull_cursors WHERE user_id = 'user-A'`
+        // The workouts watermark is reset once so Workouts pulled before the
+        // upgrade get their template_uuid on the next pull; other cursors stay.
+        const cursor = await db.getFirstAsync<{ workouts_updated: string | null; exercises_updated: string | null }>(
+            `SELECT workouts_updated, exercises_updated FROM pull_cursors WHERE user_id = 'user-A'`
         )
-        expect(cursor?.workouts_updated).toBe('2026-09-01T10:00:00Z')
+        expect(cursor).toEqual({ workouts_updated: null, exercises_updated: '2026-09-02T00:00:00Z' })
 
         const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version')
         expect(version?.user_version).toBe(5)
     })
 
-    it('is idempotent across repeated launches', async () => {
+    it('is idempotent across repeated launches and resets the cursor only on the upgrade', async () => {
         const db = await createV4Db()
 
         await initializeDb(db as unknown as SQLite.SQLiteDatabase)
+        await db.runAsync(`UPDATE pull_cursors SET workouts_updated = '2026-10-01T00:00:00Z'`)
         await initializeDb(db as unknown as SQLite.SQLiteDatabase)
 
         const count = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) c FROM workouts')
         expect(count?.c).toBe(1)
+        const cursor = await db.getFirstAsync<{ workouts_updated: string }>('SELECT workouts_updated FROM pull_cursors')
+        expect(cursor?.workouts_updated).toBe('2026-10-01T00:00:00Z')
     })
 })

@@ -1,3 +1,4 @@
+import type { SQLiteDatabase } from 'expo-sqlite'
 import { invalidateExercisesCache } from '@/src/data/exercisesCache'
 import { onPrincipalChange } from '@/src/data/principal'
 import { getSupabaseConfig } from '@/src/data/remote/supabase/config'
@@ -477,13 +478,7 @@ const pullExercises = async (userId: string): Promise<number> => {
                 // the tombstone for (e.g. a merged-away duplicate). Without this
                 // the live-rows pull re-inserts it before the tombstone reaches
                 // the server, so the duplicate reappears after every sync.
-                if (!local) {
-                    const pendingTombstone = await innerDb.getFirstAsync<{ one: number }>(
-                        `SELECT 1 AS one FROM deletion_tombstones WHERE entity_type = 'exercise' AND entity_uuid = ? LIMIT 1`,
-                        row.uuid
-                    )
-                    if (pendingTombstone) continue
-                }
+                if (!local && (await hasPendingTombstone(innerDb, 'exercise', row.uuid))) continue
 
                 const cols = toExerciseColumns(row, userId)
                 if (local) {
@@ -638,17 +633,41 @@ const pullWorkouts = async (userId: string): Promise<number> => {
     return remote.length + deleted.length
 }
 
+// PostgREST answers 404 for a table it does not know. A backend that has not
+// applied the workout_templates migration yet must not stall the Workout and
+// Set pulls that follow, so the Templates pull treats it as "nothing to pull".
+const isMissingRemoteTable = (error: unknown): boolean => error instanceof RemoteRequestError && error.status === 404
+
+// A row deleted locally whose tombstone has not reached the server yet must
+// not be re-inserted by a live-rows pull.
+const hasPendingTombstone = async (
+    db: Pick<SQLiteDatabase, 'getFirstAsync'>,
+    entityType: 'exercise' | 'workout_template',
+    uuid: string
+): Promise<boolean> =>
+    !!(await db.getFirstAsync<{ one: number }>(
+        `SELECT 1 AS one FROM deletion_tombstones WHERE entity_type = ? AND entity_uuid = ? LIMIT 1`,
+        entityType,
+        uuid
+    ))
+
 const pullWorkoutTemplates = async (userId: string): Promise<number> => {
     const cursors = getCursors(userId)
-    const remote = await request<RemoteSimpleRow[]>('workout_templates', {
-        query: {
-            select: '*',
-            user_id: `eq.${userId}`,
-            deleted_at: 'is.null',
-            order: 'updated_at.asc',
-            ...(cursors.templatesUpdated ? { updated_at: `gt.${cursors.templatesUpdated}` } : {}),
-        },
-    })
+    let remote: RemoteSimpleRow[]
+    try {
+        remote = await request<RemoteSimpleRow[]>('workout_templates', {
+            query: {
+                select: '*',
+                user_id: `eq.${userId}`,
+                deleted_at: 'is.null',
+                order: 'updated_at.asc',
+                ...(cursors.templatesUpdated ? { updated_at: `gt.${cursors.templatesUpdated}` } : {}),
+            },
+        })
+    } catch (error) {
+        if (isMissingRemoteTable(error)) return 0
+        throw error
+    }
 
     let nextUpdated = cursors.templatesUpdated
     for (const rows of chunk(remote, PULL_CHUNK_SIZE)) {
@@ -660,15 +679,9 @@ const pullWorkoutTemplates = async (userId: string): Promise<number> => {
                 )
                 if (shouldSkipRemoteRow(local, row.updated_at)) continue
 
-                // A Template deleted here whose tombstone has not reached the
-                // server yet must not be re-inserted by the live-rows pull.
-                if (!local) {
-                    const pendingTombstone = await db.getFirstAsync<{ one: number }>(
-                        `SELECT 1 AS one FROM deletion_tombstones WHERE entity_type = 'workout_template' AND entity_uuid = ? LIMIT 1`,
-                        row.uuid
-                    )
-                    if (pendingTombstone) continue
-                }
+                // A Template deleted here must not be resurrected before its
+                // tombstone lands remotely.
+                if (!local && (await hasPendingTombstone(db, 'workout_template', row.uuid))) continue
 
                 const cols = toWorkoutTemplateColumns(row, userId)
                 if (local) {

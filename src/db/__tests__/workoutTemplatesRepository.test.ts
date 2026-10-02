@@ -58,7 +58,7 @@ describe('WorkoutTemplateRepository', () => {
         const id = await WorkoutTemplateRepository.create({ name: 'Push', exerciseUuids: ['a'] })
         await db.runAsync(`UPDATE workout_templates SET sync_status = 'synced' WHERE id = ?`, id)
 
-        await WorkoutTemplateRepository.update(id, { exerciseUuids: ['a', 'c'] })
+        expect(await WorkoutTemplateRepository.update(id, { exerciseUuids: ['a', 'c'] })).toBe(1)
 
         const template = await WorkoutTemplateRepository.getById(id)
         expect(template?.name).toBe('Push')
@@ -72,7 +72,7 @@ describe('WorkoutTemplateRepository', () => {
         )
         const foreignId = result.lastInsertRowId
 
-        await WorkoutTemplateRepository.update(foreignId, { name: 'Mine now' })
+        expect(await WorkoutTemplateRepository.update(foreignId, { name: 'Mine now' })).toBe(0)
         await WorkoutTemplateRepository.delete(foreignId)
 
         expect(await WorkoutTemplateRepository.getById(foreignId)).toBeNull()

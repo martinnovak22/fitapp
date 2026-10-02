@@ -1,8 +1,8 @@
 // Pure reconciliation seam shared by the per-entity pulls. The pull arrows keep
 // their SQL; the conflict decision and the remote-row → column-value fan-out
 // live here so they are tested directly and the arrows stay thin. The module is
-// intentionally dependency-free (no DB layer) so it runs under the node test
-// environment without the expo-sqlite / react-native chain.
+// intentionally free of expo-sqlite / react-native imports (it only uses pure
+// helpers such as templateMembership) so it runs under the node test environment.
 
 import { parseExerciseUuids, serializeExerciseUuids } from '@/src/db/templateMembership'
 

@@ -34,6 +34,18 @@ export const parseExerciseUuids = (raw: unknown): string[] => {
 export const serializeExerciseUuids = (uuids: readonly unknown[]): string =>
     JSON.stringify(normalizeExerciseUuids(uuids))
 
+// The members that still resolve to a live Exercise, in the caller's (the
+// user's Exercise-list) order. Every reader of a Template goes through this:
+// unknown uuids — deleted, or not pulled to this device yet — are skipped, not
+// treated as errors (ADR-0006).
+export const resolveMembers = <E extends { uuid?: string | null }>(
+    memberUuids: Iterable<string>,
+    exercises: readonly E[]
+): E[] => {
+    const members = new Set(memberUuids)
+    return exercises.filter((exercise) => !!exercise.uuid && members.has(exercise.uuid))
+}
+
 // Replaces every uuid in `from` with `to`, collapsing the duplicates that
 // produces. Used when Exercise De-duplication merges Exercises onto a Survivor.
 // Returns null when nothing changed so callers can skip the write.

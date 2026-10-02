@@ -46,7 +46,12 @@ const workoutToRemote = (snapshot: PrincipalSnapshot, row: WorkoutRow): RemoteRo
     end_time: row.end_time,
     status: row.status,
     note: row.note,
-    template_uuid: row.template_uuid,
+    // Sent only when set. A Template link is never cleared once made (a deleted
+    // Template just stops resolving, ADR-0006), so a local NULL means "unknown
+    // here", never "unlink". Omitting it keeps a device whose copy predates the
+    // link from overwriting the server value under merge-duplicates, and keeps
+    // Unplanned Workouts pushable against a backend without the column.
+    ...(row.template_uuid ? { template_uuid: row.template_uuid } : {}),
     created_at: toIsoOrNow(row.created_at),
     updated_at: toIsoOrNow(row.updated_at),
     deleted_at: row.deleted_at,
