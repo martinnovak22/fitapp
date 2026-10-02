@@ -45,7 +45,7 @@ describe('buildExerciseSavePayload', () => {
             type: 'weight',
             photoUri: null,
         })
-        expect(payload.muscle_group).toBe('chest')
+        expect(payload.muscles.legacyText).toBe('chest')
     })
 
     it('maps an empty muscle group to undefined', () => {
@@ -55,7 +55,7 @@ describe('buildExerciseSavePayload', () => {
             type: 'weight',
             photoUri: null,
         })
-        expect(payload.muscle_group).toBeUndefined()
+        expect(payload.muscles.legacyText).toBeUndefined()
     })
 
     it('lowercases the type', () => {
@@ -75,7 +75,7 @@ describe('buildExerciseSavePayload', () => {
             type: 'weight',
             photoUri: null,
         })
-        expect(payload.photo_uri).toBeNull()
+        expect(payload.photoUri).toBeNull()
     })
 
     it('passes through a photo uri', () => {
@@ -85,7 +85,7 @@ describe('buildExerciseSavePayload', () => {
             type: 'weight',
             photoUri: 'file:///photo.jpg',
         })
-        expect(payload.photo_uri).toBe('file:///photo.jpg')
+        expect(payload.photoUri).toBe('file:///photo.jpg')
     })
 })
 

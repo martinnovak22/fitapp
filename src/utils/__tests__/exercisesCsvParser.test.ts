@@ -37,8 +37,13 @@ describe('parseExercisesCsv', () => {
 
         expect(result.errors).toEqual([])
         expect(result.rows).toEqual([
-            { name: 'Bench Press', type: 'weight', muscleGroup: 'Chest' },
-            { name: 'Run', type: 'cardio', muscleGroup: undefined },
+            {
+                name: 'Bench Press',
+                type: 'weight',
+                muscleGroup: 'Chest',
+                muscles: { primary: 'chest', secondary: [] },
+            },
+            { name: 'Run', type: 'cardio', muscleGroup: undefined, muscles: { primary: null, secondary: [] } },
         ])
     })
 
@@ -63,7 +68,9 @@ describe('parseExercisesCsv', () => {
         const result = parseExercisesCsv(csv)
 
         expect(result.errors).toEqual([])
-        expect(result.rows).toEqual([{ name: 'Run', type: 'cardio', muscleGroup: undefined }])
+        expect(result.rows).toEqual([
+            { name: 'Run', type: 'cardio', muscleGroup: undefined, muscles: { primary: null, secondary: [] } },
+        ])
     })
 
     it('flags a row with fewer than two columns as too-few-columns', () => {
@@ -108,8 +115,8 @@ describe('parseExercisesCsv', () => {
         const result = parseExercisesCsv(csv)
 
         expect(result.rows).toEqual([
-            { name: 'Run', type: 'cardio', muscleGroup: undefined },
-            { name: 'Jog', type: 'cardio', muscleGroup: undefined },
+            { name: 'Run', type: 'cardio', muscleGroup: undefined, muscles: { primary: null, secondary: [] } },
+            { name: 'Jog', type: 'cardio', muscleGroup: undefined, muscles: { primary: null, secondary: [] } },
         ])
     })
 
@@ -119,10 +126,36 @@ describe('parseExercisesCsv', () => {
         const result = parseExercisesCsv(csv)
 
         expect(result.rows).toEqual([
-            { name: 'Bench', type: 'weight', muscleGroup: 'Chest' },
-            { name: 'Bench', type: 'weight', muscleGroup: 'Back' },
+            { name: 'Bench', type: 'weight', muscleGroup: 'Chest', muscles: { primary: 'chest', secondary: [] } },
+            { name: 'Bench', type: 'weight', muscleGroup: 'Back', muscles: { primary: 'back', secondary: [] } },
         ])
         expect(result.errors).toEqual([{ line: 3, reason: 'duplicate-in-file' }])
+    })
+
+    it('treats legacy text and taxonomy keys for the same Muscle Group as the same Exercise', () => {
+        const csv = [HEADER, 'Bench,weight,hrudník', 'Bench,weight,"chest, triceps"'].join('\n')
+
+        const result = parseExercisesCsv(csv)
+
+        expect(result.rows).toHaveLength(1)
+        expect(result.errors).toEqual([{ line: 3, reason: 'duplicate-in-file' }])
+    })
+
+    it('reads exported keys back into a primary and secondary Muscles plus Equipment', () => {
+        const csv = [
+            'name,type,muscle_group,position,equipment',
+            'Bench,weight,"chest, triceps, front_delts",0,barbell',
+        ].join('\n')
+
+        const [row] = parseExercisesCsv(csv).rows
+
+        expect(row.muscles).toEqual({ primary: 'chest', secondary: ['triceps', 'front_delts'] })
+        expect(row.equipment).toBe('barbell')
+    })
+
+    it('ignores an unknown Equipment value', () => {
+        const csv = ['name,type,muscle_group,position,equipment', 'Bench,weight,chest,0,spaceship'].join('\n')
+        expect(parseExercisesCsv(csv).rows[0]).not.toHaveProperty('equipment')
     })
 
     it('reports the original line number for each error across mixed rows', () => {

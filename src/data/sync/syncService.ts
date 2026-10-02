@@ -71,6 +71,9 @@ type RemoteSimpleRow = {
     name?: string
     type?: string
     muscle_group?: string | null
+    primary_muscle?: string | null
+    secondary_muscles?: unknown
+    equipment?: string | null
     photo_key?: string | null
     position?: number
     date?: string
@@ -486,13 +489,17 @@ const pullExercises = async (userId: string): Promise<number> => {
                     if (photo.staleUri) stalePhotoUris.push(photo.staleUri)
                     await innerDb.runAsync(
                         `UPDATE exercises
-           SET user_id = ?, name = ?, type = ?, muscle_group = ?, photo_key = ?, photo_uri = ?, position = ?, created_at = ?, updated_at = ?,
+           SET user_id = ?, name = ?, type = ?, muscle_group = ?, primary_muscle = ?, secondary_muscles = ?, equipment = ?,
+               photo_key = ?, photo_uri = ?, position = ?, created_at = ?, updated_at = ?,
                deleted_at = NULL, sync_status = 'synced', last_synced_at = ?
            WHERE uuid = ?`,
                         cols.user_id,
                         cols.name,
                         cols.type,
                         cols.muscle_group,
+                        cols.primary_muscle,
+                        cols.secondary_muscles,
+                        cols.equipment,
                         cols.photo_key,
                         photo.photoUri,
                         cols.position,
@@ -504,13 +511,17 @@ const pullExercises = async (userId: string): Promise<number> => {
                 } else {
                     await innerDb.runAsync(
                         `INSERT INTO exercises
-           (uuid, user_id, name, type, muscle_group, photo_key, photo_uri, position, created_at, updated_at, deleted_at, sync_status, last_synced_at)
-           VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, 'synced', ?)`,
+           (uuid, user_id, name, type, muscle_group, primary_muscle, secondary_muscles, equipment,
+            photo_key, photo_uri, position, created_at, updated_at, deleted_at, sync_status, last_synced_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, 'synced', ?)`,
                         row.uuid,
                         cols.user_id,
                         cols.name,
                         cols.type,
                         cols.muscle_group,
+                        cols.primary_muscle,
+                        cols.secondary_muscles,
+                        cols.equipment,
                         cols.photo_key,
                         cols.position,
                         cols.created_at,

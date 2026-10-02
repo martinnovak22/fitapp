@@ -1,5 +1,6 @@
 import { buildPrincipalWhereClause, getScopedUserId } from '@/src/data/principal'
 import { buildPhotoKey, nextPhotoKey } from '@/src/data/sync/photoSync'
+import { type Equipment, type MuscleKey, muscleGroupOf, serializeSecondaryMuscles } from '@/src/domain/exerciseTaxonomy'
 import { getDb } from './client'
 import { createEntityUuid, nowIso, type SyncStatus, softDeleteById } from './sync'
 import { executeWriteTransaction } from './writeQueue'
@@ -12,7 +13,17 @@ export interface Exercise {
     user_id?: string | null
     name: string
     type: ExerciseType
+    // Legacy free text (pre ADR-0007); since then a mirror of the primary
+    // Muscle's group for older app versions. Read Muscles through
+    // resolveExerciseMuscles, never from this column.
     muscle_group?: string
+    // The three taxonomy columns hold raw stored strings: a newer client may
+    // have written keys this one doesn't know. Narrow them with asMuscleKey /
+    // asEquipment, or read Muscles through resolveExerciseMuscles.
+    primary_muscle?: string | null
+    // JSON array of Muscle keys, as stored.
+    secondary_muscles?: string | null
+    equipment?: string | null
     photo_uri?: string | null
     photo_key?: string | null
     position: number
@@ -22,6 +33,38 @@ export interface Exercise {
     sync_status?: SyncStatus
     last_synced_at?: string | null
 }
+
+// An Exercise's Muscles, always written together: the primary, its secondary
+// Muscles, and the muscle_group mirror derived from them. `legacyText` is
+// kept (trimmed and lowercased) in muscle_group when there is no primary (e.g.
+// a CSV cell that maps to no Muscle), so unrecognized input is never thrown away.
+export type ExerciseMusclesInput = {
+    primary: MuscleKey | null
+    secondary: MuscleKey[]
+    legacyText?: string
+}
+
+// The descriptive fields of a new Exercise.
+export type ExerciseDetails = {
+    muscles?: ExerciseMusclesInput
+    equipment?: Equipment | null
+    photoUri?: string | null
+}
+
+// The fields an edit may change; every field left undefined is untouched.
+export type ExerciseUpdate = ExerciseDetails & {
+    name?: string
+    type?: ExerciseType
+    position?: number
+}
+
+// muscle_group mirrors the primary Muscle's group so older clients keep
+// showing something sensible (and so a later edit by one is detectable, see
+// resolveExerciseMuscles); without a primary, the legacy text is kept.
+const mirroredMuscleGroup = (muscles: ExerciseMusclesInput): string | null =>
+    muscles.primary ? muscleGroupOf(muscles.primary) : muscles.legacyText?.trim().toLowerCase() || null
+
+const NO_MUSCLES: ExerciseMusclesInput = { primary: null, secondary: [] }
 
 export const ExerciseRepository = {
     async getAll(): Promise<Exercise[]> {
@@ -47,7 +90,7 @@ export const ExerciseRepository = {
         return result ?? null
     },
 
-    async create(name: string, type: ExerciseType, muscle_group?: string, photo_uri?: string): Promise<number> {
+    async create(name: string, type: ExerciseType, details: ExerciseDetails = {}): Promise<number> {
         return executeWriteTransaction(async (db) => {
             const scope = buildPrincipalWhereClause('user_id')
             const lastEx = await db.getFirstAsync<{ position: number }>(
@@ -59,18 +102,24 @@ export const ExerciseRepository = {
             const nextPosition = lastEx ? lastEx.position + 1 : 0
             const now = nowIso()
             const uuid = createEntityUuid()
+            const muscles = details.muscles ?? NO_MUSCLES
+            const photoUri = details.photoUri ?? null
 
             const result = await db.runAsync(
                 `INSERT INTO exercises
-                 (uuid, user_id, name, type, muscle_group, photo_uri, photo_key, position, created_at, updated_at, sync_status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 (uuid, user_id, name, type, muscle_group, primary_muscle, secondary_muscles, equipment,
+                  photo_uri, photo_key, position, created_at, updated_at, sync_status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 uuid,
                 getScopedUserId(),
                 name,
                 type.toLowerCase(),
-                muscle_group?.toLowerCase() ?? null,
-                photo_uri ?? null,
-                buildPhotoKey(uuid, photo_uri ?? null),
+                mirroredMuscleGroup(muscles),
+                muscles.primary,
+                serializeSecondaryMuscles(muscles.secondary, muscles.primary),
+                details.equipment ?? null,
+                photoUri,
+                buildPhotoKey(uuid, photoUri),
                 nextPosition,
                 now,
                 now,
@@ -80,7 +129,7 @@ export const ExerciseRepository = {
         })
     },
 
-    async update(id: number, data: Partial<Exercise>): Promise<void> {
+    async update(id: number, data: ExerciseUpdate): Promise<void> {
         const fields: string[] = []
         const values: (string | number | null)[] = []
 
@@ -92,13 +141,21 @@ export const ExerciseRepository = {
             fields.push('type = ?')
             values.push(data.type.toLowerCase())
         }
-        if (data.muscle_group !== undefined) {
-            fields.push('muscle_group = ?')
-            values.push(data.muscle_group?.toLowerCase() ?? null)
+        if (data.muscles !== undefined) {
+            fields.push('primary_muscle = ?', 'secondary_muscles = ?', 'muscle_group = ?')
+            values.push(
+                data.muscles.primary,
+                serializeSecondaryMuscles(data.muscles.secondary, data.muscles.primary),
+                mirroredMuscleGroup(data.muscles)
+            )
         }
-        if (data.photo_uri !== undefined) {
+        if (data.equipment !== undefined) {
+            fields.push('equipment = ?')
+            values.push(data.equipment)
+        }
+        if (data.photoUri !== undefined) {
             fields.push('photo_uri = ?')
-            values.push(data.photo_uri ?? null)
+            values.push(data.photoUri ?? null)
         }
         if (data.position !== undefined) {
             fields.push('position = ?')
@@ -109,7 +166,7 @@ export const ExerciseRepository = {
 
         const scope = buildPrincipalWhereClause('user_id')
         await executeWriteTransaction(async (db) => {
-            if (data.photo_uri !== undefined) {
+            if (data.photoUri !== undefined) {
                 // The synced photo_key follows the local photo: regenerated when
                 // the photo changed, kept when only metadata changed (see
                 // nextPhotoKey). Read inside the transaction so the key derives
@@ -131,7 +188,7 @@ export const ExerciseRepository = {
                             current.photo_key ?? null,
                             current.photo_uri ?? null,
                             current.uuid,
-                            data.photo_uri ?? null
+                            data.photoUri ?? null
                         )
                     )
                 }

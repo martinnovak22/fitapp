@@ -953,6 +953,102 @@ describe('runSync — Workout Templates (ADR-0006)', () => {
         expect(row).toEqual({ sync_status: 'dirty', sync_attempts: 0 })
     })
 
+    it('pushes Exercise taxonomy fields with secondary Muscles as a real array (ADR-0007)', async () => {
+        await db.runAsync(
+            `INSERT INTO exercises (uuid, user_id, name, type, muscle_group, primary_muscle, secondary_muscles, equipment,
+                                    sync_status, created_at, updated_at)
+             VALUES ('ex-tax', ?, 'Bench', 'weight', 'chest', 'chest', '["triceps"]', 'barbell', 'dirty',
+                     '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+            userId
+        )
+        mockFetchWithBodies()
+
+        await runSync()
+
+        const upsert = bodyCalls.find((c) => c.method === 'POST' && c.url.includes('/exercises?'))
+        expect(upsert?.body).toEqual([
+            expect.objectContaining({
+                uuid: 'ex-tax',
+                muscle_group: 'chest',
+                primary_muscle: 'chest',
+                secondary_muscles: ['triceps'],
+                equipment: 'barbell',
+            }),
+        ])
+    })
+
+    it('pulls Exercise taxonomy fields into the local columns', async () => {
+        mockFetchWithBodies((call) =>
+            call.url.includes('/exercises?') && call.url.includes('deleted_at=is.null')
+                ? [
+                      {
+                          uuid: 'ex-remote-tax',
+                          user_id: userId,
+                          name: 'Squat',
+                          type: 'weight',
+                          muscle_group: 'legs',
+                          primary_muscle: 'quads',
+                          secondary_muscles: ['glutes'],
+                          equipment: 'barbell',
+                          position: 0,
+                          created_at: '2026-03-01T00:00:00Z',
+                          updated_at: '2026-03-01T00:00:00Z',
+                          deleted_at: null,
+                      },
+                  ]
+                : undefined
+        )
+
+        await runSync()
+
+        const row = await db.getFirstAsync<Record<string, unknown>>(
+            `SELECT primary_muscle, secondary_muscles, equipment FROM exercises WHERE uuid = 'ex-remote-tax'`
+        )
+        expect(row).toEqual({ primary_muscle: 'quads', secondary_muscles: '["glutes"]', equipment: 'barbell' })
+    })
+
+    it('round-trips Exercise taxonomy keys this client does not know instead of erasing them', async () => {
+        mockFetchWithBodies((call) =>
+            call.url.includes('/exercises?') && call.url.includes('deleted_at=is.null')
+                ? [
+                      {
+                          uuid: 'ex-future',
+                          user_id: userId,
+                          name: 'Neck curl',
+                          type: 'weight',
+                          muscle_group: 'neck',
+                          primary_muscle: 'neck_flexors',
+                          secondary_muscles: ['traps_upper'],
+                          equipment: 'neck_harness',
+                          position: 0,
+                          created_at: '2026-03-01T00:00:00Z',
+                          updated_at: '2026-03-01T00:00:00Z',
+                          deleted_at: null,
+                      },
+                  ]
+                : undefined
+        )
+        await runSync()
+
+        // A local edit (here a reorder) re-queues the whole row for push.
+        await db.runAsync(
+            `UPDATE exercises SET position = 3, sync_status = 'dirty', updated_at = '2026-04-01T00:00:00Z'
+             WHERE uuid = 'ex-future'`
+        )
+        mockFetchWithBodies()
+        await runSync()
+
+        const upsert = bodyCalls.find((c) => c.method === 'POST' && c.url.includes('/exercises?'))
+        expect(upsert?.body).toEqual([
+            expect.objectContaining({
+                uuid: 'ex-future',
+                primary_muscle: 'neck_flexors',
+                secondary_muscles: ['traps_upper'],
+                equipment: 'neck_harness',
+            }),
+        ])
+    })
+
     it('counts a dirty Template in the outbox size', async () => {
         await db.runAsync(
             `INSERT INTO workout_templates (uuid, user_id, name, sync_status) VALUES ('t-out', ?, 'X', 'dirty')`,

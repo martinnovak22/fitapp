@@ -1,6 +1,6 @@
 import { getActivePrincipal, onPrincipalChange } from '@/src/data/principal'
 import type { ExerciseRepositoryPort } from '@/src/data/repositories'
-import type { Exercise, ExerciseType } from '@/src/db/exercises'
+import type { Exercise, ExerciseDetails, ExerciseType } from '@/src/db/exercises'
 import { ExerciseRepository } from '@/src/db/exercises'
 
 // In-memory cache for the exercises list.
@@ -85,9 +85,9 @@ onPrincipalChange(() => {
 export const createCachedExerciseRepository = (base: typeof ExerciseRepository): ExerciseRepositoryPort => ({
     getAll: () => loadExercisesCached(),
     getById: (id: number) => base.getById(id),
-    create: async (name: string, type: ExerciseType, muscle_group?: string, photo_uri?: string) => {
+    create: async (name: string, type: ExerciseType, details?: ExerciseDetails) => {
         try {
-            return await base.create(name, type, muscle_group, photo_uri)
+            return await base.create(name, type, details)
         } finally {
             invalidateExercisesCache()
         }

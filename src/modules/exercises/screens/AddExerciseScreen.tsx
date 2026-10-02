@@ -157,12 +157,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                     originalPhotoUriRef.current = finalPhotoUri
                 }
             } else {
-                await exerciseRepo.create(
-                    payload.name,
-                    payload.type,
-                    payload.muscle_group,
-                    payload.photo_uri ?? undefined
-                )
+                await exerciseRepo.create(payload.name, payload.type, payload)
             }
             // Pop back to the already-mounted list instead of replacing it, so it
             // reloads in place (the new/edited row just appears) rather than

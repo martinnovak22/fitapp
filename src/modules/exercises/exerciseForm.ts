@@ -1,4 +1,4 @@
-import type { ExerciseType } from '@/src/db/exercises'
+import type { ExerciseType, ExerciseUpdate } from '@/src/db/exercises'
 
 /**
  * Pure form logic for the exercise add/edit screen.
@@ -27,12 +27,7 @@ export function validateExerciseForm(fields: { name: string }): ExerciseFormVali
     return { ok: true }
 }
 
-export type ExerciseSavePayload = {
-    name: string
-    muscle_group: string | undefined
-    type: ExerciseType
-    photo_uri: string | null
-}
+export type ExerciseSavePayload = Required<Pick<ExerciseUpdate, 'name' | 'type' | 'photoUri' | 'muscles'>>
 
 /**
  * Builds the normalized payload persisted for an exercise: name trimmed, muscle
@@ -42,9 +37,9 @@ export type ExerciseSavePayload = {
 export function buildExerciseSavePayload(fields: ExerciseFormFields): ExerciseSavePayload {
     return {
         name: fields.name.trim(),
-        muscle_group: fields.muscle.trim().toLowerCase() || undefined,
+        muscles: { primary: null, secondary: [], legacyText: fields.muscle.trim().toLowerCase() || undefined },
         type: fields.type.toLowerCase() as ExerciseType,
-        photo_uri: fields.photoUri,
+        photoUri: fields.photoUri,
     }
 }
 

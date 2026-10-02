@@ -1,7 +1,7 @@
 import type * as SQLite from 'expo-sqlite'
 
 export const DATABASE_NAME = 'fitapp.db'
-const SCHEMA_VERSION = 5
+const SCHEMA_VERSION = 6
 
 type ColumnDef = {
     name: string
@@ -72,6 +72,9 @@ const createTables = async (db: SQLite.SQLiteDatabase) => {
       name TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'weight',
       muscle_group TEXT,
+      primary_muscle TEXT,
+      secondary_muscles TEXT,
+      equipment TEXT,
       photo_uri TEXT,
       photo_key TEXT,
       position INTEGER DEFAULT 0,
@@ -214,6 +217,18 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
     // photo_uri stays device-local; photo_key is the synced storage key for the
     // photo bytes in the exercise-photos bucket (issue #49).
     await ensureColumn(db, 'exercises', { name: 'photo_key', sqlType: 'TEXT' })
+    // Exercise taxonomy (ADR-0007): explicit Muscle and Equipment keys. Left
+    // NULL on existing rows on purpose — readers derive them from the legacy
+    // muscle_group text, so the upgrade rewrites no data.
+    const addedPrimaryMuscle = await ensureColumn(db, 'exercises', { name: 'primary_muscle', sqlType: 'TEXT' })
+    await ensureColumn(db, 'exercises', { name: 'secondary_muscles', sqlType: 'TEXT' })
+    await ensureColumn(db, 'exercises', { name: 'equipment', sqlType: 'TEXT' })
+    if (addedPrimaryMuscle) {
+        // Exercises pulled before these columns existed lost any keys another
+        // device had set, and the cursor is past them; without a re-pull the
+        // next local write would push nulls over those keys.
+        await db.execAsync(`UPDATE pull_cursors SET exercises_updated = NULL;`)
+    }
     // Workout Templates (ADR-0006): a Workout records the Template it was
     // started from by uuid. Existing Workouts stay NULL, i.e. Unplanned.
     const addedTemplateUuid = await ensureColumn(db, 'workouts', { name: 'template_uuid', sqlType: 'TEXT' })

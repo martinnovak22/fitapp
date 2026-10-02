@@ -5,6 +5,7 @@
 // helpers such as templateMembership) so it runs under the node test environment.
 
 import { parseExerciseUuids, serializeExerciseUuids } from '@/src/db/templateMembership'
+import { parseStoredMuscleList } from '@/src/domain/exerciseTaxonomy'
 
 export const parseIsoMillis = (value: string | null | undefined): number => {
     if (!value) return 0
@@ -34,6 +35,9 @@ interface ExerciseRowSource {
     name?: string
     type?: string
     muscle_group?: string | null
+    primary_muscle?: string | null
+    secondary_muscles?: unknown
+    equipment?: string | null
     photo_key?: string | null
     position?: number
     created_at: string | null
@@ -47,17 +51,27 @@ export interface ExerciseColumns {
     name: string | null
     type: string
     muscle_group: string | null
+    primary_muscle: string | null
+    secondary_muscles: string
+    equipment: string | null
     photo_key: string | null
     position: number
     created_at: string
     updated_at: string
 }
 
+// Taxonomy values are stored raw, including keys this client doesn't know (a
+// newer client wrote them): readers validate at read time, and keeping them
+// means this device's next push sends them back unchanged instead of erasing
+// them (ADR-0007).
 export const toExerciseColumns = (row: ExerciseRowSource, userId: string): ExerciseColumns => ({
     user_id: userId,
     name: row.name ?? null,
     type: row.type ?? 'weight',
     muscle_group: row.muscle_group ?? null,
+    primary_muscle: typeof row.primary_muscle === 'string' && row.primary_muscle ? row.primary_muscle : null,
+    secondary_muscles: JSON.stringify(parseStoredMuscleList(row.secondary_muscles)),
+    equipment: typeof row.equipment === 'string' && row.equipment ? row.equipment : null,
     photo_key: row.photo_key ?? null,
     position: row.position ?? 0,
     created_at: toIsoOrNow(row.created_at),
