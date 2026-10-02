@@ -53,7 +53,7 @@ The top level of the muscle taxonomy (chest, back, shoulders, arms, legs, core, 
 _Avoid_: category, body region
 
 **Equipment**:
-An optional key describing what an Exercise is performed with (barbell, dumbbell, kettlebell, machine, cable, band, bodyweight, cardio machine, other). Independent of ExerciseType: a bodyweight-type Exercise may still use a band.
+An optional key describing what an Exercise is performed with (barbell, dumbbell, kettlebell, machine, cable, band, bodyweight, cardio machine, misc). Independent of ExerciseType: a bodyweight-type Exercise may still use a band.
 _Avoid_: gear, tool
 
 **Workout Template**:

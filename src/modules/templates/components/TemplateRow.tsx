@@ -5,7 +5,7 @@ import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { formatMuscleGroup } from '@/src/utils/formatters'
+import { muscleGroupLabel } from '@/src/modules/exercises/taxonomyLabels'
 import type { TemplateSummary } from '../templateSummary'
 
 type Props = {
@@ -24,7 +24,7 @@ export function TemplateRow({ summary, onPress, trailingIcon = 'chevron-right', 
     const { template, exerciseCount, muscleGroups } = summary
     const meta = [
         t('exercisesCount', { count: exerciseCount }),
-        ...(muscleGroups.length > 0 ? [muscleGroups.map(formatMuscleGroup).join(', ')] : []),
+        ...(muscleGroups.length > 0 ? [muscleGroups.map((group) => muscleGroupLabel(t, group)).join(', ')] : []),
     ].join(' • ')
 
     return (

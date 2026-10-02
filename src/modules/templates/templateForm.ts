@@ -3,6 +3,7 @@
 
 import { normalizeExerciseName } from '@/src/data/dedup/exerciseDedup'
 import type { Exercise } from '@/src/db/exercises'
+import { compareMuscleGroups, type MuscleGroup, resolveExerciseMuscleGroup } from '@/src/domain/exerciseTaxonomy'
 
 export const TEMPLATE_NAME_MAX_LENGTH = 40
 
@@ -25,45 +26,44 @@ export const validateTemplate = (input: {
     return { ok: true, name, exerciseUuids: [...input.exerciseUuids] }
 }
 
-// Accent- and case-insensitive match on name or muscle group, so "bench" finds
-// "Bench Press" and "hrudnik" finds "hrudník".
+// Accent- and case-insensitive match on the name, the legacy muscle text, or
+// any extra searchable text the caller supplies (the localized Muscle labels),
+// so "bench" finds "Bench Press" and "hrudnik" finds a chest Exercise.
 export const filterExercises = <E extends Pick<Exercise, 'name' | 'muscle_group'>>(
     exercises: readonly E[],
-    query: string
+    query: string,
+    extraSearchText: (exercise: E) => readonly string[] = () => []
 ): E[] => {
     const needle = normalizeExerciseName(query)
     if (!needle) return [...exercises]
-    return exercises.filter(
-        (exercise) =>
-            normalizeExerciseName(exercise.name).includes(needle) ||
-            normalizeExerciseName(exercise.muscle_group ?? '').includes(needle)
+    return exercises.filter((exercise) =>
+        [exercise.name, exercise.muscle_group ?? '', ...extraSearchText(exercise)].some((text) =>
+            normalizeExerciseName(text).includes(needle)
+        )
     )
 }
 
-export type ExerciseGroup<E> = { group: string | null; exercises: E[] }
+export type ExerciseGroup<E> = { group: MuscleGroup | null; exercises: E[] }
 
-// Sections keyed by muscle group, alphabetical, with ungrouped Exercises last.
-// Within a section the caller's order (the user's Exercise-list order) is kept.
-export const groupByMuscle = <E extends Pick<Exercise, 'muscle_group'>>(
-    exercises: readonly E[]
-): ExerciseGroup<E>[] => {
-    const groups = new Map<string | null, E[]>()
+type GroupableExercise = Pick<Exercise, 'muscle_group' | 'primary_muscle' | 'secondary_muscles'>
+
+// Sections keyed by Muscle Group in taxonomy order (chest, back, … cardio),
+// with unclassified Exercises last. Within a section the caller's order (the
+// user's Exercise-list order) is kept.
+export const groupByMuscle = <E extends GroupableExercise>(exercises: readonly E[]): ExerciseGroup<E>[] => {
+    const groups = new Map<MuscleGroup | null, E[]>()
     for (const exercise of exercises) {
-        const key = exercise.muscle_group?.trim() || null
+        const key = resolveExerciseMuscleGroup(exercise)
         const list = groups.get(key)
         if (list) list.push(exercise)
         else groups.set(key, [exercise])
     }
     return [...groups.entries()]
         .map(([group, list]) => ({ group, exercises: list }))
-        .sort((a, b) => {
-            if (a.group === null) return 1
-            if (b.group === null) return -1
-            return a.group.localeCompare(b.group)
-        })
+        .sort((a, b) => compareMuscleGroups(a.group, b.group))
 }
 
-// Distinct muscle groups covered by a Template's Exercises, for a one-line
-// summary such as "Chest · Triceps".
-export const muscleGroupsOf = (exercises: readonly Pick<Exercise, 'muscle_group'>[]): string[] =>
+// Distinct Muscle Groups covered by a Template's Exercises, in taxonomy order,
+// for a one-line summary such as "Chest, Arms".
+export const muscleGroupsOf = (exercises: readonly GroupableExercise[]): MuscleGroup[] =>
     groupByMuscle(exercises).flatMap((section) => (section.group ? [section.group] : []))

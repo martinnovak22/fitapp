@@ -1,4 +1,5 @@
 import type { ExerciseType, ExerciseUpdate } from '@/src/db/exercises'
+import type { Equipment, MuscleKey } from '@/src/domain/exerciseTaxonomy'
 
 /**
  * Pure form logic for the exercise add/edit screen.
@@ -9,37 +10,111 @@ import type { ExerciseType, ExerciseUpdate } from '@/src/db/exercises'
 
 export type ExerciseFormFields = {
     name: string
-    muscle: string
+    primaryMuscle: MuscleKey | null
+    secondaryMuscles: MuscleKey[]
+    equipment: Equipment | null
     type: ExerciseType
     photoUri: string | null
 }
 
-export type ExerciseFormValidation = { ok: true } | { ok: false; nameError: 'enterName' }
-
-/**
- * Validates the exercise form. The only required field is the name; an empty or
- * whitespace-only name fails with the `enterName` translation key.
- */
-export function validateExerciseForm(fields: { name: string }): ExerciseFormValidation {
-    if (!fields.name.trim()) {
-        return { ok: false, nameError: 'enterName' }
-    }
-    return { ok: true }
+export type ExerciseFormErrors = {
+    nameError?: 'enterName'
+    primaryMuscleError?: 'primaryMuscleRequired'
 }
 
-export type ExerciseSavePayload = Required<Pick<ExerciseUpdate, 'name' | 'type' | 'photoUri' | 'muscles'>>
+export type ExerciseFormValidation = { ok: true } | ({ ok: false } & ExerciseFormErrors)
 
 /**
- * Builds the normalized payload persisted for an exercise: name trimmed, muscle
- * group trimmed/lowercased (or undefined when blank), type lowercased, photo uri
- * passed through unchanged.
+ * Validates the exercise form. A name and a primary Muscle are required
+ * (ADR-0007); each missing field reports its own translation key.
+ */
+export function validateExerciseForm(fields: {
+    name: string
+    primaryMuscle: MuscleKey | null
+}): ExerciseFormValidation {
+    const errors: ExerciseFormErrors = {}
+    if (!fields.name.trim()) errors.nameError = 'enterName'
+    if (!fields.primaryMuscle) errors.primaryMuscleError = 'primaryMuscleRequired'
+    return Object.keys(errors).length > 0 ? { ok: false, ...errors } : { ok: true }
+}
+
+// Shaped as an ExerciseUpdate so the same payload feeds both create and update.
+export type ExerciseSavePayload = Required<Pick<ExerciseUpdate, 'name' | 'type' | 'photoUri' | 'muscles' | 'equipment'>>
+
+/**
+ * Builds the normalized payload persisted for an exercise: name trimmed, type
+ * lowercased, secondary Muscles without the primary one, the rest passed through.
  */
 export function buildExerciseSavePayload(fields: ExerciseFormFields): ExerciseSavePayload {
     return {
         name: fields.name.trim(),
-        muscles: { primary: null, secondary: [], legacyText: fields.muscle.trim().toLowerCase() || undefined },
         type: fields.type.toLowerCase() as ExerciseType,
         photoUri: fields.photoUri,
+        muscles: {
+            primary: fields.primaryMuscle,
+            secondary: fields.secondaryMuscles.filter((key) => key !== fields.primaryMuscle),
+        },
+        equipment: fields.equipment,
+    }
+}
+
+// The taxonomy values an edit form opened with, to tell what the user changed.
+export type LoadedTaxonomy = {
+    primaryMuscle: MuscleKey | null
+    secondaryMuscles: MuscleKey[]
+    equipment: Equipment | null
+}
+
+const sameMuscles = (a: readonly MuscleKey[], b: readonly MuscleKey[]) =>
+    a.length === b.length && a.every((key, index) => key === b[index])
+
+/**
+ * The update an edit actually writes: Muscles and Equipment only when the user
+ * changed them. A form opened on an Exercise carrying keys this client doesn't
+ * know shows the nearest known values; re-sending those on a name-only edit
+ * would overwrite a newer client's keys (ADR-0007).
+ */
+export function changedTaxonomyOnly(payload: ExerciseSavePayload, loaded: LoadedTaxonomy): ExerciseUpdate {
+    const { muscles, equipment, ...rest } = payload
+    const musclesChanged =
+        muscles.primary !== loaded.primaryMuscle || !sameMuscles(muscles.secondary, loaded.secondaryMuscles)
+    return {
+        ...rest,
+        ...(musclesChanged ? { muscles } : {}),
+        ...(equipment !== loaded.equipment ? { equipment } : {}),
+    }
+}
+
+export type TaxonomySuggestionState = {
+    primaryMuscle: MuscleKey | null
+    equipment: Equipment | null
+    // Which of the two values came from a suggestion rather than the user.
+    suggested: { primaryMuscle: boolean; equipment: boolean }
+}
+
+export const NO_SUGGESTIONS: TaxonomySuggestionState['suggested'] = { primaryMuscle: false, equipment: false }
+
+/**
+ * Smart defaults when the ExerciseType changes on a *new* exercise: a
+ * bodyweight exercise most likely uses bodyweight Equipment, and a cardio
+ * exercise most likely trains "cardio". A value the user chose is never
+ * overridden; a value that was itself only a suggestion is re-evaluated, so
+ * tapping Cardio by mistake and then Weight doesn't leave "cardio" behind.
+ */
+export function suggestTaxonomyForType(type: ExerciseType, current: TaxonomySuggestionState): TaxonomySuggestionState {
+    const isBodyweight = type === 'bodyweight' || type === 'bodyweight_timer'
+    const suggestedPrimary: MuscleKey | null = type === 'cardio' ? 'cardio' : null
+    const suggestedEquipment: Equipment | null = isBodyweight ? 'bodyweight' : null
+
+    const keepPrimary = current.primaryMuscle !== null && !current.suggested.primaryMuscle
+    const keepEquipment = current.equipment !== null && !current.suggested.equipment
+    return {
+        primaryMuscle: keepPrimary ? current.primaryMuscle : suggestedPrimary,
+        equipment: keepEquipment ? current.equipment : suggestedEquipment,
+        suggested: {
+            primaryMuscle: !keepPrimary && suggestedPrimary !== null,
+            equipment: !keepEquipment && suggestedEquipment !== null,
+        },
     }
 }
 
@@ -59,19 +134,21 @@ export function shouldPersistPhoto(photoUri: string | null, docDir: string | nul
  * `create`/`update` tell the screen which write path to take.
  */
 export type ExerciseSavePlan =
-    | { kind: 'invalid'; nameError: 'enterName' }
+    | ({ kind: 'invalid' } & ExerciseFormErrors)
     | { kind: 'create' }
     | { kind: 'update'; exerciseId: number }
     | { kind: 'noop' }
 
 export function resolveExerciseSavePlan(input: {
     name: string
+    primaryMuscle: MuscleKey | null
     isEditing: boolean
     resolvedExerciseId: number | undefined
 }): ExerciseSavePlan {
-    const validation = validateExerciseForm({ name: input.name })
+    const validation = validateExerciseForm(input)
     if (!validation.ok) {
-        return { kind: 'invalid', nameError: validation.nameError }
+        const { ok: _ok, ...errors } = validation
+        return { kind: 'invalid', ...errors }
     }
     if (!input.isEditing) {
         return { kind: 'create' }

@@ -30,8 +30,9 @@ import { Typography } from '@/src/modules/core/components/Typography'
 import { useMinimumSkeleton } from '@/src/modules/core/hooks/useMinimumSkeleton'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { exportExercisesToCSV, importExercisesFromCSV } from '@/src/utils/csv'
-import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
+import { formatExerciseType } from '@/src/utils/formatters'
 import { useExercises } from '../hooks/useExercises'
+import { exerciseSummaryLine } from '../taxonomyLabels'
 import { ExercisesListSkeleton } from './components/ExercisesListSkeleton'
 
 const ExerciseListItem = React.memo(({ item, theme, t }: { item: Exercise; theme: ThemeType; t: TFunction }) => {
@@ -86,10 +87,7 @@ const ExerciseListItem = React.memo(({ item, theme, t }: { item: Exercise; theme
                         <Typography.Body weight="bold" style={styles.title}>
                             {item.name}
                         </Typography.Body>
-                        <Typography.Meta style={styles.subtitle}>
-                            {item.muscle_group ? `${formatMuscleGroup(item.muscle_group)} • ` : ''}
-                            {t(formatExerciseType(item.type))}
-                        </Typography.Meta>
+                        <Typography.Meta style={styles.subtitle}>{exerciseSummaryLine(t, item)}</Typography.Meta>
                     </View>
                 </TouchableOpacity>
 

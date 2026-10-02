@@ -22,6 +22,7 @@ import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { log } from '@/src/modules/core/utils/logger'
+import { exerciseSummaryLine } from '@/src/modules/exercises/taxonomyLabels'
 
 // The de-duplication review step in the guest→account sign-in flow (ADR-0005).
 // The sign-in flow routes here after a preserve merge only when duplicates
@@ -135,7 +136,7 @@ export default function MergeReviewScreen() {
                         <Card style={styles.groupCard}>
                             {item.members.map((member) => {
                                 const isSurvivor = member.id === item.survivorId
-                                const meta = [member.type, member.muscle_group].filter(Boolean).join(' · ')
+                                const meta = exerciseSummaryLine(t, member)
                                 return (
                                     <TouchableOpacity
                                         key={member.id}

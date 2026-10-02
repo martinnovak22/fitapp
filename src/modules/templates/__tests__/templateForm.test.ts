@@ -36,8 +36,9 @@ describe('filterExercises', () => {
         expect(filterExercises(list, 'BENCH').map((e) => e.uuid)).toEqual(['1'])
     })
 
-    it('matches the muscle group too', () => {
+    it('matches the legacy muscle text and caller-supplied labels', () => {
         expect(filterExercises(list, 'hrudnik').map((e) => e.uuid)).toEqual(['1'])
+        expect(filterExercises(list, 'zada', (e) => (e.uuid === '3' ? ['Záda'] : [])).map((e) => e.uuid)).toEqual(['3'])
     })
 
     it('returns everything for a blank query', () => {
@@ -46,16 +47,23 @@ describe('filterExercises', () => {
 })
 
 describe('groupByMuscle', () => {
-    it('sorts groups alphabetically, keeps member order, and puts ungrouped last', () => {
-        const list = [ex('1', 'Row', 'záda'), ex('2', 'Plank'), ex('3', 'Bench', 'hrudník'), ex('4', 'Pull-up', 'záda')]
+    it('sections by Muscle Group in taxonomy order, keeps member order, and puts unclassified last', () => {
+        const list = [
+            ex('1', 'Row', 'záda'),
+            ex('2', 'Plank', 'nonsense'),
+            { ...ex('3', 'Pushdown'), primary_muscle: 'triceps' as const },
+            ex('4', 'Pull-up', 'back'),
+            ex('5', 'Bench', 'hrudník'),
+        ]
         expect(groupByMuscle(list).map((g) => [g.group, g.exercises.map((e) => e.uuid)])).toEqual([
-            ['hrudník', ['3']],
-            ['záda', ['1', '4']],
+            ['chest', ['5']],
+            ['back', ['1', '4']],
+            ['arms', ['3']],
             [null, ['2']],
         ])
     })
 
-    it('summarizes distinct muscle groups', () => {
-        expect(muscleGroupsOf([ex('1', 'A', 'záda'), ex('2', 'B', 'záda'), ex('3', 'C')])).toEqual(['záda'])
+    it('summarizes distinct Muscle Groups', () => {
+        expect(muscleGroupsOf([ex('1', 'A', 'záda'), ex('2', 'B', 'lats'), ex('3', 'C')])).toEqual(['back'])
     })
 })

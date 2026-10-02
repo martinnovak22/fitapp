@@ -20,7 +20,11 @@ export function ExerciseTypeSelector({ type, onSelect }: ExerciseTypeSelectorPro
     const { t } = useTranslation()
     const { theme } = useTheme()
     return (
-        <Animated.View layout={LinearTransition.duration(300)} style={styles.typeContainer}>
+        <Animated.View
+            layout={LinearTransition.duration(300)}
+            style={styles.typeContainer}
+            accessibilityRole={'radiogroup'}
+        >
             {resolveExerciseTypeOptions(type).map((option) => (
                 <TouchableOpacity
                     key={option.value}
@@ -30,9 +34,9 @@ export function ExerciseTypeSelector({ type, onSelect }: ExerciseTypeSelectorPro
                         option.isActive && { backgroundColor: theme.primary, borderColor: theme.primary },
                     ]}
                     onPress={() => onSelect(option.value)}
-                    accessibilityRole={'button'}
+                    accessibilityRole={'radio'}
                     accessibilityLabel={t(option.labelKey)}
-                    accessibilityState={{ selected: option.isActive }}
+                    accessibilityState={{ checked: option.isActive }}
                 >
                     <Typography.Meta
                         style={[

@@ -5,24 +5,40 @@ import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'exp
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
-import Animated, { LinearTransition } from 'react-native-reanimated'
+import Animated from 'react-native-reanimated'
+import { Motion } from '@/src/constants/Motion'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { useExerciseRepo } from '@/src/data/RepositoryContext'
 import { deleteLocalPhoto } from '@/src/data/sync/photoStorage'
 import type { ExerciseType } from '@/src/db/exercises'
+import {
+    asMuscleKey,
+    type Equipment,
+    hasExplicitMuscles,
+    isEquipment,
+    type MuscleKey,
+    resolveExerciseMuscles,
+} from '@/src/domain/exerciseTaxonomy'
 import { Card } from '@/src/modules/core/components/Card'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
+import { Appear } from '@/src/modules/core/components/motion'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { ScrollScreenLayout } from '../../core/components/ScreenLayout'
+import { EquipmentPicker } from '../components/EquipmentPicker'
+import { MusclePicker } from '../components/MusclePicker'
 import {
     buildExerciseSavePayload,
+    changedTaxonomyOnly,
+    type LoadedTaxonomy,
+    NO_SUGGESTIONS,
     resolveExerciseSavedToast,
     resolveExerciseSavePlan,
     shouldPersistPhoto,
+    suggestTaxonomyForType,
 } from '../exerciseForm'
 import { ExercisePhotoField, ExerciseTypeSelector, TrackingModeToggle } from './components/ExerciseFormSections'
 
@@ -67,14 +83,21 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     const isEditing = mode === 'edit' || resolvedExerciseId !== undefined
 
     const [name, setName] = useState('')
-    const [muscle, setMuscle] = useState('')
+    const [primaryMuscle, setPrimaryMuscle] = useState<MuscleKey | null>(null)
+    const [secondaryMuscles, setSecondaryMuscles] = useState<MuscleKey[]>([])
+    const [showSecondary, setShowSecondary] = useState(false)
+    const [equipment, setEquipment] = useState<Equipment | null>(null)
     const [type, setType] = useState<ExerciseType>('weight')
     const [photoUri, setPhotoUri] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [showImageFullScreen, setShowImageFullScreen] = useState(false)
     const [nameError, setNameError] = useState('')
+    const [primaryMuscleError, setPrimaryMuscleError] = useState('')
     const nameInputRef = useRef<TextInput>(null)
-    const muscleInputRef = useRef<TextInput>(null)
+    // Which taxonomy values were filled in by a type suggestion, not the user.
+    const suggestedRef = useRef(NO_SUGGESTIONS)
+    // What the edit form opened with, so a save only writes what changed.
+    const loadedTaxonomyRef = useRef<LoadedTaxonomy | null>(null)
     const originalPhotoUriRef = useRef<string | null>(null)
 
     const loadExercise = useCallback(async () => {
@@ -82,7 +105,23 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
         const exercise = await exerciseRepo.getById(resolvedExerciseId)
         if (exercise) {
             setName(exercise.name)
-            setMuscle(exercise.muscle_group || '')
+            // Exercises saved before the taxonomy arrive pre-filled from their
+            // legacy text, so saving the form makes the mapping explicit.
+            const muscles = resolveExerciseMuscles(exercise)
+            setPrimaryMuscle(muscles.primary)
+            setSecondaryMuscles(muscles.secondary)
+            setShowSecondary(muscles.secondary.length > 0)
+            const loadedEquipment = isEquipment(exercise.equipment) ? exercise.equipment : null
+            setEquipment(loadedEquipment)
+            // Only keys written by a newer client need protecting from a no-op
+            // save; legacy or stale-mirror rows count as "nothing stored", so
+            // any save makes their mapping explicit.
+            const hasUnknownPrimary = !!exercise.primary_muscle && !asMuscleKey(exercise.primary_muscle)
+            loadedTaxonomyRef.current = {
+                primaryMuscle: hasUnknownPrimary || hasExplicitMuscles(exercise) ? muscles.primary : null,
+                secondaryMuscles: muscles.secondary,
+                equipment: loadedEquipment,
+            }
             setType(exercise.type)
             setPhotoUri(exercise.photo_uri || null)
             originalPhotoUriRef.current = exercise.photo_uri || null
@@ -132,14 +171,21 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     }
 
     const handleSave = useCallback(async () => {
-        const plan = resolveExerciseSavePlan({ name, isEditing, resolvedExerciseId })
+        const plan = resolveExerciseSavePlan({ name, primaryMuscle, isEditing, resolvedExerciseId })
         if (plan.kind === 'invalid') {
-            setNameError(t(plan.nameError))
-            nameInputRef.current?.focus()
+            setNameError(plan.nameError ? t(plan.nameError) : '')
+            setPrimaryMuscleError(plan.primaryMuscleError ? t(plan.primaryMuscleError) : '')
+            if (plan.nameError) {
+                nameInputRef.current?.focus()
+            } else if (plan.primaryMuscleError) {
+                // The inline error may be scrolled out of view; say it where it's seen.
+                showToast.info({ title: t('primaryMuscle'), message: t(plan.primaryMuscleError) })
+            }
             return
         }
         if (plan.kind === 'noop') return
         setNameError('')
+        setPrimaryMuscleError('')
 
         setIsLoading(true)
         try {
@@ -148,10 +194,18 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                 finalPhotoUri = await savePhotoPermanently(photoUri)
             }
 
-            const payload = buildExerciseSavePayload({ name, muscle, type, photoUri: finalPhotoUri })
+            const payload = buildExerciseSavePayload({
+                name,
+                primaryMuscle,
+                secondaryMuscles,
+                equipment,
+                type,
+                photoUri: finalPhotoUri,
+            })
 
             if (plan.kind === 'update') {
-                await exerciseRepo.update(plan.exerciseId, payload)
+                const loaded = loadedTaxonomyRef.current
+                await exerciseRepo.update(plan.exerciseId, loaded ? changedTaxonomyOnly(payload, loaded) : payload)
                 if (originalPhotoUriRef.current !== finalPhotoUri) {
                     await deleteLocalPhoto(originalPhotoUriRef.current)
                     originalPhotoUriRef.current = finalPhotoUri
@@ -181,7 +235,48 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
         } finally {
             setIsLoading(false)
         }
-    }, [name, muscle, type, photoUri, isEditing, resolvedExerciseId, exerciseRepo, t])
+    }, [
+        name,
+        primaryMuscle,
+        secondaryMuscles,
+        equipment,
+        type,
+        photoUri,
+        isEditing,
+        resolvedExerciseId,
+        exerciseRepo,
+        t,
+    ])
+
+    const handleTypeChange = useCallback(
+        (nextType: ExerciseType) => {
+            setType(nextType)
+            // Only a new exercise gets defaults; editing never rewrites choices.
+            if (isEditing) return
+            const suggestion = suggestTaxonomyForType(nextType, {
+                primaryMuscle,
+                equipment,
+                suggested: suggestedRef.current,
+            })
+            suggestedRef.current = suggestion.suggested
+            setPrimaryMuscle(suggestion.primaryMuscle)
+            setEquipment(suggestion.equipment)
+        },
+        [equipment, isEditing, primaryMuscle]
+    )
+
+    const selectPrimaryMuscle = useCallback((key: MuscleKey) => {
+        suggestedRef.current = { ...suggestedRef.current, primaryMuscle: false }
+        setPrimaryMuscle(key)
+        setPrimaryMuscleError('')
+        setSecondaryMuscles((current) => current.filter((muscle) => muscle !== key))
+    }, [])
+
+    const toggleSecondaryMuscle = useCallback((key: MuscleKey) => {
+        setSecondaryMuscles((current) =>
+            current.includes(key) ? current.filter((muscle) => muscle !== key) : [...current, key]
+        )
+    }, [])
 
     const handleDelete = useCallback(() => {
         showToast.confirm({
@@ -259,7 +354,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     return (
         <ScrollScreenLayout>
             <Card style={{ padding: 0, overflow: 'hidden' }}>
-                <Animated.View layout={LinearTransition.duration(300)} style={{ padding: Spacing.md }}>
+                <Animated.View layout={CARD_LAYOUT} style={{ padding: Spacing.md }}>
                     <Typography.Subtitle style={{ marginBottom: Spacing.md }}>
                         {t('exerciseDetails')}
                     </Typography.Subtitle>
@@ -285,8 +380,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                             }}
                             autoFocus={!isEditing}
                             selectionColor={theme.primary}
-                            returnKeyType={'next'}
-                            onSubmitEditing={() => muscleInputRef.current?.focus()}
+                            returnKeyType={'done'}
                             accessibilityLabel={t('name')}
                             accessibilityHint={t('required')}
                         />
@@ -297,34 +391,75 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                         </Typography.Meta>
                     </View>
 
-                    <View style={{ gap: Spacing.sm }}>
-                        <Typography.Label>{t('muscleGroup')}</Typography.Label>
-                        <TextInput
-                            ref={muscleInputRef}
-                            placeholder={t('placeholderMuscle')}
-                            placeholderTextColor={theme.textSecondary}
-                            style={[
-                                GlobalStyles.input,
-                                {
-                                    color: theme.text,
-                                    backgroundColor: theme.inputBackground,
-                                    borderColor: theme.border,
-                                },
-                            ]}
-                            value={muscle}
-                            onChangeText={setMuscle}
-                            selectionColor={theme.primary}
-                            returnKeyType={'done'}
-                            accessibilityLabel={t('muscleGroup')}
+                    <View style={styles.typeSection}>
+                        <Typography.Subtitle>{t('exerciseType')}</Typography.Subtitle>
+                        <ExerciseTypeSelector type={type} onSelect={handleTypeChange} />
+                    </View>
+
+                    <TrackingModeToggle type={type} onSelect={setType} />
+
+                    <View style={styles.taxonomySection}>
+                        <View style={styles.sectionHeading}>
+                            <Typography.Subtitle>{t('primaryMuscle')}</Typography.Subtitle>
+                            <Typography.Meta color={'textSecondary'}>{t('primaryMuscleHint')}</Typography.Meta>
+                            {primaryMuscleError ? (
+                                <Typography.Meta style={{ color: theme.error }}>{primaryMuscleError}</Typography.Meta>
+                            ) : null}
+                        </View>
+                        <MusclePicker
+                            mode={'single'}
+                            selected={primaryMuscle ? [primaryMuscle] : []}
+                            onToggle={selectPrimaryMuscle}
                         />
                     </View>
 
-                    <Typography.Subtitle style={{ marginTop: 16, marginBottom: 12 }}>
-                        {t('exerciseType')}
-                    </Typography.Subtitle>
-                    <ExerciseTypeSelector type={type} onSelect={setType} />
+                    <View style={styles.taxonomySection}>
+                        <TouchableOpacity
+                            onPress={() => setShowSecondary((current) => !current)}
+                            style={styles.disclosure}
+                            accessibilityRole={'button'}
+                            accessibilityState={{ expanded: showSecondary }}
+                        >
+                            <View style={styles.sectionHeading}>
+                                <Typography.Subtitle>
+                                    {t('secondaryMuscles')}
+                                    {secondaryMuscles.length > 0 ? ` (${secondaryMuscles.length})` : ''}
+                                </Typography.Subtitle>
+                                <Typography.Meta color={'textSecondary'}>{t('secondaryMusclesHint')}</Typography.Meta>
+                            </View>
+                            <FontAwesome
+                                name={showSecondary ? 'chevron-up' : 'chevron-down'}
+                                size={12}
+                                color={theme.textSecondary}
+                            />
+                        </TouchableOpacity>
+                        {/* The card's own layout transition owns the height change; a
+                            Collapsible here would add a second layout clock. */}
+                        {showSecondary && (
+                            <Appear style={styles.collapsibleBody}>
+                                <MusclePicker
+                                    mode={'multi'}
+                                    selected={secondaryMuscles}
+                                    onToggle={toggleSecondaryMuscle}
+                                    disabledKeys={primaryMuscle ? [primaryMuscle] : []}
+                                />
+                            </Appear>
+                        )}
+                    </View>
 
-                    <TrackingModeToggle type={type} onSelect={setType} />
+                    <View style={styles.taxonomySection}>
+                        <View style={styles.sectionHeading}>
+                            <Typography.Subtitle>{t('equipment')}</Typography.Subtitle>
+                            <Typography.Meta color={'textSecondary'}>{t('equipmentHint')}</Typography.Meta>
+                        </View>
+                        <EquipmentPicker
+                            value={equipment}
+                            onChange={(value) => {
+                                suggestedRef.current = { ...suggestedRef.current, equipment: false }
+                                setEquipment(value)
+                            }}
+                        />
+                    </View>
 
                     <ExercisePhotoField
                         photoUri={photoUri}
@@ -350,7 +485,30 @@ export default function AddExerciseScreen() {
     return <ExerciseFormScreen mode="create" />
 }
 
+// The card is the single layout owner for every toggled block inside it, on
+// the shared motion clock so the reflow matches their fades.
+const CARD_LAYOUT = Motion.layout()
+
 const styles = StyleSheet.create({
+    typeSection: {
+        gap: Spacing.sm + Spacing.xs,
+    },
+    taxonomySection: {
+        marginTop: Spacing.lg,
+        gap: Spacing.md,
+    },
+    sectionHeading: {
+        flex: 1,
+        gap: Spacing.xs,
+    },
+    disclosure: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+    },
+    collapsibleBody: {
+        paddingTop: Spacing.xs,
+    },
     helperTextSlot: {
         minHeight: 18,
         marginTop: -Spacing.sm,

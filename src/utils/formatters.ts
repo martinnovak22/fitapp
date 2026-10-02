@@ -24,8 +24,3 @@ export const formatExerciseType = (
             return 'typeUnknown'
     }
 }
-
-export const formatMuscleGroup = (muscleGroup?: string): string => {
-    if (!muscleGroup) return ''
-    return muscleGroup.charAt(0).toUpperCase() + muscleGroup.slice(1).toLowerCase()
-}

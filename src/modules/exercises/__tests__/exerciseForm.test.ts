@@ -1,91 +1,140 @@
 import { describe, expect, it } from 'vitest'
 import {
     buildExerciseSavePayload,
+    changedTaxonomyOnly,
+    NO_SUGGESTIONS,
     resolveExerciseSavedToast,
     resolveExerciseSavePlan,
     resolveExerciseTypeOptions,
     resolveTrackingModeToggle,
     shouldPersistPhoto,
+    suggestTaxonomyForType,
     validateExerciseForm,
 } from '../exerciseForm'
 
 describe('validateExerciseForm', () => {
-    it('rejects an empty name', () => {
-        expect(validateExerciseForm({ name: '' })).toEqual({ ok: false, nameError: 'enterName' })
+    it('rejects an empty or whitespace-only name', () => {
+        expect(validateExerciseForm({ name: '', primaryMuscle: 'chest' })).toEqual({
+            ok: false,
+            nameError: 'enterName',
+        })
+        expect(validateExerciseForm({ name: '   ', primaryMuscle: 'chest' })).toEqual({
+            ok: false,
+            nameError: 'enterName',
+        })
     })
 
-    it('rejects a whitespace-only name', () => {
-        expect(validateExerciseForm({ name: '   ' })).toEqual({ ok: false, nameError: 'enterName' })
+    it('requires a primary Muscle', () => {
+        expect(validateExerciseForm({ name: 'Bench', primaryMuscle: null })).toEqual({
+            ok: false,
+            primaryMuscleError: 'primaryMuscleRequired',
+        })
     })
 
-    it('accepts a name with content', () => {
-        expect(validateExerciseForm({ name: 'Bench Press' })).toEqual({ ok: true })
+    it('reports both errors at once', () => {
+        expect(validateExerciseForm({ name: '', primaryMuscle: null })).toEqual({
+            ok: false,
+            nameError: 'enterName',
+            primaryMuscleError: 'primaryMuscleRequired',
+        })
     })
 
-    it('accepts a name padded with whitespace', () => {
-        expect(validateExerciseForm({ name: '  Squat  ' })).toEqual({ ok: true })
+    it('accepts a padded name with a primary Muscle', () => {
+        expect(validateExerciseForm({ name: '  Squat  ', primaryMuscle: 'quads' })).toEqual({ ok: true })
     })
 })
 
+const fields = {
+    name: 'Bench',
+    primaryMuscle: 'chest' as const,
+    secondaryMuscles: [],
+    equipment: null,
+    type: 'weight' as const,
+    photoUri: null,
+}
+
 describe('buildExerciseSavePayload', () => {
-    it('trims the name', () => {
-        const payload = buildExerciseSavePayload({
-            name: '  Bench Press  ',
-            muscle: '',
-            type: 'weight',
-            photoUri: null,
-        })
+    it('trims the name and lowercases the type', () => {
+        const payload = buildExerciseSavePayload({ ...fields, name: '  Bench Press  ', type: 'WEIGHT' as never })
         expect(payload.name).toBe('Bench Press')
+        expect(payload.type).toBe('weight')
     })
 
-    it('trims and lowercases the muscle group', () => {
+    it('carries the Muscles and Equipment, dropping the primary from the secondary list', () => {
         const payload = buildExerciseSavePayload({
-            name: 'Bench',
-            muscle: '  CHEST ',
-            type: 'weight',
-            photoUri: null,
+            ...fields,
+            secondaryMuscles: ['triceps', 'chest', 'front_delts'],
+            equipment: 'barbell',
         })
-        expect(payload.muscles.legacyText).toBe('chest')
+        expect(payload).toMatchObject({
+            muscles: { primary: 'chest', secondary: ['triceps', 'front_delts'] },
+            equipment: 'barbell',
+        })
     })
 
-    it('maps an empty muscle group to undefined', () => {
-        const payload = buildExerciseSavePayload({
-            name: 'Bench',
-            muscle: '   ',
-            type: 'weight',
-            photoUri: null,
-        })
-        expect(payload.muscles.legacyText).toBeUndefined()
+    it('passes the photo uri through', () => {
+        expect(buildExerciseSavePayload(fields).photoUri).toBeNull()
+        expect(buildExerciseSavePayload({ ...fields, photoUri: 'file:///photo.jpg' }).photoUri).toBe(
+            'file:///photo.jpg'
+        )
+    })
+})
+
+describe('changedTaxonomyOnly', () => {
+    const loaded = { primaryMuscle: 'chest' as const, secondaryMuscles: ['triceps' as const], equipment: null }
+    const payload = buildExerciseSavePayload({
+        ...fields,
+        name: 'Bench Press',
+        secondaryMuscles: ['triceps'],
     })
 
-    it('lowercases the type', () => {
-        const payload = buildExerciseSavePayload({
-            name: 'Run',
-            muscle: '',
-            type: 'CARDIO' as never,
-            photoUri: null,
-        })
-        expect(payload.type).toBe('cardio')
+    it('leaves Muscles and Equipment out of a name-only edit', () => {
+        expect(changedTaxonomyOnly(payload, loaded)).toEqual({ name: 'Bench Press', type: 'weight', photoUri: null })
     })
 
-    it('passes through a null photo uri', () => {
-        const payload = buildExerciseSavePayload({
-            name: 'Bench',
-            muscle: '',
-            type: 'weight',
-            photoUri: null,
-        })
-        expect(payload.photoUri).toBeNull()
+    it('sends the Muscles when the primary or the secondary list changed', () => {
+        expect(
+            changedTaxonomyOnly(buildExerciseSavePayload({ ...fields, secondaryMuscles: ['front_delts'] }), loaded)
+        ).toHaveProperty('muscles', { primary: 'chest', secondary: ['front_delts'] })
+        expect(
+            changedTaxonomyOnly(buildExerciseSavePayload({ ...fields, primaryMuscle: 'lats' }), loaded)
+        ).toHaveProperty('muscles')
     })
 
-    it('passes through a photo uri', () => {
-        const payload = buildExerciseSavePayload({
-            name: 'Bench',
-            muscle: '',
-            type: 'weight',
-            photoUri: 'file:///photo.jpg',
+    it('sends Equipment when it changed, including a clear', () => {
+        expect(changedTaxonomyOnly({ ...payload, equipment: 'barbell' }, loaded)).toHaveProperty('equipment', 'barbell')
+        expect(
+            changedTaxonomyOnly({ ...payload, equipment: null }, { ...loaded, equipment: 'barbell' })
+        ).toHaveProperty('equipment', null)
+    })
+})
+
+describe('suggestTaxonomyForType', () => {
+    const empty = { primaryMuscle: null, equipment: null, suggested: NO_SUGGESTIONS }
+
+    it('suggests bodyweight Equipment for a bodyweight exercise', () => {
+        expect(suggestTaxonomyForType('bodyweight_timer', empty)).toEqual({
+            primaryMuscle: null,
+            equipment: 'bodyweight',
+            suggested: { primaryMuscle: false, equipment: true },
         })
-        expect(payload.photoUri).toBe('file:///photo.jpg')
+    })
+
+    it('suggests the cardio Muscle for a cardio exercise', () => {
+        expect(suggestTaxonomyForType('cardio', empty).primaryMuscle).toBe('cardio')
+    })
+
+    it('withdraws its own suggestion when the type changes back', () => {
+        const afterCardio = suggestTaxonomyForType('cardio', empty)
+        expect(suggestTaxonomyForType('weight', afterCardio)).toEqual(empty)
+        const afterBodyweight = suggestTaxonomyForType('bodyweight', empty)
+        expect(suggestTaxonomyForType('weight', afterBodyweight).equipment).toBeNull()
+    })
+
+    it('never overrides a choice the user made', () => {
+        const chosen = { primaryMuscle: 'lats' as const, equipment: 'band' as const, suggested: NO_SUGGESTIONS }
+        expect(suggestTaxonomyForType('cardio', chosen)).toEqual(chosen)
+        expect(suggestTaxonomyForType('bodyweight', chosen)).toEqual(chosen)
     })
 })
 
@@ -109,27 +158,59 @@ describe('shouldPersistPhoto', () => {
 
 describe('resolveExerciseSavePlan', () => {
     it('returns invalid with the name error for an empty name', () => {
-        expect(resolveExerciseSavePlan({ name: '  ', isEditing: false, resolvedExerciseId: undefined })).toEqual({
+        expect(
+            resolveExerciseSavePlan({
+                name: '  ',
+                primaryMuscle: 'chest',
+                isEditing: false,
+                resolvedExerciseId: undefined,
+            })
+        ).toEqual({
             kind: 'invalid',
             nameError: 'enterName',
         })
     })
 
+    it('returns invalid with the muscle error when no primary Muscle is picked', () => {
+        expect(
+            resolveExerciseSavePlan({ name: 'Bench', primaryMuscle: null, isEditing: true, resolvedExerciseId: 7 })
+        ).toEqual({
+            kind: 'invalid',
+            primaryMuscleError: 'primaryMuscleRequired',
+        })
+    })
+
     it('plans a create when not editing', () => {
-        expect(resolveExerciseSavePlan({ name: 'Bench', isEditing: false, resolvedExerciseId: undefined })).toEqual({
+        expect(
+            resolveExerciseSavePlan({
+                name: 'Bench',
+                primaryMuscle: 'chest',
+                isEditing: false,
+                resolvedExerciseId: undefined,
+            })
+        ).toEqual({
             kind: 'create',
         })
     })
 
     it('plans an update when editing with an id', () => {
-        expect(resolveExerciseSavePlan({ name: 'Bench', isEditing: true, resolvedExerciseId: 7 })).toEqual({
+        expect(
+            resolveExerciseSavePlan({ name: 'Bench', primaryMuscle: 'chest', isEditing: true, resolvedExerciseId: 7 })
+        ).toEqual({
             kind: 'update',
             exerciseId: 7,
         })
     })
 
     it('is a no-op when editing without a resolved id', () => {
-        expect(resolveExerciseSavePlan({ name: 'Bench', isEditing: true, resolvedExerciseId: undefined })).toEqual({
+        expect(
+            resolveExerciseSavePlan({
+                name: 'Bench',
+                primaryMuscle: 'chest',
+                isEditing: true,
+                resolvedExerciseId: undefined,
+            })
+        ).toEqual({
             kind: 'noop',
         })
     })

@@ -10,6 +10,7 @@ import { useExerciseRepo, useWorkoutRepo, useWorkoutTemplateRepo } from '@/src/d
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
 import type { WorkoutTemplate } from '@/src/db/workoutTemplates'
+import type { MuscleGroup } from '@/src/domain/exerciseTaxonomy'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -23,11 +24,12 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { nextHasLoadedOnce, shouldShowSkeleton } from '@/src/modules/core/utils/loadingGate'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
+import { muscleGroupLabel } from '@/src/modules/exercises/taxonomyLabels'
 import { TemplateRow } from '@/src/modules/templates/components/TemplateRow'
 import { summarizeTemplates, type TemplateSummary } from '@/src/modules/templates/templateSummary'
 import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
-import { formatMuscleGroup } from '@/src/utils/formatters'
 import { StartWorkoutSheet } from '../components/StartWorkoutSheet'
+import { computeMuscleBalance, type MuscleBalanceEntry, muscleGroupsTrained } from '../muscleBalance'
 import { WorkoutDashboardSkeleton } from './components/WorkoutDashboardSkeleton'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -70,12 +72,7 @@ interface WeekStats {
 interface LastWorkoutSummary {
     workout: Workout
     setCount: number
-    muscleGroups: (string | null)[]
-}
-
-interface MuscleBalanceEntry {
-    group: string | null
-    count: number
+    muscleGroups: MuscleGroup[]
 }
 
 export default function WorkoutDashboardScreen() {
@@ -192,25 +189,16 @@ export default function WorkoutDashboardScreen() {
             let nextLastWorkoutSummary: LastWorkoutSummary | null = null
             if (lastFinished) {
                 const sets = await workoutRepo.getSets(lastFinished.id)
-                const muscleGroups = [...new Set(sets.map((s) => s.muscle_group))].filter(
-                    (g): g is string => g !== null
-                )
-                nextLastWorkoutSummary = { workout: lastFinished, setCount: sets.length, muscleGroups }
+                nextLastWorkoutSummary = {
+                    workout: lastFinished,
+                    setCount: sets.length,
+                    muscleGroups: muscleGroupsTrained(sets),
+                }
             }
 
             const weekSets = (await Promise.all(weekWorkouts.map((w) => workoutRepo.getSets(w.id)))).flat()
-            // Seed every known muscle group at 0 so untrained groups stay visible in the balance.
             const [allExercises, allTemplates] = await Promise.all([exerciseRepo.getAll(), templateRepo.getAll()])
-            const groupCounts = new Map<string | null, number>()
-            for (const exercise of allExercises) {
-                if (exercise.muscle_group) groupCounts.set(exercise.muscle_group, 0)
-            }
-            for (const set of weekSets) {
-                groupCounts.set(set.muscle_group, (groupCounts.get(set.muscle_group) ?? 0) + 1)
-            }
-            const nextMuscleBalance: MuscleBalanceEntry[] = [...groupCounts.entries()]
-                .map(([group, count]) => ({ group, count }))
-                .sort((a, b) => b.count - a.count || (a.group ?? '').localeCompare(b.group ?? ''))
+            const nextMuscleBalance = computeMuscleBalance(allExercises, weekSets)
 
             // A newer run superseded this one while we were reading; drop these
             // now-stale results rather than overwrite the fresh ones.
@@ -300,9 +288,6 @@ export default function WorkoutDashboardScreen() {
         const m = minutes % 60
         return h > 0 ? `${h} h ${m} ${t('min')}` : `${m} ${t('min')}`
     }
-
-    const muscleGroupLabel = (group: string | null): string =>
-        group ? formatMuscleGroup(group) : t('otherMuscleGroup')
 
     // While the post-login hydration pull is running, even a non-empty read is
     // partial (workouts land before their sets, so e.g. the muscle balance
@@ -547,7 +532,7 @@ export default function WorkoutDashboardScreen() {
                                                         fontWeight: FontWeight.medium,
                                                     }}
                                                 >
-                                                    {muscleGroupLabel(group)}
+                                                    {muscleGroupLabel(t, group)}
                                                 </Typography.Meta>
                                             </View>
                                         ))}
@@ -616,7 +601,7 @@ export default function WorkoutDashboardScreen() {
                                         style={[layoutStyles.balanceLabel, { color: theme.textSecondary }]}
                                         numberOfLines={1}
                                     >
-                                        {muscleGroupLabel(entry.group)}
+                                        {muscleGroupLabel(t, entry.group)}
                                     </Typography.Meta>
                                     <View style={[layoutStyles.balanceTrack, { backgroundColor: theme.surfaceMuted }]}>
                                         <View
