@@ -264,7 +264,6 @@
     "plans": "Plány",
     "plansEmptyHint": "Vytvořte si plán a při tréninku budete vybírat jen z jeho cviků.",
     "newTemplate": "Nový plán",
-    "newTemplateShort": "Nový plán",
     "editTemplate": "Upravit plán",
     "templateName": "Název plánu",
     "templateNamePlaceholder": "např. Push A",
@@ -295,5 +294,9 @@
     "noTemplatesYet": "Zatím nemáte žádný plán. Vytvořte si ho a trénujte s pevnou sadou cviků.",
     "startPlannedHint": "Spustí trénink, který nabízí jen cviky z tohoto plánu",
     "pickerFromPlan": "Cviky z plánu {{name}}",
-    "pickerPlanFallback": "Plán už neexistuje, zobrazují se všechny cviky"
+    "pickerPlanFallback": "Plán už neexistuje, zobrazují se všechny cviky",
+    "templateGoneWhileEditing": "Plán byl mezitím smazán na jiném zařízení, změny se proto nepodařilo uložit.",
+    "goToExercises": "Přejít na cviky",
+    "workoutAlreadyRunningTitle": "Trénink už běží",
+    "workoutAlreadyRunning": "Nejdřív ho dokončete, pak můžete začít nový."
 }

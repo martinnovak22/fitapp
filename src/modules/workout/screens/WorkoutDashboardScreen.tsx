@@ -1,6 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshControl, StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
@@ -114,6 +114,7 @@ export default function WorkoutDashboardScreen() {
     const [muscleBalance, setMuscleBalance] = useState<MuscleBalanceEntry[]>([])
     const [templates, setTemplates] = useState<TemplateSummary[]>([])
     const [startSheetVisible, setStartSheetVisible] = useState(false)
+    const startInFlightRef = useRef(false)
 
     const finishedWorkouts = allWorkouts.filter(
         (workout) => workout.status === 'finished' && workout.id !== activeWorkout?.id
@@ -266,7 +267,10 @@ export default function WorkoutDashboardScreen() {
 
     // template null = Unplanned Workout.
     const startWorkout = async (template: WorkoutTemplate | null) => {
-        if (isStartingWorkout) return
+        // A ref, not the state flag: two taps in the same frame both still see
+        // isStartingWorkout === false and would each create a Workout.
+        if (startInFlightRef.current) return
+        startInFlightRef.current = true
         setIsStartingWorkout(true)
         try {
             // Re-check: a Workout may have been started elsewhere (another
@@ -275,10 +279,14 @@ export default function WorkoutDashboardScreen() {
             const id = running?.id ?? (await workoutRepo.create(formatLocalDateYYYYMMDD(), template?.uuid ?? null))
             setStartSheetVisible(false)
             router.push(`/(tabs)/workout/${id}`)
+            if (running) {
+                showToast.info({ title: t('workoutAlreadyRunningTitle'), message: t('workoutAlreadyRunning') })
+            }
         } catch (error) {
             log('error', 'Failed to start workout', error)
             showToast.danger({ title: t('error'), message: t('failedToStartWorkout') })
         } finally {
+            startInFlightRef.current = false
             setIsStartingWorkout(false)
         }
     }
@@ -403,12 +411,12 @@ export default function WorkoutDashboardScreen() {
 
             <ListItemAppear index={1} animateOnEnter={hasRevealed.current}>
                 <Card>
-                    <View style={layoutStyles.plansHeader}>
+                    <View style={layoutStyles.templatesHeader}>
                         <Typography.Subtitle size="md" weight="bold">
                             {t('plans')}
                         </Typography.Subtitle>
                         <Button
-                            label={t('newTemplateShort')}
+                            label={t('newTemplate')}
                             leftIcon={'plus'}
                             variant={'secondary'}
                             size={'sm'}
@@ -416,7 +424,7 @@ export default function WorkoutDashboardScreen() {
                         />
                     </View>
                     {templates.length === 0 ? (
-                        <Typography.Meta color={'textSecondary'} style={layoutStyles.plansEmpty}>
+                        <Typography.Meta color={'textSecondary'} size={'sm'}>
                             {t('plansEmptyHint')}
                         </Typography.Meta>
                     ) : (
@@ -715,15 +723,13 @@ const layoutStyles = StyleSheet.create({
     activeCard: {
         borderLeftWidth: 4,
     },
-    plansHeader: {
+    templatesHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: Spacing.sm,
     },
-    plansEmpty: {
-        fontSize: FontSize.sm,
-    },
+
     activeHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',

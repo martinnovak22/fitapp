@@ -262,7 +262,6 @@
     "plans": "Plans",
     "plansEmptyHint": "Create a plan to pick from only its exercises during a workout.",
     "newTemplate": "New plan",
-    "newTemplateShort": "New plan",
     "editTemplate": "Edit plan",
     "templateName": "Plan name",
     "templateNamePlaceholder": "e.g. Push A",
@@ -291,5 +290,9 @@
     "noTemplatesYet": "No plans yet. Create one to train from a fixed set of exercises.",
     "startPlannedHint": "Starts a workout offering only this plan's exercises",
     "pickerFromPlan": "Exercises from plan {{name}}",
-    "pickerPlanFallback": "The plan is no longer available, showing all exercises"
+    "pickerPlanFallback": "The plan is no longer available, showing all exercises",
+    "templateGoneWhileEditing": "This plan was deleted on another device, so your changes could not be saved.",
+    "goToExercises": "Go to Exercises",
+    "workoutAlreadyRunningTitle": "Workout already running",
+    "workoutAlreadyRunning": "Finish it before starting a new one."
 }

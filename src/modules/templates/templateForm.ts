@@ -10,17 +10,20 @@ export type TemplateValidation =
     | { ok: true; name: string; exerciseUuids: string[] }
     | { ok: false; field: 'name' | 'exercises'; errorKey: 'templateNameRequired' | 'templateNeedsExercise' }
 
-export const validateTemplate = (input: { name: string; exerciseUuids: readonly string[] }): TemplateValidation => {
+// `exerciseUuids` is the whole selection, kept verbatim: members whose Exercise
+// is not on this device yet (not pulled, or parked) must survive a save, or the
+// last-writer-wins push would strip them from every device. Only the live
+// members count towards "at least one Exercise".
+export const validateTemplate = (input: {
+    name: string
+    exerciseUuids: readonly string[]
+    liveMemberCount: number
+}): TemplateValidation => {
     const name = input.name.trim()
     if (!name) return { ok: false, field: 'name', errorKey: 'templateNameRequired' }
-    if (input.exerciseUuids.length === 0) return { ok: false, field: 'exercises', errorKey: 'templateNeedsExercise' }
+    if (input.liveMemberCount === 0) return { ok: false, field: 'exercises', errorKey: 'templateNeedsExercise' }
     return { ok: true, name, exerciseUuids: [...input.exerciseUuids] }
 }
-
-// Only uuids that still resolve to a live Exercise are saved, so stale members
-// left by deleted Exercises get pruned whenever the Template is re-saved.
-export const liveSelection = (selected: ReadonlySet<string>, exercises: readonly Pick<Exercise, 'uuid'>[]): string[] =>
-    exercises.flatMap((exercise) => (exercise.uuid && selected.has(exercise.uuid) ? [exercise.uuid] : []))
 
 // Accent- and case-insensitive match on name or muscle group, so "bench" finds
 // "Bench Press" and "hrudnik" finds "hrudník".

@@ -9,7 +9,7 @@ import type { Exercise } from '@/src/db/exercises'
 import { Button } from '@/src/modules/core/components/Button'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { formatExerciseType } from '@/src/utils/formatters'
+import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
 import { filterExercises, groupByMuscle } from '../templateForm'
 
 type Props = {
@@ -17,8 +17,6 @@ type Props = {
     selected: ReadonlySet<string>
     onToggle: (uuid: string) => void
 }
-
-const capitalizeFirst = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1)
 
 // Multi-select of a principal's Exercises, searchable and sectioned by muscle
 // group so a long list stays scannable. Rendered inline (not virtualized): it
@@ -68,7 +66,7 @@ export function TemplateExerciseSelector({ exercises, selected, onToggle }: Prop
                 sections.map((section) => (
                     <View key={section.group ?? '__other'} style={styles.section}>
                         <Typography.Meta weight={'bold'} color={'textSecondary'} style={styles.sectionLabel}>
-                            {section.group ? capitalizeFirst(section.group) : t('otherMuscleGroup')}
+                            {section.group ? formatMuscleGroup(section.group) : t('otherMuscleGroup')}
                         </Typography.Meta>
                         <View style={[styles.sectionList, { borderColor: theme.border }]}>
                             {section.exercises.map((exercise, index) => {
@@ -143,7 +141,6 @@ const styles = StyleSheet.create({
     sectionLabel: {
         textTransform: 'uppercase',
         letterSpacing: 0.5,
-        fontSize: FontSize.xs,
     },
     sectionList: {
         borderWidth: 1,

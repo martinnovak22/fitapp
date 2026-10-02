@@ -245,7 +245,7 @@ export const LogSetModal = ({
                                         <Typography.Meta
                                             color={'textSecondary'}
                                             numberOfLines={1}
-                                            style={styles.flexShrink}
+                                            style={styles.pickerCaptionText}
                                         >
                                             {pickerCaption}
                                         </Typography.Meta>
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
         gap: Spacing.xs,
         marginTop: Spacing.sm,
     },
-    flexShrink: {
+    pickerCaptionText: {
         flexShrink: 1,
     },
     modalRoot: {

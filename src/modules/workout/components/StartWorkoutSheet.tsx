@@ -1,7 +1,10 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Duration } from '@/src/constants/Motion'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import type { WorkoutTemplate } from '@/src/db/workoutTemplates'
@@ -9,6 +12,10 @@ import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { TemplateRow } from '@/src/modules/templates/components/TemplateRow'
 import type { TemplateSummary } from '@/src/modules/templates/templateSummary'
+
+// Distance (px) the sheet slides up on entry and back down on exit, matching
+// LogSetModal and EditTimingModal so every sheet shares one motion language.
+const SHEET_SLIDE_OFFSET = 32
 
 type Props = {
     visible: boolean
@@ -35,12 +42,67 @@ export function StartWorkoutSheet({
     const { theme } = useTheme()
     const insets = useSafeAreaInsets()
 
+    const [isMounted, setIsMounted] = useState(visible)
+    const wasVisibleRef = useRef(false)
+    const sheetOpacity = useSharedValue(0)
+    const sheetOffset = useSharedValue(SHEET_SLIDE_OFFSET)
+    const backdropOpacity = useSharedValue(0)
+
+    const handleCloseComplete = useCallback(() => {
+        setIsMounted(false)
+        sheetOffset.value = SHEET_SLIDE_OFFSET
+    }, [sheetOffset])
+
+    useEffect(() => {
+        if (visible) {
+            setIsMounted(true)
+            if (!wasVisibleRef.current) {
+                wasVisibleRef.current = true
+                sheetOpacity.value = 0
+                sheetOffset.value = SHEET_SLIDE_OFFSET
+                backdropOpacity.value = 0
+                sheetOpacity.value = withTiming(1, { duration: Duration.fast })
+                sheetOffset.value = withTiming(0, { duration: Duration.base })
+                backdropOpacity.value = withTiming(1, { duration: Duration.base })
+            }
+            return
+        }
+        if (wasVisibleRef.current) {
+            wasVisibleRef.current = false
+            backdropOpacity.value = withTiming(0, { duration: Duration.base })
+            sheetOpacity.value = withTiming(0, { duration: Duration.base })
+            sheetOffset.value = withTiming(SHEET_SLIDE_OFFSET, { duration: Duration.base }, (finished) => {
+                if (finished) runOnJS(handleCloseComplete)()
+            })
+        }
+    }, [backdropOpacity, handleCloseComplete, sheetOffset, sheetOpacity, visible])
+
+    const sheetStyle = useAnimatedStyle(() => ({
+        opacity: sheetOpacity.value,
+        transform: [{ translateY: sheetOffset.value }],
+    }))
+    const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }))
+
+    if (!isMounted) return null
+
     return (
-        <Modal visible={visible} transparent animationType={'fade'} onRequestClose={onClose} statusBarTranslucent>
-            <Pressable style={[styles.backdrop, { backgroundColor: theme.overlayScrim }]} onPress={onClose}>
-                <Pressable
-                    style={[styles.sheet, { backgroundColor: theme.card, paddingBottom: insets.bottom + Spacing.lg }]}
-                    onPress={() => {}}
+        <Modal animationType={'none'} transparent visible={isMounted} onRequestClose={onClose} statusBarTranslucent>
+            <View style={styles.root}>
+                <Animated.View style={[styles.backdrop, { backgroundColor: theme.overlayBackdrop }, backdropStyle]}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        activeOpacity={1}
+                        onPress={onClose}
+                        accessibilityRole={'button'}
+                        accessibilityLabel={t('close')}
+                    />
+                </Animated.View>
+                <Animated.View
+                    style={[
+                        styles.sheet,
+                        { backgroundColor: theme.surface, paddingBottom: insets.bottom + Spacing.lg },
+                        sheetStyle,
+                    ]}
                 >
                     <View style={styles.grabberWrap}>
                         <View style={[styles.grabber, { backgroundColor: `${theme.textSecondary}66` }]} />
@@ -80,7 +142,7 @@ export function StartWorkoutSheet({
                             hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                         >
                             <Typography.Meta color={'primary'} weight={'bold'}>
-                                {t('newTemplateShort')}
+                                {t('newTemplate')}
                             </Typography.Meta>
                         </TouchableOpacity>
                     </View>
@@ -109,16 +171,19 @@ export function StartWorkoutSheet({
                             ))}
                         </ScrollView>
                     )}
-                </Pressable>
-            </Pressable>
+                </Animated.View>
+            </View>
         </Modal>
     )
 }
 
 const styles = StyleSheet.create({
-    backdrop: {
+    root: {
         flex: 1,
         justifyContent: 'flex-end',
+    },
+    backdrop: {
+        ...StyleSheet.absoluteFillObject,
     },
     sheet: {
         borderTopLeftRadius: Radius.lg,

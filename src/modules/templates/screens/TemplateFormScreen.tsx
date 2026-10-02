@@ -8,6 +8,7 @@ import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import { useExerciseRepo, useWorkoutTemplateRepo } from '@/src/data/RepositoryContext'
 import type { Exercise } from '@/src/db/exercises'
+import { resolveMembers } from '@/src/db/templateMembership'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
@@ -17,7 +18,7 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { TemplateExerciseSelector } from '../components/TemplateExerciseSelector'
-import { liveSelection, TEMPLATE_NAME_MAX_LENGTH, validateTemplate } from '../templateForm'
+import { TEMPLATE_NAME_MAX_LENGTH, validateTemplate } from '../templateForm'
 
 const WORKOUT_TAB = '/(tabs)/workout' as const
 
@@ -95,11 +96,13 @@ export default function TemplateFormScreen() {
         })
     }, [])
 
-    const selectedCount = liveSelection(selected, exercises).length
+    // Members not on this device yet stay in `selected` (and are saved) but are
+    // not counted: the badge shows what this device can actually offer.
+    const selectedCount = resolveMembers(selected, exercises).length
 
     const handleSave = useCallback(async () => {
         if (isSaving) return
-        const result = validateTemplate({ name, exerciseUuids: liveSelection(selected, exercises) })
+        const result = validateTemplate({ name, exerciseUuids: [...selected], liveMemberCount: selectedCount })
         if (!result.ok) {
             if (result.field === 'name') {
                 setNameError(t(result.errorKey))
@@ -113,7 +116,16 @@ export default function TemplateFormScreen() {
         setIsSaving(true)
         try {
             if (templateId !== undefined) {
-                await templateRepo.update(templateId, { name: result.name, exerciseUuids: result.exerciseUuids })
+                const written = await templateRepo.update(templateId, {
+                    name: result.name,
+                    exerciseUuids: result.exerciseUuids,
+                })
+                if (written === 0) {
+                    // Deleted elsewhere while open; keep the form so the edits
+                    // aren't silently lost behind a success toast.
+                    showToast.danger({ title: t('error'), message: t('templateGoneWhileEditing') })
+                    return
+                }
             } else {
                 await templateRepo.create({ name: result.name, exerciseUuids: result.exerciseUuids })
             }
@@ -128,7 +140,7 @@ export default function TemplateFormScreen() {
         } finally {
             setIsSaving(false)
         }
-    }, [exercises, isEditing, isSaving, name, selected, t, templateId, templateRepo])
+    }, [isEditing, isSaving, name, selected, selectedCount, t, templateId, templateRepo])
 
     const handleDelete = useCallback(() => {
         if (templateId === undefined) return
@@ -275,11 +287,14 @@ export default function TemplateFormScreen() {
                             subMessage={t('templateNeedsExercisesFirst')}
                             icon={'list'}
                         />
+                        {/* Switch to the Exercises tab rather than pushing its add
+                            form into this stack: a cross-tab push leaves the form
+                            behind in the Exercises stack after save. */}
                         <Button
-                            label={t('addExercise')}
-                            leftIcon={'plus'}
+                            label={t('goToExercises')}
+                            leftIcon={'list'}
                             variant={'secondary'}
-                            onPress={() => router.push('/(tabs)/exercises/add')}
+                            onPress={() => router.navigate('/(tabs)/exercises')}
                         />
                     </View>
                 ) : (

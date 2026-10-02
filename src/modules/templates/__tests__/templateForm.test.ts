@@ -1,34 +1,30 @@
 import { describe, expect, it } from 'vitest'
-import { filterExercises, groupByMuscle, liveSelection, muscleGroupsOf, validateTemplate } from '../templateForm'
+import { filterExercises, groupByMuscle, muscleGroupsOf, validateTemplate } from '../templateForm'
 
 const ex = (uuid: string, name: string, muscle_group?: string) => ({ uuid, name, muscle_group })
 
 describe('validateTemplate', () => {
     it('requires a name', () => {
-        expect(validateTemplate({ name: '   ', exerciseUuids: ['a'] })).toEqual({
+        expect(validateTemplate({ name: '   ', exerciseUuids: ['a'], liveMemberCount: 1 })).toEqual({
             ok: false,
             field: 'name',
             errorKey: 'templateNameRequired',
         })
     })
 
-    it('requires at least one Exercise', () => {
-        expect(validateTemplate({ name: 'Push', exerciseUuids: [] })).toMatchObject({ ok: false, field: 'exercises' })
-    })
-
-    it('returns the trimmed name when valid', () => {
-        expect(validateTemplate({ name: ' Push ', exerciseUuids: ['a'] })).toEqual({
-            ok: true,
-            name: 'Push',
-            exerciseUuids: ['a'],
+    it('requires at least one live Exercise, ignoring members not on this device', () => {
+        expect(validateTemplate({ name: 'Push', exerciseUuids: ['not-here'], liveMemberCount: 0 })).toMatchObject({
+            ok: false,
+            field: 'exercises',
         })
     })
-})
 
-describe('liveSelection', () => {
-    it('drops selected uuids that no longer resolve and follows the Exercise-list order', () => {
-        const exercises = [ex('a', 'A'), ex('b', 'B'), ex('c', 'C')]
-        expect(liveSelection(new Set(['c', 'gone', 'a']), exercises)).toEqual(['a', 'c'])
+    it('keeps the whole selection, including members not on this device yet', () => {
+        expect(validateTemplate({ name: ' Push ', exerciseUuids: ['a', 'not-here'], liveMemberCount: 1 })).toEqual({
+            ok: true,
+            name: 'Push',
+            exerciseUuids: ['a', 'not-here'],
+        })
     })
 })
 

@@ -29,7 +29,7 @@ export default function HistoryScreen() {
     const navigation = useNavigation()
     const [workouts, setWorkouts] = useState<Workout[]>([])
     // Template uuid → name, so a Planned Workout's row can show its plan.
-    const [planNames, setPlanNames] = useState<Map<string, string>>(() => new Map())
+    const [templateNames, setTemplateNames] = useState<Map<string, string>>(() => new Map())
     const [initialLoading, setInitialLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
     const [refreshing, setRefreshing] = useState(false)
@@ -57,7 +57,7 @@ export default function HistoryScreen() {
                 const [data, templates] = await Promise.all([workoutRepo.getAllWorkouts(), templateRepo.getAll()])
                 if (!isStale()) {
                     setWorkouts(data)
-                    setPlanNames(new Map(templates.map((template) => [template.uuid, template.name])))
+                    setTemplateNames(new Map(templates.map((template) => [template.uuid, template.name])))
                 }
             } catch (error) {
                 log('error', 'Failed to load workouts history', error)
@@ -87,7 +87,10 @@ export default function HistoryScreen() {
     }
 
     const renderItem = ({ item }: { item: Workout }) => (
-        <WorkoutHistoryCard item={item} planName={item.template_uuid ? planNames.get(item.template_uuid) : undefined} />
+        <WorkoutHistoryCard
+            item={item}
+            templateName={item.template_uuid ? templateNames.get(item.template_uuid) : undefined}
+        />
     )
 
     // The skeleton is the screen's entrance; the list then renders statically
@@ -111,7 +114,7 @@ export default function HistoryScreen() {
             ) : (
                 <Animated.FlatList
                     data={workouts}
-                    extraData={planNames}
+                    extraData={templateNames}
                     renderItem={renderItem}
                     keyExtractor={(item) => item.id.toString()}
                     itemLayoutAnimation={LIST_LAYOUT}

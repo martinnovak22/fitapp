@@ -53,8 +53,8 @@ A Workout started from a Workout Template (`template_uuid` set). Its exercise pi
 _Avoid_: template workout, scheduled workout (there is no date-based scheduling)
 
 **Unplanned Workout**:
-A Workout with no Workout Template (`template_uuid IS NULL`). The picker offers every Exercise. All pre-template Workouts are Unplanned.
-_Avoid_: free workout, ad-hoc session
+A Workout with no Workout Template (`template_uuid IS NULL`). The picker offers every Exercise. All pre-template Workouts are Unplanned. Shown in the UI as "Free workout" ("Volný trénink").
+_Avoid_: free workout (in code; it is the UI label only), ad-hoc session
 
 **Principal**:
 The current identity that owns local data and drives sync. Has one of three modes: `guest`, `account`, `signed-out`. Distinct from the Auth Session (the login mechanism).

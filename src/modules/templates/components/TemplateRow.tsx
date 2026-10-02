@@ -5,6 +5,7 @@ import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { formatMuscleGroup } from '@/src/utils/formatters'
 import type { TemplateSummary } from '../templateSummary'
 
 type Props = {
@@ -15,8 +16,6 @@ type Props = {
     accessibilityHint?: string
 }
 
-const capitalizeFirst = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1)
-
 // One Workout Template in a list: name, Exercise count and the muscle groups it
 // covers. Shared by the dashboard's Plans card and the start sheet.
 export function TemplateRow({ summary, onPress, trailingIcon = 'chevron-right', disabled, accessibilityHint }: Props) {
@@ -25,8 +24,8 @@ export function TemplateRow({ summary, onPress, trailingIcon = 'chevron-right', 
     const { template, exerciseCount, muscleGroups } = summary
     const meta = [
         t('exercisesCount', { count: exerciseCount }),
-        ...(muscleGroups.length > 0 ? [muscleGroups.map(capitalizeFirst).join(', ')] : []),
-    ].join(' · ')
+        ...(muscleGroups.length > 0 ? [muscleGroups.map(formatMuscleGroup).join(', ')] : []),
+    ].join(' • ')
 
     return (
         <TouchableOpacity

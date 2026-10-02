@@ -13,13 +13,13 @@ import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime'
 interface WorkoutHistoryCardProps {
     item: Workout
     // Name of the Workout Template a Planned Workout came from, if it still exists.
-    planName?: string
+    templateName?: string
 }
 
 // One row of the workout-history list. Owns the date/time formatting and all the
 // status/note conditional rendering. Renders statically — the skeleton is the
 // list's entrance, so rows don't float in.
-export function WorkoutHistoryCard({ item, planName }: WorkoutHistoryCardProps) {
+export function WorkoutHistoryCard({ item, templateName }: WorkoutHistoryCardProps) {
     const { t, i18n } = useTranslation()
     const { theme } = useTheme()
 
@@ -46,16 +46,16 @@ export function WorkoutHistoryCard({ item, planName }: WorkoutHistoryCardProps) 
                         {item.start_time ? formatHourMinute(item.start_time) : ''}
                         {item.end_time ? ` - ${formatHourMinute(item.end_time)}` : ` (${t('inProgress')})`}
                     </Typography.Meta>
-                    {planName && (
-                        <View style={styles.planRow}>
+                    {templateName && (
+                        <View style={styles.templateRow}>
                             <FontAwesome name={'list-alt'} size={11} color={theme.primary} />
                             <Typography.Meta
                                 color={'primary'}
                                 weight={'bold'}
                                 numberOfLines={1}
-                                style={styles.planName}
+                                style={styles.templateName}
                             >
-                                {planName}
+                                {templateName}
                             </Typography.Meta>
                         </View>
                     )}
@@ -78,13 +78,13 @@ export function WorkoutHistoryCard({ item, planName }: WorkoutHistoryCardProps) 
 }
 
 const styles = StyleSheet.create({
-    planRow: {
+    templateRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.xs,
         marginTop: Spacing.xs2,
     },
-    planName: {
+    templateName: {
         flexShrink: 1,
     },
     workoutItem: {
