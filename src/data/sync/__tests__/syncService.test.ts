@@ -232,7 +232,7 @@ describe('runSync — issue #26 cheap-exit and cursor', () => {
         // The upsert pulls are cursor-safe under server-side truncation because
         // they are sorted ascending; the deletion pulls need the same guarantee.
         const deletionPulls = fetchCalls.filter((c) => c.method === 'GET' && c.url.includes('deleted_at=not.is.null'))
-        expect(deletionPulls.length).toBe(3)
+        expect(deletionPulls.length).toBe(4)
         for (const call of deletionPulls) {
             expect(call.url).toContain('order=deleted_at.asc')
         }
@@ -734,5 +734,162 @@ describe('runSync — failure lifecycle (blocked / dead-letter)', () => {
 
         expect(await localStatus('ex-bad')).toBe('dirty')
         expect((await getSyncState()).blocked_size).toBe(0)
+    })
+})
+
+describe('runSync — Workout Templates (ADR-0006)', () => {
+    type BodyCall = FetchCall & { body: unknown }
+    const bodyCalls: BodyCall[] = []
+
+    // Like mockFetch, but records request bodies and echoes upserts back as
+    // persisted so the Outbox acks them.
+    const mockFetchWithBodies = (pull: (call: FetchCall) => unknown[] | undefined = () => undefined) => {
+        bodyCalls.length = 0
+        let nextId = 1
+        globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+            const u = typeof url === 'string' ? url : url.toString()
+            const method = init?.method ?? 'GET'
+            const body = init?.body ? JSON.parse(String(init.body)) : undefined
+            bodyCalls.push({ url: u, method, body })
+            if (method === 'POST') {
+                const rows = body as { uuid: string }[]
+                return new Response(JSON.stringify(rows.map((r) => ({ id: nextId++, uuid: r.uuid }))), { status: 201 })
+            }
+            if (method === 'PATCH') return new Response('', { status: 204 })
+            return new Response(JSON.stringify(pull({ url: u, method }) ?? []), { status: 200 })
+        }) as typeof fetch
+    }
+
+    const templateRow = (uuid: string) =>
+        db.getFirstAsync<{ name: string; exercise_uuids: string; sync_status: string }>(
+            'SELECT name, exercise_uuids, sync_status FROM workout_templates WHERE uuid = ?',
+            uuid
+        )
+
+    it('pushes a dirty Template with its membership as a real array, and a Workout with its template_uuid', async () => {
+        await db.runAsync(
+            `INSERT INTO workout_templates (uuid, user_id, name, exercise_uuids, sync_status, created_at, updated_at)
+             VALUES ('t-1', ?, 'Push A', '["ex-1","ex-2"]', 'dirty', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+            userId
+        )
+        await db.runAsync(
+            `INSERT INTO workouts (uuid, user_id, date, status, template_uuid, sync_status, created_at, updated_at)
+             VALUES ('w-1', ?, '2026-01-02', 'finished', 't-1', 'dirty', '2026-01-02T00:00:00Z', '2026-01-02T00:00:00Z')`,
+            userId
+        )
+        mockFetchWithBodies()
+
+        const result = await runSync()
+
+        expect(result).toMatchObject({ failed: 0, aborted: false })
+        const templateUpsert = bodyCalls.find((c) => c.method === 'POST' && c.url.includes('/workout_templates?'))
+        expect(templateUpsert?.body).toEqual([
+            expect.objectContaining({ uuid: 't-1', user_id: userId, name: 'Push A', exercise_uuids: ['ex-1', 'ex-2'] }),
+        ])
+        const workoutUpsert = bodyCalls.find((c) => c.method === 'POST' && c.url.includes('/workouts?'))
+        expect(workoutUpsert?.body).toEqual([expect.objectContaining({ uuid: 'w-1', template_uuid: 't-1' })])
+        expect((await templateRow('t-1'))?.sync_status).toBe('synced')
+    })
+
+    it('pulls a remote Template and a Workout that references it', async () => {
+        mockFetchWithBodies((call) => {
+            const isUpsertPull = call.url.includes('deleted_at=is.null')
+            if (isUpsertPull && call.url.includes('/workout_templates?')) {
+                return [
+                    {
+                        uuid: 't-remote',
+                        user_id: userId,
+                        name: 'Legs',
+                        exercise_uuids: ['ex-squat'],
+                        position: 0,
+                        created_at: '2026-03-01T00:00:00Z',
+                        updated_at: '2026-03-01T00:00:00Z',
+                        deleted_at: null,
+                    },
+                ]
+            }
+            if (isUpsertPull && call.url.includes('/workouts?')) {
+                return [
+                    {
+                        uuid: 'w-remote',
+                        user_id: userId,
+                        date: '2026-03-02',
+                        status: 'finished',
+                        template_uuid: 't-remote',
+                        created_at: '2026-03-02T00:00:00Z',
+                        updated_at: '2026-03-02T00:00:00Z',
+                        deleted_at: null,
+                    },
+                ]
+            }
+            return undefined
+        })
+
+        await runSync()
+
+        expect(await templateRow('t-remote')).toEqual({
+            name: 'Legs',
+            exercise_uuids: '["ex-squat"]',
+            sync_status: 'synced',
+        })
+        const workout = await db.getFirstAsync<{ template_uuid: string }>(
+            `SELECT template_uuid FROM workouts WHERE uuid = 'w-remote'`
+        )
+        expect(workout?.template_uuid).toBe('t-remote')
+    })
+
+    it('applies a remote Template deletion locally', async () => {
+        await db.runAsync(
+            `INSERT INTO workout_templates (uuid, user_id, name, sync_status, updated_at)
+             VALUES ('t-gone', ?, 'Old', 'synced', '2026-01-01T00:00:00Z')`,
+            userId
+        )
+        mockFetchWithBodies((call) =>
+            call.url.includes('/workout_templates?') && call.url.includes('deleted_at=not.is.null')
+                ? [{ uuid: 't-gone', deleted_at: '2026-02-01T00:00:00Z' }]
+                : undefined
+        )
+
+        await runSync()
+
+        expect(await templateRow('t-gone')).toBeNull()
+    })
+
+    it('pushes a Template tombstone as a soft delete and never resurrects it from the live pull', async () => {
+        await db.runAsync(
+            `INSERT INTO deletion_tombstones (entity_type, entity_uuid, user_id, deleted_at, sync_status)
+             VALUES ('workout_template', 't-del', ?, '2026-04-01T00:00:00Z', 'dirty')`,
+            userId
+        )
+        mockFetchWithBodies((call) =>
+            call.url.includes('/workout_templates?') && call.url.includes('deleted_at=is.null')
+                ? [
+                      {
+                          uuid: 't-del',
+                          user_id: userId,
+                          name: 'Zombie',
+                          exercise_uuids: [],
+                          created_at: '2026-03-01T00:00:00Z',
+                          updated_at: '2026-03-01T00:00:00Z',
+                          deleted_at: null,
+                      },
+                  ]
+                : undefined
+        )
+
+        await runSync()
+
+        const patch = bodyCalls.find((c) => c.method === 'PATCH')
+        expect(patch?.url).toContain('/workout_templates?uuid=eq.t-del')
+        expect(patch?.body).toMatchObject({ deleted_at: '2026-04-01T00:00:00Z' })
+        expect(await templateRow('t-del')).toBeNull()
+    })
+
+    it('counts a dirty Template in the outbox size', async () => {
+        await db.runAsync(
+            `INSERT INTO workout_templates (uuid, user_id, name, sync_status) VALUES ('t-out', ?, 'X', 'dirty')`,
+            userId
+        )
+        expect((await getSyncState()).outbox_size).toBe(1)
     })
 })

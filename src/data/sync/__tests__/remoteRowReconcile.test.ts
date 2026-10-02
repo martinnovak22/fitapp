@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { shouldSkipRemoteRow, toExerciseColumns, toSetColumns, toWorkoutColumns } from '../remoteRowReconcile'
+import {
+    shouldSkipRemoteRow,
+    toExerciseColumns,
+    toSetColumns,
+    toWorkoutColumns,
+    toWorkoutTemplateColumns,
+} from '../remoteRowReconcile'
 
 describe('shouldSkipRemoteRow — last-writer-wins conflict guard', () => {
     it('never skips when there is no local row', () => {
@@ -100,6 +106,7 @@ describe('toWorkoutColumns — remote workout row → local column values', () =
                 end_time: '09:00',
                 status: 'in_progress',
                 note: 'leg day',
+                template_uuid: 't-push',
                 created_at: '2026-01-01T00:00:00Z',
                 updated_at: '2026-02-01T00:00:00Z',
             },
@@ -112,9 +119,45 @@ describe('toWorkoutColumns — remote workout row → local column values', () =
             end_time: '09:00',
             status: 'in_progress',
             note: 'leg day',
+            template_uuid: 't-push',
             created_at: '2026-01-01T00:00:00Z',
             updated_at: '2026-02-01T00:00:00Z',
         })
+    })
+})
+
+describe('toWorkoutTemplateColumns — remote template row → local column values', () => {
+    it('serializes the remote jsonb array into the local TEXT column', () => {
+        const cols = toWorkoutTemplateColumns(
+            {
+                name: 'Push A',
+                exercise_uuids: ['ex-1', 'ex-2', 'ex-1'],
+                position: 2,
+                created_at: '2026-01-01T00:00:00Z',
+                updated_at: '2026-02-01T00:00:00Z',
+            },
+            'user-1'
+        )
+        expect(cols).toEqual({
+            user_id: 'user-1',
+            name: 'Push A',
+            exercise_uuids: '["ex-1","ex-2"]',
+            position: 2,
+            created_at: '2026-01-01T00:00:00Z',
+            updated_at: '2026-02-01T00:00:00Z',
+        })
+    })
+
+    it('reads a missing or malformed membership as an empty Template', () => {
+        expect(toWorkoutTemplateColumns({ created_at: null, updated_at: null }, 'user-1')).toMatchObject({
+            name: '',
+            exercise_uuids: '[]',
+            position: 0,
+        })
+        expect(
+            toWorkoutTemplateColumns({ exercise_uuids: { not: 'an array' }, created_at: null, updated_at: null }, 'u')
+                .exercise_uuids
+        ).toBe('[]')
     })
 })
 

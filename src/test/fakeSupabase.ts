@@ -15,7 +15,7 @@
  *   - 'success' (default)    — normal behavior
  */
 
-export type RemoteTable = 'exercises' | 'workouts' | 'sets'
+export type RemoteTable = 'exercises' | 'workouts' | 'sets' | 'workout_templates'
 
 export type RemoteRow = Record<string, unknown> & {
     uuid: string
@@ -56,21 +56,23 @@ export const createFakeSupabaseAdapter = (): FakeSupabaseAdapter => {
         exercises: new Map(),
         workouts: new Map(),
         sets: new Map(),
+        workout_templates: new Map(),
     }
     const idsByUuid: Record<RemoteTable, Map<string, number>> = {
         exercises: new Map(),
         workouts: new Map(),
         sets: new Map(),
+        workout_templates: new Map(),
     }
-    const nextId: Record<RemoteTable, number> = { exercises: 1, workouts: 1, sets: 1 }
+    const nextId: Record<RemoteTable, number> = { exercises: 1, workouts: 1, sets: 1, workout_templates: 1 }
     const failureQueue: FailureMode[] = []
     const counts: CallCounts = {
-        upsert: { exercises: 0, workouts: 0, sets: 0 },
-        selectByUuid: { exercises: 0, workouts: 0, sets: 0 },
-        selectIdsByUuids: { exercises: 0, workouts: 0, sets: 0 },
-        selectActive: { exercises: 0, workouts: 0, sets: 0 },
-        selectDeleted: { exercises: 0, workouts: 0, sets: 0 },
-        patchByUuid: { exercises: 0, workouts: 0, sets: 0 },
+        upsert: { exercises: 0, workouts: 0, sets: 0, workout_templates: 0 },
+        selectByUuid: { exercises: 0, workouts: 0, sets: 0, workout_templates: 0 },
+        selectIdsByUuids: { exercises: 0, workouts: 0, sets: 0, workout_templates: 0 },
+        selectActive: { exercises: 0, workouts: 0, sets: 0, workout_templates: 0 },
+        selectDeleted: { exercises: 0, workouts: 0, sets: 0, workout_templates: 0 },
+        patchByUuid: { exercises: 0, workouts: 0, sets: 0, workout_templates: 0 },
     }
 
     const takeFailure = () => failureQueue.shift()

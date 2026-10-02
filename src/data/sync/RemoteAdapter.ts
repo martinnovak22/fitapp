@@ -2,7 +2,7 @@
 // and RemoteIdResolver depend on this interface; the production wiring uses a
 // PostgREST-backed adapter, tests use the FakeSupabaseAdapter.
 
-export type RemoteTable = 'exercises' | 'workouts' | 'sets'
+export type RemoteTable = 'exercises' | 'workouts' | 'sets' | 'workout_templates'
 
 // Carries the HTTP status of a failed PostgREST request so failures can be
 // classified as permanent (the server refused the data) vs transient.

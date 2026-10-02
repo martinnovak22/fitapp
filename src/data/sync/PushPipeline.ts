@@ -2,11 +2,19 @@
 // in SyncCycle.ts calls these directly; runSync in syncService.ts composes
 // them with the rest of a sync run (sync_state updates, pulls, etc.).
 
-import { type ExerciseRow, type OutboxRow, type SetRowWithRefs, tableOf, type WorkoutRow } from './Outbox'
+import { parseExerciseUuids } from '@/src/db/templateMembership'
+import {
+    type ExerciseRow,
+    type OutboxRow,
+    type SetRowWithRefs,
+    tableOf,
+    type WorkoutRow,
+    type WorkoutTemplateRow,
+} from './Outbox'
 import type { PrincipalSnapshot } from './PrincipalSnapshot'
 import type { ExercisePhotoStore } from './photoStorage'
 import { shouldUploadPhoto } from './photoSync'
-import type { RemoteRow, RemoteTable } from './RemoteAdapter'
+import type { RemoteRow } from './RemoteAdapter'
 import type { RemoteIdResolver } from './RemoteIdResolver'
 import type { RemoteWriteResult, RemoteWriter } from './RemoteWriter'
 import type { PushFn, PushOutcome } from './SyncCycle'
@@ -38,6 +46,21 @@ const workoutToRemote = (snapshot: PrincipalSnapshot, row: WorkoutRow): RemoteRo
     end_time: row.end_time,
     status: row.status,
     note: row.note,
+    template_uuid: row.template_uuid,
+    created_at: toIsoOrNow(row.created_at),
+    updated_at: toIsoOrNow(row.updated_at),
+    deleted_at: row.deleted_at,
+    sync_status: 'dirty',
+})
+
+const templateToRemote = (snapshot: PrincipalSnapshot, row: WorkoutTemplateRow): RemoteRow => ({
+    uuid: row.uuid,
+    user_id: snapshot.userId,
+    name: row.name,
+    // Sent as a real array so the remote jsonb column holds an array, not a
+    // JSON-encoded string.
+    exercise_uuids: parseExerciseUuids(row.exercise_uuids),
+    position: row.position,
     created_at: toIsoOrNow(row.created_at),
     updated_at: toIsoOrNow(row.updated_at),
     deleted_at: row.deleted_at,
@@ -98,7 +121,7 @@ export const makePushFn =
                     reason: { kind: 'unknown', message: 'Cannot push tombstone without account principal.' },
                 }
             }
-            const result = await writer.patch(tableOf(row.entityType) as RemoteTable, row.uuid, snapshot.userId, {
+            const result = await writer.patch(tableOf(row.entityType), row.uuid, snapshot.userId, {
                 deleted_at: row.deletedAt,
                 updated_at: row.deletedAt,
                 sync_status: 'dirty',
@@ -128,6 +151,10 @@ export const makePushFn =
                     void photos.cleanup(snapshot.userId as string, row.uuid, row.row.photo_key)
                 }
             }
+            return outcomeFromWrite(result)
+        }
+        if (row.entityType === 'workout_template') {
+            const [result] = await writer.upsert('workout_templates', [templateToRemote(snapshot, row.row)])
             return outcomeFromWrite(result)
         }
         if (row.entityType === 'workout') {

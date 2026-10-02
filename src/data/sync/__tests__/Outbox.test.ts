@@ -87,6 +87,33 @@ describe('Outbox.nextBatch', () => {
         expect(kinds).toEqual(['exercise', 'workout', 'set', 'tombstone:exercise'])
     })
 
+    it('includes dirty Workout Templates after exercises and before workouts, and acks them', async () => {
+        await insertWorkout('wk-1')
+        await db.runAsync(
+            `INSERT INTO workout_templates (uuid, user_id, name, exercise_uuids, sync_status, created_at, updated_at)
+            VALUES ('t-1', ?, 'Push', '["ex-1"]', 'dirty', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+            userId
+        )
+        await insertExercise('ex-1', 'Bench')
+
+        const outbox = createOutbox(db as never, executeWriteTransaction)
+        const batch = await outbox.nextBatch(capturePrincipalSnapshot({ userId }))
+
+        expect(batch.map((r) => (r.kind === 'entity' ? r.entityType : r.kind))).toEqual([
+            'exercise',
+            'workout_template',
+            'workout',
+        ])
+        const template = batch[1]
+        expect(template.kind === 'entity' && template.row).toMatchObject({ name: 'Push', exercise_uuids: '["ex-1"]' })
+
+        await outbox.ack(batch)
+        const row = await db.getFirstAsync<{ sync_status: string }>(
+            `SELECT sync_status FROM workout_templates WHERE uuid = 't-1'`
+        )
+        expect(row?.sync_status).toBe('synced')
+    })
+
     it('scopes by snapshot — guest snapshot ignores account rows', async () => {
         await insertExercise('ex-account', 'Account bench')
         await db.runAsync(
