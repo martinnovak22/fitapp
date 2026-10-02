@@ -118,6 +118,19 @@ Parse the JSON to list specific files and exports that became unused.
     changed-since: main
 ```
 
+### GitHub Actions: Security Delta Gate
+
+Fail a PR only when it introduces new security candidates (or makes existing ones newly reachable). Gated failures exit with code 8; the `issues` output counts only matching gate candidates. PR comment and review renderers skip security envelopes.
+
+```yaml
+- uses: fallow-rs/fallow@v2
+  with:
+    command: security
+    security-gate: new   # or newly-reachable (needs a base ref via changed-since or PR auto-scoping)
+```
+
+GitLab equivalent: `FALLOW_COMMAND: "security"` with `FALLOW_SECURITY_GATE: "new"`.
+
 ### GitHub Actions: With Health Score
 
 ```yaml
@@ -209,7 +222,7 @@ fallow:
     FALLOW_FAIL_ON_ISSUES: "true"
 ```
 
-Generates Code Quality reports (inline MR annotations) automatically. In MR pipelines, `--changed-since` is automatically set to the target branch — no manual configuration needed.
+Generates Code Quality reports (inline MR annotations) automatically. In MR pipelines, `--changed-since` is automatically set to the target branch; no manual configuration needed.
 
 If runners cannot reach `raw.githubusercontent.com`, run `fallow ci-template gitlab --vendor`, commit the generated `ci/` and `action/` files, and use GitLab's local include syntax:
 
@@ -229,9 +242,10 @@ fallow:
   variables:
     FALLOW_COMMENT: "true"
     FALLOW_SUMMARY_SCOPE: "diff"
+    FALLOW_PR_COMMENT_LAYOUT: "gate-only"
 ```
 
-Posts a summary comment on the MR with issue counts and findings. In MR pipelines, `--changed-since` is auto-detected from `$CI_MERGE_REQUEST_TARGET_BRANCH_NAME`, so only issues from changed files are reported. `FALLOW_SUMMARY_SCOPE: "diff"` also hides project-level dependency/catalog/override findings whose anchor line is outside the diff. Requires `GITLAB_TOKEN` CI/CD variable (project access token with `api` scope); `CI_JOB_TOKEN` is read-only for MR notes in the official GitLab API.
+Posts a summary comment on the MR with issue counts and findings. In MR pipelines, `--changed-since` is auto-detected from `$CI_MERGE_REQUEST_TARGET_BRANCH_NAME`, so only issues from changed files are reported. `FALLOW_SUMMARY_SCOPE: "diff"` also hides project-level dependency/catalog/override findings whose anchor line is outside the diff. `FALLOW_PR_COMMENT_LAYOUT: "gate-only"` keeps the sticky comment compact when GitLab Code Quality is the primary review surface. Requires `GITLAB_TOKEN` CI/CD variable (project access token with `api` scope); `CI_JOB_TOKEN` is read-only for MR notes in the official GitLab API.
 
 ### GitLab CI: With Inline Code Review Comments
 
@@ -259,12 +273,13 @@ fallow:
   variables:
     FALLOW_COMMENT: "true"
     FALLOW_SUMMARY_SCOPE: "diff"
+    FALLOW_PR_COMMENT_LAYOUT: "gate-only"
     FALLOW_REVIEW: "true"
     FALLOW_REVIEW_GUIDANCE: "true"
     FALLOW_FAIL_ON_ISSUES: "true"
 ```
 
-Posts both a summary comment and inline review comments on the MR. `FALLOW_SUMMARY_SCOPE: "diff"` only affects the sticky summary; inline review comments remain anchored to diff lines. The template auto-detects the package manager (npm/pnpm/yarn) from lockfiles, so review comments show the correct commands for the project (e.g., `pnpm remove` instead of `npm uninstall`).
+Posts both a summary comment and inline review comments on the MR. `FALLOW_SUMMARY_SCOPE: "diff"` and `FALLOW_PR_COMMENT_LAYOUT` only affect the sticky summary; inline review comments remain anchored to diff lines. The template auto-detects the package manager (npm/pnpm/yarn) from lockfiles, so review comments show the correct commands for the project (e.g., `pnpm remove` instead of `npm uninstall`).
 
 ### GitLab CI: With Health Score and Trend
 
@@ -481,9 +496,9 @@ fallow dupes --format json --quiet
 | jscpd | fallow |
 |-------|--------|
 | Default (exact tokens) | `strict` |
-| — | `mild` (fallow default, syntax normalized) |
-| — | `weak` (literal normalization) |
-| — | `semantic` (variable rename detection) |
+| n/a | `mild` (fallow default, syntax normalized) |
+| n/a | `weak` (literal normalization) |
+| n/a | `semantic` (variable rename detection) |
 
 ---
 
@@ -627,7 +642,7 @@ Focus on findings that are BOTH dead code and duplicated:
 
 ## Custom Plugin Setup
 
-For frameworks not covered by the 118 built-in plugins.
+For frameworks not covered by the 123 built-in plugins.
 
 ### Option 1: Inline framework config
 
@@ -710,7 +725,7 @@ Use this when Claude Code is allowed to run Git commands in a repository that al
 The pattern is a local agent gate, not a Git hook. Claude Code intercepts its own `Bash` tool calls before execution. When Claude tries `git commit` or `git push`, the hook runs:
 
 ```bash
-fallow audit --format json --quiet --explain
+fallow audit --format json --quiet --explain --gate-marker agent
 ```
 
 Behavior:
@@ -764,14 +779,14 @@ Prefer `fallow hooks install --target agent` to install this file. The script is
 Behavior you can rely on:
 - Runs only when the intercepted command matches `git commit` or `git push`; otherwise exits 0.
 - Resolves `fallow` from PATH first, then `npx --no-install fallow` as a fallback. Skips with a stderr notice if neither is available or if `jq` is missing.
-- Enforces a version floor via `FALLOW_GATE_MIN_VERSION` (default `2.46.0`). Binaries below the floor are blocked with an upgrade hint. Set the env var to the empty string to disable the check.
-- Runs `fallow audit --format json --quiet --explain` and, on verdict=`fail`, writes the full JSON envelope to stderr preceded by `fallow-gate: blocked by fallow <version> at <binary>` so the responsible binary is always identifiable.
+- Enforces a version floor via `FALLOW_GATE_MIN_VERSION` (default `2.85.0`). Binaries below the floor are blocked with an upgrade hint. Set the env var to the empty string to disable the check.
+- Runs `fallow audit --format json --quiet --explain --gate-marker agent` and, on verdict=`fail`, writes the full JSON envelope to stderr preceded by `fallow-gate: blocked by fallow <version> at <binary>` so the responsible binary is always identifiable. The gate marker lets local Impact record blocked-then-cleared agent gate events when Impact is enabled.
 - On runtime error (`{"error": true, ...}`) or unexpected non-zero exit, fails open with a one-line stderr notice; warn verdicts pass through silently.
 
 Codex fallback (add to repo root `AGENTS.md`):
 
 ```md
-Before any `git commit` or `git push`, run `fallow audit --format json --quiet --explain`. If the verdict is `fail`, fix the reported findings before retrying. Treat JSON runtime errors like `{ "error": true, ... }` as non-blocking.
+Before any `git commit` or `git push`, run `fallow audit --format json --quiet --explain --gate-marker agent`. If the verdict is `fail`, fix the reported findings before retrying. Treat JSON runtime errors like `{ "error": true, ... }` as non-blocking.
 ```
 
 Keep `fallow audit` in CI alongside this local gate. The hook only runs for Claude Code, not for human pushes or other agents, so it is a reinforcement layer rather than a replacement for server-side enforcement.
