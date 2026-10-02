@@ -56,6 +56,7 @@ src/
   modules/            # Feature modules (auth, core, timer, workout, exercises)
     core/             # Shared UI (components, hooks, utils)
   types/              # Shared type definitions
+  domain/             # Pure domain vocabulary shared by db, sync and UI (e.g. the exercise taxonomy)
   utils/              # General utilities
   test/               # Test helpers (in-memory SQLite, fake Supabase)
 docs/
