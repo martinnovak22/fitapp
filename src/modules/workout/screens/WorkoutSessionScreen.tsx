@@ -6,6 +6,7 @@ import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { Gesture } from 'react-native-gesture-handler'
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import { NestedReorderableList, reorderItems, ScrollViewContainer } from 'react-native-reorderable-list'
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { GlobalStyles } from '@/src/constants/Styles'
 import type { Set as WorkoutSet } from '@/src/db/workouts'
@@ -43,6 +44,8 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     const {
         workout,
         exercises,
+        pickerExercises,
+        pickerScope,
         loading,
         loadError,
         loadData,
@@ -78,18 +81,31 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
     // We can allow default selection once exercises are loaded
     useEffect(() => {
-        if (!selectedExerciseId && exercises.length > 0) {
-            dispatch({ type: 'SELECT_DEFAULT_EXERCISE', exerciseId: exercises[0].id })
+        if (!selectedExerciseId && pickerExercises.length > 0) {
+            dispatch({ type: 'SELECT_DEFAULT_EXERCISE', exerciseId: pickerExercises[0].id })
         }
-    }, [exercises, selectedExerciseId])
+    }, [pickerExercises, selectedExerciseId])
 
     const updateInput = (key: keyof SetFormValues, value: string) => {
         dispatch({ type: 'UPDATE_INPUT', key, value })
     }
 
     const handleOpenAddModal = () => {
+        // The remembered selection may have dropped out of the picker (the plan
+        // was edited meanwhile); land on the first offered Exercise instead.
+        if (selectedExerciseId && !pickerExercises.some((e) => e.id === selectedExerciseId)) {
+            dispatch({ type: 'SET_SELECTED_EXERCISE', exerciseId: pickerExercises[0]?.id ?? null })
+        }
         dispatch({ type: 'OPEN_ADD_MODAL' })
     }
+
+    const templateName = pickerScope.kind === 'unplanned' ? null : pickerScope.templateName
+    const pickerCaption =
+        pickerScope.kind === 'planned'
+            ? t('pickerFromPlan', { name: pickerScope.templateName })
+            : pickerScope.kind === 'planned-fallback'
+              ? t('pickerPlanFallback')
+              : null
 
     const handleOpenEditModal = (s: WorkoutSet) => {
         dispatch({ type: 'OPEN_EDIT_MODAL', set: s })
@@ -324,6 +340,8 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                         onSave={handleSaveSet}
                         editingSetId={editingSetId}
                         exercises={exercises}
+                        pickerExercises={pickerExercises}
+                        pickerCaption={pickerCaption}
                         selectedExerciseId={selectedExerciseId}
                         setSelectedExerciseId={(exerciseId) => dispatch({ type: 'SET_SELECTED_EXERCISE', exerciseId })}
                         subSets={subSets}
@@ -342,6 +360,14 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 </>
             }
         >
+            {templateName && (
+                <View style={[styles.planTag, { backgroundColor: `${theme.primary}1A` }]}>
+                    <FontAwesome name={'list-alt'} size={12} color={theme.primary} />
+                    <Typography.Meta color={'primary'} weight={'bold'} numberOfLines={1} style={styles.planTagText}>
+                        {templateName}
+                    </Typography.Meta>
+                </View>
+            )}
             {canEditFinishedWorkout && (
                 <Card style={[styles.timingCard, { borderColor: theme.border, backgroundColor: theme.surfaceSubtle }]}>
                     <View style={styles.timingHeader}>
@@ -499,6 +525,20 @@ const styles = StyleSheet.create({
     },
     timingCard: {
         marginBottom: Spacing.md,
+    },
+    planTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: Spacing.xs,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: Spacing.xs,
+        borderRadius: Radius.pill,
+        marginBottom: Spacing.md,
+        maxWidth: '100%',
+    },
+    planTagText: {
+        flexShrink: 1,
     },
     timingHeader: {
         flexDirection: 'row',

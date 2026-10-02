@@ -5,7 +5,7 @@ import { RefreshControl, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { Motion } from '@/src/constants/Motion'
 import { Spacing } from '@/src/constants/Spacing'
-import { useWorkoutRepo } from '@/src/data/RepositoryContext'
+import { useWorkoutRepo, useWorkoutTemplateRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
@@ -24,9 +24,12 @@ const LIST_LAYOUT = Motion.layout()
 
 export default function HistoryScreen() {
     const workoutRepo = useWorkoutRepo()
+    const templateRepo = useWorkoutTemplateRepo()
     const { t } = useTranslation()
     const navigation = useNavigation()
     const [workouts, setWorkouts] = useState<Workout[]>([])
+    // Template uuid → name, so a Planned Workout's row can show its plan.
+    const [planNames, setPlanNames] = useState<Map<string, string>>(() => new Map())
     const [initialLoading, setInitialLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
     const [refreshing, setRefreshing] = useState(false)
@@ -51,8 +54,11 @@ export default function HistoryScreen() {
             if (showRefresh) setRefreshing(true)
             setLoadError(null)
             try {
-                const data = await workoutRepo.getAllWorkouts()
-                if (!isStale()) setWorkouts(data)
+                const [data, templates] = await Promise.all([workoutRepo.getAllWorkouts(), templateRepo.getAll()])
+                if (!isStale()) {
+                    setWorkouts(data)
+                    setPlanNames(new Map(templates.map((template) => [template.uuid, template.name])))
+                }
             } catch (error) {
                 log('error', 'Failed to load workouts history', error)
                 if (!isStale()) setLoadError(t('failedToLoadWorkouts'))
@@ -63,7 +69,7 @@ export default function HistoryScreen() {
                 }
             }
         },
-        [beginLoad, t, workoutRepo]
+        [beginLoad, t, templateRepo, workoutRepo]
     )
 
     useFocusEffect(
@@ -80,7 +86,9 @@ export default function HistoryScreen() {
         await loadData(true)
     }
 
-    const renderItem = ({ item }: { item: Workout }) => <WorkoutHistoryCard item={item} />
+    const renderItem = ({ item }: { item: Workout }) => (
+        <WorkoutHistoryCard item={item} planName={item.template_uuid ? planNames.get(item.template_uuid) : undefined} />
+    )
 
     // The skeleton is the screen's entrance; the list then renders statically
     // (no per-item float-in). isHydrating/hasLoadedOnce are hardcoded: History
@@ -103,6 +111,7 @@ export default function HistoryScreen() {
             ) : (
                 <Animated.FlatList
                     data={workouts}
+                    extraData={planNames}
                     renderItem={renderItem}
                     keyExtractor={(item) => item.id.toString()}
                     itemLayoutAnimation={LIST_LAYOUT}
