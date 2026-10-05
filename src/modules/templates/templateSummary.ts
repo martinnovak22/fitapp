@@ -2,7 +2,7 @@ import type { Exercise } from '@/src/db/exercises'
 import { resolveMembers } from '@/src/db/templateMembership'
 import type { WorkoutTemplate } from '@/src/db/workoutTemplates'
 import type { MuscleGroup } from '@/src/domain/exerciseTaxonomy'
-import { muscleGroupsOf } from './templateForm'
+import { muscleGroupsOf } from '@/src/modules/exercises/exerciseFilters'
 
 // What a Template list row shows: how many of its Exercises still exist and
 // which muscle groups they cover.

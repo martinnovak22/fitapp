@@ -142,7 +142,7 @@ export function Sheet({ visible, onClose, title, headerAction, children, footer,
                             {headerAction}
                         </View>
                     )}
-                    <View style={[styles.content, contentStyle]}>{children}</View>
+                    <View style={[styles.content, tall && styles.contentFill, contentStyle]}>{children}</View>
                     {footer}
                 </Animated.View>
             </View>
@@ -190,5 +190,10 @@ const styles = StyleSheet.create({
     content: {
         flexShrink: 1,
         minHeight: 0,
+        gap: Spacing.sm,
+    },
+    // A tall sheet keeps its footer pinned to the bottom however short the list.
+    contentFill: {
+        flex: 1,
     },
 })

@@ -253,7 +253,6 @@
     "failedToDeleteTemplate": "Plán se nepodařilo smazat.",
     "searchExercises": "Hledat cviky",
     "clearSearch": "Vymazat hledání",
-    "noExerciseMatches": "Výrazu „{{query}}“ neodpovídá žádný cvik. Zkuste jiný název nebo svalovou partii.",
     "exercisesCount_one": "{{count}} cvik",
     "exercisesCount_few": "{{count}} cviky",
     "exercisesCount_many": "{{count}} cviku",
@@ -325,5 +324,13 @@
     "deleteExercise": "Smazat cvik",
     "viewPhoto": "Zobrazit fotku",
     "removePhoto": "Odstranit fotku",
-    "addPhoto": "Přidat fotku"
+    "addPhoto": "Přidat fotku",
+    "add": "Přidat",
+    "addCount": "Přidat ({{count}})",
+    "muscle": "Partie",
+    "all": "Vše",
+    "suggested": "Doporučené",
+    "addExercises": "Přidat cviky",
+    "removeFromPlan": "Odebrat {{name}} z plánu",
+    "deletePlan": "Smazat plán"
 }

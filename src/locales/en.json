@@ -251,7 +251,6 @@
     "failedToDeleteTemplate": "Failed to delete the plan.",
     "searchExercises": "Search exercises",
     "clearSearch": "Clear search",
-    "noExerciseMatches": "No exercise matches “{{query}}”. Try another name or muscle group.",
     "exercisesCount_one": "{{count}} exercise",
     "exercisesCount_other": "{{count}} exercises",
     "startWorkoutTitle": "Start workout",
@@ -321,5 +320,13 @@
     "deleteExercise": "Delete exercise",
     "viewPhoto": "View photo",
     "removePhoto": "Remove photo",
-    "addPhoto": "Add photo"
+    "addPhoto": "Add photo",
+    "add": "Add",
+    "addCount": "Add ({{count}})",
+    "muscle": "Muscle",
+    "all": "All",
+    "suggested": "Suggested",
+    "addExercises": "Add exercises",
+    "removeFromPlan": "Remove {{name}} from the plan",
+    "deletePlan": "Delete plan"
 }
