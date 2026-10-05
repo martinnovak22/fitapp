@@ -16,6 +16,7 @@ import { SyncProvider } from '@/src/data/sync/SyncProvider'
 import { SyncStatusBanner } from '@/src/data/sync/SyncStatusBanner'
 import { useDatabaseInit } from '@/src/db/client'
 import { AuthProvider, useAuth } from '@/src/modules/auth/useAuth'
+import { ConfirmDialogHost } from '@/src/modules/core/components/ConfirmDialog'
 import { toastConfig } from '@/src/modules/core/components/ToastConfig'
 import { ThemeProvider as CustomThemeProvider, useTheme } from '@/src/modules/core/hooks/useTheme'
 import { log } from '@/src/modules/core/utils/logger'
@@ -116,6 +117,7 @@ function RootLayoutNav() {
                 <Stack.Screen name="merge-review" options={{ headerShown: false, animation: 'fade' }} />
                 <Stack.Screen name="onboarding" options={{ headerShown: false, animation: 'fade' }} />
             </Stack>
+            <ConfirmDialogHost />
             <Toast config={toastConfig} />
         </ThemeProvider>
     )

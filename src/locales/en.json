@@ -331,5 +331,9 @@
     "muscleWholeGroup": "Overall",
     "equipment": "Equipment",
     "equipmentHint": "Optional. What you perform it with.",
-    "unclassifiedMuscle": "Unclassified"
+    "unclassifiedMuscle": "Unclassified",
+    "done": "Done",
+    "search": "Search",
+    "noResults": "No results",
+    "moreActions": "More actions"
 }

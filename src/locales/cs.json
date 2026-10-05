@@ -335,5 +335,9 @@
     "muscleWholeGroup": "Celkově",
     "equipment": "Vybavení",
     "equipmentHint": "Volitelné. S čím cvik děláte.",
-    "unclassifiedMuscle": "Nezařazeno"
+    "unclassifiedMuscle": "Nezařazeno",
+    "done": "Hotovo",
+    "search": "Hledat",
+    "noResults": "Nic nenalezeno",
+    "moreActions": "Další akce"
 }

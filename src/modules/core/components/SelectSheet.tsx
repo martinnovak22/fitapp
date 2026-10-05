@@ -1,0 +1,161 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native'
+import { Radius } from '@/src/constants/Radius'
+import { Spacing } from '@/src/constants/Spacing'
+import { FontSize } from '@/src/constants/Typography'
+import { useTheme } from '../hooks/useTheme'
+import { Button } from './Button'
+import { ListRow } from './ListRow'
+import { Sheet } from './Sheet'
+import { filterOptions, groupOptions, type SelectOption, shouldShowSearch, toggleValue } from './selectOptions'
+import { Typography } from './Typography'
+
+export type { SelectOption }
+
+type BaseProps = {
+    visible: boolean
+    onClose: () => void
+    title: string
+    options: readonly SelectOption[]
+}
+
+type SingleProps = BaseProps & {
+    mode: 'single'
+    value: string | null
+    // Called with the tapped option; the sheet then closes.
+    onSelect: (value: string) => void
+}
+
+type MultiProps = BaseProps & {
+    mode: 'multi'
+    values: readonly string[]
+    // Applied on every toggle; Done only closes the sheet.
+    onChange: (values: string[]) => void
+}
+
+type SelectSheetProps = SingleProps | MultiProps
+
+// Picks one or several options from a list that is too long for a segmented
+// control: search (for longer lists), section headers, checkmarks. Single
+// select closes on tap; multi select applies each toggle and closes on Done.
+export function SelectSheet(props: SelectSheetProps) {
+    const { visible, onClose, title, options } = props
+    const { t } = useTranslation()
+    const { theme } = useTheme()
+    const [query, setQuery] = useState('')
+
+    // A fresh search every time the sheet opens.
+    useEffect(() => {
+        if (visible) setQuery('')
+    }, [visible])
+
+    const searchable = shouldShowSearch(options.length)
+    const sections = useMemo(() => groupOptions(filterOptions(options, query)), [options, query])
+    const selected = props.mode === 'single' ? (props.value === null ? [] : [props.value]) : props.values
+
+    const handlePress = (value: string) => {
+        if (props.mode === 'single') {
+            props.onSelect(value)
+            onClose()
+            return
+        }
+        props.onChange(toggleValue(props.values, value))
+    }
+
+    return (
+        <Sheet
+            visible={visible}
+            onClose={onClose}
+            title={title}
+            tall={searchable}
+            headerAction={
+                props.mode === 'multi' ? <Button label={t('done')} variant={'text'} onPress={onClose} /> : undefined
+            }
+        >
+            {searchable && (
+                <View style={[styles.search, { backgroundColor: theme.inputBackground }]}>
+                    <FontAwesome name={'search'} size={14} color={theme.textSecondary} />
+                    <TextInput
+                        value={query}
+                        onChangeText={setQuery}
+                        placeholder={t('search')}
+                        placeholderTextColor={theme.textSecondary}
+                        style={[styles.searchInput, { color: theme.text }]}
+                        autoCorrect={false}
+                        autoCapitalize={'none'}
+                        returnKeyType={'search'}
+                        accessibilityLabel={t('search')}
+                    />
+                </View>
+            )}
+            <ScrollView
+                keyboardShouldPersistTaps={'handled'}
+                style={styles.listScroll}
+                contentContainerStyle={styles.list}
+            >
+                {sections.length === 0 && (
+                    <Typography.Body color={'textSecondary'} style={styles.empty}>
+                        {t('noResults')}
+                    </Typography.Body>
+                )}
+                {sections.map((section) => (
+                    <View key={section.title ?? '__none'}>
+                        {section.title && (
+                            <Typography.Label style={styles.sectionTitle} accessibilityRole={'header'}>
+                                {section.title}
+                            </Typography.Label>
+                        )}
+                        {section.options.map((option) => {
+                            const isSelected = selected.includes(option.value)
+                            return (
+                                <ListRow
+                                    key={option.value}
+                                    label={option.label}
+                                    subtitle={option.description}
+                                    accessory={isSelected ? 'check' : 'none'}
+                                    onPress={() => handlePress(option.value)}
+                                    accessibilityRole={props.mode === 'single' ? 'radio' : 'checkbox'}
+                                    accessibilityState={{ checked: isSelected, selected: isSelected }}
+                                />
+                            )
+                        })}
+                    </View>
+                ))}
+            </ScrollView>
+        </Sheet>
+    )
+}
+
+const styles = StyleSheet.create({
+    search: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        borderRadius: Radius.sm,
+        paddingHorizontal: Spacing.md,
+        minHeight: 44,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: FontSize.md,
+        paddingVertical: Spacing.sm,
+    },
+    // Rows run edge to edge of the sheet, like the rest of its list.
+    listScroll: {
+        marginHorizontal: -Spacing.md,
+    },
+    list: {
+        paddingBottom: Spacing.sm,
+    },
+    sectionTitle: {
+        paddingHorizontal: Spacing.md,
+        paddingTop: Spacing.md,
+        paddingBottom: Spacing.xs,
+    },
+    empty: {
+        textAlign: 'center',
+        paddingVertical: Spacing.lg,
+    },
+})
