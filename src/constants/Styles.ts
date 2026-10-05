@@ -1,5 +1,4 @@
 import { StyleSheet } from 'react-native'
-import { Theme } from './Colors'
 import { Radius } from './Radius'
 import { Spacing } from './Spacing'
 import { FontSize, FontWeight } from './Typography'
@@ -36,7 +35,6 @@ export const GlobalStyles = StyleSheet.create({
         position: 'absolute',
         right: Spacing.lg,
         bottom: Spacing.lg,
-        backgroundColor: Theme.primary,
         width: 64,
         height: 64,
         borderRadius: 32,

@@ -5,17 +5,19 @@ export const Colors = {
         surface: '#252525',
         surfaceMuted: 'rgba(255,255,255,0.05)',
         surfaceSubtle: 'rgba(255,255,255,0.03)',
-        primary: '#51a06f',
+        // Desaturated on dark (Material dark theme) and paired with dark text:
+        // white on a mid green stays under 4.5:1.
+        primary: '#6FBF8B',
         secondary: '#077121',
-        error: '#CF6679',
+        error: '#F2B8B5',
         errorSurface: '#B0382F',
         text: '#E1E1E1',
         textSecondary: '#A0A0A0',
-        onPrimary: '#FFFFFF',
+        onPrimary: '#0B2915',
         border: '#404040',
         card: '#1E1E1E',
         tabBar: '#121212',
-        info: '#2196F3',
+        info: '#64B5F6',
         inputBackground: 'rgba(255,255,255,0.05)',
         inputBackgroundActive: 'rgba(255,255,255,0.1)',
         overlayScrim: 'rgba(0,0,0,0.8)',
@@ -27,12 +29,14 @@ export const Colors = {
         skeletonHighlight: 'rgba(255,255,255,0.12)',
     },
     light: {
-        background: '#F8F9FA',
+        // A step darker than the white surface so grouped sections read as groups.
+        background: '#F1F2F4',
         iconBackground: '#607d8b',
         surface: '#FFFFFF',
         surfaceMuted: '#F0F0F0',
         surfaceSubtle: 'rgba(0,0,0,0.03)',
-        primary: '#51a06f',
+        // Dark enough for 4.5:1 both as text on the background and under white text.
+        primary: '#2B7A4B',
         secondary: '#077121',
         error: '#B00020',
         errorSurface: '#B0382F',
@@ -42,7 +46,7 @@ export const Colors = {
         border: '#E0E0E0',
         card: '#FFFFFF',
         tabBar: '#FFFFFF',
-        info: '#2196F3',
+        info: '#1565C0',
         inputBackground: 'rgba(0,0,0,0.05)',
         inputBackgroundActive: 'rgba(0,0,0,0.1)',
         overlayScrim: 'rgba(0,0,0,0.8)',
@@ -56,4 +60,3 @@ export const Colors = {
 }
 
 export type ThemeType = typeof Colors.dark
-export const Theme = Colors.dark

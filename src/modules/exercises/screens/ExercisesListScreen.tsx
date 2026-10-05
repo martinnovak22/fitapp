@@ -268,7 +268,7 @@ export default function ExercisesListScreen() {
                 </View>
             )}
             <TouchableOpacity
-                style={GlobalStyles.fab}
+                style={[GlobalStyles.fab, { backgroundColor: theme.primary }]}
                 onPress={() => router.push('/(tabs)/exercises/add')}
                 accessibilityRole={'button'}
                 accessibilityLabel={t('addExercise')}
