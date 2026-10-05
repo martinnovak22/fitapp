@@ -23,7 +23,7 @@ jobs:
       # Node 22 matches local development, and better-sqlite3 (the SQLite
       # used by the repository tests) has prebuilt binaries for it, so
       # install does not compile it from source.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: yarn
