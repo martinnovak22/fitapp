@@ -44,7 +44,6 @@ function RootLayout() {
     }, [navigationRef])
 
     const [fontsLoaded, fontError] = useFonts({
-        SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
         ...FontAwesome.font,
     })
 

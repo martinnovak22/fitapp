@@ -335,5 +335,6 @@
     "statRecords": "Records",
     "saveAsPlan": "Save as plan",
     "savedAsPlan": "Saved as plan",
-    "minutesShort": "{{count}} min"
+    "minutesShort": "{{count}} min",
+    "elapsedTime": "Elapsed {{time}}"
 }

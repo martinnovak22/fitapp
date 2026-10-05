@@ -343,5 +343,6 @@
     "statRecords": "Rekordy",
     "saveAsPlan": "Uložit jako plán",
     "savedAsPlan": "Uloženo jako plán",
-    "minutesShort": "{{count}} min"
+    "minutesShort": "{{count}} min",
+    "elapsedTime": "Uplynulo {{time}}"
 }

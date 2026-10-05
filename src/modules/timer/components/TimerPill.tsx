@@ -80,7 +80,10 @@ export const TimerPill: React.FC = () => {
                             <FontAwesome name="chevron-down" size={16} color={theme.textSecondary} />
                         </TouchableOpacity>
 
-                        <Typography.Title style={[styles.bigTime, { color: isDone ? theme.primary : theme.text }]}>
+                        <Typography.Title
+                            numeric
+                            style={[styles.bigTime, { color: isDone ? theme.primary : theme.text }]}
+                        >
                             {label}
                         </Typography.Title>
 
@@ -126,7 +129,7 @@ export const TimerPill: React.FC = () => {
                             size={16}
                             color={theme.primary}
                         />
-                        <Typography.Subtitle style={[styles.pillTime, { color: theme.text }]}>
+                        <Typography.Subtitle numeric style={[styles.pillTime, { color: theme.text }]}>
                             {label}
                         </Typography.Subtitle>
                         {isPaused && <FontAwesome name="pause" size={12} color={theme.textSecondary} />}
@@ -149,9 +152,6 @@ export const TimerPill: React.FC = () => {
         </Portal>
     )
 }
-
-// Monospaced digits keep the time from jittering as numbers change width.
-const MONO = 'SpaceMono'
 
 const styles = StyleSheet.create({
     anchor: {
@@ -176,7 +176,6 @@ const styles = StyleSheet.create({
         shadowRadius: 4.65,
     },
     pillTime: {
-        fontFamily: MONO,
         fontSize: FontSize.lg,
         fontWeight: FontWeight.bold,
     },
@@ -203,7 +202,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     bigTime: {
-        fontFamily: MONO,
         textAlign: 'center',
         marginVertical: Spacing.sm,
         fontSize: 44,

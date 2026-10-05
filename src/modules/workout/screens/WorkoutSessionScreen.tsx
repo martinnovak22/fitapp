@@ -469,7 +469,6 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                       },
                   ]
                 : [
-                      { key: 'timer', label: t('timer'), icon: 'hourglass-half', onPress: () => setTimerVisible(true) },
                       {
                           key: 'delete',
                           label: t('deleteWorkout'),
@@ -497,6 +496,16 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                 headerRight: () =>
                     workout ? (
                         <View style={styles.headerActions}>
+                            {!isFinished && (
+                                <TouchableOpacity
+                                    onPress={() => setTimerVisible(true)}
+                                    style={styles.headerIcon}
+                                    accessibilityRole={'button'}
+                                    accessibilityLabel={t('timer')}
+                                >
+                                    <FontAwesome name={'hourglass-half'} size={18} color={theme.text} />
+                                </TouchableOpacity>
+                            )}
                             {!isFinished && (
                                 <Button
                                     label={t('finish')}
@@ -648,6 +657,8 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
 // The header title, with the running clock under it while the Workout runs.
 function HeaderTitle({ title, startTime }: { title: string; startTime?: string }) {
+    const { t } = useTranslation()
+    const { theme } = useTheme()
     const [now, setNow] = useState(() => Date.now())
     useEffect(() => {
         if (!startTime) return
@@ -661,9 +672,16 @@ function HeaderTitle({ title, startTime }: { title: string; startTime?: string }
                 {title}
             </Typography.Body>
             {Number.isFinite(startMs) && (
-                <Typography.Meta color={'textSecondary'} numeric>
-                    {formatElapsed(now - startMs)}
-                </Typography.Meta>
+                // The clock glyph marks it as time elapsed, not the time of day.
+                <View
+                    style={styles.elapsed}
+                    accessibilityLabel={t('elapsedTime', { time: formatElapsed(now - startMs) })}
+                >
+                    <FontAwesome name={'clock-o'} size={11} color={theme.textSecondary} />
+                    <Typography.Meta color={'textSecondary'} numeric>
+                        {formatElapsed(now - startMs)}
+                    </Typography.Meta>
+                </View>
             )}
         </View>
     )
@@ -691,6 +709,11 @@ const styles = StyleSheet.create({
     headerTitle: {
         alignItems: 'center',
     },
+    elapsed: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+    },
     headerBack: {
         paddingLeft: Spacing.md,
         paddingRight: Spacing.sm,
@@ -703,6 +726,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.xs,
         marginRight: Spacing.xs,
+    },
+    headerIcon: {
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     headerButton: {
         minHeight: 44,
