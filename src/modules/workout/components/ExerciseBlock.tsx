@@ -647,9 +647,9 @@ const styles = StyleSheet.create({
         minHeight: 44,
         paddingVertical: Spacing.xs2,
     },
+    // Not uppercased: the units keep their case (kg, m, min, s), so "m" and
+    // "min" stay apart.
     columnLabel: {
-        textTransform: 'uppercase',
-        letterSpacing: 0.4,
         textAlign: 'center',
     },
     // PREVIOUS reads left to right like its values.
