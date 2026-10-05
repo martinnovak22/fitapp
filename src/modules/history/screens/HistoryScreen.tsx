@@ -25,7 +25,7 @@ import { log } from '@/src/modules/core/utils/logger'
 import { MuscleBalanceBars } from '@/src/modules/workout/components/MuscleBalanceBars'
 import { computeMuscleBalance } from '@/src/modules/workout/muscleBalance'
 import { summarizeWeek } from '@/src/modules/workout/weekSummary'
-import { formatLocalDateYYYYMMDD, formatLocalizedDate, parseLocalDate } from '@/src/utils/dateTime'
+import { formatAxisDate, formatLocalDateYYYYMMDD, formatLocalizedDate, parseLocalDate } from '@/src/utils/dateTime'
 import { buildCalendarLocale } from '../calendarLocale'
 import { groupByMonth, setsSince, summarizeWorkoutSets, weeklyTotals } from '../historySummary'
 import { HistoryListSkeleton } from './components/HistoryListSkeleton'
@@ -268,10 +268,7 @@ export default function HistoryScreen() {
                             height={72}
                             bars={weeks.map((w, index) => ({
                                 key: w.weekStart.toISOString(),
-                                label: formatLocalizedDate(w.weekStart, i18n.language, {
-                                    day: 'numeric',
-                                    month: 'numeric',
-                                }),
+                                label: formatAxisDate(w.weekStart, i18n.language),
                                 value: w.volumeKg,
                                 current: index === weeks.length - 1,
                             }))}

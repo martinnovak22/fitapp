@@ -20,6 +20,11 @@ export const formatLocalizedDate = (
 
 // The time in the app's language ("15:49" in Czech, "3:49 PM" in English),
 // not the device's.
+// Day and month for a chart axis, without spaces so neighbouring labels stay
+// apart: "24.8." in Czech, "8/24" in English.
+export const formatAxisDate = (value: Date, language: string): string =>
+    formatLocalizedDate(value, language, { day: 'numeric', month: 'numeric' }).replace(/\s/g, '')
+
 export const formatHourMinute = (value: string | Date, language?: string): string => {
     const dateValue = value instanceof Date ? value : new Date(value)
     return dateValue.toLocaleTimeString(language ? getLocaleFromLanguage(language) : [], {
