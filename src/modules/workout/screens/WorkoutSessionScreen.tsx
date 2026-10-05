@@ -19,6 +19,7 @@ import { ExercisePicker } from '@/src/modules/exercises/components/ExercisePicke
 import { TimerSetupModal } from '@/src/modules/timer/components/TimerSetupModal'
 import { formatHourMinute, formatLocalizedDate } from '@/src/utils/dateTime'
 import { EditTimingModal } from '../components/EditTimingModal'
+import { ElapsedTime } from '../components/ElapsedTime'
 import { ExerciseBlock, type ExerciseBlockHandlers } from '../components/ExerciseBlock'
 import { FinishSummarySheet, type WorkoutSummary } from '../components/FinishSummarySheet'
 import { useWorkoutDraft } from '../hooks/useWorkoutDraft'
@@ -29,7 +30,6 @@ import {
     countPersonalRecords,
     type DraftRow,
     EMPTY_DRAFT,
-    formatElapsed,
     performedBefore,
     pickPreviousSets,
     prefillRow,
@@ -312,17 +312,18 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     }, [discard, finishWorkout, history, sets, typeOf])
 
     const evaluateFinish = useCallback(() => {
+        const pending = countPendingRows(draft, shownIds)
         if (sets.length === 0) {
             confirmDialog({
                 title: t('discardWorkoutTitle'),
-                message: t('discardWorkoutMessage'),
+                // Filled-in rows that were never checked are not saved either; say so.
+                message: pending > 0 ? t('discardWithPending', { count: pending }) : t('discardWorkoutMessage'),
                 confirmLabel: t('discard'),
                 destructive: true,
                 onConfirm: removeWorkout,
             })
             return
         }
-        const pending = countPendingRows(draft, shownIds)
         if (pending > 0) {
             confirmDialog({
                 title: t('finishWorkoutTitle'),
@@ -657,32 +658,12 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
 // The header title, with the running clock under it while the Workout runs.
 function HeaderTitle({ title, startTime }: { title: string; startTime?: string }) {
-    const { t } = useTranslation()
-    const { theme } = useTheme()
-    const [now, setNow] = useState(() => Date.now())
-    useEffect(() => {
-        if (!startTime) return
-        const interval = setInterval(() => setNow(Date.now()), 1000)
-        return () => clearInterval(interval)
-    }, [startTime])
-    const startMs = startTime ? new Date(startTime).getTime() : Number.NaN
     return (
         <View style={styles.headerTitle}>
             <Typography.Body weight={'semibold'} numberOfLines={1}>
                 {title}
             </Typography.Body>
-            {Number.isFinite(startMs) && (
-                // The clock glyph marks it as time elapsed, not the time of day.
-                <View
-                    style={styles.elapsed}
-                    accessibilityLabel={t('elapsedTime', { time: formatElapsed(now - startMs) })}
-                >
-                    <FontAwesome name={'clock-o'} size={11} color={theme.textSecondary} />
-                    <Typography.Meta color={'textSecondary'} numeric>
-                        {formatElapsed(now - startMs)}
-                    </Typography.Meta>
-                </View>
-            )}
+            {startTime && <ElapsedTime startTime={startTime} />}
         </View>
     )
 }
@@ -708,11 +689,6 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         alignItems: 'center',
-    },
-    elapsed: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.xs,
     },
     headerBack: {
         paddingLeft: Spacing.md,

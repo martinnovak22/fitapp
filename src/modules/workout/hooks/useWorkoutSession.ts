@@ -7,6 +7,7 @@ import type { SetData, SetWithExerciseName, Workout } from '@/src/db/workouts'
 import type { WorkoutTemplate } from '@/src/db/workoutTemplates'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
+import { notifyActiveWorkoutChanged } from '../activeWorkoutSignal'
 import { resolveTemplatePriority } from '../plannedExercises'
 
 type SessionOrigin = 'workout' | 'history'
@@ -122,6 +123,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const finishWorkout = useCallback(async () => {
         try {
             await workoutRepo.finish(workoutId)
+            notifyActiveWorkoutChanged()
             const finished = await workoutRepo.getById(workoutId)
             if (finished) setWorkout(finished)
             return finished
@@ -135,6 +137,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const deleteWorkout = useCallback(async () => {
         try {
             await workoutRepo.delete(workoutId)
+            notifyActiveWorkoutChanged()
             if (router.canGoBack()) router.back()
             else router.replace(originTabRoot)
             return true
