@@ -94,8 +94,8 @@ export type WorkoutDraft = {
 
 export const EMPTY_DRAFT: WorkoutDraft = { version: 1, exerciseOrder: [], rows: {} }
 
-export const draftToken = (key: string) => `draft:${key}`
-export const setToken = (uuid: string) => `set:${uuid}`
+const draftToken = (key: string) => `draft:${key}`
+const setToken = (uuid: string) => `set:${uuid}`
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 

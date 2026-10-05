@@ -40,8 +40,22 @@ jobs:
       - name: Typecheck
         run: yarn typecheck
 
+      # Unused files, exports and dependencies (fallow, see .fallowrc.json).
+      - name: Dead code
+        run: yarn deadcode
+
+      # Native module versions match the Expo SDK and are not duplicated.
+      - name: Expo doctor
+        run: yarn doctor
+
       - name: Test (with coverage)
         run: yarn coverage
+
+      # Bundles the app for Android with Hermes, which tsc and the node-only
+      # tests never do: catches broken imports, missing assets and code
+      # Hermes cannot compile before it reaches a phone.
+      - name: Android bundle
+        run: yarn bundle:android
 
       - name: Upload coverage
         if: always()

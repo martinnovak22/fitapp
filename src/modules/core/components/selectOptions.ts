@@ -19,7 +19,7 @@ export type SelectSection<V extends string = string> = {
 }
 
 // Lists longer than this get a search field. Short lists read faster without one.
-export const SEARCH_THRESHOLD = 8
+const SEARCH_THRESHOLD = 8
 
 export const shouldShowSearch = (optionCount: number): boolean => optionCount > SEARCH_THRESHOLD
 

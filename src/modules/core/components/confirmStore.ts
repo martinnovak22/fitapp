@@ -62,5 +62,3 @@ export const createConfirmStore = () => {
 
     return { show, dismiss, confirm, current, subscribe }
 }
-
-export type ConfirmStore = ReturnType<typeof createConfirmStore>
