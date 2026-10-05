@@ -1,6 +1,8 @@
 // Pure option logic behind SelectSheet: search folding, section grouping and
 // multi-select toggling. Kept free of React Native so it stays unit-testable.
 
+import { foldText } from '@/src/utils/foldText'
+
 export type SelectOption<V extends string = string> = {
     value: V
     label: string
@@ -20,16 +22,6 @@ export type SelectSection<V extends string = string> = {
 export const SEARCH_THRESHOLD = 8
 
 export const shouldShowSearch = (optionCount: number): boolean => optionCount > SEARCH_THRESHOLD
-
-// Case-, whitespace- and diacritic-insensitive, so "biceps" finds "Biceps" and
-// "zada" finds "Záda".
-export const foldText = (value: string): string =>
-    value
-        .normalize('NFD')
-        .replace(/\p{Diacritic}/gu, '')
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .trim()
 
 // Every whitespace-separated query token must appear in the label, description
 // or section, so "front delt" matches "Front delts" under "Shoulders".

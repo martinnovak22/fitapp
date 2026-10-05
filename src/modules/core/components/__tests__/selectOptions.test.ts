@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
     filterOptions,
-    foldText,
     groupOptions,
     type SelectOption,
     shouldShowSearch,
@@ -16,12 +15,6 @@ const options: SelectOption[] = [
     { value: 'front_delts', label: 'Front delts', section: 'Shoulders', description: 'Anterior' },
     { value: 'none', label: 'None' },
 ]
-
-describe('foldText', () => {
-    it('folds case, diacritics and whitespace', () => {
-        expect(foldText('  Široký   Sval ')).toBe('siroky sval')
-    })
-})
 
 describe('filterOptions', () => {
     it('returns every option for a blank query', () => {

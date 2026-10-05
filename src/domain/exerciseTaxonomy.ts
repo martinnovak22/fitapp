@@ -1,6 +1,9 @@
 // The fixed vocabulary that describes an Exercise beyond its name and
 // ExerciseType: which Muscles it trains and which Equipment it uses (ADR-0007).
-// Pure and dependency-free so the db, sync, and UI layers all share one source.
+// Pure (no React Native, no storage) so the db, sync, and UI layers all share
+// one source.
+
+import { foldText } from '@/src/utils/foldText'
 
 // --- Muscles ---------------------------------------------------------------
 
@@ -185,14 +188,6 @@ const LEGACY_ALIASES: Record<string, MuscleKey> = {
     cardio: 'cardio',
     kardio: 'cardio',
 }
-
-const foldText = (value: string): string =>
-    value
-        .normalize('NFD')
-        .replace(/\p{Diacritic}/gu, '')
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .trim()
 
 // "prsa, triceps, rameno" and friends: a list typed into the one free-text
 // field. A hyphen ("Ramena-Triceps") only splits a token that isn't itself an
