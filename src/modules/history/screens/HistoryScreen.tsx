@@ -176,7 +176,7 @@ export default function HistoryScreen() {
             const marked: Record<string, DayMarking> = Object.fromEntries(
                 workouts.map((w) => [w.date, { marked: true, dotColor: theme.primary }])
             )
-            marked[selectedDate] = { ...marked[selectedDate], selected: true, selectedColor: `${theme.primary}33` }
+            marked[selectedDate] = { ...marked[selectedDate], selected: true, selectedColor: theme.primaryTintStrong }
             return (
                 <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={refreshControl}>
                     <View style={[styles.calendar, { backgroundColor: theme.surface }]}>
@@ -191,7 +191,7 @@ export default function HistoryScreen() {
                                 backgroundColor: 'transparent',
                                 calendarBackground: 'transparent',
                                 textSectionTitleColor: theme.textSecondary,
-                                selectedDayBackgroundColor: `${theme.primary}33`,
+                                selectedDayBackgroundColor: theme.primaryTintStrong,
                                 selectedDayTextColor: theme.text,
                                 todayTextColor: theme.primary,
                                 dayTextColor: theme.text,

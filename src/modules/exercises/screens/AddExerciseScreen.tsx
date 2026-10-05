@@ -431,8 +431,8 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                     setEquipment(equipmentFromOption(value))
                 }}
             />
-            <Sheet visible={openSheet === 'photo'} onClose={closeSheet} title={t('photo')}>
-                <View style={styles.sheetRows}>
+            <Sheet flush visible={openSheet === 'photo'} onClose={closeSheet} title={t('photo')}>
+                <View>
                     <ListRow label={t('takePhoto')} leadingIcon={'camera'} onPress={() => pickFromSheet('camera')} />
                     <ListRow
                         label={t('pickFromGallery')}
@@ -502,9 +502,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.md,
         fontSize: FontSize.lg,
         fontWeight: FontWeight.semibold,
-    },
-    sheetRows: {
-        marginHorizontal: -Spacing.md,
     },
     headerBack: {
         paddingLeft: Spacing.md,

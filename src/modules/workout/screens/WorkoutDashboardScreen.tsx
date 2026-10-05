@@ -1,6 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
@@ -88,6 +88,10 @@ export default function WorkoutDashboardScreen() {
 
     const beginLoad = useStaleGuard()
     const hasRevealed = useRevealOnce(hasLoadedOnce)
+    const hasShownContent = useRef(false)
+    useEffect(() => {
+        if (hasLoadedOnce) hasShownContent.current = true
+    }, [hasLoadedOnce])
 
     const loadData = useCallback(async () => {
         // Focus, pull-to-refresh and the post-sync reload can run at once; only
@@ -207,6 +211,9 @@ export default function WorkoutDashboardScreen() {
     }
 
     const reveal = hasRevealed.current
+    // The running workout and Start fade into each other when one replaces the
+    // other, but not on first load, where the whole screen already reveals.
+    const swaps = hasShownContent.current
     const shownTemplates = templates.slice(0, TEMPLATES_SHOWN)
     const today = formatLocalizedDate(
         new Date(),
@@ -231,7 +238,11 @@ export default function WorkoutDashboardScreen() {
                     <Typography.Label color={'textSecondary'}>{today}</Typography.Label>
 
                     {active ? (
-                        <View style={[styles.activePanel, { backgroundColor: `${theme.primary}14` }]}>
+                        <Appear
+                            key={'active'}
+                            animateOnEnter={swaps}
+                            style={[styles.activePanel, { backgroundColor: theme.primaryTint }]}
+                        >
                             <View style={styles.activeText}>
                                 <Typography.Label color={'primary'} weight={'semibold'}>
                                     {t('workoutInProgress')}
@@ -248,7 +259,7 @@ export default function WorkoutDashboardScreen() {
                                 label={t('resumeWorkout')}
                                 onPress={() => router.push(`/(tabs)/workout/${active.workout.id}`)}
                             />
-                        </View>
+                        </Appear>
                     ) : null}
 
                     {week && (
@@ -280,49 +291,55 @@ export default function WorkoutDashboardScreen() {
                     )}
 
                     {!active && (
-                        <Button
-                            label={t('startWorkout')}
-                            onPress={() => startWorkout(null)}
-                            isLoading={isStartingWorkout}
-                            accessibilityHint={t('unplannedWorkoutHint')}
-                        />
+                        <Appear key={'start'} animateOnEnter={swaps}>
+                            <Button
+                                label={t('startWorkout')}
+                                onPress={() => startWorkout(null)}
+                                isLoading={isStartingWorkout}
+                                accessibilityHint={t('unplannedWorkoutHint')}
+                            />
+                        </Appear>
                     )}
                 </View>
 
                 {!active && (
-                    <ListSection title={t('startFromPlan')}>
-                        {shownTemplates.map((summary) => (
+                    <Appear animateOnEnter={swaps}>
+                        <ListSection title={t('startFromPlan')}>
+                            {shownTemplates.map((summary) => (
+                                <ListRow
+                                    key={summary.template.id}
+                                    label={summary.template.name}
+                                    subtitle={templateSubtitle(t, summary)}
+                                    leading={<InitialsAvatar name={summary.template.name} />}
+                                    trailing={<FontAwesome name={'play'} size={12} color={theme.textSecondary} />}
+                                    onPress={() => startWorkout(summary.template)}
+                                    disabled={isStartingWorkout}
+                                    accessibilityHint={t('startPlannedHint')}
+                                />
+                            ))}
                             <ListRow
-                                key={summary.template.id}
-                                label={summary.template.name}
-                                subtitle={templateSubtitle(t, summary)}
-                                leading={<InitialsAvatar name={summary.template.name} />}
-                                trailing={<FontAwesome name={'play'} size={12} color={theme.textSecondary} />}
-                                onPress={() => startWorkout(summary.template)}
-                                disabled={isStartingWorkout}
-                                accessibilityHint={t('startPlannedHint')}
+                                label={templates.length > 0 ? t('allPlans') : t('newTemplate')}
+                                leading={
+                                    <View style={styles.leadingSlot}>
+                                        <FontAwesome
+                                            name={templates.length > 0 ? 'th-list' : 'plus'}
+                                            size={16}
+                                            color={theme.textSecondary}
+                                        />
+                                    </View>
+                                }
+                                value={templates.length > 0 ? String(templates.length) : undefined}
+                                accessory={'chevron'}
+                                onPress={() =>
+                                    router.push(
+                                        templates.length > 0
+                                            ? '/(tabs)/workout/templates'
+                                            : '/(tabs)/workout/templates/new'
+                                    )
+                                }
                             />
-                        ))}
-                        <ListRow
-                            label={templates.length > 0 ? t('allPlans') : t('newTemplate')}
-                            leading={
-                                <View style={styles.leadingSlot}>
-                                    <FontAwesome
-                                        name={templates.length > 0 ? 'th-list' : 'plus'}
-                                        size={16}
-                                        color={theme.textSecondary}
-                                    />
-                                </View>
-                            }
-                            value={templates.length > 0 ? String(templates.length) : undefined}
-                            accessory={'chevron'}
-                            onPress={() =>
-                                router.push(
-                                    templates.length > 0 ? '/(tabs)/workout/templates' : '/(tabs)/workout/templates/new'
-                                )
-                            }
-                        />
-                    </ListSection>
+                        </ListSection>
+                    </Appear>
                 )}
 
                 {lastWorkout && (

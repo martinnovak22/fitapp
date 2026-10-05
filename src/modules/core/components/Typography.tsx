@@ -4,7 +4,7 @@ import type { ThemeType } from '@/src/constants/Colors'
 import { FontSize, type FontSizeToken, FontWeight, type FontWeightToken } from '@/src/constants/Typography'
 import { useTheme } from '../hooks/useTheme'
 
-type ColorToken = keyof Pick<ThemeType, 'text' | 'textSecondary' | 'primary' | 'secondary' | 'error' | 'onPrimary'>
+type ColorToken = keyof Pick<ThemeType, 'text' | 'textSecondary' | 'primary' | 'error' | 'onPrimary'>
 
 interface TextProps {
     children: React.ReactNode

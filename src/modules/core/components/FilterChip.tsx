@@ -14,7 +14,8 @@ type FilterChipProps = {
 }
 
 // A filter that opens its choices (M3 filter chip with a dropdown caret).
-// Active filters take the accent tint: selection is one of the accent's jobs.
+// Active filters take the accent tint and border: selection is one of the
+// accent's jobs. The label stays text-coloured, which the tint keeps at 4.5:1.
 export function FilterChip({ label, active, onPress, accessibilityLabel }: FilterChipProps) {
     const { theme } = useTheme()
     return (
@@ -23,7 +24,7 @@ export function FilterChip({ label, active, onPress, accessibilityLabel }: Filte
             style={[
                 styles.chip,
                 active
-                    ? { backgroundColor: `${theme.primary}1F`, borderColor: theme.primary }
+                    ? { backgroundColor: theme.primaryTintStrong, borderColor: theme.primary }
                     : { borderColor: theme.border },
             ]}
             hitSlop={{ top: 6, bottom: 6 }}
@@ -31,7 +32,7 @@ export function FilterChip({ label, active, onPress, accessibilityLabel }: Filte
             accessibilityLabel={accessibilityLabel ?? label}
             accessibilityState={{ selected: active }}
         >
-            <Typography.Label color={active ? 'primary' : 'text'} numberOfLines={1}>
+            <Typography.Label color={'text'} numberOfLines={1}>
                 {label}
             </Typography.Label>
             <FontAwesome name={'caret-down'} size={12} color={active ? theme.primary : theme.textSecondary} />

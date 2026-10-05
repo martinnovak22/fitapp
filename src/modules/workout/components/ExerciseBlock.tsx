@@ -456,7 +456,7 @@ function SetRow({
             style={[
                 styles.row,
                 readOnly ? styles.readOnlyRow : styles.setRow,
-                logged && !readOnly && { backgroundColor: `${theme.primary}14` },
+                logged && !readOnly && { backgroundColor: theme.primaryTint },
             ]}
         >
             {readOnly ? (
@@ -547,7 +547,7 @@ function SubSetRow({ index, values, logged, readOnly, onChange, onEndEditing, on
             style={[
                 styles.row,
                 readOnly ? styles.readOnlyRow : styles.subRow,
-                logged && !readOnly && { backgroundColor: `${theme.primary}14` },
+                logged && !readOnly && { backgroundColor: theme.primaryTint },
             ]}
         >
             <View style={styles.setCell}>

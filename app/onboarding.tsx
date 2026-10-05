@@ -103,7 +103,7 @@ export default function OnboardingScreen() {
                 accessibilityLabel={t('onboardingSkip')}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-                <Typography.Body style={{ color: theme.primary, fontWeight: FontWeight.semibold }}>
+                <Typography.Body style={{ color: theme.textSecondary, fontWeight: FontWeight.semibold }}>
                     {t('onboardingSkip')}
                 </Typography.Body>
             </TouchableOpacity>

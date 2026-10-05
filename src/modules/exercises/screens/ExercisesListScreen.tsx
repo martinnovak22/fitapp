@@ -327,8 +327,13 @@ export default function ExercisesListScreen() {
                 }
             />
 
-            <Sheet visible={exportSheetVisible} onClose={() => setExportSheetVisible(false)} title={t('exportCsv')}>
-                <View style={styles.sheetRows}>
+            <Sheet
+                flush
+                visible={exportSheetVisible}
+                onClose={() => setExportSheetVisible(false)}
+                title={t('exportCsv')}
+            >
+                <View>
                     <ListRow
                         label={t('shareFile')}
                         leadingIcon={'share-alt'}
@@ -349,7 +354,7 @@ export default function ExercisesListScreen() {
             </Sheet>
 
             <Modal visible={isImporting} transparent animationType="fade" statusBarTranslucent>
-                <View style={[styles.importOverlay, { backgroundColor: theme.overlayScrimLight }]}>
+                <View style={[styles.importOverlay, { backgroundColor: theme.sheetScrim }]}>
                     <View style={[styles.importCard, { backgroundColor: theme.surface }]}>
                         <ActivityIndicator size={'large'} color={theme.primary} />
                         <Typography.Label color={'text'} style={styles.emptyText}>
@@ -426,9 +431,6 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.xs,
         paddingHorizontal: Spacing.sm,
         borderRadius: Radius.pill,
-    },
-    sheetRows: {
-        marginHorizontal: -Spacing.md,
     },
     importOverlay: {
         flex: 1,

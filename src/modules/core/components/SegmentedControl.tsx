@@ -45,7 +45,7 @@ export function SegmentedControl<T extends string>({
                             selected && [
                                 // A translucent dark-mode fill would show the shadow through it.
                                 !isDark && styles.selected,
-                                { backgroundColor: isDark ? theme.inputBackgroundActive : theme.surface },
+                                { backgroundColor: theme.segmentActive },
                             ],
                         ]}
                         onPress={() => !selected && onChange(segment.value)}

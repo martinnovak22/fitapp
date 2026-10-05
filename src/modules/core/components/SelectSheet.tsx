@@ -68,16 +68,17 @@ export function SelectSheet<V extends string>(props: SelectSheetProps<V>) {
             onClose={onClose}
             title={title}
             tall={searchable}
+            flush
             headerAction={
                 props.mode === 'multi' ? <Button label={t('done')} variant={'text'} onPress={onClose} /> : undefined
             }
         >
-            {searchable && <SearchField value={query} onChangeText={setQuery} />}
-            <ScrollView
-                keyboardShouldPersistTaps={'handled'}
-                style={styles.listScroll}
-                contentContainerStyle={styles.list}
-            >
+            {searchable && (
+                <View style={styles.search}>
+                    <SearchField value={query} onChangeText={setQuery} />
+                </View>
+            )}
+            <ScrollView keyboardShouldPersistTaps={'handled'} contentContainerStyle={styles.list}>
                 {sections.length === 0 && (
                     <Typography.Body color={'textSecondary'} style={styles.empty}>
                         {t('noResults')}
@@ -112,9 +113,8 @@ export function SelectSheet<V extends string>(props: SelectSheetProps<V>) {
 }
 
 const styles = StyleSheet.create({
-    // Rows run edge to edge of the sheet, like the rest of its list.
-    listScroll: {
-        marginHorizontal: -Spacing.md,
+    search: {
+        paddingHorizontal: Spacing.md,
     },
     list: {
         paddingBottom: Spacing.sm,

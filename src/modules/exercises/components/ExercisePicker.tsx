@@ -92,27 +92,25 @@ export function ExercisePicker({
         ) : undefined
 
     return (
-        <Sheet visible={visible} onClose={onClose} title={title} tall footer={footer}>
+        <Sheet visible={visible} onClose={onClose} title={title} tall flush footer={footer}>
             {view === 'list' ? (
                 <>
-                    <SearchField value={query} onChangeText={setQuery} placeholder={t('searchExercises')} />
-                    <View style={styles.filters}>
-                        <FilterChip
-                            label={facets.muscleGroup ? muscleGroupLabel(t, facets.muscleGroup) : t('muscle')}
-                            active={facets.muscleGroup !== null}
-                            onPress={() => setView('muscle')}
-                        />
-                        <FilterChip
-                            label={facets.equipment ? equipmentLabel(t, facets.equipment) : t('equipment')}
-                            active={facets.equipment !== null}
-                            onPress={() => setView('equipment')}
-                        />
+                    <View style={styles.controls}>
+                        <SearchField value={query} onChangeText={setQuery} placeholder={t('searchExercises')} />
+                        <View style={styles.filters}>
+                            <FilterChip
+                                label={facets.muscleGroup ? muscleGroupLabel(t, facets.muscleGroup) : t('muscle')}
+                                active={facets.muscleGroup !== null}
+                                onPress={() => setView('muscle')}
+                            />
+                            <FilterChip
+                                label={facets.equipment ? equipmentLabel(t, facets.equipment) : t('equipment')}
+                                active={facets.equipment !== null}
+                                onPress={() => setView('equipment')}
+                            />
+                        </View>
                     </View>
-                    <ScrollView
-                        keyboardShouldPersistTaps={'handled'}
-                        style={styles.listScroll}
-                        contentContainerStyle={styles.list}
-                    >
+                    <ScrollView keyboardShouldPersistTaps={'handled'} contentContainerStyle={styles.list}>
                         {sections.length === 0 && (
                             <Typography.Body color={'textSecondary'} style={styles.empty}>
                                 {t('noResults')}
@@ -144,22 +142,25 @@ export function ExercisePicker({
                         ))}
                     </ScrollView>
                 </>
+            ) : view === 'muscle' ? (
+                <FacetList
+                    title={t('muscle')}
+                    options={MUSCLE_GROUPS.map((group) => ({ value: group, label: muscleGroupLabel(t, group) }))}
+                    value={facets.muscleGroup}
+                    onBack={() => setView('list')}
+                    onSelect={(muscleGroup) => {
+                        setFacets((current) => ({ ...current, muscleGroup }))
+                        setView('list')
+                    }}
+                />
             ) : (
                 <FacetList
-                    title={view === 'muscle' ? t('muscle') : t('equipment')}
-                    options={
-                        view === 'muscle'
-                            ? MUSCLE_GROUPS.map((group) => ({ value: group, label: muscleGroupLabel(t, group) }))
-                            : EQUIPMENT.map((equipment) => ({ value: equipment, label: equipmentLabel(t, equipment) }))
-                    }
-                    value={view === 'muscle' ? facets.muscleGroup : facets.equipment}
+                    title={t('equipment')}
+                    options={EQUIPMENT.map((equipment) => ({ value: equipment, label: equipmentLabel(t, equipment) }))}
+                    value={facets.equipment}
                     onBack={() => setView('list')}
-                    onSelect={(value) => {
-                        setFacets((current) =>
-                            view === 'muscle'
-                                ? { ...current, muscleGroup: value as ExerciseFacets['muscleGroup'] }
-                                : { ...current, equipment: value as ExerciseFacets['equipment'] }
-                        )
+                    onSelect={(equipment) => {
+                        setFacets((current) => ({ ...current, equipment }))
                         setView('list')
                     }}
                 />
@@ -168,17 +169,17 @@ export function ExercisePicker({
     )
 }
 
-type FacetListProps = {
+type FacetListProps<V extends string> = {
     title: string
-    options: { value: string; label: string }[]
-    value: string | null
+    options: { value: V; label: string }[]
+    value: V | null
     onBack: () => void
     // null clears the filter ("All").
-    onSelect: (value: string | null) => void
+    onSelect: (value: V | null) => void
 }
 
 // A filter's choices, shown in place of the exercise list.
-function FacetList({ title, options, value, onBack, onSelect }: FacetListProps) {
+function FacetList<V extends string>({ title, options, value, onBack, onSelect }: FacetListProps<V>) {
     const { t } = useTranslation()
     const { theme } = useTheme()
     return (
@@ -192,7 +193,7 @@ function FacetList({ title, options, value, onBack, onSelect }: FacetListProps) 
                 <FontAwesome name={'chevron-left'} size={14} color={theme.text} />
                 <Typography.Body weight={'semibold'}>{title}</Typography.Body>
             </TouchableOpacity>
-            <ScrollView style={styles.listScroll} contentContainerStyle={styles.list}>
+            <ScrollView contentContainerStyle={styles.list}>
                 <ListRow
                     label={t('all')}
                     accessory={value === null ? 'check' : 'none'}
@@ -216,13 +217,14 @@ function FacetList({ title, options, value, onBack, onSelect }: FacetListProps) 
 }
 
 const styles = StyleSheet.create({
+    // Search and filters sit inset; the rows below run edge to edge.
+    controls: {
+        paddingHorizontal: Spacing.md,
+        gap: Spacing.sm,
+    },
     filters: {
         flexDirection: 'row',
         gap: Spacing.sm,
-    },
-    // Rows run edge to edge of the sheet.
-    listScroll: {
-        marginHorizontal: -Spacing.md,
     },
     list: {
         paddingBottom: Spacing.sm,
@@ -241,5 +243,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.sm,
         minHeight: 44,
+        paddingHorizontal: Spacing.md,
     },
 })

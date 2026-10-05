@@ -37,3 +37,32 @@ describe.each(Object.entries(Colors))('%s theme contrast', (_name, theme) => {
         expect(contrast(theme[foreground], theme[background])).toBeGreaterThanOrEqual(4.5)
     })
 })
+
+// A #RRGGBBAA tint laid over an opaque #RRGGBB colour, as the screen shows it.
+const blend = (tint: string, under: string): string => {
+    const alpha = Number.parseInt(tint.slice(7, 9), 16) / 255
+    const mix = (offset: number) => {
+        const top = Number.parseInt(tint.slice(offset, offset + 2), 16)
+        const bottom = Number.parseInt(under.slice(offset, offset + 2), 16)
+        return Math.round(top * alpha + bottom * (1 - alpha))
+            .toString(16)
+            .padStart(2, '0')
+    }
+    return `#${mix(1)}${mix(3)}${mix(5)}`
+}
+
+// Text on the accent tints, which sit on a surface (rows, panels) or on the
+// background (filter chips, calendar days).
+const TINT_PAIRS: [keyof ThemeType, keyof ThemeType, keyof ThemeType][] = [
+    ['text', 'primaryTint', 'surface'],
+    ['textSecondary', 'primaryTint', 'surface'],
+    ['primary', 'primaryTint', 'surface'],
+    ['text', 'primaryTintStrong', 'background'],
+    ['text', 'primaryTintStrong', 'surface'],
+]
+
+describe.each(Object.entries(Colors))('%s theme tints', (_name, theme) => {
+    it.each(TINT_PAIRS)('%s on %s over %s meets 4.5:1', (foreground, tint, under) => {
+        expect(contrast(theme[foreground], blend(theme[tint], theme[under]))).toBeGreaterThanOrEqual(4.5)
+    })
+})

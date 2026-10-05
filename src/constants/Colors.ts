@@ -4,11 +4,13 @@ export const Colors = {
         iconBackground: '#607d8b',
         surface: '#252525',
         surfaceMuted: 'rgba(255,255,255,0.05)',
-        surfaceSubtle: 'rgba(255,255,255,0.03)',
         // Desaturated on dark (Material dark theme) and paired with dark text:
         // white on a mid green stays under 4.5:1.
         primary: '#6FBF8B',
-        secondary: '#077121',
+        // The accent laid over a surface: logged rows, the running workout,
+        // a selected day or filter. Text on them stays text-coloured.
+        primaryTint: '#6FBF8B14',
+        primaryTintStrong: '#6FBF8B33',
         error: '#F2B8B5',
         errorSurface: '#B0382F',
         text: '#E1E1E1',
@@ -22,13 +24,15 @@ export const Colors = {
         info: '#64B5F6',
         inputBackground: 'rgba(255,255,255,0.05)',
         inputBackgroundActive: 'rgba(255,255,255,0.1)',
+        // The chosen segment of a segmented control; light enough on dark
+        // to read as raised against its track on the page and on a card.
+        segmentActive: '#4A4A4A',
+        // Behind a full-screen photo.
         overlayScrim: 'rgba(0,0,0,0.8)',
-        overlayBackdrop: 'rgba(0,0,0,0.85)',
-        overlayScrimLight: 'rgba(0,0,0,0.4)',
-        overlayChip: 'rgba(0,0,0,0.6)',
+        // Behind a sheet or dialog; dark surfaces need a heavier one to stand off the page.
+        sheetScrim: 'rgba(0,0,0,0.6)',
         hairline: 'rgba(255,255,255,0.08)',
         skeletonBase: '#2C2C2C',
-        skeletonHighlight: 'rgba(255,255,255,0.12)',
     },
     light: {
         // A step darker than the white surface so grouped sections read as groups.
@@ -36,10 +40,10 @@ export const Colors = {
         iconBackground: '#607d8b',
         surface: '#FFFFFF',
         surfaceMuted: '#F0F0F0',
-        surfaceSubtle: 'rgba(0,0,0,0.03)',
         // Dark enough for 4.5:1 both as text on the background and under white text.
         primary: '#2B7A4B',
-        secondary: '#077121',
+        primaryTint: '#2B7A4B14',
+        primaryTintStrong: '#2B7A4B33',
         error: '#B00020',
         errorSurface: '#B0382F',
         text: '#121212',
@@ -52,13 +56,11 @@ export const Colors = {
         info: '#1565C0',
         inputBackground: 'rgba(0,0,0,0.05)',
         inputBackgroundActive: 'rgba(0,0,0,0.1)',
+        segmentActive: '#FFFFFF',
         overlayScrim: 'rgba(0,0,0,0.8)',
-        overlayBackdrop: 'rgba(0,0,0,0.85)',
-        overlayScrimLight: 'rgba(0,0,0,0.4)',
-        overlayChip: 'rgba(0,0,0,0.6)',
+        sheetScrim: 'rgba(0,0,0,0.4)',
         hairline: 'rgba(0,0,0,0.08)',
         skeletonBase: '#D4D4D4',
-        skeletonHighlight: 'rgba(255,255,255,0.6)',
     },
 }
 

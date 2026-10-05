@@ -21,7 +21,7 @@ import { Typography } from './Typography'
 
 // Distance (px) the sheet slides up on entry and back down on exit — the one
 // motion language every bottom sheet in the app shares.
-export const SHEET_SLIDE_OFFSET = 32
+const SHEET_SLIDE_OFFSET = 32
 
 type SheetProps = {
     visible: boolean
@@ -35,13 +35,26 @@ type SheetProps = {
     // Fill most of the screen even when the content is short (long lists with
     // search, so the sheet doesn't jump as results filter).
     tall?: boolean
+    // Content runs edge to edge (list rows); the content then insets its own
+    // controls, such as a search field.
+    flush?: boolean
     contentStyle?: StyleProp<ViewStyle>
 }
 
 // Modal bottom sheet: backdrop + grabber + title, sliding up from the bottom
 // edge and lifting above the keyboard. Only one is shown at a time (HIG
 // Sheets): open the next one after closing this, never on top of it.
-export function Sheet({ visible, onClose, title, headerAction, children, footer, tall, contentStyle }: SheetProps) {
+export function Sheet({
+    visible,
+    onClose,
+    title,
+    headerAction,
+    children,
+    footer,
+    tall,
+    flush,
+    contentStyle,
+}: SheetProps) {
     const { t } = useTranslation()
     const { theme } = useTheme()
     const insets = useSafeAreaInsets()
@@ -114,7 +127,7 @@ export function Sheet({ visible, onClose, title, headerAction, children, footer,
     return (
         <Modal animationType={'none'} transparent visible={isMounted} onRequestClose={onClose} statusBarTranslucent>
             <View style={[styles.root, { paddingTop: insets.top + Spacing.lg }]}>
-                <Animated.View style={[styles.backdrop, { backgroundColor: theme.overlayScrimLight }, backdropStyle]}>
+                <Animated.View style={[styles.backdrop, { backgroundColor: theme.sheetScrim }, backdropStyle]}>
                     <TouchableOpacity
                         style={StyleSheet.absoluteFill}
                         activeOpacity={1}
@@ -142,8 +155,10 @@ export function Sheet({ visible, onClose, title, headerAction, children, footer,
                             {headerAction}
                         </View>
                     )}
-                    <View style={[styles.content, tall && styles.contentFill, contentStyle]}>{children}</View>
-                    {footer}
+                    <View style={[styles.content, !flush && styles.inset, tall && styles.contentFill, contentStyle]}>
+                        {children}
+                    </View>
+                    {footer && <View style={styles.inset}>{footer}</View>}
                 </Animated.View>
             </View>
         </Modal>
@@ -161,7 +176,6 @@ const styles = StyleSheet.create({
     sheet: {
         borderTopLeftRadius: Radius.lg,
         borderTopRightRadius: Radius.lg,
-        paddingHorizontal: Spacing.md,
         paddingTop: Spacing.xs,
         gap: Spacing.sm,
         maxHeight: '100%',
@@ -178,11 +192,15 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: Radius.pill,
     },
+    inset: {
+        paddingHorizontal: Spacing.md,
+    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.sm,
         minHeight: 48,
+        paddingHorizontal: Spacing.md,
     },
     title: {
         flex: 1,

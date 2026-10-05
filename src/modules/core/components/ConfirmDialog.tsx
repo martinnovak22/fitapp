@@ -39,7 +39,7 @@ export function ConfirmDialogHost() {
         >
             <View style={styles.root}>
                 <Pressable
-                    style={[StyleSheet.absoluteFill, { backgroundColor: theme.overlayScrimLight }]}
+                    style={[StyleSheet.absoluteFill, { backgroundColor: theme.sheetScrim }]}
                     onPress={() => store.dismiss(shown ?? undefined)}
                     accessibilityRole={'button'}
                     accessibilityLabel={t('cancel')}
