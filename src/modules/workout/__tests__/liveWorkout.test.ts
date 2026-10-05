@@ -15,6 +15,7 @@ import {
     parseDraft,
     performedBefore,
     pickPreviousSets,
+    positionsInShownOrder,
     prefillRow,
     rowPayload,
     valuesFromSet,
@@ -77,6 +78,7 @@ describe('parseDraft', () => {
             version: 1,
             exerciseOrder: [3, 1],
             rows: { 3: [{ key: 'a', values: { ...EMPTY_VALUES, reps: '5' }, subSets: [{ weight: '20', reps: '' }] }] },
+            rowOrder: { 3: ['set:u1', 'draft:a'] },
         }
         expect(parseDraft(JSON.stringify(draft))).toEqual(draft)
     })
@@ -143,7 +145,7 @@ describe('draftReducer', () => {
         draft = draftReducer(draft, { type: 'removeRow', exerciseId: 1, key: 'a' })
         expect(draft.rows[1].map((r) => r.key)).toEqual(['b'])
         draft = draftReducer(draft, { type: 'removeExercise', exerciseId: 1 })
-        expect(draft).toEqual(EMPTY_DRAFT)
+        expect(draft).toEqual({ ...EMPTY_DRAFT, rowOrder: {} })
     })
 
     it('replaces all values of a row and loads a stored draft as is', () => {
@@ -154,6 +156,17 @@ describe('draftReducer', () => {
         )
         const stored: WorkoutDraft = { version: 1, exerciseOrder: [4], rows: { 4: [row('z')] } }
         expect(draftReducer(draft, { type: 'load', draft: stored })).toBe(stored)
+    })
+
+    it('keeps a row in place when it is checked or unticked out of order', () => {
+        let draft = draftReducer(EMPTY_DRAFT, { type: 'addRow', exerciseId: 1, row: row('a') })
+        draft = draftReducer(draft, { type: 'addRow', exerciseId: 1, row: row('b') })
+        draft = draftReducer(draft, { type: 'logRow', exerciseId: 1, key: 'b', setUuid: 'u-b' })
+        expect(draft.rowOrder?.[1]).toEqual(['draft:a', 'set:u-b'])
+        expect(draft.rows[1].map((r) => r.key)).toEqual(['a'])
+        draft = draftReducer(draft, { type: 'unlogSet', exerciseId: 1, setUuid: 'u-b', row: row('c') })
+        expect(draft.rowOrder?.[1]).toEqual(['draft:a', 'draft:c'])
+        expect(draft.rows[1].map((r) => r.key)).toEqual(['a', 'c'])
     })
 
     it('leaves the draft untouched when the row is unknown', () => {
@@ -194,6 +207,44 @@ describe('buildBlocks', () => {
             [7, [1, 3], []],
             [9, [], ['x']],
             [3, [2], ['y']],
+        ])
+    })
+})
+
+describe('buildBlocks row order', () => {
+    const draft: WorkoutDraft = {
+        version: 1,
+        exerciseOrder: [1],
+        rows: { 1: [row('a'), row('z')] },
+        rowOrder: { 1: ['draft:a', 'set:u2', 'set:gone'] },
+    }
+    const logged = [
+        set({ id: 1, uuid: 'u1', exercise_id: 1, position: 0 }),
+        set({ id: 2, uuid: 'u2', exercise_id: 1, position: 1 }),
+    ]
+
+    it('shows untracked Sets first, then the tracked order, then untracked drafts', () => {
+        const [block] = buildBlocks(logged, draft)
+        expect(block.rows.map((r) => (r.kind === 'set' ? `s${r.set.id}` : `d${r.row.key}`))).toEqual([
+            's1',
+            'da',
+            's2',
+            'dz',
+        ])
+    })
+
+    it('falls back to logged then drafts for a draft without an order', () => {
+        const [block] = buildBlocks(logged, { ...draft, rowOrder: undefined })
+        expect(block.rows.map((r) => r.kind)).toEqual(['set', 'set', 'draft', 'draft'])
+    })
+})
+
+describe('positionsInShownOrder', () => {
+    it("gives each Exercise's Sets their own positions in shown order", () => {
+        const s = (id: number, position: number) => ({ kind: 'set' as const, set: { id, position } })
+        expect(positionsInShownOrder([{ rows: [s(5, 4), s(3, 1)] }, { rows: [s(7, 2)] }])).toEqual([
+            { id: 5, position: 1 },
+            { id: 3, position: 4 },
         ])
     })
 })

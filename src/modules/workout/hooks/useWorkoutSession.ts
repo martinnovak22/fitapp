@@ -105,9 +105,24 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         [loadData, loadSets, t]
     )
 
+    // Resolves to the new Set's uuid, or null when the write failed.
     const addSet = useCallback(
-        (exerciseId: number, data: SetData) => runSetMutation(() => workoutRepo.addSet(workoutId, exerciseId, data)),
+        async (exerciseId: number, data: SetData) => {
+            let uuid: string | null = null
+            const saved = await runSetMutation(async () => {
+                uuid = await workoutRepo.addSet(workoutId, exerciseId, data)
+            })
+            return saved ? uuid : null
+        },
         [runSetMutation, workoutId, workoutRepo]
+    )
+
+    const saveSetOrder = useCallback(
+        (updates: readonly { id: number; position: number }[]) =>
+            updates.length === 0
+                ? Promise.resolve(true)
+                : runSetMutation(() => workoutRepo.updateSetPositions(updates)),
+        [runSetMutation, workoutRepo]
     )
 
     const updateSet = useCallback(
@@ -201,6 +216,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         isSavingSet: savingSetCount > 0,
         loadData,
         addSet,
+        saveSetOrder,
         updateSet,
         deleteSet,
         finishWorkout,

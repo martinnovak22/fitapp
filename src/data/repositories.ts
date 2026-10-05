@@ -29,7 +29,8 @@ export interface WorkoutRepositoryPort {
     getWorkoutsForDate: (date: string) => Promise<Workout[]>
     getWorkoutsForPeriod: (startDate: string, endDate: string) => Promise<Workout[]>
     getRecentWorkouts: (limit?: number) => Promise<Workout[]>
-    addSet: (workoutId: number, exerciseId: number, data: SetData) => Promise<void>
+    addSet: (workoutId: number, exerciseId: number, data: SetData) => Promise<string>
+    updateSetPositions: (updates: readonly { id: number; position: number }[]) => Promise<void>
     updateSet: (setId: number, data: SetData) => Promise<void>
     deleteSet: (setId: number) => Promise<void>
     getSets: (workoutId: number) => Promise<SetWithExerciseName[]>

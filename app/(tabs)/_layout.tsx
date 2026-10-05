@@ -4,7 +4,9 @@ import type React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { onPrincipalChange } from '@/src/data/principal'
 import { useWorkoutRepo } from '@/src/data/RepositoryContext'
+import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import { useAuth } from '@/src/modules/auth/useAuth'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { onActiveWorkoutChanged } from '@/src/modules/workout/activeWorkoutSignal'
@@ -23,7 +25,8 @@ export default function TabLayout() {
     const { isAuthRequired, isAuthenticated, isInitialized } = useAuth()
     const workoutRepo = useWorkoutRepo()
     // A running Workout marks the Workout tab with a dot, so it can be found
-    // from any other tab. Re-checked whenever a tab gains focus.
+    // from any other tab. Re-checked whenever a tab gains focus, a Workout
+    // starts or ends here, a sync pulls one in, or the account changes.
     const [hasActiveWorkout, setHasActiveWorkout] = useState(false)
     const refreshActiveWorkout = useCallback(() => {
         workoutRepo
@@ -32,6 +35,8 @@ export default function TabLayout() {
             .catch(() => {})
     }, [workoutRepo])
     useEffect(() => onActiveWorkoutChanged(refreshActiveWorkout), [refreshActiveWorkout])
+    useEffect(() => onPrincipalChange(() => refreshActiveWorkout()), [refreshActiveWorkout])
+    useReloadOnSyncSuccess(refreshActiveWorkout)
 
     // Declarative guard only — index.tsx is the primary gatekeeper; this is the
     // belt-and-braces redirect for direct/deep-linked navigation into a tab.

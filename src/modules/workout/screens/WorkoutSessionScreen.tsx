@@ -32,6 +32,7 @@ import {
     EMPTY_DRAFT,
     performedBefore,
     pickPreviousSets,
+    positionsInShownOrder,
     prefillRow,
     rowPayload,
     valuesFromSet,
@@ -171,15 +172,18 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                         return
                     }
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                    if (await addSet(exercise.id, data)) {
-                        update({ type: 'removeRow', exerciseId: exercise.id, key: row.key })
-                    }
+                    const setUuid = await addSet(exercise.id, data)
+                    if (setUuid) update({ type: 'logRow', exerciseId: exercise.id, key: row.key, setUuid })
                 }),
             onUnlog: (exercise, set, values, subSets) =>
                 once(`set:${set.id}`, async () => {
-                    if (await deleteSet(set.id)) {
-                        update({ type: 'addRow', exerciseId: exercise.id, row: { key: newRowKey(), values, subSets } })
-                    }
+                    if (!(await deleteSet(set.id))) return
+                    const row = { key: newRowKey(), values, subSets }
+                    update(
+                        set.uuid
+                            ? { type: 'unlogSet', exerciseId: exercise.id, setUuid: set.uuid, row }
+                            : { type: 'addRow', exerciseId: exercise.id, row }
+                    )
                 }),
             onEditLogged: async (exercise, set, values, subSets) => {
                 // Unticking is already turning this Set back into a draft row,
@@ -209,18 +213,12 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             onDraftRemove: (exerciseId, key) => update({ type: 'removeRow', exerciseId, key }),
             onAddSet: (exercise) => {
                 const block = blocksRef.current.find((b) => b.exerciseId === exercise.id)
-                const logged = block?.logged ?? []
-                const drafts = block?.drafts ?? []
-                const lastDraft = drafts.at(-1)
-                const lastLogged = logged.at(-1)
-                const above = lastDraft ? lastDraft.values : lastLogged ? valuesFromSet(lastLogged) : null
+                const shown = block?.rows ?? []
+                const last = shown.at(-1)
+                const above = !last ? null : last.kind === 'draft' ? last.row.values : valuesFromSet(last.set)
                 const row: DraftRow = {
                     key: newRowKey(),
-                    values: prefillRow(
-                        previousRef.current.get(exercise.id) ?? [],
-                        logged.length + drafts.length,
-                        above
-                    ),
+                    values: prefillRow(previousRef.current.get(exercise.id) ?? [], shown.length, above),
                     subSets: null,
                 }
                 update({ type: 'addRow', exerciseId: exercise.id, row })
@@ -282,7 +280,11 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 
     // --- Finish -----------------------------------------------------------------
 
-    const { finishWorkout, deleteWorkout } = session
+    const { finishWorkout, deleteWorkout, saveSetOrder } = session
+
+    // Stores the shown row order in the Sets' positions before the draft that
+    // holds it goes away, so history and the next PREVIOUS follow it.
+    const storeRowOrder = useCallback(() => saveSetOrder(positionsInShownOrder(blocksRef.current)), [saveSetOrder])
 
     // Deletes the Workout, then its draft; a failed delete keeps both.
     const removeWorkout = useCallback(async () => {
@@ -296,6 +298,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         if (isFinishing.current || hasFinished.current) return
         isFinishing.current = true
         try {
+            await storeRowOrder()
             const finished = await finishWorkout()
             if (!finished) return
             hasFinished.current = true
@@ -309,7 +312,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         } finally {
             isFinishing.current = false
         }
-    }, [discard, finishWorkout, history, sets, typeOf])
+    }, [discard, finishWorkout, history, sets, storeRowOrder, typeOf])
 
     const evaluateFinish = useCallback(() => {
         const pending = countPendingRows(draft, shownIds)
@@ -376,6 +379,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
         const pending = countPendingRows(draft, shownIds)
         const leave = async () => {
             if (!(await flushRows())) return
+            await storeRowOrder()
             await resetDraft()
             setIsEditingFinished(false)
         }
@@ -390,7 +394,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             destructive: true,
             onConfirm: leave,
         })
-    }, [draft, flushRows, resetDraft, shownIds, t])
+    }, [draft, flushRows, resetDraft, shownIds, storeRowOrder, t])
 
     const closeSummary = useCallback(() => {
         setSummary(null)
@@ -597,8 +601,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                             <ExerciseBlock
                                 key={block.exerciseId}
                                 exercise={exercise}
-                                logged={block.logged}
-                                drafts={block.drafts}
+                                rows={block.rows}
                                 previous={previous.get(block.exerciseId) ?? []}
                                 readOnly={readOnly}
                                 {...handlers}
