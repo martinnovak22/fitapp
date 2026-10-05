@@ -1,6 +1,7 @@
 import type { Exercise } from '@/src/db/exercises'
 import { resolveMembers } from '@/src/db/templateMembership'
 import type { WorkoutTemplate } from '@/src/db/workoutTemplates'
+import type { MuscleGroup } from '@/src/domain/exerciseTaxonomy'
 import { muscleGroupsOf } from './templateForm'
 
 // What a Template list row shows: how many of its Exercises still exist and
@@ -8,7 +9,7 @@ import { muscleGroupsOf } from './templateForm'
 export type TemplateSummary = {
     template: WorkoutTemplate
     exerciseCount: number
-    muscleGroups: string[]
+    muscleGroups: MuscleGroup[]
 }
 
 export const summarizeTemplates = (

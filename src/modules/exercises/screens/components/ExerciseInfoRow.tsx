@@ -3,20 +3,23 @@ import { Image, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import type { Exercise } from '@/src/db/exercises'
+import { isEquipment, resolveExerciseMuscles } from '@/src/domain/exerciseTaxonomy'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
+import { formatExerciseType } from '@/src/utils/formatters'
+import { equipmentLabel, exerciseMuscleLabel, muscleLabel } from '../../taxonomyLabels'
 
 interface ExerciseInfoRowProps {
     exercise: Exercise
     onOpenPhoto: () => void
 }
 
-// The top row of the detail card: exercise type, muscle group, and the optional
-// tappable photo.
+// The top row of the detail card: exercise type, Muscles, Equipment, and the
+// optional tappable photo.
 export function ExerciseInfoRow({ exercise, onOpenPhoto }: ExerciseInfoRowProps) {
     const { t } = useTranslation()
     const { theme } = useTheme()
+    const { secondary } = resolveExerciseMuscles(exercise)
 
     return (
         <View style={styles.row}>
@@ -26,11 +29,21 @@ export function ExerciseInfoRow({ exercise, onOpenPhoto }: ExerciseInfoRowProps)
                     <Typography.Body>{t(formatExerciseType(exercise.type))}</Typography.Body>
                 </View>
                 <View>
-                    <Typography.Label>{t('muscleGroup')}</Typography.Label>
-                    <Typography.Body>
-                        {exercise.muscle_group ? formatMuscleGroup(exercise.muscle_group) : t('notSpecified')}
-                    </Typography.Body>
+                    <Typography.Label>{t('primaryMuscle')}</Typography.Label>
+                    <Typography.Body>{exerciseMuscleLabel(t, exercise)}</Typography.Body>
                 </View>
+                {secondary.length > 0 && (
+                    <View>
+                        <Typography.Label>{t('secondaryMuscles')}</Typography.Label>
+                        <Typography.Body>{secondary.map((key) => muscleLabel(t, key)).join(', ')}</Typography.Body>
+                    </View>
+                )}
+                {isEquipment(exercise.equipment) && (
+                    <View>
+                        <Typography.Label>{t('equipment')}</Typography.Label>
+                        <Typography.Body>{equipmentLabel(t, exercise.equipment)}</Typography.Body>
+                    </View>
+                )}
             </View>
 
             {exercise.photo_uri && (

@@ -3,6 +3,7 @@
 // them with the rest of a sync run (sync_state updates, pulls, etc.).
 
 import { parseExerciseUuids } from '@/src/db/templateMembership'
+import { parseStoredMuscleList } from '@/src/domain/exerciseTaxonomy'
 import {
     type ExerciseRow,
     type OutboxRow,
@@ -28,6 +29,13 @@ const exerciseToRemote = (snapshot: PrincipalSnapshot, row: ExerciseRow): Remote
     name: row.name,
     type: row.type,
     muscle_group: row.muscle_group,
+    // Sent exactly as stored, unknown keys included, so this device never
+    // erases what a newer client wrote (ADR-0007). NULL until the Exercise is
+    // saved under the taxonomy; readers derive it from muscle_group meanwhile.
+    // Secondary Muscles travel as a real array so the jsonb column holds one.
+    primary_muscle: row.primary_muscle,
+    secondary_muscles: parseStoredMuscleList(row.secondary_muscles),
+    equipment: row.equipment,
     // photo_uri is a device-local file path and never syncs; the photo bytes
     // travel via the storage bucket under photo_key (issue #49).
     photo_key: row.photo_key,

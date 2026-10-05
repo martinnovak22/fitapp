@@ -63,6 +63,9 @@ describe('toExerciseColumns — remote exercise row → local column values', ()
                 name: 'Bench',
                 type: 'bodyweight',
                 muscle_group: 'chest',
+                primary_muscle: 'chest',
+                secondary_muscles: ['triceps', 'front_delts'],
+                equipment: 'band',
                 photo_key: 'ab12-171.jpg',
                 position: 4,
                 created_at: '2026-01-01T00:00:00Z',
@@ -75,11 +78,40 @@ describe('toExerciseColumns — remote exercise row → local column values', ()
             name: 'Bench',
             type: 'bodyweight',
             muscle_group: 'chest',
+            primary_muscle: 'chest',
+            secondary_muscles: '["triceps","front_delts"]',
+            equipment: 'band',
             photo_key: 'ab12-171.jpg',
             position: 4,
             created_at: '2026-01-01T00:00:00Z',
             updated_at: '2026-02-01T00:00:00Z',
         })
+    })
+})
+
+describe('toExerciseColumns — taxonomy fields', () => {
+    it('reads an Exercise saved before the taxonomy as unset, leaving the legacy text to resolve it', () => {
+        expect(toExerciseColumns({ muscle_group: 'nohy', created_at: null, updated_at: null }, 'u')).toMatchObject({
+            muscle_group: 'nohy',
+            primary_muscle: null,
+            secondary_muscles: '[]',
+            equipment: null,
+        })
+    })
+
+    it('stores keys this client does not know raw, so its next push sends them back unchanged', () => {
+        expect(
+            toExerciseColumns(
+                {
+                    primary_muscle: 'neck',
+                    secondary_muscles: ['triceps', 'tail'],
+                    equipment: 'spaceship',
+                    created_at: null,
+                    updated_at: null,
+                },
+                'u'
+            )
+        ).toMatchObject({ primary_muscle: 'neck', secondary_muscles: '["triceps","tail"]', equipment: 'spaceship' })
     })
 })
 

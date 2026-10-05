@@ -6,6 +6,7 @@ import { ExerciseRepository } from '@/src/db/exercises'
 import { nowIso, recordDeletionTombstone } from '@/src/db/sync'
 import { repointExerciseUuids } from '@/src/db/templateMembership'
 import { executeWriteTransaction } from '@/src/db/writeQueue'
+import { hasExplicitMuscles, resolveExerciseMuscles } from '@/src/domain/exerciseTaxonomy'
 import { type DuplicateGroup, findDuplicateExerciseGroups } from './exerciseDedup'
 
 export type MergeExercisesInput = {
@@ -58,8 +59,12 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
             uuid: string
             photo_uri: string | null
             muscle_group: string | null
+            primary_muscle: string | null
+            secondary_muscles: string | null
+            equipment: string | null
         }>(
-            `SELECT uuid, photo_uri, muscle_group FROM exercises WHERE id = ? AND ${scope.clause}`,
+            `SELECT uuid, photo_uri, muscle_group, primary_muscle, secondary_muscles, equipment
+             FROM exercises WHERE id = ? AND ${scope.clause}`,
             input.survivorId,
             ...scope.params
         )
@@ -77,6 +82,10 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
         // one row never silently drops a photo or muscle group the other had.
         let fillPhotoUri = survivor?.photo_uri ?? null
         let fillMuscleGroup = survivor?.muscle_group ?? null
+        // Explicit taxonomy keys travel as one unit (primary, secondary and the
+        // mirrored group), so a merge never mixes two Exercises' Muscles.
+        let fillTaxonomy: { primary: string; secondary: string | null; group: string | null } | null = null
+        let fillEquipment = survivor?.equipment ?? null
 
         let exercisesDeleted = 0
         const duplicateUuids = new Set<string>()
@@ -86,8 +95,12 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
                 user_id: string | null
                 photo_uri: string | null
                 muscle_group: string | null
+                primary_muscle: string | null
+                secondary_muscles: string | null
+                equipment: string | null
             }>(
-                `SELECT uuid, user_id, photo_uri, muscle_group FROM exercises WHERE id = ? AND ${scope.clause}`,
+                `SELECT uuid, user_id, photo_uri, muscle_group, primary_muscle, secondary_muscles, equipment
+                 FROM exercises WHERE id = ? AND ${scope.clause}`,
                 duplicateId,
                 ...scope.params
             )
@@ -95,6 +108,23 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
             duplicateUuids.add(row.uuid)
             if (!fillPhotoUri && row.photo_uri) fillPhotoUri = row.photo_uri
             if (!fillMuscleGroup && row.muscle_group) fillMuscleGroup = row.muscle_group
+            // Only a survivor that resolves to *no* Muscle takes the duplicate's.
+            // Anything it does resolve to — explicit keys, mappable legacy text,
+            // or an older client's latest edit — is the survivor's own data.
+            if (
+                survivor &&
+                !resolveExerciseMuscles(survivor).primary &&
+                !fillTaxonomy &&
+                hasExplicitMuscles(row) &&
+                row.primary_muscle
+            ) {
+                fillTaxonomy = {
+                    primary: row.primary_muscle,
+                    secondary: row.secondary_muscles,
+                    group: row.muscle_group,
+                }
+            }
+            if (!fillEquipment && row.equipment) fillEquipment = row.equipment
             await recordDeletionTombstone(db, 'exercise', row.uuid, row.user_id)
             const deleted = await db.runAsync(
                 `DELETE FROM exercises WHERE id = ? AND ${scope.clause}`,
@@ -106,14 +136,20 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
 
         const gainsPhoto = !survivor?.photo_uri && !!fillPhotoUri
         const gainsMuscle = !survivor?.muscle_group && !!fillMuscleGroup
-        if (survivor && (gainsPhoto || gainsMuscle)) {
+        const gainsTaxonomy = !!fillTaxonomy
+        const gainsEquipment = !survivor?.equipment && !!fillEquipment
+        if (survivor && (gainsPhoto || gainsMuscle || gainsTaxonomy || gainsEquipment)) {
             await db.runAsync(
                 `UPDATE exercises
-                 SET photo_uri = ?, photo_key = ?, muscle_group = ?, updated_at = ?, sync_status = 'dirty'
+                 SET photo_uri = ?, photo_key = ?, muscle_group = ?, primary_muscle = ?, secondary_muscles = ?,
+                     equipment = ?, updated_at = ?, sync_status = 'dirty'
                  WHERE id = ? AND ${scope.clause}`,
                 fillPhotoUri,
                 buildPhotoKey(survivor.uuid, fillPhotoUri),
-                fillMuscleGroup,
+                fillTaxonomy?.group ?? fillMuscleGroup,
+                fillTaxonomy?.primary ?? survivor.primary_muscle,
+                fillTaxonomy ? fillTaxonomy.secondary : survivor.secondary_muscles,
+                fillEquipment,
                 now,
                 input.survivorId,
                 ...scope.params

@@ -7,7 +7,13 @@ import type { Exercise } from '@/src/db/exercises'
 import i18n from '@/src/modules/core/utils/i18n'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
-import { buildExerciseKey, parseExercisesCsv } from '@/src/utils/exercisesCsvParser'
+import {
+    findImportMatch,
+    formatCsvMuscles,
+    importCreateDetails,
+    importMusclesUpdate,
+    parseExercisesCsv,
+} from '@/src/utils/exercisesCsvParser'
 
 const EXPORT_FILE_NAME = 'exercises_export.csv'
 const EXPORT_FILE_BASENAME = 'exercises_export'
@@ -75,9 +81,9 @@ const saveCsvToAndroidDownloads = async (csvContent: string) => {
 
 export const exportExercisesToCSV = async (exercises: Exercise[], options?: { androidAction?: ExportAction }) => {
     try {
-        const header = 'name,type,muscle_group,position\n'
+        const header = 'name,type,muscle_group,position,equipment\n'
         const rows = exercises
-            .map((ex) => `"${ex.name}","${ex.type}","${ex.muscle_group || ''}",${ex.position}`)
+            .map((ex) => `"${ex.name}","${ex.type}","${formatCsvMuscles(ex)}",${ex.position},"${ex.equipment ?? ''}"`)
             .join('\n')
         const csvContent = header + rows
 
@@ -136,23 +142,26 @@ export const importExercisesFromCSV = async (
 
         const { rows, errors } = parseExercisesCsv(content)
 
+        // The parser already rejected in-file duplicates, so rows only ever
+        // merge into Exercises that existed before the import.
         const existingExercises = await exerciseRepo.getAll()
-        const existingByKey = new Map(
-            existingExercises.map((ex) => [buildExerciseKey(ex.name, ex.type, ex.muscle_group), ex])
-        )
 
         let addedCount = 0
         let mergedCount = 0
         const skippedCount = errors.length
-        for (const { name, type, muscleGroup } of rows) {
-            const key = buildExerciseKey(name, type, muscleGroup)
-            const existing = existingByKey.get(key)
+        for (const row of rows) {
+            const existing = findImportMatch(existingExercises, row)
             if (!existing) {
-                await exerciseRepo.create(name, type, muscleGroup)
-                existingByKey.set(key, { id: -1, name, type, muscle_group: muscleGroup, position: 0 })
+                await exerciseRepo.create(row.name, row.type, importCreateDetails(row))
                 addedCount++
             } else {
-                await exerciseRepo.update(existing.id, { name, type, muscle_group: muscleGroup })
+                const muscles = importMusclesUpdate(existing, row)
+                await exerciseRepo.update(existing.id, {
+                    name: row.name,
+                    type: row.type,
+                    ...(muscles ? { muscles } : {}),
+                    ...(row.equipment ? { equipment: row.equipment } : {}),
+                })
                 mergedCount++
             }
         }

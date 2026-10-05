@@ -31,6 +31,10 @@ export type ExerciseRow = {
     name: string
     type: string
     muscle_group: string | null
+    primary_muscle: string | null
+    // JSON array of Muscle keys, as stored locally (ADR-0007).
+    secondary_muscles: string | null
+    equipment: string | null
     photo_uri: string | null
     photo_key: string | null
     position: number
@@ -149,7 +153,7 @@ const TABLE_BY_ENTITY: Record<OutboxEntityType, EntityTable> = {
 export const tableOf = (entityType: OutboxEntityType): EntityTable => TABLE_BY_ENTITY[entityType]
 
 const EXERCISE_COLS =
-    'uuid, user_id, name, type, muscle_group, photo_uri, photo_key, position, created_at, updated_at, deleted_at'
+    'uuid, user_id, name, type, muscle_group, primary_muscle, secondary_muscles, equipment, photo_uri, photo_key, position, created_at, updated_at, deleted_at'
 const WORKOUT_COLS =
     'uuid, user_id, date, start_time, end_time, status, note, template_uuid, created_at, updated_at, deleted_at'
 const TEMPLATE_COLS = 'uuid, user_id, name, exercise_uuids, position, created_at, updated_at, deleted_at'

@@ -18,6 +18,10 @@ create table if not exists public.exercises (
   name text not null,
   type text not null default 'weight' check (type in ('weight','cardio','bodyweight','bodyweight_timer')),
   muscle_group text,
+  primary_muscle text,
+  secondary_muscles jsonb not null default '[]'::jsonb
+    constraint exercises_secondary_muscles_is_array check (jsonb_typeof(secondary_muscles) = 'array'),
+  equipment text,
   photo_uri text,
   position integer not null default 0,
   created_at timestamptz not null default now(),

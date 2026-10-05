@@ -219,6 +219,82 @@ describe('mergeDuplicateExercises', () => {
     })
 })
 
+describe('mergeDuplicateExercises — taxonomy back-fill (ADR-0007)', () => {
+    it('gives a survivor that resolves to no Muscle the duplicate’s Muscles (as one unit) and its Equipment', async () => {
+        const survivor = await insertExercise('ex-keep', 'Bench Press')
+        await db.runAsync(`UPDATE exercises SET muscle_group = 'posilovna' WHERE id = ?`, survivor)
+        const dup = await insertExercise('ex-dup', 'Bench Press')
+        await db.runAsync(
+            `UPDATE exercises SET muscle_group = 'chest', primary_muscle = 'chest',
+                    secondary_muscles = '["triceps"]', equipment = 'barbell' WHERE id = ?`,
+            dup
+        )
+
+        await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [dup] })
+
+        const row = await db.getFirstAsync<Record<string, unknown>>(
+            'SELECT muscle_group, primary_muscle, secondary_muscles, equipment, sync_status FROM exercises WHERE id = ?',
+            survivor
+        )
+        expect(row).toEqual({
+            muscle_group: 'chest',
+            primary_muscle: 'chest',
+            secondary_muscles: '["triceps"]',
+            equipment: 'barbell',
+            sync_status: 'dirty',
+        })
+    })
+
+    it('keeps a survivor’s Muscles that an older client edited after the keys were set', async () => {
+        const survivor = await insertExercise('ex-keep', 'Curl')
+        // Stored keys say lats, but an older app version since retyped the group.
+        await db.runAsync(
+            `UPDATE exercises SET primary_muscle = 'lats', muscle_group = 'biceps' WHERE id = ?`,
+            survivor
+        )
+        const dup = await insertExercise('ex-dup', 'Curl')
+        await db.runAsync(`UPDATE exercises SET primary_muscle = 'chest', muscle_group = 'chest' WHERE id = ?`, dup)
+
+        await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [dup] })
+
+        const row = await db.getFirstAsync<{ muscle_group: string; primary_muscle: string }>(
+            'SELECT muscle_group, primary_muscle FROM exercises WHERE id = ?',
+            survivor
+        )
+        expect(row).toEqual({ muscle_group: 'biceps', primary_muscle: 'lats' })
+    })
+
+    it('does not overwrite a survivor whose legacy text maps to a Muscle', async () => {
+        const survivor = await insertExercise('ex-keep', 'Row')
+        await db.runAsync(`UPDATE exercises SET muscle_group = 'záda' WHERE id = ?`, survivor)
+        const dup = await insertExercise('ex-dup', 'Row')
+        await db.runAsync(`UPDATE exercises SET primary_muscle = 'chest', muscle_group = 'chest' WHERE id = ?`, dup)
+
+        await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [dup] })
+
+        const row = await db.getFirstAsync<{ muscle_group: string; primary_muscle: string | null }>(
+            'SELECT muscle_group, primary_muscle FROM exercises WHERE id = ?',
+            survivor
+        )
+        expect(row).toEqual({ muscle_group: 'záda', primary_muscle: null })
+    })
+
+    it('keeps the survivor’s own explicit Muscles', async () => {
+        const survivor = await insertExercise('ex-keep', 'Squat')
+        await db.runAsync(`UPDATE exercises SET muscle_group = 'legs', primary_muscle = 'quads' WHERE id = ?`, survivor)
+        const dup = await insertExercise('ex-dup', 'Squat')
+        await db.runAsync(`UPDATE exercises SET primary_muscle = 'glutes' WHERE id = ?`, dup)
+
+        await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [dup] })
+
+        const row = await db.getFirstAsync<{ primary_muscle: string }>(
+            'SELECT primary_muscle FROM exercises WHERE id = ?',
+            survivor
+        )
+        expect(row?.primary_muscle).toBe('quads')
+    })
+})
+
 describe('mergeDuplicateExercises — Workout Template membership', () => {
     const insertTemplate = async (uuid: string, exerciseUuids: string[], userId: string | null = 'user-A') => {
         await db.runAsync(

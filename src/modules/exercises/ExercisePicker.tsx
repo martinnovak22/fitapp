@@ -6,8 +6,8 @@ import { Spacing } from '@/src/constants/Spacing'
 import type { Exercise } from '@/src/db/exercises'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { formatExerciseType } from '@/src/utils/formatters'
 import { ExerciseStats, type HeadlineStat } from './ExerciseStats'
+import { exerciseSummaryLine } from './taxonomyLabels'
 
 type Props = {
     exercises: Exercise[]
@@ -64,7 +64,7 @@ export const ExercisePicker = ({ exercises, onPick, selectedId }: Props) => {
                             {item.name}
                         </Typography.Body>
                         <Typography.Meta style={styles.subtext} numberOfLines={1}>
-                            {t(formatExerciseType(item.type))}
+                            {exerciseSummaryLine(t, item)}
                         </Typography.Meta>
                     </View>
                     <Typography.Label weight="bold" color="text" style={styles.stat} numberOfLines={1}>

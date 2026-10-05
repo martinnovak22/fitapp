@@ -6,10 +6,11 @@ import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize } from '@/src/constants/Typography'
 import type { Exercise } from '@/src/db/exercises'
+import { resolveExerciseMuscles } from '@/src/domain/exerciseTaxonomy'
 import { Button } from '@/src/modules/core/components/Button'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import { formatExerciseType, formatMuscleGroup } from '@/src/utils/formatters'
+import { exerciseSummaryLine, muscleGroupLabel, muscleLabel } from '@/src/modules/exercises/taxonomyLabels'
 import { filterExercises, groupByMuscle } from '../templateForm'
 
 type Props = {
@@ -26,7 +27,14 @@ export function TemplateExerciseSelector({ exercises, selected, onToggle }: Prop
     const { theme } = useTheme()
     const [query, setQuery] = useState('')
 
-    const sections = useMemo(() => groupByMuscle(filterExercises(exercises, query)), [exercises, query])
+    // Search also matches the localized Muscle labels, so "záda" finds a lats Exercise.
+    const sections = useMemo(() => {
+        const searchableLabels = (exercise: Exercise) => {
+            const { primary, secondary } = resolveExerciseMuscles(exercise)
+            return [primary, ...secondary].flatMap((key) => (key ? [muscleLabel(t, key)] : []))
+        }
+        return groupByMuscle(filterExercises(exercises, query, searchableLabels))
+    }, [exercises, query, t])
 
     return (
         <View style={styles.root}>
@@ -66,7 +74,7 @@ export function TemplateExerciseSelector({ exercises, selected, onToggle }: Prop
                 sections.map((section) => (
                     <View key={section.group ?? '__other'} style={styles.section}>
                         <Typography.Meta weight={'bold'} color={'textSecondary'} style={styles.sectionLabel}>
-                            {section.group ? formatMuscleGroup(section.group) : t('otherMuscleGroup')}
+                            {muscleGroupLabel(t, section.group)}
                         </Typography.Meta>
                         <View style={[styles.sectionList, { borderColor: theme.border }]}>
                             {section.exercises.map((exercise, index) => {
@@ -96,7 +104,7 @@ export function TemplateExerciseSelector({ exercises, selected, onToggle }: Prop
                                                 {exercise.name}
                                             </Typography.Body>
                                             <Typography.Meta color={'textSecondary'} numberOfLines={1}>
-                                                {t(formatExerciseType(exercise.type))}
+                                                {exerciseSummaryLine(t, exercise)}
                                             </Typography.Meta>
                                         </View>
                                     </TouchableOpacity>

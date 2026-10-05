@@ -1,13 +1,13 @@
 import { createCachedExerciseRepository } from '@/src/data/exercisesCache'
-import { type Exercise, ExerciseRepository } from '@/src/db/exercises'
+import { type Exercise, type ExerciseDetails, ExerciseRepository, type ExerciseUpdate } from '@/src/db/exercises'
 import { type SetData, type SetWithExerciseName, type Workout, WorkoutRepository } from '@/src/db/workouts'
 import { type WorkoutTemplate, type WorkoutTemplateInput, WorkoutTemplateRepository } from '@/src/db/workoutTemplates'
 
 export interface ExerciseRepositoryPort {
     getAll: () => Promise<Exercise[]>
     getById: (id: number) => Promise<Exercise | null>
-    create: (name: string, type: Exercise['type'], muscle_group?: string, photo_uri?: string) => Promise<number>
-    update: (id: number, data: Partial<Exercise>) => Promise<void>
+    create: (name: string, type: Exercise['type'], details?: ExerciseDetails) => Promise<number>
+    update: (id: number, data: ExerciseUpdate) => Promise<void>
     updatePositions: (updates: { id: number; position: number }[]) => Promise<void>
     delete: (id: number) => Promise<void>
 }

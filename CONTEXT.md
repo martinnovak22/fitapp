@@ -33,7 +33,7 @@ A named movement a user records Sets against (e.g. "Bench Press"), owned by a pr
 _Avoid_: movement, lift
 
 **ExerciseType**:
-The stored kind of an Exercise — one of `weight`, `bodyweight`, `bodyweight_timer`, `cardio`. Determines the PrimaryMetric.
+The stored kind of an Exercise — one of `weight`, `bodyweight`, `bodyweight_timer`, `cardio`. Determines the PrimaryMetric. It is about *what gets recorded*, not what the Exercise trains (Muscle) or uses (Equipment).
 _Avoid_: exercise kind, category
 
 **Tracking Mode**:
@@ -43,6 +43,18 @@ _Avoid_: using "Tracking Mode" for weight/cardio or as a stored field
 **PrimaryMetric**:
 The derived headline metric of an Exercise — one of `weight`, `reps`, `distance`, `duration` — computed from ExerciseType. Drives which inputs a Set shows and how the best Set is chosen.
 _Avoid_: main metric, dominant (when referring to the metric itself)
+
+**Muscle**:
+A key from the fixed muscle taxonomy: either a specific muscle (`triceps`, `quads`) or a whole Muscle Group (`legs`). An Exercise has one primary Muscle (required) and zero or more secondary Muscles. See [ADR-0007](docs/adr/0007-exercise-taxonomy.md).
+_Avoid_: body part, muscle_group (that is the legacy free-text column)
+
+**Muscle Group**:
+The top level of the muscle taxonomy (chest, back, shoulders, arms, legs, core, full body, cardio). Derived from the primary Muscle; the legacy `muscle_group` column mirrors it only so older app versions keep showing something sensible. Dashboards, list sections and filters count by it.
+_Avoid_: category, body region
+
+**Equipment**:
+An optional key describing what an Exercise is performed with (barbell, dumbbell, kettlebell, machine, cable, band, bodyweight, cardio machine, misc). Independent of ExerciseType: a bodyweight-type Exercise may still use a band.
+_Avoid_: gear, tool
 
 **Workout Template**:
 A named, reusable list of Exercises owned by a principal (e.g. "Push A"). It is membership only: no order, no targets, no date. Shown in the UI as "Plan". See [ADR-0006](docs/adr/0006-workout-templates.md).
@@ -114,6 +126,7 @@ _Avoid_: sync status (that is the per-row term)
 
 - A **Workout** has many **Sets**
 - A **Set** belongs to one **Exercise** and has zero or more **SubSets**
+- An **Exercise** has one primary **Muscle**, any number of secondary **Muscles**, and at most one **Equipment**; its **Muscle Group** is derived from the primary **Muscle**
 - A **Workout Template** references many **Exercises** by uuid; a **Workout** references at most one **Workout Template** by uuid
 - Every **Workout**, **Exercise**, **Set**, and **Workout Template** is owned by a **Principal** (`user_id` = the Account's id, or NULL for a Guest)
 

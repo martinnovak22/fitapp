@@ -31,15 +31,16 @@ const createV4Db = async () => {
     const db = createInMemorySqliteDb()
     await db.execAsync(V4_TABLES)
     await db.runAsync(
-        `INSERT INTO exercises (uuid, user_id, name, sync_status) VALUES ('ex-1', 'user-A', 'Bench', 'synced')`
+        `INSERT INTO exercises (uuid, user_id, name, muscle_group, sync_status, updated_at)
+         VALUES ('ex-1', 'user-A', 'Bench', 'hrudník', 'synced', '2026-09-01T09:00:00Z')`
     )
     await db.runAsync(
         `INSERT INTO workouts (uuid, user_id, date, status, sync_status, updated_at)
          VALUES ('w-1', 'user-A', '2026-09-01', 'finished', 'synced', '2026-09-01T10:00:00Z')`
     )
     await db.runAsync(
-        `INSERT INTO pull_cursors (user_id, workouts_updated, exercises_updated)
-         VALUES ('user-A', '2026-09-01T10:00:00Z', '2026-09-02T00:00:00Z')`
+        `INSERT INTO pull_cursors (user_id, workouts_updated, exercises_updated, sets_updated)
+         VALUES ('user-A', '2026-09-01T10:00:00Z', '2026-09-02T00:00:00Z', '2026-09-03T00:00:00Z')`
     )
     return db
 }
@@ -47,7 +48,7 @@ const createV4Db = async () => {
 const columnsOf = async (db: ReturnType<typeof createInMemorySqliteDb>, table: string) =>
     (await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`)).map((c) => c.name)
 
-describe('initializeDb upgrade from schema v4', () => {
+describe('initializeDb upgrade from schema v4 to the current schema', () => {
     it('adds the Workout Template schema and keeps every existing row untouched', async () => {
         const db = await createV4Db()
 
@@ -70,29 +71,49 @@ describe('initializeDb upgrade from schema v4', () => {
             updated_at: '2026-09-01T10:00:00Z',
             template_uuid: null,
         })
-        const exercise = await db.getFirstAsync<{ name: string }>(`SELECT name FROM exercises WHERE uuid = 'ex-1'`)
-        expect(exercise?.name).toBe('Bench')
-        // The workouts watermark is reset once so Workouts pulled before the
-        // upgrade get their template_uuid on the next pull; other cursors stay.
+        // The exercise taxonomy columns arrive empty: Muscles are derived from the
+        // untouched legacy text at read time, so no row is rewritten or re-queued.
+        const exercise = await db.getFirstAsync<Record<string, unknown>>(`SELECT * FROM exercises WHERE uuid = 'ex-1'`)
+        expect(exercise).toMatchObject({
+            name: 'Bench',
+            muscle_group: 'hrudník',
+            primary_muscle: null,
+            secondary_muscles: null,
+            equipment: null,
+            sync_status: 'synced',
+            updated_at: '2026-09-01T09:00:00Z',
+        })
+        // Rows pulled before the upgrade get their new columns backfilled on the
+        // next pull; unrelated cursors stay.
         const cursor = await db.getFirstAsync<{ workouts_updated: string | null; exercises_updated: string | null }>(
             `SELECT workouts_updated, exercises_updated FROM pull_cursors WHERE user_id = 'user-A'`
         )
-        expect(cursor).toEqual({ workouts_updated: null, exercises_updated: '2026-09-02T00:00:00Z' })
+        const sets = await db.getFirstAsync<{ sets_updated: string }>(
+            `SELECT sets_updated FROM pull_cursors WHERE user_id = 'user-A'`
+        )
+        expect(sets?.sets_updated).toBe('2026-09-03T00:00:00Z')
+        // Both watermarks reset once: Workouts for template_uuid (v5), Exercises
+        // for the taxonomy columns (v6).
+        expect(cursor).toEqual({ workouts_updated: null, exercises_updated: null })
 
         const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version')
-        expect(version?.user_version).toBe(5)
+        expect(version?.user_version).toBe(6)
     })
 
     it('is idempotent across repeated launches and resets the cursor only on the upgrade', async () => {
         const db = await createV4Db()
 
         await initializeDb(db as unknown as SQLite.SQLiteDatabase)
-        await db.runAsync(`UPDATE pull_cursors SET workouts_updated = '2026-10-01T00:00:00Z'`)
+        await db.runAsync(
+            `UPDATE pull_cursors SET workouts_updated = '2026-10-01T00:00:00Z', exercises_updated = '2026-10-01T00:00:00Z'`
+        )
         await initializeDb(db as unknown as SQLite.SQLiteDatabase)
 
         const count = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) c FROM workouts')
         expect(count?.c).toBe(1)
-        const cursor = await db.getFirstAsync<{ workouts_updated: string }>('SELECT workouts_updated FROM pull_cursors')
-        expect(cursor?.workouts_updated).toBe('2026-10-01T00:00:00Z')
+        const cursor = await db.getFirstAsync<{ workouts_updated: string; exercises_updated: string }>(
+            'SELECT workouts_updated, exercises_updated FROM pull_cursors'
+        )
+        expect(cursor).toEqual({ workouts_updated: '2026-10-01T00:00:00Z', exercises_updated: '2026-10-01T00:00:00Z' })
     })
 })
