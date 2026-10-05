@@ -18,9 +18,14 @@ export const formatLocalizedDate = (
     return capitalize ? capitalizeFirst(formatted) : formatted
 }
 
-export const formatHourMinute = (value: string | Date): string => {
+// The time in the app's language ("15:49" in Czech, "3:49 PM" in English),
+// not the device's.
+export const formatHourMinute = (value: string | Date, language?: string): string => {
     const dateValue = value instanceof Date ? value : new Date(value)
-    return dateValue.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    return dateValue.toLocaleTimeString(language ? getLocaleFromLanguage(language) : [], {
+        hour: '2-digit',
+        minute: '2-digit',
+    })
 }
 
 export const formatLocalDateYYYYMMDD = (value: Date = new Date()): string => {
@@ -28,4 +33,10 @@ export const formatLocalDateYYYYMMDD = (value: Date = new Date()): string => {
     const month = String(value.getMonth() + 1).padStart(2, '0')
     const day = String(value.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
+}
+
+/** Parse a YYYY-MM-DD string as a local-time date (new Date(str) would parse it as UTC). */
+export const parseLocalDate = (dateStr: string): Date => {
+    const [year, month, day] = dateStr.split('-').map(Number)
+    return new Date(year, month - 1, day)
 }

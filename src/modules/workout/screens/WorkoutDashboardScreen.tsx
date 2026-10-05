@@ -1,20 +1,21 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshControl, StyleSheet, View } from 'react-native'
+import { RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { useExerciseRepo, useWorkoutRepo, useWorkoutTemplateRepo } from '@/src/data/RepositoryContext'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Workout } from '@/src/db/workouts'
 import type { WorkoutTemplate } from '@/src/db/workoutTemplates'
 import type { MuscleGroup } from '@/src/domain/exerciseTaxonomy'
 import { Button } from '@/src/modules/core/components/Button'
-import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
-import { Appear, ListItemAppear } from '@/src/modules/core/components/motion'
+import { InitialsAvatar } from '@/src/modules/core/components/InitialsAvatar'
+import { ListRow } from '@/src/modules/core/components/ListRow'
+import { ListSection } from '@/src/modules/core/components/ListSection'
+import { Appear } from '@/src/modules/core/components/motion'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useMinimumSkeleton } from '@/src/modules/core/hooks/useMinimumSkeleton'
@@ -25,62 +26,40 @@ import { nextHasLoadedOnce, shouldShowSkeleton } from '@/src/modules/core/utils/
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { muscleGroupLabel } from '@/src/modules/exercises/taxonomyLabels'
-import { TemplateRow } from '@/src/modules/templates/components/TemplateRow'
-import { summarizeTemplates, type TemplateSummary } from '@/src/modules/templates/templateSummary'
-import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
-import { StartWorkoutSheet } from '../components/StartWorkoutSheet'
-import { computeMuscleBalance, type MuscleBalanceEntry, muscleGroupsTrained } from '../muscleBalance'
+import { summarizeTemplates, type TemplateSummary, templateSubtitle } from '@/src/modules/templates/templateSummary'
+import { formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
+import { formatWorkoutLength } from '@/src/utils/formatters'
+import { notifyActiveWorkoutChanged } from '../activeWorkoutSignal'
+import { ElapsedTime } from '../components/ElapsedTime'
+import { PlateMotif } from '../components/PlateMotif'
+import { WeekChart } from '../components/WeekChart'
+import { muscleGroupsTrained } from '../muscleBalance'
+import { summarizeWeek, type WeekSummary, workoutMinutes } from '../weekSummary'
 import { WorkoutDashboardSkeleton } from './components/WorkoutDashboardSkeleton'
 
-const DAY_MS = 24 * 60 * 60 * 1000
+// How many plans the start module lists before "All plans".
+const TEMPLATES_SHOWN = 3
 
-/** Parse a YYYY-MM-DD string as a local-time date (new Date(str) would parse it as UTC). */
-const parseLocalDate = (dateStr: string): Date => {
-    const [year, month, day] = dateStr.split('-').map(Number)
-    return new Date(year, month - 1, day)
-}
-
-/** Monday 00:00 of the week containing the given date. */
-const getWeekStart = (value: Date): Date => {
-    const d = new Date(value)
-    d.setHours(0, 0, 0, 0)
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-    return d
-}
-
-const workoutMinutes = (workout: Workout): number => {
-    if (!workout.end_time) return 0
-    return Math.max(
-        0,
-        Math.round((new Date(workout.end_time).getTime() - new Date(workout.start_time).getTime()) / 60000)
-    )
-}
-
-interface WeekDay {
-    date: string
-    day: string
-    workedOut: boolean
-    isToday: boolean
-}
-
-interface WeekStats {
-    streak: number
-    trainedMin: number
-    daysSinceLast: number | null
-}
-
-interface LastWorkoutSummary {
+type LastWorkoutSummary = {
     workout: Workout
     setCount: number
     muscleGroups: MuscleGroup[]
 }
 
+type ActiveSummary = {
+    workout: Workout
+    setCount: number
+    templateName: string | null
+}
+
+// The Workout tab: start or resume first, then this week at a glance, then the
+// last workout as one row. Everything analytical lives one level down.
 export default function WorkoutDashboardScreen() {
     const workoutRepo = useWorkoutRepo()
     const exerciseRepo = useExerciseRepo()
     const templateRepo = useWorkoutTemplateRepo()
     const { t, i18n } = useTranslation()
-    const { theme } = useTheme()
+    const { theme, isDark } = useTheme()
     const navigation = useNavigation()
 
     useFocusEffect(
@@ -93,123 +72,68 @@ export default function WorkoutDashboardScreen() {
         }, [navigation, t])
     )
 
-    const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null)
-    const [allWorkouts, setAllWorkouts] = useState<Workout[]>([])
+    const [active, setActive] = useState<ActiveSummary | null>(null)
+    const [hasAnyWorkout, setHasAnyWorkout] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
-    // One-way latch: true after the first load settles. The skeleton is gated on
-    // this (not on isLoading, which every focus-reload flips back to true) so a
-    // revisit shows the existing dashboard while it refreshes instead of flashing
-    // the skeleton back in. Mirrors useExercises' hasLoaded.
+    // One-way latch: true after the first load settles, so a focus reload shows
+    // the existing screen instead of flashing the skeleton back in.
     const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
     const [isStartingWorkout, setIsStartingWorkout] = useState(false)
     const [loadError, setLoadError] = useState<string | null>(null)
-    const [weekDays, setWeekDays] = useState<WeekDay[]>([])
-    const [weekStats, setWeekStats] = useState<WeekStats>({ streak: 0, trainedMin: 0, daysSinceLast: null })
-    const [lastWorkoutSummary, setLastWorkoutSummary] = useState<LastWorkoutSummary | null>(null)
-    const [muscleBalance, setMuscleBalance] = useState<MuscleBalanceEntry[]>([])
+    const [week, setWeek] = useState<WeekSummary | null>(null)
+    const [lastWorkout, setLastWorkout] = useState<LastWorkoutSummary | null>(null)
     const [templates, setTemplates] = useState<TemplateSummary[]>([])
-    const [startSheetVisible, setStartSheetVisible] = useState(false)
     const startInFlightRef = useRef(false)
 
-    const finishedWorkouts = allWorkouts.filter(
-        (workout) => workout.status === 'finished' && workout.id !== activeWorkout?.id
-    )
-    const previousWorkouts = finishedWorkouts.slice(1, 3)
-
     const beginLoad = useStaleGuard()
-    // The skeleton is the screen's entrance. Once the dashboard first loads,
-    // don't float the section cards in on top of it — that reads as a flash.
     const hasRevealed = useRevealOnce(hasLoadedOnce)
+    const hasShownContent = useRef(false)
+    useEffect(() => {
+        if (hasLoadedOnce) hasShownContent.current = true
+    }, [hasLoadedOnce])
 
     const loadData = useCallback(async () => {
-        // Focus, pull-to-refresh, and the post-sync reload can all call loadData
-        // at once. While the init sync is writing, workouts become readable
-        // before their sets, so an earlier (stale) call can resolve last and
-        // clobber the fresh sets-derived state — the last-workout recap and
-        // muscle balance — with empty data while the week strip looks correct.
-        // Compute into locals and let only the most recent run commit.
+        // Focus, pull-to-refresh and the post-sync reload can run at once; only
+        // the most recent run commits, so a stale read never clobbers fresh data.
         const isStale = beginLoad()
-
         setLoadError(null)
         setIsLoading(true)
         try {
-            const active = await workoutRepo.getActiveWorkout()
+            const activeWorkout = await workoutRepo.getActiveWorkout()
             const all = await workoutRepo.getAllWorkouts()
-            const finished = all.filter((w) => w.status === 'finished' && w.id !== active?.id)
-
+            const finished = all.filter((w) => w.status === 'finished' && w.id !== activeWorkout?.id)
             const today = new Date()
-            today.setHours(0, 0, 0, 0)
-            const todayStr = formatLocalDateYYYYMMDD(today)
-            const weekStart = getWeekStart(today)
-            const weekStartStr = formatLocalDateYYYYMMDD(weekStart)
-            const weekEnd = new Date(weekStart)
-            weekEnd.setDate(weekStart.getDate() + 6)
-            const weekEndStr = formatLocalDateYYYYMMDD(weekEnd)
-
-            const weekWorkouts = finished.filter((w) => w.date >= weekStartStr && w.date <= weekEndStr)
-            const weekDates = new Set(weekWorkouts.map((w) => w.date))
-            if (active && active.date >= weekStartStr && active.date <= weekEndStr) {
-                weekDates.add(active.date)
-            }
-
-            const nextWeekDays: WeekDay[] = Array.from({ length: 7 }, (_, i) => {
-                const d = new Date(weekStart)
-                d.setDate(weekStart.getDate() + i)
-                const dateStr = formatLocalDateYYYYMMDD(d)
-                return {
-                    date: dateStr,
-                    day: formatLocalizedDate(d, i18n.language, { weekday: 'narrow' }),
-                    workedOut: weekDates.has(dateStr),
-                    isToday: dateStr === todayStr,
-                }
-            })
-
-            const trainedWeekStarts = new Set(
-                finished.map((w) => formatLocalDateYYYYMMDD(getWeekStart(parseLocalDate(w.date))))
-            )
-            let streak = 0
-            const cursor = new Date(weekStart)
-            // An untrained current week doesn't break the streak — it just isn't counted yet.
-            if (!trainedWeekStarts.has(formatLocalDateYYYYMMDD(cursor))) {
-                cursor.setDate(cursor.getDate() - 7)
-            }
-            while (trainedWeekStarts.has(formatLocalDateYYYYMMDD(cursor))) {
-                streak++
-                cursor.setDate(cursor.getDate() - 7)
-            }
-
-            const trainedMin = weekWorkouts.reduce((sum, w) => sum + workoutMinutes(w), 0)
+            const nextWeek = summarizeWeek(finished, activeWorkout, today)
 
             const lastFinished = finished[0] ?? null
-            const daysSinceLast = lastFinished
-                ? Math.round((today.getTime() - parseLocalDate(lastFinished.date).getTime()) / DAY_MS)
-                : null
 
-            let nextLastWorkoutSummary: LastWorkoutSummary | null = null
-            if (lastFinished) {
-                const sets = await workoutRepo.getSets(lastFinished.id)
-                nextLastWorkoutSummary = {
-                    workout: lastFinished,
-                    setCount: sets.length,
-                    muscleGroups: muscleGroupsTrained(sets),
-                }
-            }
+            const [allExercises, allTemplates, lastSets, activeSets] = await Promise.all([
+                exerciseRepo.getAll(),
+                templateRepo.getAll(),
+                lastFinished ? workoutRepo.getSets(lastFinished.id) : Promise.resolve([]),
+                activeWorkout ? workoutRepo.getSets(activeWorkout.id) : Promise.resolve([]),
+            ])
 
-            const weekSets = (await Promise.all(weekWorkouts.map((w) => workoutRepo.getSets(w.id)))).flat()
-            const [allExercises, allTemplates] = await Promise.all([exerciseRepo.getAll(), templateRepo.getAll()])
-            const nextMuscleBalance = computeMuscleBalance(allExercises, weekSets)
-
-            // A newer run superseded this one while we were reading; drop these
-            // now-stale results rather than overwrite the fresh ones.
             if (isStale()) return
 
-            setActiveWorkout(active)
-            setAllWorkouts(all)
-            setWeekDays(nextWeekDays)
-            setWeekStats({ streak, trainedMin, daysSinceLast })
-            setLastWorkoutSummary(nextLastWorkoutSummary)
-            setMuscleBalance(nextMuscleBalance)
+            setActive(
+                activeWorkout
+                    ? {
+                          workout: activeWorkout,
+                          setCount: activeSets.length,
+                          templateName:
+                              allTemplates.find((tpl) => tpl.uuid === activeWorkout.template_uuid)?.name ?? null,
+                      }
+                    : null
+            )
+            setHasAnyWorkout(all.length > 0)
+            setWeek(nextWeek)
+            setLastWorkout(
+                lastFinished
+                    ? { workout: lastFinished, setCount: lastSets.length, muscleGroups: muscleGroupsTrained(lastSets) }
+                    : null
+            )
             setTemplates(summarizeTemplates(allTemplates, allExercises))
         } catch (error) {
             if (isStale()) return
@@ -221,7 +145,7 @@ export default function WorkoutDashboardScreen() {
                 setHasLoadedOnce((current) => nextHasLoadedOnce(current, true))
             }
         }
-    }, [beginLoad, i18n.language, t, workoutRepo, exerciseRepo, templateRepo])
+    }, [beginLoad, t, workoutRepo, exerciseRepo, templateRepo])
 
     useFocusEffect(
         useCallback(() => {
@@ -229,11 +153,8 @@ export default function WorkoutDashboardScreen() {
         }, [loadData])
     )
 
-    // Reflect rows a background sync just pulled (e.g. right after login)
-    // without making the user pull to refresh.
+    // Reflect rows a background sync just pulled (e.g. right after login).
     const isHydrating = useReloadOnSyncSuccess(loadData)
-
-    // Hold the skeleton briefly once shown so a fast load doesn't flash it.
     const showSkeleton = useMinimumSkeleton(shouldShowSkeleton({ isHydrating, isLoading, hasLoadedOnce }))
 
     const onRefresh = async () => {
@@ -242,17 +163,7 @@ export default function WorkoutDashboardScreen() {
         setRefreshing(false)
     }
 
-    const handleStartWorkout = () => {
-        if (isStartingWorkout) return
-        if (activeWorkout) {
-            router.push(`/(tabs)/workout/${activeWorkout.id}`)
-            return
-        }
-        // Every new Workout forks here: Unplanned or Planned (ADR-0006).
-        setStartSheetVisible(true)
-    }
-
-    // template null = Unplanned Workout.
+    // template null = Unplanned Workout (a free workout).
     const startWorkout = async (template: WorkoutTemplate | null) => {
         // A ref, not the state flag: two taps in the same frame both still see
         // isStartingWorkout === false and would each create a Workout.
@@ -261,10 +172,10 @@ export default function WorkoutDashboardScreen() {
         setIsStartingWorkout(true)
         try {
             // Re-check: a Workout may have been started elsewhere (another
-            // device, via sync) since the dashboard loaded.
+            // device, via sync) since the screen loaded.
             const running = await workoutRepo.getActiveWorkout()
             const id = running?.id ?? (await workoutRepo.create(formatLocalDateYYYYMMDD(), template?.uuid ?? null))
-            setStartSheetVisible(false)
+            notifyActiveWorkoutChanged()
             router.push(`/(tabs)/workout/${id}`)
             if (running) {
                 showToast.info({ title: t('workoutAlreadyRunningTitle'), message: t('workoutAlreadyRunning') })
@@ -278,20 +189,8 @@ export default function WorkoutDashboardScreen() {
         }
     }
 
-    const openCreateTemplate = () => {
-        setStartSheetVisible(false)
-        router.push('/(tabs)/workout/templates/new')
-    }
+    const formatDuration = (minutes: number): string => formatWorkoutLength(minutes, t('min'))
 
-    const formatTrainedTime = (minutes: number): string => {
-        const h = Math.floor(minutes / 60)
-        const m = minutes % 60
-        return h > 0 ? `${h} h ${m} ${t('min')}` : `${m} ${t('min')}`
-    }
-
-    // While the post-login hydration pull is running, even a non-empty read is
-    // partial (workouts land before their sets, so e.g. the muscle balance
-    // would render empty) — hold the skeleton until the cycle settles.
     if (showSkeleton) {
         return (
             <ScrollScreenLayout>
@@ -300,518 +199,230 @@ export default function WorkoutDashboardScreen() {
         )
     }
 
-    if (loadError && allWorkouts.length === 0) {
+    if (loadError && !hasAnyWorkout && templates.length === 0) {
         return (
-            <ScrollScreenLayout contentContainerStyle={layoutStyles.fillContent} style={layoutStyles.fill}>
-                <View style={layoutStyles.loadingContainer}>
+            <ScrollScreenLayout contentContainerStyle={styles.fillContent} style={styles.fill}>
+                <View style={styles.centered}>
                     <EmptyState message={loadError} icon={'exclamation-circle'} />
-                    <Button label={t('retry')} onPress={loadData} style={{ marginTop: Spacing.md }} />
+                    <Button label={t('retry')} onPress={loadData} />
                 </View>
             </ScrollScreenLayout>
         )
     }
 
-    const maxBalanceCount = muscleBalance[0]?.count ?? 0
+    const reveal = hasRevealed.current
+    // The running workout and Start fade into each other when one replaces the
+    // other, but not on first load, where the whole screen already reveals.
+    const swaps = hasShownContent.current
+    const shownTemplates = templates.slice(0, TEMPLATES_SHOWN)
+    const today = formatLocalizedDate(
+        new Date(),
+        i18n.language,
+        { weekday: 'long', day: 'numeric', month: 'long' },
+        true
+    )
 
     return (
         <ScrollScreenLayout
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+            contentContainerStyle={styles.content}
         >
-            <ListItemAppear index={0} animateOnEnter={hasRevealed.current}>
-                <Card
-                    onPress={() => router.push('/workout/calendar')}
-                    style={layoutStyles.heroCard}
-                    accessibilityLabel={t('calendar')}
-                    accessibilityHint={t('fullHistory')}
-                >
-                    <View style={layoutStyles.headerRow}>
-                        <Typography.Subtitle size="md" weight="bold">
-                            {t('thisWeek')}
-                        </Typography.Subtitle>
-                        <FontAwesome name="chevron-right" size={12} color={theme.textSecondary} />
-                    </View>
+            <Appear variant={'down'} animateOnEnter={reveal} style={styles.stack}>
+                <View style={[styles.hero, { backgroundColor: theme.surface }]}>
+                    <PlateMotif
+                        color={theme.primary}
+                        surface={theme.surface}
+                        intensity={isDark ? 1.4 : 1}
+                        style={styles.motif}
+                    />
+                    <Typography.Label color={'textSecondary'}>{today}</Typography.Label>
 
-                    <View style={layoutStyles.weekRow}>
-                        {weekDays.map((day) => (
-                            <View key={day.date} style={layoutStyles.dayCol}>
-                                <View
-                                    style={[
-                                        layoutStyles.dayBox,
-                                        { backgroundColor: theme.surfaceMuted, borderColor: `${theme.border}20` },
-                                        day.isToday && { borderColor: theme.primary, borderStyle: 'dashed' },
-                                        day.workedOut && {
-                                            backgroundColor: theme.primary,
-                                            borderColor: theme.primary,
-                                            borderStyle: 'solid',
-                                        },
-                                    ]}
-                                >
-                                    {day.workedOut && <FontAwesome name="check" size={10} color={theme.onPrimary} />}
-                                </View>
-                                <Typography.Meta
-                                    style={[
-                                        { fontSize: FontSize.xs, color: theme.textSecondary },
-                                        (day.workedOut || day.isToday) && {
-                                            color: theme.text,
-                                            fontWeight: FontWeight.bold,
-                                        },
-                                    ]}
-                                >
-                                    {day.day}
-                                </Typography.Meta>
+                    {active ? (
+                        <Appear
+                            key={'active'}
+                            animateOnEnter={swaps}
+                            style={[styles.activePanel, { backgroundColor: theme.primaryTint }]}
+                        >
+                            <View style={styles.activeText}>
+                                <Typography.Label color={'primary'} weight={'semibold'}>
+                                    {t('workoutInProgress')}
+                                </Typography.Label>
+                                <ElapsedTime startTime={active.workout.start_time} color={'text'} size={'display'} />
+                                <Typography.Body color={'textSecondary'} numberOfLines={1}>
+                                    {[
+                                        active.templateName ?? t('unplannedWorkout'),
+                                        t('setsCount', { count: active.setCount }),
+                                    ].join(' · ')}
+                                </Typography.Body>
                             </View>
-                        ))}
-                    </View>
-
-                    <View style={[layoutStyles.heroDivider, { backgroundColor: theme.hairline }]} />
-
-                    <View style={layoutStyles.heroStatsRow}>
-                        <View style={layoutStyles.heroStatItem}>
-                            <Typography.Subtitle style={layoutStyles.statValue}>
-                                {t('weeksShort', { count: weekStats.streak })}
-                            </Typography.Subtitle>
-                            <Typography.Meta style={layoutStyles.statLabel}>{t('weekStreakLabel')}</Typography.Meta>
-                        </View>
-                        <View style={[layoutStyles.heroStatSeparator, { backgroundColor: theme.hairline }]} />
-                        <View style={layoutStyles.heroStatItem}>
-                            <Typography.Subtitle style={layoutStyles.statValue}>
-                                {formatTrainedTime(weekStats.trainedMin)}
-                            </Typography.Subtitle>
-                            <Typography.Meta style={layoutStyles.statLabel}>{t('trainedLabel')}</Typography.Meta>
-                        </View>
-                        <View style={[layoutStyles.heroStatSeparator, { backgroundColor: theme.hairline }]} />
-                        <View style={layoutStyles.heroStatItem}>
-                            <Typography.Subtitle style={layoutStyles.statValue}>
-                                {weekStats.daysSinceLast === null
-                                    ? '—'
-                                    : weekStats.daysSinceLast === 0
-                                      ? t('today')
-                                      : t('daysShort', { count: weekStats.daysSinceLast })}
-                            </Typography.Subtitle>
-                            <Typography.Meta style={layoutStyles.statLabel}>{t('sinceLastLabel')}</Typography.Meta>
-                        </View>
-                    </View>
-                </Card>
-            </ListItemAppear>
-
-            <ListItemAppear index={1} animateOnEnter={hasRevealed.current}>
-                <Card>
-                    <View style={layoutStyles.templatesHeader}>
-                        <Typography.Subtitle size="md" weight="bold">
-                            {t('plans')}
-                        </Typography.Subtitle>
-                        <Button
-                            label={t('newTemplate')}
-                            leftIcon={'plus'}
-                            variant={'secondary'}
-                            size={'sm'}
-                            onPress={() => router.push('/(tabs)/workout/templates/new')}
-                        />
-                    </View>
-                    {templates.length === 0 ? (
-                        <Typography.Meta color={'textSecondary'} size={'sm'}>
-                            {t('plansEmptyHint')}
-                        </Typography.Meta>
-                    ) : (
-                        <View>
-                            {templates.map((summary, index) => (
-                                <View
-                                    key={summary.template.id}
-                                    style={index > 0 && { borderTopWidth: 1, borderTopColor: theme.hairline }}
-                                >
-                                    <TemplateRow
-                                        summary={summary}
-                                        onPress={() => router.push(`/(tabs)/workout/templates/${summary.template.id}`)}
-                                        accessibilityHint={t('editTemplate')}
-                                    />
-                                </View>
-                            ))}
-                        </View>
-                    )}
-                </Card>
-            </ListItemAppear>
-
-            <ListItemAppear index={2} animateOnEnter={hasRevealed.current}>
-                <Card style={[layoutStyles.activeCard, { borderLeftColor: theme.primary }]}>
-                    {activeWorkout ? (
-                        <Appear key="active">
-                            <View style={layoutStyles.activeHeader}>
-                                <Typography.Subtitle size="md" weight="bold">
-                                    {t('activeSession')}
-                                </Typography.Subtitle>
-                                <View style={[layoutStyles.liveIndicator, { backgroundColor: `${theme.primary}20` }]}>
-                                    <View style={[layoutStyles.liveDot, { backgroundColor: theme.primary }]} />
-                                    <Typography.Meta
-                                        style={{
-                                            fontSize: FontSize.xs,
-                                            fontWeight: FontWeight.bold,
-                                            color: theme.primary,
-                                            letterSpacing: 0.5,
-                                        }}
-                                    >
-                                        {t('live')}
-                                    </Typography.Meta>
-                                </View>
-                            </View>
-                            <Typography.Body style={[layoutStyles.activeTime, { color: theme.textSecondary }]}>
-                                {t('startedAt')} {formatHourMinute(activeWorkout.start_time)}
-                            </Typography.Body>
                             <Button
-                                label={t('resumeSession')}
-                                onPress={handleStartWorkout}
-                                isLoading={isStartingWorkout}
+                                label={t('resumeWorkout')}
+                                onPress={() => router.push(`/(tabs)/workout/${active.workout.id}`)}
                             />
                         </Appear>
-                    ) : (
-                        <Appear key="start">
-                            <Typography.Body style={[layoutStyles.activePromo, { color: theme.textSecondary }]}>
-                                {t('readyToCrush')}
-                            </Typography.Body>
-                            <Button
-                                label={t('startNewWorkout')}
-                                onPress={handleStartWorkout}
-                                isLoading={isStartingWorkout}
-                            />
-                        </Appear>
-                    )}
-                </Card>
-            </ListItemAppear>
+                    ) : null}
 
-            <ListItemAppear index={3} animateOnEnter={hasRevealed.current}>
-                <Card>
-                    {lastWorkoutSummary ? (
-                        <>
-                            <Card
-                                onPress={() => router.push(`/(tabs)/workout/${lastWorkoutSummary.workout.id}`)}
-                                style={layoutStyles.recapPressable}
-                                accessibilityLabel={t('lastWorkout')}
+                    {week && (
+                        <View style={styles.weekBlock}>
+                            <View style={styles.headline}>
+                                <Typography.Title size={'display'} numeric>
+                                    {week.workoutDays}
+                                </Typography.Title>
+                                <Typography.Body color={'textSecondary'}>
+                                    {t('heroWorkoutsThisWeek', { count: week.workoutDays })}
+                                </Typography.Body>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => router.push('/(tabs)/history')}
+                                activeOpacity={0.7}
+                                accessibilityRole={'button'}
+                                accessibilityLabel={`${t('thisWeek')}: ${weekCaption(t, week)}`}
                                 accessibilityHint={t('viewHistory')}
                             >
-                                <View style={layoutStyles.headerRow}>
-                                    <Typography.Subtitle size="md" weight="bold">
-                                        {t('lastWorkout')}
-                                    </Typography.Subtitle>
-                                    <FontAwesome name="chevron-right" size={12} color={theme.textSecondary} />
-                                </View>
-
-                                <Typography.Body style={[layoutStyles.recapDate, { color: theme.text }]}>
-                                    {formatLocalizedDate(
-                                        lastWorkoutSummary.workout.date,
-                                        i18n.language,
-                                        { weekday: 'long', month: 'long', day: 'numeric' },
-                                        true
-                                    )}
-                                </Typography.Body>
-
-                                <View style={layoutStyles.recapMetaRow}>
-                                    <View style={layoutStyles.recapMetaItem}>
-                                        <FontAwesome name="clock-o" size={12} color={theme.textSecondary} />
-                                        <Typography.Meta style={{ fontSize: FontSize.xs, color: theme.textSecondary }}>
-                                            {formatTrainedTime(workoutMinutes(lastWorkoutSummary.workout))}
-                                        </Typography.Meta>
-                                    </View>
-                                    <View style={layoutStyles.recapMetaItem}>
-                                        <FontAwesome name="list-ul" size={12} color={theme.textSecondary} />
-                                        <Typography.Meta style={{ fontSize: FontSize.xs, color: theme.textSecondary }}>
-                                            {t('setsCount', { count: lastWorkoutSummary.setCount })}
-                                        </Typography.Meta>
-                                    </View>
-                                </View>
-
-                                {lastWorkoutSummary.muscleGroups.length > 0 && (
-                                    <View style={layoutStyles.chipRow}>
-                                        {lastWorkoutSummary.muscleGroups.map((group) => (
-                                            <View
-                                                key={group}
-                                                style={[layoutStyles.chip, { backgroundColor: `${theme.primary}20` }]}
-                                            >
-                                                <Typography.Meta
-                                                    style={{
-                                                        fontSize: FontSize.xs,
-                                                        color: theme.primary,
-                                                        fontWeight: FontWeight.medium,
-                                                    }}
-                                                >
-                                                    {muscleGroupLabel(t, group)}
-                                                </Typography.Meta>
-                                            </View>
-                                        ))}
-                                    </View>
-                                )}
-                            </Card>
-
-                            {previousWorkouts.length > 0 && (
-                                <View style={[layoutStyles.previousList, { borderTopColor: theme.hairline }]}>
-                                    {previousWorkouts.map((workout) => (
-                                        <Card
-                                            key={workout.id}
-                                            onPress={() => router.push(`/(tabs)/workout/${workout.id}`)}
-                                            style={layoutStyles.previousRowCard}
-                                            accessibilityLabel={formatLocalizedDate(
-                                                workout.date,
-                                                i18n.language,
-                                                { weekday: 'long', month: 'long', day: 'numeric' },
-                                                true
-                                            )}
-                                            accessibilityHint={t('viewHistory')}
-                                        >
-                                            <View style={layoutStyles.previousRow}>
-                                                <Typography.Body style={{ fontSize: FontSize.sm, color: theme.text }}>
-                                                    {formatLocalizedDate(
-                                                        workout.date,
-                                                        i18n.language,
-                                                        { weekday: 'long', month: 'long', day: 'numeric' },
-                                                        true
-                                                    )}
-                                                </Typography.Body>
-                                                <Typography.Meta
-                                                    style={{ fontSize: FontSize.xs, color: theme.textSecondary }}
-                                                >
-                                                    {workout.end_time
-                                                        ? formatTrainedTime(workoutMinutes(workout))
-                                                        : t('incomplete')}
-                                                </Typography.Meta>
-                                            </View>
-                                        </Card>
-                                    ))}
-                                </View>
-                            )}
-                        </>
-                    ) : (
-                        <>
-                            <Typography.Subtitle size="md" weight="bold" style={{ marginBottom: Spacing.md }}>
-                                {t('history')}
-                            </Typography.Subtitle>
-                            <EmptyState message={t('noWorkoutsRecorded')} icon={'history'} />
-                        </>
+                                <WeekChart days={week.days} />
+                            </TouchableOpacity>
+                            <Typography.Label color={'textSecondary'} numeric>
+                                {[
+                                    t('trainedTime', { time: formatDuration(week.totalMinutes) }),
+                                    ...(week.streakWeeks > 0 ? [t('weekStreak', { count: week.streakWeeks })] : []),
+                                ].join(' · ')}
+                            </Typography.Label>
+                        </View>
                     )}
-                </Card>
-            </ListItemAppear>
 
-            {muscleBalance.length > 0 && (
-                <ListItemAppear index={4} animateOnEnter={hasRevealed.current}>
-                    <Card>
-                        <Typography.Subtitle size="md" weight="bold" style={{ marginBottom: Spacing.md }}>
-                            {t('muscleBalance')}
-                        </Typography.Subtitle>
-                        <View style={layoutStyles.balanceList}>
-                            {muscleBalance.map((entry) => (
-                                <View key={entry.group ?? 'other'} style={layoutStyles.balanceRow}>
-                                    <Typography.Meta
-                                        style={[layoutStyles.balanceLabel, { color: theme.textSecondary }]}
-                                        numberOfLines={1}
-                                    >
-                                        {muscleGroupLabel(t, entry.group)}
-                                    </Typography.Meta>
-                                    <View style={[layoutStyles.balanceTrack, { backgroundColor: theme.surfaceMuted }]}>
-                                        <View
-                                            style={[
-                                                layoutStyles.balanceFill,
-                                                {
-                                                    backgroundColor: theme.primary,
-                                                    width: `${maxBalanceCount > 0 ? Math.round((entry.count / maxBalanceCount) * 100) : 0}%`,
-                                                },
-                                            ]}
+                    {!active && (
+                        <Appear key={'start'} animateOnEnter={swaps}>
+                            <Button
+                                label={t('startWorkout')}
+                                onPress={() => startWorkout(null)}
+                                isLoading={isStartingWorkout}
+                                accessibilityHint={t('unplannedWorkoutHint')}
+                            />
+                        </Appear>
+                    )}
+                </View>
+
+                {!active && (
+                    <Appear animateOnEnter={swaps}>
+                        <ListSection title={t('startFromPlan')}>
+                            {shownTemplates.map((summary) => (
+                                <ListRow
+                                    key={summary.template.id}
+                                    label={summary.template.name}
+                                    subtitle={templateSubtitle(t, summary)}
+                                    leading={<InitialsAvatar name={summary.template.name} />}
+                                    trailing={<FontAwesome name={'play'} size={12} color={theme.textSecondary} />}
+                                    onPress={() => startWorkout(summary.template)}
+                                    disabled={isStartingWorkout}
+                                    accessibilityHint={t('startPlannedHint')}
+                                />
+                            ))}
+                            <ListRow
+                                label={templates.length > 0 ? t('allPlans') : t('newTemplate')}
+                                leading={
+                                    <View style={styles.leadingSlot}>
+                                        <FontAwesome
+                                            name={templates.length > 0 ? 'th-list' : 'plus'}
+                                            size={16}
+                                            color={theme.textSecondary}
                                         />
                                     </View>
-                                    <Typography.Meta
-                                        style={[layoutStyles.balanceCount, { color: theme.textSecondary }]}
-                                    >
-                                        {entry.count}
-                                    </Typography.Meta>
-                                </View>
-                            ))}
-                        </View>
-                    </Card>
-                </ListItemAppear>
-            )}
+                                }
+                                value={templates.length > 0 ? String(templates.length) : undefined}
+                                accessory={'chevron'}
+                                onPress={() =>
+                                    router.push(
+                                        templates.length > 0
+                                            ? '/(tabs)/workout/templates'
+                                            : '/(tabs)/workout/templates/new'
+                                    )
+                                }
+                            />
+                        </ListSection>
+                    </Appear>
+                )}
 
-            <StartWorkoutSheet
-                visible={startSheetVisible}
-                templates={templates}
-                isStarting={isStartingWorkout}
-                onClose={() => setStartSheetVisible(false)}
-                onStartUnplanned={() => startWorkout(null)}
-                onStartPlanned={startWorkout}
-                onCreateTemplate={openCreateTemplate}
-            />
+                {lastWorkout && (
+                    <ListSection title={t('lastWorkout')}>
+                        <ListRow
+                            label={formatLocalizedDate(
+                                lastWorkout.workout.date,
+                                i18n.language,
+                                { weekday: 'long', month: 'long', day: 'numeric' },
+                                true
+                            )}
+                            subtitle={[
+                                formatDuration(workoutMinutes(lastWorkout.workout)),
+                                t('setsCount', { count: lastWorkout.setCount }),
+                                ...lastWorkout.muscleGroups.slice(0, 3).map((group) => muscleGroupLabel(t, group)),
+                            ].join(' · ')}
+                            accessory={'chevron'}
+                            onPress={() => router.push(`/(tabs)/workout/${lastWorkout.workout.id}`)}
+                        />
+                    </ListSection>
+                )}
+            </Appear>
         </ScrollScreenLayout>
     )
 }
 
-const layoutStyles = StyleSheet.create({
-    fillContent: {
-        flexGrow: 1,
+// "2 workouts this week · 3-week streak"; the streak is left out until there is one.
+const weekCaption = (t: ReturnType<typeof useTranslation>['t'], week: WeekSummary): string =>
+    [
+        t('workoutsThisWeek', { count: week.workoutDays }),
+        ...(week.streakWeeks > 0 ? [t('weekStreak', { count: week.streakWeeks })] : []),
+    ].join(' · ')
+
+const styles = StyleSheet.create({
+    content: {
+        paddingBottom: Spacing.xl,
+    },
+    stack: {
+        gap: Spacing.lg,
     },
     fill: {
         flex: 1,
     },
-    loadingContainer: {
+    fillContent: {
+        flexGrow: 1,
+    },
+    centered: {
         flex: 1,
         justifyContent: 'center',
-        alignItems: 'center',
+        gap: Spacing.md,
     },
-    heroCard: {
-        paddingVertical: Spacing.lg,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: Spacing.md,
-    },
-    weekRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        paddingHorizontal: Spacing.xs,
-        marginBottom: Spacing.lg,
-    },
-    dayCol: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    dayBox: {
-        width: 28,
-        height: 28,
-        borderRadius: Radius.sm,
-        marginBottom: Spacing.sm,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-    },
-    heroDivider: {
-        height: 1,
-        marginBottom: Spacing.md,
-    },
-    heroStatsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-    },
-    heroStatItem: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    heroStatSeparator: {
-        width: 1,
-        height: 30,
-    },
-    statValue: {
-        fontSize: FontSize.lg,
-        fontWeight: FontWeight.bold,
-        marginBottom: 2,
-    },
-    statLabel: {
-        fontSize: FontSize.xs,
-    },
-    activeCard: {
-        borderLeftWidth: 4,
-    },
-    templatesHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: Spacing.sm,
-    },
-    activeHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: Spacing.md,
-    },
-    liveIndicator: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: Spacing.xs,
-        borderRadius: Radius.md,
-    },
-    liveDot: {
-        width: 6,
-        height: 6,
-        borderRadius: Radius.pill,
-        marginRight: Spacing.sm,
-    },
-    activeTime: {
-        marginBottom: Spacing.md,
-    },
-    activePromo: {
-        marginBottom: Spacing.md,
-        fontSize: FontSize.sm,
-    },
-    recapPressable: {
-        padding: 0,
-        borderWidth: 0,
-        backgroundColor: 'transparent',
-        marginBottom: 0,
-    },
-    recapDate: {
-        fontSize: FontSize.sm,
-        marginBottom: Spacing.sm,
-    },
-    recapMetaRow: {
-        flexDirection: 'row',
-        columnGap: Spacing.lg,
-        marginBottom: Spacing.md,
-    },
-    recapMetaItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        columnGap: Spacing.xs,
-    },
-    chipRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: Spacing.xs,
-    },
-    chip: {
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: Spacing.xs,
-        borderRadius: Radius.pill,
-    },
-    previousList: {
-        borderTopWidth: 1,
-        marginTop: Spacing.md,
-        paddingTop: Spacing.sm,
-    },
-    previousRowCard: {
-        padding: 0,
-        borderWidth: 0,
-        backgroundColor: 'transparent',
-        marginBottom: 0,
-        paddingVertical: Spacing.sm,
-    },
-    previousRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    balanceList: {
-        rowGap: Spacing.sm,
-    },
-    balanceRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        columnGap: Spacing.sm,
-    },
-    balanceLabel: {
-        width: 80,
-        fontSize: FontSize.xs,
-    },
-    balanceTrack: {
-        flex: 1,
-        height: 6,
-        borderRadius: 3,
+    // Inset like the list rows below, so text in and under the hero shares one edge.
+    hero: {
+        borderRadius: Radius.lg,
+        padding: Spacing.md,
+        gap: Spacing.md + Spacing.xs,
         overflow: 'hidden',
     },
-    balanceFill: {
-        height: 6,
-        borderRadius: 3,
+    // Cropped by the hero's rounded corner, so only an arc of the plates shows.
+    motif: {
+        position: 'absolute',
+        top: -70,
+        right: -62,
     },
-    balanceCount: {
-        width: 24,
-        textAlign: 'right',
-        fontSize: FontSize.xs,
+    activePanel: {
+        borderRadius: Radius.md,
+        padding: Spacing.md,
+        gap: Spacing.md,
+    },
+    activeText: {
+        gap: Spacing.xs,
+    },
+    weekBlock: {
+        gap: Spacing.md,
+    },
+    headline: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: Spacing.sm,
+    },
+    // Same width as an InitialsAvatar, so row text lines up under the plans.
+    leadingSlot: {
+        width: 40,
+        alignItems: 'center',
     },
 })

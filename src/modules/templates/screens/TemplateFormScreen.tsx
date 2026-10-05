@@ -1,23 +1,25 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { useExerciseRepo, useWorkoutTemplateRepo } from '@/src/data/RepositoryContext'
 import type { Exercise } from '@/src/db/exercises'
 import { resolveMembers } from '@/src/db/templateMembership'
 import { Button } from '@/src/modules/core/components/Button'
-import { Card } from '@/src/modules/core/components/Card'
-import { EmptyState } from '@/src/modules/core/components/EmptyState'
+import { confirmDialog } from '@/src/modules/core/components/ConfirmDialog'
+import { ListRow } from '@/src/modules/core/components/ListRow'
+import { ListSection } from '@/src/modules/core/components/ListSection'
 import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
-import { TemplateExerciseSelector } from '../components/TemplateExerciseSelector'
+import { ExercisePicker } from '@/src/modules/exercises/components/ExercisePicker'
+import { exerciseSummaryLine } from '@/src/modules/exercises/taxonomyLabels'
 import { TEMPLATE_NAME_MAX_LENGTH, validateTemplate } from '../templateForm'
 
 const WORKOUT_TAB = '/(tabs)/workout' as const
@@ -43,6 +45,7 @@ export default function TemplateFormScreen() {
     const [isSaving, setIsSaving] = useState(false)
     const [nameError, setNameError] = useState('')
     const [exercisesError, setExercisesError] = useState('')
+    const [pickerVisible, setPickerVisible] = useState(false)
     const nameInputRef = useRef<TextInput>(null)
 
     // Re-read on focus so an Exercise added from the empty state shows up on
@@ -86,19 +89,31 @@ export default function TemplateFormScreen() {
         }, [exerciseRepo, templateId, templateRepo, t])
     )
 
-    const toggleExercise = useCallback((uuid: string) => {
+    const addExercises = useCallback((added: Exercise[]) => {
         setExercisesError('')
         setSelected((current) => {
             const next = new Set(current)
-            if (next.has(uuid)) next.delete(uuid)
-            else next.add(uuid)
+            for (const exercise of added) if (exercise.uuid) next.add(exercise.uuid)
+            return next
+        })
+    }, [])
+
+    const removeExercise = useCallback((uuid: string) => {
+        setSelected((current) => {
+            const next = new Set(current)
+            next.delete(uuid)
             return next
         })
     }, [])
 
     // Members not on this device yet stay in `selected` (and are saved) but are
     // not counted: the badge shows what this device can actually offer.
-    const selectedCount = resolveMembers(selected, exercises).length
+    const members = useMemo(() => resolveMembers(selected, exercises), [selected, exercises])
+    const selectedCount = members.length
+    const candidates = useMemo(
+        () => exercises.filter((exercise) => !(exercise.uuid && selected.has(exercise.uuid))),
+        [exercises, selected]
+    )
 
     const handleSave = useCallback(async () => {
         if (isSaving) return
@@ -130,37 +145,29 @@ export default function TemplateFormScreen() {
                 await templateRepo.create({ name: result.name, exerciseUuids: result.exerciseUuids })
             }
             goBack()
-            showToast.success({
-                title: t(isEditing ? 'templateUpdated' : 'templateCreated'),
-                message: result.name,
-            })
         } catch (error) {
             log('error', 'Failed to save workout template', error)
             showToast.danger({ title: t('error'), message: t('failedToSaveTemplate') })
         } finally {
             setIsSaving(false)
         }
-    }, [isEditing, isSaving, name, selected, selectedCount, t, templateId, templateRepo])
+    }, [isSaving, name, selected, selectedCount, t, templateId, templateRepo])
 
     const handleDelete = useCallback(() => {
         if (templateId === undefined) return
-        showToast.confirm({
+        confirmDialog({
             title: t('deleteTemplateTitle'),
             message: t('deleteTemplateWarning', { name: name.trim() }),
-            icon: 'trash',
-            tone: 'danger',
-            action: {
-                label: t('delete'),
-                onPress: async () => {
-                    try {
-                        await templateRepo.delete(templateId)
-                        goBack()
-                        showToast.success({ title: t('templateDeleted'), message: name.trim() })
-                    } catch (error) {
-                        log('error', 'Failed to delete workout template', error)
-                        showToast.danger({ title: t('error'), message: t('failedToDeleteTemplate') })
-                    }
-                },
+            confirmLabel: t('delete'),
+            destructive: true,
+            onConfirm: async () => {
+                try {
+                    await templateRepo.delete(templateId)
+                    goBack()
+                } catch (error) {
+                    log('error', 'Failed to delete workout template', error)
+                    showToast.danger({ title: t('error'), message: t('failedToDeleteTemplate') })
+                }
             },
         })
     }, [name, t, templateId, templateRepo])
@@ -182,31 +189,17 @@ export default function TemplateFormScreen() {
                     </TouchableOpacity>
                 ),
                 headerRight: () => (
-                    <View style={styles.headerActions}>
-                        <TouchableOpacity
-                            onPress={handleSave}
-                            disabled={!canSave}
-                            style={!canSave && styles.headerButtonDisabled}
-                            accessibilityRole={'button'}
-                            accessibilityLabel={isSaving ? t('saving') : t('save')}
-                            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                        >
-                            <FontAwesome name={'check'} size={20} color={theme.primary} />
-                        </TouchableOpacity>
-                        {isEditing && (
-                            <TouchableOpacity
-                                onPress={handleDelete}
-                                accessibilityRole={'button'}
-                                accessibilityLabel={t('delete')}
-                                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                            >
-                                <FontAwesome name={'trash'} size={20} color={theme.error} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                    <Button
+                        label={t('save')}
+                        variant={'text'}
+                        onPress={handleSave}
+                        disabled={!canSave}
+                        isLoading={isSaving}
+                        style={styles.headerSave}
+                    />
                 ),
             })
-        }, [canSave, handleDelete, handleSave, isEditing, isSaving, navigation, t, theme])
+        }, [canSave, handleSave, isEditing, isSaving, navigation, t, theme])
     )
 
     if (isLoading) {
@@ -219,9 +212,8 @@ export default function TemplateFormScreen() {
 
     return (
         <ScrollScreenLayout keyboardShouldPersistTaps={'handled'} contentContainerStyle={styles.content}>
-            <Card>
+            <View style={styles.form}>
                 <View style={styles.field}>
-                    <Typography.Label>{t('templateName')}</Typography.Label>
                     <TextInput
                         ref={nameInputRef}
                         value={name}
@@ -236,71 +228,83 @@ export default function TemplateFormScreen() {
                         returnKeyType={'done'}
                         selectionColor={theme.primary}
                         style={[
-                            GlobalStyles.input,
                             styles.nameInput,
                             {
                                 color: theme.text,
                                 backgroundColor: theme.inputBackground,
-                                borderColor: nameError ? theme.error : theme.border,
+                                borderColor: nameError ? theme.error : 'transparent',
                             },
                         ]}
                         accessibilityLabel={t('templateName')}
                         accessibilityHint={t('required')}
                     />
-                    <Typography.Meta style={{ color: nameError ? theme.error : 'transparent' }} numberOfLines={1}>
-                        {nameError || ' '}
-                    </Typography.Meta>
+                    {nameError ? <Typography.Meta color={'error'}>{nameError}</Typography.Meta> : null}
                 </View>
-            </Card>
-
-            <Card>
-                <View style={styles.exercisesHeader}>
-                    <View style={styles.exercisesTitle}>
-                        <Typography.Subtitle>{t('templateExercises')}</Typography.Subtitle>
-                        <Typography.Meta color={'textSecondary'}>{t('templateExercisesHint')}</Typography.Meta>
-                    </View>
-                    <View
-                        style={[
-                            styles.countBadge,
-                            { backgroundColor: selectedCount > 0 ? theme.primary : theme.surfaceMuted },
-                        ]}
-                    >
-                        <Typography.Meta
-                            weight={'bold'}
-                            style={{ color: selectedCount > 0 ? theme.onPrimary : theme.textSecondary }}
-                        >
-                            {selectedCount}
-                        </Typography.Meta>
-                    </View>
-                </View>
-
-                {exercisesError ? (
-                    <Typography.Meta style={[styles.exercisesError, { color: theme.error }]}>
-                        {exercisesError}
-                    </Typography.Meta>
-                ) : null}
 
                 {exercises.length === 0 ? (
-                    <View style={styles.emptyExercises}>
-                        <EmptyState
-                            message={t('noExercises')}
-                            subMessage={t('templateNeedsExercisesFirst')}
-                            icon={'list'}
-                        />
+                    <ListSection title={t('templateExercises')} footer={t('templateNeedsExercisesFirst')}>
                         {/* Switch to the Exercises tab rather than pushing its add
                             form into this stack: a cross-tab push leaves the form
                             behind in the Exercises stack after save. */}
-                        <Button
+                        <ListRow
                             label={t('goToExercises')}
-                            leftIcon={'list'}
-                            variant={'secondary'}
+                            leadingIcon={'list'}
+                            accessory={'chevron'}
                             onPress={() => router.navigate('/(tabs)/exercises')}
                         />
-                    </View>
+                    </ListSection>
                 ) : (
-                    <TemplateExerciseSelector exercises={exercises} selected={selected} onToggle={toggleExercise} />
+                    <View style={styles.field}>
+                        <ListSection
+                            title={t('exercisesCount', { count: selectedCount })}
+                            footer={exercisesError ? undefined : t('templateExercisesHint')}
+                        >
+                            {members.map((exercise) => (
+                                <ListRow
+                                    key={exercise.uuid}
+                                    label={exercise.name}
+                                    subtitle={exerciseSummaryLine(t, exercise)}
+                                    trailing={
+                                        <TouchableOpacity
+                                            onPress={() => exercise.uuid && removeExercise(exercise.uuid)}
+                                            style={styles.removeButton}
+                                            accessibilityRole={'button'}
+                                            accessibilityLabel={t('removeFromPlan', { name: exercise.name })}
+                                        >
+                                            <FontAwesome name={'times'} size={16} color={theme.textSecondary} />
+                                        </TouchableOpacity>
+                                    }
+                                />
+                            ))}
+                            <ListRow
+                                label={t('addExercises')}
+                                leadingIcon={'plus'}
+                                onPress={() => setPickerVisible(true)}
+                                disabled={candidates.length === 0}
+                            />
+                        </ListSection>
+                        {exercisesError ? (
+                            <Typography.Meta color={'error'} style={styles.inset}>
+                                {exercisesError}
+                            </Typography.Meta>
+                        ) : null}
+                    </View>
                 )}
-            </Card>
+
+                {isEditing && (
+                    <ListSection>
+                        <ListRow label={t('deletePlan')} leadingIcon={'trash'} destructive onPress={handleDelete} />
+                    </ListSection>
+                )}
+            </View>
+
+            <ExercisePicker
+                visible={pickerVisible}
+                onClose={() => setPickerVisible(false)}
+                title={t('addExercises')}
+                exercises={candidates}
+                onAdd={addExercises}
+            />
         </ScrollScreenLayout>
     )
 }
@@ -313,37 +317,29 @@ const styles = StyleSheet.create({
     content: {
         paddingBottom: Spacing.xxl,
     },
+    form: {
+        gap: Spacing.lg,
+    },
     field: {
         gap: Spacing.sm,
     },
     nameInput: {
-        marginBottom: 0,
+        minHeight: 56,
+        borderRadius: Radius.sm,
+        borderWidth: 1,
+        paddingHorizontal: Spacing.md,
+        fontSize: FontSize.lg,
+        fontWeight: FontWeight.semibold,
     },
-    exercisesHeader: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        gap: Spacing.md,
-        marginBottom: Spacing.md,
+    inset: {
+        paddingHorizontal: Spacing.md,
     },
-    exercisesTitle: {
-        flex: 1,
-        gap: Spacing.xs,
-    },
-    countBadge: {
-        minWidth: 28,
-        height: 28,
-        paddingHorizontal: Spacing.sm,
-        borderRadius: Radius.pill,
+    removeButton: {
+        width: 44,
+        height: 44,
+        marginRight: -Spacing.sm,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    exercisesError: {
-        marginTop: -Spacing.sm,
-        marginBottom: Spacing.md,
-    },
-    emptyExercises: {
-        gap: Spacing.md,
     },
     headerBack: {
         paddingLeft: Spacing.md,
@@ -352,13 +348,8 @@ const styles = StyleSheet.create({
         minHeight: 44,
         justifyContent: 'center',
     },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
-        marginRight: Spacing.md,
-    },
-    headerButtonDisabled: {
-        opacity: 0.4,
+    headerSave: {
+        minHeight: 44,
+        paddingHorizontal: Spacing.md,
     },
 })

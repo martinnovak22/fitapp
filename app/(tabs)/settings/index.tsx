@@ -1,191 +1,117 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome'
 import Constants from 'expo-constants'
 import { router } from 'expo-router'
-import React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { Duration } from '@/src/constants/Motion'
-import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { useAuth } from '@/src/modules/auth/useAuth'
-import { Button } from '@/src/modules/core/components/Button'
-import { Card } from '@/src/modules/core/components/Card'
+import { ListRow } from '@/src/modules/core/components/ListRow'
+import { ListSection } from '@/src/modules/core/components/ListSection'
 import { Appear } from '@/src/modules/core/components/motion'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
+import { type Segment, SegmentedControl } from '@/src/modules/core/components/SegmentedControl'
+import { SelectSheet } from '@/src/modules/core/components/SelectSheet'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { type ThemeMode, useTheme } from '@/src/modules/core/hooks/useTheme'
 
 export default function SettingsScreen() {
     const { t, i18n } = useTranslation()
-    const { mode, setMode, theme } = useTheme()
+    const { mode, setMode } = useTheme()
     const { authMode, isAuthRequired, userEmail, signOut } = useAuth()
+    const [languageSheetVisible, setLanguageSheetVisible] = useState(false)
     const isGuestMode = authMode === 'guest'
     const appVersion = Constants.expoConfig?.version ?? 'dev'
 
+    // Each language is named in itself, so it stays findable whatever the UI language is.
     const languages = [
-        { code: 'en', label: t('english'), icon: '🇺🇸' },
-        { code: 'cs', label: t('czech'), icon: '🇨🇿' },
+        { value: 'en', label: 'English' },
+        { value: 'cs', label: 'Čeština' },
     ]
+    const currentLanguage = languages.find((lang) => i18n.language.startsWith(lang.value)) ?? languages[0]
 
-    const themes: { mode: ThemeMode; label: string; icon: keyof typeof FontAwesome.glyphMap }[] = [
-        { mode: 'light', label: t('lightMode'), icon: 'sun-o' },
-        { mode: 'dark', label: t('darkMode'), icon: 'moon-o' },
-        { mode: 'system', label: t('systemDefault'), icon: 'desktop' },
+    const themeSegments: Segment<ThemeMode>[] = [
+        { value: 'system', label: t('themeSystem') },
+        { value: 'light', label: t('themeLight') },
+        { value: 'dark', label: t('themeDark') },
     ]
 
     return (
-        <ScrollScreenLayout style={{ paddingBottom: Spacing.md }}>
-            <Appear variant="down" durationMs={Duration.slow}>
-                <Typography.Subtitle style={[styles.sectionTitle, { color: theme.primary }]}>
-                    {t('language')}
-                </Typography.Subtitle>
-                <Card style={styles.card}>
-                    {languages.map((lang, index) => (
-                        <React.Fragment key={lang.code}>
-                            <TouchableOpacity style={styles.settingItem} onPress={() => i18n.changeLanguage(lang.code)}>
-                                <View style={styles.settingLeft}>
-                                    <Typography.Body style={{ fontSize: FontSize.xl, marginRight: 12 }}>
-                                        {lang.icon}
-                                    </Typography.Body>
-                                    <Typography.Body style={[styles.settingLabel, { color: theme.text }]}>
-                                        {lang.label}
-                                    </Typography.Body>
-                                </View>
-                                {i18n.language === lang.code && (
-                                    <FontAwesome name="check" size={18} color={theme.primary} />
-                                )}
-                            </TouchableOpacity>
-                            {index < languages.length - 1 && (
-                                <View style={[styles.separator, { backgroundColor: theme.border }]} />
-                            )}
-                        </React.Fragment>
-                    ))}
-                </Card>
+        <ScrollScreenLayout style={styles.content}>
+            <Appear variant="down" durationMs={Duration.slow} style={styles.sections}>
+                <ListSection title={t('general')}>
+                    <ListRow
+                        label={t('language')}
+                        value={currentLanguage.label}
+                        accessory={'chevron'}
+                        onPress={() => setLanguageSheetVisible(true)}
+                    />
+                </ListSection>
 
-                <Typography.Subtitle style={[styles.sectionTitle, { marginTop: Spacing.lg, color: theme.primary }]}>
-                    {t('appearance')}
-                </Typography.Subtitle>
-                <Card style={styles.card}>
-                    {themes.map((tMode, index) => (
-                        <React.Fragment key={tMode.mode}>
-                            <TouchableOpacity style={styles.settingItem} onPress={() => setMode(tMode.mode)}>
-                                <View style={styles.settingLeft}>
-                                    <View style={styles.iconContainer}>
-                                        <FontAwesome
-                                            name={tMode.icon}
-                                            size={18}
-                                            color={mode === tMode.mode ? theme.primary : theme.textSecondary}
-                                        />
-                                    </View>
-                                    <Typography.Body style={[styles.settingLabel, { color: theme.text }]}>
-                                        {tMode.label}
-                                    </Typography.Body>
-                                </View>
-                                {mode === tMode.mode && <FontAwesome name="check" size={18} color={theme.primary} />}
-                            </TouchableOpacity>
-                            {index < themes.length - 1 && (
-                                <View style={[styles.separator, { backgroundColor: theme.border }]} />
-                            )}
-                        </React.Fragment>
-                    ))}
-                </Card>
-
-                {(isAuthRequired || isGuestMode) && (
-                    <>
-                        <Typography.Subtitle
-                            style={[styles.sectionTitle, { marginTop: Spacing.lg, color: theme.primary }]}
-                        >
-                            {t('account')}
-                        </Typography.Subtitle>
-                        <Card style={styles.accountCard}>
-                            {isGuestMode ? (
-                                <>
-                                    <View style={{ marginBottom: Spacing.md }}>
-                                        <Typography.Meta style={{ color: theme.textSecondary }}>
-                                            {t('signInToEnableSync')}
-                                        </Typography.Meta>
-                                    </View>
-                                    <Button
-                                        label={t('createAccount')}
-                                        onPress={() => router.push('../login?mode=signup')}
-                                    />
-                                </>
-                            ) : (
-                                <>
-                                    <View style={{ marginBottom: Spacing.md }}>
-                                        <Typography.Meta style={{ color: theme.textSecondary }}>
-                                            {t('loggedInAs')}
-                                        </Typography.Meta>
-                                        <Typography.Body>{userEmail ?? t('notSpecified')}</Typography.Body>
-                                    </View>
-                                    <Button
-                                        label={t('signOut')}
-                                        variant={'outline'}
-                                        // No explicit navigation: dropping the session flips
-                                        // isAuthenticated and the tabs-layout guard redirects to
-                                        // login once — a second replace would remount it and replay
-                                        // the entrance animations.
-                                        onPress={signOut}
-                                    />
-                                </>
-                            )}
-                        </Card>
-                    </>
-                )}
-
-                <View style={styles.versionWrap}>
-                    <Typography.Meta style={{ color: theme.textSecondary }}>{`FitApp - ${appVersion}`}</Typography.Meta>
+                <View style={styles.group}>
+                    <Typography.Label style={styles.groupTitle} accessibilityRole={'header'}>
+                        {t('appearance')}
+                    </Typography.Label>
+                    <SegmentedControl
+                        segments={themeSegments}
+                        value={mode}
+                        onChange={setMode}
+                        accessibilityLabel={t('appearance')}
+                    />
                 </View>
+
+                {(isAuthRequired || isGuestMode) &&
+                    (isGuestMode ? (
+                        <ListSection title={t('account')} footer={t('signInToEnableSync')}>
+                            <ListRow
+                                label={t('createAccount')}
+                                leadingIcon={'user-plus'}
+                                accessory={'chevron'}
+                                onPress={() => router.push('../login?mode=signup')}
+                            />
+                        </ListSection>
+                    ) : (
+                        <ListSection title={t('account')}>
+                            <ListRow label={t('loggedInAs')} value={userEmail ?? t('notSpecified')} />
+                            {/* No explicit navigation: dropping the session flips isAuthenticated and the
+                                tabs-layout guard redirects to login once — a second replace would remount
+                                it and replay the entrance animations. */}
+                            <ListRow label={t('signOut')} leadingIcon={'sign-out'} onPress={signOut} />
+                        </ListSection>
+                    ))}
+
+                <Typography.Meta color={'textSecondary'} style={styles.version}>
+                    {`FitApp ${appVersion}`}
+                </Typography.Meta>
             </Appear>
+
+            <SelectSheet
+                visible={languageSheetVisible}
+                onClose={() => setLanguageSheetVisible(false)}
+                title={t('language')}
+                mode={'single'}
+                options={languages}
+                value={currentLanguage.value}
+                onSelect={(code) => i18n.changeLanguage(code)}
+            />
         </ScrollScreenLayout>
     )
 }
 
 const styles = StyleSheet.create({
-    sectionTitle: {
-        fontSize: FontSize.sm,
-        fontWeight: FontWeight.heavy,
-        letterSpacing: 1.5,
-        marginBottom: Spacing.sm + Spacing.xs,
-        marginLeft: 4,
-        textTransform: 'uppercase',
+    content: {
+        paddingBottom: Spacing.lg,
     },
-    card: {
-        padding: 0,
-        overflow: 'hidden',
+    sections: {
+        gap: Spacing.lg,
     },
-    accountCard: {
-        padding: Spacing.md,
+    group: {
+        gap: Spacing.sm,
     },
-    settingItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: Spacing.md,
+    groupTitle: {
+        paddingHorizontal: Spacing.md,
     },
-    settingLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    settingLabel: {
-        fontSize: FontSize.md,
-        fontWeight: FontWeight.semibold,
-    },
-    separator: {
-        height: StyleSheet.hairlineWidth,
-        marginLeft: Spacing.md,
-    },
-    iconContainer: {
-        width: 36,
-        height: 36,
-        borderRadius: Radius.pill,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: Spacing.sm + Spacing.xs,
-    },
-    versionWrap: {
-        alignItems: 'center',
-        marginTop: Spacing.xl,
+    version: {
+        textAlign: 'center',
     },
 })

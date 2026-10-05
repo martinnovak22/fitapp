@@ -1,6 +1,13 @@
 import { createCachedExerciseRepository } from '@/src/data/exercisesCache'
 import { type Exercise, type ExerciseDetails, ExerciseRepository, type ExerciseUpdate } from '@/src/db/exercises'
-import { type SetData, type SetWithExerciseName, type Workout, WorkoutRepository } from '@/src/db/workouts'
+import {
+    type HistorySet,
+    type SetData,
+    type SetSummaryRow,
+    type SetWithExerciseName,
+    type Workout,
+    WorkoutRepository,
+} from '@/src/db/workouts'
 import { type WorkoutTemplate, type WorkoutTemplateInput, WorkoutTemplateRepository } from '@/src/db/workoutTemplates'
 
 export interface ExerciseRepositoryPort {
@@ -25,9 +32,10 @@ export interface WorkoutRepositoryPort {
     addSet: (workoutId: number, exerciseId: number, data: SetData) => Promise<void>
     updateSet: (setId: number, data: SetData) => Promise<void>
     deleteSet: (setId: number) => Promise<void>
-    updateSetPosition: (setId: number, position: number) => Promise<void>
     getSets: (workoutId: number) => Promise<SetWithExerciseName[]>
     getSetExercises: (workoutId: number) => Promise<Exercise[]>
+    getFinishedExerciseSets: (exerciseIds: readonly number[], excludeWorkoutId: number) => Promise<HistorySet[]>
+    getAllSetRows: () => Promise<SetSummaryRow[]>
     getWorkoutCountForMonth: (month: string) => Promise<number>
     getAvgWorkoutDuration: (month: string) => Promise<number>
     updateTiming: (id: number, date: string, startTime: string, endTime?: string) => Promise<void>

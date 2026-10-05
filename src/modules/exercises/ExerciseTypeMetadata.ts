@@ -72,7 +72,8 @@ export const bestSetComparatorFor = (type: ExerciseType, dominant: PrimaryMetric
 const formatRawMetric = (metric: PrimaryMetric, value: number): string => {
     switch (metric) {
         case 'weight':
-            return value.toFixed(2)
+            // "62.5 kg", "120 kg": no trailing zeros on whole kilograms.
+            return formatCompactWeight(value)
         case 'reps':
             return Math.round(value).toString()
         case 'distance':
@@ -111,7 +112,30 @@ export const formatCompactSetLabel = (type: ExerciseType, _dominant: PrimaryMetr
     }
 }
 
-// Headline string for the picker / personal-best card. Single dominant value with its unit.
+// A whole Set spelled out with units, for headlines such as a personal record:
+// "82.5 kg × 8", "12 reps (+10 kg)", "1:30", "2.4km · 12:30". The caller
+// supplies the localized rep count.
+export const formatSetWithUnits = (
+    type: ExerciseType,
+    set: Set,
+    formatReps: (count: number) => string = (count) => `${count} reps`
+): string => {
+    const weight = set.weight ?? 0
+    const reps = Math.round(set.reps ?? 0)
+    switch (type) {
+        case 'weight':
+            return `${formatCompactWeight(weight)} kg × ${reps}`
+        case 'bodyweight':
+            return `${formatReps(reps)}${weight === 0 ? '' : ` (${formatSignedWeight(weight)} kg)`}`
+        case 'bodyweight_timer':
+            return `${formatDuration(set.duration ?? 0)}${weight === 0 ? '' : ` (${formatSignedWeight(weight)} kg)`}`
+        case 'cardio':
+            return `${formatCompactDistance(set.distance ?? 0)} · ${formatDuration(set.duration ?? 0)}`
+    }
+}
+
+// One value of a PrimaryMetric with its unit, for a headline figure such as
+// the estimated one-rep max on the exercise detail.
 export const formatHeadlineStat = (_type: ExerciseType, dominant: PrimaryMetric, value: number): string => {
     if (dominant === 'distance') return formatCompactDistance(value)
     if (dominant === 'duration') return formatDuration(value)
@@ -156,6 +180,7 @@ export const ExerciseTypeMetadata = {
         return bestSetComparatorFor(type, dominant)
     },
     formatCompactSetLabel,
+    formatSetWithUnits,
     formatHeadlineStat,
     formatAxisLabel,
     isBetterLower(type: ExerciseType, dominant: PrimaryMetric): boolean {

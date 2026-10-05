@@ -3,7 +3,6 @@ import {
     buildExerciseSavePayload,
     changedTaxonomyOnly,
     NO_SUGGESTIONS,
-    resolveExerciseSavedToast,
     resolveExerciseSavePlan,
     resolveExerciseTypeOptions,
     resolveTrackingModeToggle,
@@ -216,28 +215,10 @@ describe('resolveExerciseSavePlan', () => {
     })
 })
 
-describe('resolveExerciseSavedToast', () => {
-    it('uses the created keys when not editing', () => {
-        expect(resolveExerciseSavedToast(false, 'Bench')).toEqual({
-            titleKey: 'exerciseCreated',
-            messageNameKey: 'ready',
-            name: 'Bench',
-        })
-    })
-
-    it('uses the updated keys when editing', () => {
-        expect(resolveExerciseSavedToast(true, 'Bench')).toEqual({
-            titleKey: 'exerciseUpdated',
-            messageNameKey: 'updated',
-            name: 'Bench',
-        })
-    })
-})
-
 describe('resolveExerciseTypeOptions', () => {
     it('marks the matching type active', () => {
         const options = resolveExerciseTypeOptions('cardio')
-        expect(options.map((o) => o.value)).toEqual(['weight', 'cardio', 'bodyweight'])
+        expect(options.map((o) => o.value)).toEqual(['weight', 'bodyweight', 'cardio'])
         expect(options.find((o) => o.value === 'cardio')?.isActive).toBe(true)
         expect(options.find((o) => o.value === 'weight')?.isActive).toBe(false)
     })

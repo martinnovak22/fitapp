@@ -1,11 +1,10 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { StyleSheet, View } from 'react-native'
-import Toast, { type ToastConfig, type ToastConfigParams } from 'react-native-toast-message'
+import type { ToastConfig, ToastConfigParams } from 'react-native-toast-message'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
-import i18n from '@/src/modules/core/utils/i18n'
 import { Button } from './Button'
 import { Typography } from './Typography'
 import { resolveToastVisual, type ToastIcon, type ToastType } from './toastVisual'
@@ -20,7 +19,6 @@ export interface ToastAction {
 interface CustomToastExtraProps {
     icon?: ToastIcon
     action?: ToastAction
-    tone?: 'info' | 'danger'
 }
 
 interface CustomToastProps {
@@ -30,10 +28,9 @@ interface CustomToastProps {
     iconColor: string
     actionColor: string
     action?: ToastAction
-    cancelAction?: ToastAction
 }
 
-const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action, cancelAction }: CustomToastProps) => {
+const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action }: CustomToastProps) => {
     const { theme } = useTheme()
     return (
         <View style={[styles.toastContainer, { backgroundColor: theme.surface, borderColor: `${theme.border}20` }]}>
@@ -53,27 +50,16 @@ const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action, cance
                 </View>
             </View>
 
-            {(action || cancelAction) && (
+            {action && (
                 <View style={[styles.actionRow, { borderTopColor: `${theme.border}15` }]}>
                     <View style={styles.buttonContainer}>
-                        {cancelAction && (
-                            <Button
-                                label={cancelAction.label}
-                                onPress={cancelAction.onPress}
-                                variant="text"
-                                size="sm"
-                                labelStyle={[styles.cancelText, { color: theme.textSecondary }]}
-                            />
-                        )}
-                        {action && (
-                            <Button
-                                label={action.label}
-                                onPress={action.onPress}
-                                variant="text"
-                                size="sm"
-                                labelStyle={[styles.actionText, { color: actionColor }]}
-                            />
-                        )}
+                        <Button
+                            label={action.label}
+                            onPress={action.onPress}
+                            variant="text"
+                            size="sm"
+                            labelStyle={[styles.actionText, { color: actionColor }]}
+                        />
                     </View>
                 </View>
             )}
@@ -87,7 +73,7 @@ const CustomToast = ({ text1, text2, icon, iconColor, actionColor, action, cance
 const ToastView = ({ kind, text1, text2, props }: ToastConfigParams<CustomToastExtraProps> & { kind: ToastType }) => {
     const { theme } = useTheme()
     const visual = resolveToastVisual(
-        { type: kind, icon: props?.icon, tone: props?.tone },
+        { type: kind, icon: props?.icon },
         { primary: theme.primary, error: theme.error, info: theme.info }
     )
     return (
@@ -98,7 +84,6 @@ const ToastView = ({ kind, text1, text2, props }: ToastConfigParams<CustomToastE
             iconColor={visual.iconColor}
             actionColor={visual.actionColor ?? theme.primary}
             action={visual.supportsAction ? props?.action : undefined}
-            cancelAction={visual.supportsCancel ? { label: i18n.t('cancel'), onPress: () => Toast.hide() } : undefined}
         />
     )
 }
@@ -107,7 +92,6 @@ export const toastConfig: ToastConfig = {
     success: (params) => <ToastView kind="success" {...params} />,
     danger: (params) => <ToastView kind="danger" {...params} />,
     info: (params) => <ToastView kind="info" {...params} />,
-    confirm: (params) => <ToastView kind="confirm" {...params} />,
 }
 
 const styles = StyleSheet.create({
@@ -169,11 +153,6 @@ const styles = StyleSheet.create({
     },
     actionText: {
         fontWeight: FontWeight.bold,
-        fontSize: FontSize.xs,
-    },
-
-    cancelText: {
-        fontWeight: FontWeight.semibold,
         fontSize: FontSize.xs,
     },
 })

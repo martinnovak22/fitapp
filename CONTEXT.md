@@ -20,6 +20,14 @@ _Avoid_: using bare "Session" for a Workout
 One recorded entry within a Workout for a given Exercise (e.g. "Set 1"), carrying its own metrics and position.
 _Avoid_: entry, rep set
 
+**Draft Set**:
+An unchecked set row in a Workout: values typed or pre-filled from the previous performance, not yet a Set. Kept in device-local storage per Workout so it survives an app restart; never synced. Checking it (✓) writes a Set; finishing the Workout discards the rest.
+_Avoid_: pending set, unsaved set
+
+**Previous Performance**:
+The Sets of the most recent finished Workout that contains a given Exercise, regardless of plan. Shown in the PREVIOUS column and used to pre-fill Draft Sets.
+_Avoid_: last session, history (that is the list of Workouts)
+
 **SubSet**:
 A nested layer inside a Set (stored in the Set's `sub_sets`), used to express multi-stage efforts within a single Set.
 _Avoid_: drop, mini-set
@@ -61,7 +69,7 @@ A named, reusable list of Exercises owned by a principal (e.g. "Push A"). It is 
 _Avoid_: routine, program, plan (in code; "Plan" is the UI label only)
 
 **Planned Workout**:
-A Workout started from a Workout Template (`template_uuid` set). Its exercise picker offers only the Template's Exercises, plus any Exercise that already has a Set in it.
+A Workout started from a Workout Template (`template_uuid` set). Its exercise picker lists the Template's Exercises first, then every other Exercise.
 _Avoid_: template workout, scheduled workout (there is no date-based scheduling)
 
 **Unplanned Workout**:

@@ -1,33 +1,13 @@
 import { buildPrincipalWhereClause } from '@/src/data/principal'
 import { getDb } from '@/src/db/client'
-import { type Exercise, ExerciseRepository, type ExerciseType } from '@/src/db/exercises'
+import { ExerciseRepository, type ExerciseType } from '@/src/db/exercises'
 // biome-ignore lint/suspicious/noShadowRestrictedNames: domain model, not JS Set
 import type { Set } from '@/src/db/workouts'
-import {
-    bestSetComparatorFor,
-    ExerciseTypeMetadata,
-    formatHeadlineStat,
-    getSetMetricValue,
-    type PrimaryMetric,
-} from './ExerciseTypeMetadata'
+import { bestSetComparatorFor, type PrimaryMetric } from './ExerciseTypeMetadata'
 
 export interface BestSetEntry {
     date: string
     set: Set
-}
-
-export interface HeadlineStat {
-    value: number
-    formatted: string
-}
-
-export interface SessionSummary {
-    dominantMetric: PrimaryMetric
-    max: number
-    avg: number
-    // For cardio when duration is dominant we expose the held-constant context
-    // (avg distance across sessions) so the graph header can label it.
-    contextAvgDistance?: number
 }
 
 const coefficientOfVariation = (values: number[]): number => {
@@ -122,69 +102,5 @@ export const ExerciseStats = {
         return Array.from(history.bestByDate.entries())
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([date, set]) => ({ date, set }))
-    },
-
-    async sessionSummary(exerciseId: number): Promise<SessionSummary | null> {
-        const history = await collectHistory(exerciseId)
-        if (!history || history.bestByDate.size === 0) return null
-        const { type, dominantMetric, bestByDate } = history
-
-        const bestSets = Array.from(bestByDate.values())
-        const values = bestSets.map((s) => getSetMetricValue(s, dominantMetric))
-        const sum = values.reduce((a, b) => a + b, 0)
-        // For duration-dominant cardio, "best" is the shortest time.
-        const max = ExerciseTypeMetadata.isBetterLower(type, dominantMetric) ? Math.min(...values) : Math.max(...values)
-        const summary: SessionSummary = {
-            dominantMetric,
-            max,
-            avg: sum / values.length,
-        }
-        if (type === 'cardio' && dominantMetric === 'duration') {
-            const distances = bestSets.map((s) => s.distance ?? 0)
-            summary.contextAvgDistance = distances.reduce((a, b) => a + b, 0) / distances.length
-        }
-        return summary
-    },
-
-    async headlineStats(exercises: Exercise[]): Promise<Map<number, HeadlineStat | null>> {
-        const result = new Map<number, HeadlineStat | null>()
-        for (const exercise of exercises) result.set(exercise.id, null)
-        if (exercises.length === 0) return result
-
-        const db = await getDb()
-        const setScope = buildPrincipalWhereClause('s.user_id')
-        const workoutScope = buildPrincipalWhereClause('w.user_id')
-        const placeholders = exercises.map(() => '?').join(',')
-        const rows = await db.getAllAsync<Set>(
-            `SELECT s.*
-             FROM sets s
-             JOIN workouts w ON s.workout_id = w.id
-             WHERE s.exercise_id IN (${placeholders})
-               AND w.status = 'finished'
-               AND s.deleted_at IS NULL
-               AND w.deleted_at IS NULL
-               AND ${setScope.clause}
-               AND ${workoutScope.clause}`,
-            ...exercises.map((e) => e.id),
-            ...setScope.params,
-            ...workoutScope.params
-        )
-
-        const setsByExercise = new Map<number, Set[]>()
-        for (const exercise of exercises) setsByExercise.set(exercise.id, [])
-        for (const set of rows) setsByExercise.get(set.exercise_id)?.push(set)
-
-        for (const exercise of exercises) {
-            const exerciseSets = setsByExercise.get(exercise.id) ?? []
-            if (exerciseSets.length === 0) continue
-            const dominantMetric = computeDominantMetric(exercise.type, exerciseSets)
-            const comparator = bestSetComparatorFor(exercise.type, dominantMetric)
-            const best = exerciseSets.reduce((acc, s) => (comparator(s, acc) < 0 ? s : acc))
-            const value = getSetMetricValue(best, dominantMetric)
-            const formatted = formatHeadlineStat(exercise.type, dominantMetric, value)
-            result.set(exercise.id, { value, formatted })
-        }
-
-        return result
     },
 }

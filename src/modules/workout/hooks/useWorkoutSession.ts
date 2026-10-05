@@ -3,15 +3,17 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExerciseRepo, useWorkoutRepo, useWorkoutTemplateRepo } from '@/src/data/RepositoryContext'
 import type { Exercise } from '@/src/db/exercises'
-import type { SetData, Workout, Set as WorkoutSet } from '@/src/db/workouts'
+import type { SetData, SetWithExerciseName, Workout } from '@/src/db/workouts'
 import type { WorkoutTemplate } from '@/src/db/workoutTemplates'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
-import { resolvePickerExercises } from '../plannedExercises'
+import { notifyActiveWorkoutChanged } from '../activeWorkoutSignal'
+import { resolveTemplatePriority } from '../plannedExercises'
 
-type SetWithExercise = WorkoutSet & { exercise_name: string }
 type SessionOrigin = 'workout' | 'history'
 
+// Data and writes behind the workout screen. Confirmation, drafts and layout
+// belong to the screen; this hook only loads and persists.
 export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const workoutRepo = useWorkoutRepo()
     const exerciseRepo = useExerciseRepo()
@@ -22,7 +24,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const originTabRoot = origin === 'history' ? ('/(tabs)/history' as const) : ('/(tabs)/workout' as const)
 
     const [workout, setWorkout] = useState<Workout | null>(null)
-    const [sets, setSets] = useState<SetWithExercise[]>([])
+    const [sets, setSets] = useState<SetWithExerciseName[]>([])
     const [exercises, setExercises] = useState<Exercise[]>([])
     // Deleted Exercises that still have Sets here. Their Sets stay editable,
     // but the picker never offers them.
@@ -30,15 +32,12 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const [template, setTemplate] = useState<WorkoutTemplate | null>(null)
     const [loading, setLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
-    const [isSavingSet, setIsSavingSet] = useState(false)
-    const [isSavingWorkoutTime, setIsSavingWorkoutTime] = useState(false)
-    const [isFinishingWorkout, setIsFinishingWorkout] = useState(false)
-    const [isDeletingWorkout, setIsDeletingWorkout] = useState(false)
+    // Set writes still running; more than one can overlap.
+    const [savingSetCount, setSavingSetCount] = useState(0)
 
     const loadSets = useCallback(async () => {
         if (!Number.isFinite(workoutId) || workoutId <= 0) return
-        const nextSets = await workoutRepo.getSets(workoutId)
-        setSets(nextSets as SetWithExercise[])
+        setSets(await workoutRepo.getSets(workoutId))
     }, [workoutId, workoutRepo])
 
     const loadData = useCallback(async () => {
@@ -47,7 +46,6 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             setLoading(false)
             return
         }
-        setLoading(true)
         setLoadError(null)
 
         try {
@@ -69,7 +67,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
 
             setWorkout(w)
             setTemplate(nextTemplate)
-            setSets(s as SetWithExercise[])
+            setSets(s)
             setExercises(ex)
             setDeletedSetExercises(setEx.filter((exercise) => exercise.deleted_at))
         } catch (e) {
@@ -86,13 +84,14 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         }, [loadData])
     )
 
+    // Runs a Set write and reloads the Sets; on failure reloads everything
+    // and says so. Success is silent: the row itself shows the result.
     const runSetMutation = useCallback(
-        async (mutation: () => Promise<void>, successMessage: string, refresh: () => Promise<void> = loadSets) => {
-            setIsSavingSet(true)
+        async (mutation: () => Promise<void>) => {
+            setSavingSetCount((count) => count + 1)
             try {
                 await mutation()
-                await refresh()
-                showToast.success({ title: t('success'), message: successMessage })
+                await loadSets()
                 return true
             } catch (e) {
                 log('error', 'Failed to persist set mutation', e)
@@ -100,202 +99,114 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
                 showToast.danger({ title: t('error'), message: t('failedToSaveSet') })
                 return false
             } finally {
-                setIsSavingSet(false)
+                setSavingSetCount((count) => count - 1)
             }
         },
         [loadData, loadSets, t]
     )
 
-    const addSet = async (exerciseId: number, data: SetData) => {
-        return runSetMutation(() => workoutRepo.addSet(workoutId, exerciseId, data), t('newSetAdded'))
-    }
+    const addSet = useCallback(
+        (exerciseId: number, data: SetData) => runSetMutation(() => workoutRepo.addSet(workoutId, exerciseId, data)),
+        [runSetMutation, workoutId, workoutRepo]
+    )
 
-    const updateSet = async (setId: number, data: SetData) => {
-        return runSetMutation(() => workoutRepo.updateSet(setId, data), t('changesSaved'))
-    }
+    const updateSet = useCallback(
+        (setId: number, data: SetData) => runSetMutation(() => workoutRepo.updateSet(setId, data)),
+        [runSetMutation, workoutRepo]
+    )
 
-    const deleteSet = (setId: number) => {
-        showToast.confirm({
-            title: t('deleteSetTitle'),
-            message: t('removeSetConfirm'),
-            icon: 'trash',
-            tone: 'danger',
-            action: {
-                label: t('delete'),
-                onPress: async () => {
-                    try {
-                        await workoutRepo.deleteSet(setId)
-                        await loadSets()
-                        showToast.success({ title: t('setDeleted'), message: t('setRemoved') })
-                    } catch (e) {
-                        log('error', 'Failed to delete set', e)
-                        await loadData()
-                        showToast.danger({ title: t('error'), message: t('failedToSaveSet') })
-                    }
-                },
-            },
-        })
-    }
+    const deleteSet = useCallback(
+        (setId: number) => runSetMutation(() => workoutRepo.deleteSet(setId)),
+        [runSetMutation, workoutRepo]
+    )
 
-    const finishWorkout = () => {
-        showToast.confirm({
-            title: t('finishWorkout'),
-            message: t('finishSessionConfirm'),
-            action: {
-                label: t('finish'),
-                onPress: async () => {
-                    if (isFinishingWorkout) return
-                    setIsFinishingWorkout(true)
-                    try {
-                        await workoutRepo.finish(workoutId)
-                        router.dismissTo(originTabRoot)
-                        showToast.success({ title: t('workoutFinished'), message: t('greatJob') })
-                    } catch (e) {
-                        log('error', 'Failed to finish workout', e)
-                        showToast.danger({ title: t('error'), message: t('failedToFinishWorkout') })
-                    } finally {
-                        setIsFinishingWorkout(false)
-                    }
-                },
-            },
-        })
-    }
+    const finishWorkout = useCallback(async () => {
+        try {
+            await workoutRepo.finish(workoutId)
+            notifyActiveWorkoutChanged()
+            const finished = await workoutRepo.getById(workoutId)
+            if (finished) setWorkout(finished)
+            return finished
+        } catch (e) {
+            log('error', 'Failed to finish workout', e)
+            showToast.danger({ title: t('error'), message: t('failedToFinishWorkout') })
+            return null
+        }
+    }, [t, workoutId, workoutRepo])
 
-    const deleteWorkout = () => {
-        showToast.confirm({
-            title: t('deleteWorkoutTitle'),
-            message: t('deleteWorkoutConfirm'),
-            icon: 'trash',
-            tone: 'danger',
-            action: {
-                label: t('delete'),
-                onPress: async () => {
-                    if (isDeletingWorkout) return
-                    setIsDeletingWorkout(true)
-                    try {
-                        await workoutRepo.delete(workoutId)
-                        if (router.canGoBack()) {
-                            router.back()
-                        } else {
-                            router.replace(originTabRoot)
-                        }
-                        showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') })
-                    } catch (e) {
-                        log('error', 'Failed to delete workout', e)
-                        showToast.danger({ title: t('error'), message: t('failedToDeleteWorkout') })
-                    } finally {
-                        setIsDeletingWorkout(false)
-                    }
-                },
-            },
-        })
-    }
+    const deleteWorkout = useCallback(async () => {
+        try {
+            await workoutRepo.delete(workoutId)
+            notifyActiveWorkoutChanged()
+            if (router.canGoBack()) router.back()
+            else router.replace(originTabRoot)
+            return true
+        } catch (e) {
+            log('error', 'Failed to delete workout', e)
+            showToast.danger({ title: t('error'), message: t('failedToDeleteWorkout') })
+            return false
+        }
+    }, [originTabRoot, t, workoutId, workoutRepo])
 
     const updateWorkoutTiming = useCallback(
         async (date: string, startTime: string, endTime?: string) => {
-            setIsSavingWorkoutTime(true)
             try {
                 await workoutRepo.updateTiming(workoutId, date, startTime, endTime)
                 await loadData()
-                showToast.success({ title: t('success'), message: t('changesSaved') })
                 return true
             } catch (e) {
                 log('error', 'Failed to update workout timing', e)
                 showToast.danger({ title: t('error'), message: t('failedToSaveWorkoutTime') })
                 return false
-            } finally {
-                setIsSavingWorkoutTime(false)
             }
         },
         [loadData, t, workoutId, workoutRepo]
     )
 
-    // A Planned Workout's picker offers only its Template's Exercises (ADR-0006).
-    const picker = useMemo(
-        () =>
-            resolvePickerExercises({
-                exercises,
-                templateUuid: workout?.template_uuid,
-                template,
-                loggedExerciseIds: sets.map((s) => s.exercise_id),
-            }),
-        [exercises, sets, template, workout?.template_uuid]
+    const saveAsTemplate = useCallback(
+        async (name: string, exerciseUuids: string[]) => {
+            try {
+                await templateRepo.create({ name, exerciseUuids })
+                return true
+            } catch (e) {
+                log('error', 'Failed to save workout as template', e)
+                showToast.danger({ title: t('error'), message: t('failedToSaveTemplate') })
+                return false
+            }
+        },
+        [t, templateRepo]
     )
 
-    const editableExercises = useMemo(
+    // Every Exercise a block may show: the live ones plus deleted ones that
+    // still have Sets here.
+    const allExercises = useMemo(
         () => (deletedSetExercises.length > 0 ? [...exercises, ...deletedSetExercises] : exercises),
         [exercises, deletedSetExercises]
     )
 
-    const exerciseNamesOrder = [...new Set(sets.map((s) => s.exercise_name))]
-    const groupedSets = sets.reduce(
-        (acc, set) => {
-            if (!acc[set.exercise_name]) acc[set.exercise_name] = []
-            acc[set.exercise_name].push(set)
-            return acc
-        },
-        {} as Record<string, SetWithExercise[]>
-    )
-
-    const reorderSets = useCallback(
-        async (exerciseName: string, newGroupSets: SetWithExercise[]) => {
-            const previousSets = sets
-            const currentGrouped = previousSets.reduce(
-                (acc, currentSet) => {
-                    if (!acc[currentSet.exercise_name]) acc[currentSet.exercise_name] = []
-                    acc[currentSet.exercise_name].push(currentSet)
-                    return acc
-                },
-                {} as Record<string, SetWithExercise[]>
-            )
-
-            currentGrouped[exerciseName] = newGroupSets
-            const currentExerciseOrder = [...new Set(previousSets.map((item) => item.exercise_name))]
-
-            const allNewSets: SetWithExercise[] = []
-            let currentPos = 0
-            currentExerciseOrder.forEach((name) => {
-                const group = currentGrouped[name] || []
-                group.forEach((item) => {
-                    allNewSets.push({ ...item, position: currentPos++ })
-                })
-            })
-
-            setSets(allNewSets)
-
-            try {
-                const setsToUpdate = allNewSets.filter((item) => item.exercise_name === exerciseName)
-                await Promise.all(setsToUpdate.map((item) => workoutRepo.updateSetPosition(item.id, item.position)))
-            } catch (e) {
-                log('error', 'Failed to update positions', e)
-                setSets(previousSets)
-                await loadData()
-            }
-        },
-        [loadData, sets, workoutRepo]
+    const templatePriority = useMemo(
+        () => resolveTemplatePriority({ exercises, templateUuid: workout?.template_uuid, template }),
+        [exercises, template, workout?.template_uuid]
     )
 
     return {
+        workoutId,
         workout,
         sets,
-        exercises: editableExercises,
-        pickerExercises: picker.exercises,
-        pickerScope: picker.scope,
+        exercises: allExercises,
+        liveExercises: exercises,
+        templatePriority,
         loading,
         loadError,
-        isSavingSet,
-        isSavingWorkoutTime,
-        isFinishingWorkout,
-        isDeletingWorkout,
-        exerciseNamesOrder,
-        groupedSets,
+        isSavingSet: savingSetCount > 0,
         loadData,
         addSet,
         updateSet,
         deleteSet,
         finishWorkout,
         deleteWorkout,
-        reorderSets,
         updateWorkoutTiming,
+        saveAsTemplate,
+        getFinishedExerciseSets: workoutRepo.getFinishedExerciseSets,
     }
 }

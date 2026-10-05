@@ -28,6 +28,13 @@ export const exerciseMuscleLabel = (t: TFunction, exercise: ExerciseTaxonomyFiel
     return primary ? muscleLabel(t, primary) : t('unclassifiedMuscle')
 }
 
+// Every Muscle of an Exercise, primary first, as labels. Search matches
+// these too, so "záda" finds a lats Exercise.
+export const exerciseMuscleLabels = (t: TFunction, exercise: ExerciseTaxonomyFields): string[] => {
+    const { primary, secondary } = resolveExerciseMuscles(exercise)
+    return [primary, ...secondary].flatMap((key) => (key ? [muscleLabel(t, key)] : []))
+}
+
 // The one-line description under an Exercise's name, the same on every list:
 // its primary Muscle, then its Equipment or (when it has none) its type.
 export const exerciseSummaryLine = (t: TFunction, exercise: Exercise): string => {
@@ -35,5 +42,5 @@ export const exerciseSummaryLine = (t: TFunction, exercise: Exercise): string =>
     return [
         exerciseMuscleLabel(t, exercise),
         equipment ? equipmentLabel(t, equipment) : t(formatExerciseType(exercise.type)),
-    ].join(' • ')
+    ].join(' · ')
 }

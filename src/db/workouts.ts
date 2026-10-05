@@ -67,6 +67,15 @@ export interface SetWithExerciseName extends Set {
     primary_muscle: string | null
 }
 
+export type HistorySet = Set & { workout_date: string; workout_start: string }
+
+export type SetSummaryRow = Pick<Set, 'workout_id' | 'exercise_id' | 'weight' | 'reps' | 'sub_sets' | 'position'> & {
+    exercise_name: string
+    exercise_type: Exercise['type']
+    muscle_group: string | null
+    primary_muscle: string | null
+}
+
 export const WorkoutRepository = {
     async create(date: string, templateUuid?: string | null): Promise<number> {
         return executeWrite(async (db) => {
@@ -276,21 +285,6 @@ export const WorkoutRepository = {
         })
     },
 
-    async updateSetPosition(setId: number, position: number): Promise<void> {
-        await executeWrite((db) =>
-            db.runAsync(
-                `UPDATE sets
-                 SET position = ?, updated_at = ?, sync_status = ?
-                 WHERE id = ? AND ${buildPrincipalWhereClause('user_id').clause}`,
-                position,
-                nowIso(),
-                'dirty',
-                setId,
-                ...buildPrincipalWhereClause('user_id').params
-            )
-        )
-    },
-
     // Sets of a deleted Exercise stay in the history: Exercises are only
     // soft-deleted, so the join still finds the row and its name.
     async getSets(workoutId: number): Promise<SetWithExerciseName[]> {
@@ -334,6 +328,57 @@ export const WorkoutRepository = {
             workoutId,
             ...setScope.params,
             ...exerciseScope.params
+        )
+    },
+
+    // Every Set of the given Exercises from finished Workouts other than
+    // `excludeWorkoutId`, with its Workout's date and start, for previous
+    // performance and personal records. Deleted Exercises still count.
+    async getFinishedExerciseSets(exerciseIds: readonly number[], excludeWorkoutId: number): Promise<HistorySet[]> {
+        if (exerciseIds.length === 0) return []
+        const db = await getDb()
+        const setScope = buildPrincipalWhereClause('s.user_id')
+        const workoutScope = buildPrincipalWhereClause('w.user_id')
+        const placeholders = exerciseIds.map(() => '?').join(',')
+        return await db.getAllAsync<HistorySet>(
+            `SELECT s.*, w.date as workout_date, w.start_time as workout_start
+             FROM sets s
+             JOIN workouts w ON s.workout_id = w.id
+             WHERE s.exercise_id IN (${placeholders})
+               AND w.id != ?
+               AND w.status = 'finished'
+               AND s.deleted_at IS NULL
+               AND w.deleted_at IS NULL
+               AND ${setScope.clause}
+               AND ${workoutScope.clause}`,
+            ...exerciseIds,
+            excludeWorkoutId,
+            ...setScope.params,
+            ...workoutScope.params
+        )
+    },
+
+    // One light row per live Set of every live Workout, with its Exercise's
+    // name, type and primary Muscle, so the history list and its stats are
+    // summarized in one read instead of one query per Workout.
+    async getAllSetRows(): Promise<SetSummaryRow[]> {
+        const db = await getDb()
+        const setScope = buildPrincipalWhereClause('s.user_id')
+        const workoutScope = buildPrincipalWhereClause('w.user_id')
+        return await db.getAllAsync<SetSummaryRow>(
+            `SELECT s.workout_id, s.exercise_id, s.weight, s.reps, s.sub_sets, s.position,
+                    e.name as exercise_name, e.type as exercise_type,
+                    e.muscle_group as muscle_group, e.primary_muscle as primary_muscle
+             FROM sets s
+             JOIN exercises e ON s.exercise_id = e.id
+             JOIN workouts w ON s.workout_id = w.id
+             WHERE s.deleted_at IS NULL
+               AND w.deleted_at IS NULL
+               AND ${setScope.clause}
+               AND ${workoutScope.clause}
+             ORDER BY s.workout_id, s.position ASC, s.id ASC`,
+            ...setScope.params,
+            ...workoutScope.params
         )
     },
 

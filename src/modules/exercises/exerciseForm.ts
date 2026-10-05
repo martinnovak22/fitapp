@@ -159,24 +159,7 @@ export function resolveExerciseSavePlan(input: {
     return { kind: 'update', exerciseId: input.resolvedExerciseId }
 }
 
-/** Translation keys + interpolated name for the success toast after a save. */
-export type ExerciseSavedToast = {
-    titleKey: 'exerciseUpdated' | 'exerciseCreated'
-    messageNameKey: 'updated' | 'ready'
-    name: string
-}
-
-/**
- * The success-toast content for a saved exercise: editing reports an update,
- * otherwise a creation. The screen passes the keys through i18n.
- */
-export function resolveExerciseSavedToast(isEditing: boolean, name: string): ExerciseSavedToast {
-    return isEditing
-        ? { titleKey: 'exerciseUpdated', messageNameKey: 'updated', name }
-        : { titleKey: 'exerciseCreated', messageNameKey: 'ready', name }
-}
-
-/** A selectable exercise type chip with its active state for the current type. */
+/** A selectable exercise type segment with its active state for the current type. */
 export type ExerciseTypeOption = {
     value: ExerciseType
     labelKey: 'typeWeight' | 'typeCardio' | 'typeBodyweight'
@@ -184,18 +167,19 @@ export type ExerciseTypeOption = {
 }
 
 /**
- * The three primary exercise-type chips with their active state. `bodyweight_timer`
- * shares the `bodyweight` chip, so that chip reads active for both bodyweight modes.
+ * The three exercise-type segments, most common first, with their active state.
+ * `bodyweight_timer` shares the `bodyweight` segment, so it reads active for both
+ * bodyweight Tracking Modes.
  */
 export function resolveExerciseTypeOptions(type: ExerciseType): ExerciseTypeOption[] {
     const options: ExerciseTypeOption[] = [
         { value: 'weight', labelKey: 'typeWeight', isActive: type === 'weight' },
-        { value: 'cardio', labelKey: 'typeCardio', isActive: type === 'cardio' },
         {
             value: 'bodyweight',
             labelKey: 'typeBodyweight',
             isActive: type === 'bodyweight' || type === 'bodyweight_timer',
         },
+        { value: 'cardio', labelKey: 'typeCardio', isActive: type === 'cardio' },
     ]
     return options
 }

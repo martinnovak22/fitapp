@@ -1,10 +1,13 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { Redirect, Tabs } from 'expo-router'
 import type React from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useWorkoutRepo } from '@/src/data/RepositoryContext'
 import { useAuth } from '@/src/modules/auth/useAuth'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
+import { onActiveWorkoutChanged } from '@/src/modules/workout/activeWorkoutSignal'
 
 export { ErrorBoundary } from '@/src/modules/core/components/ErrorBoundary'
 
@@ -18,6 +21,17 @@ export default function TabLayout() {
     const { theme } = useTheme()
     const insets = useSafeAreaInsets()
     const { isAuthRequired, isAuthenticated, isInitialized } = useAuth()
+    const workoutRepo = useWorkoutRepo()
+    // A running Workout marks the Workout tab with a dot, so it can be found
+    // from any other tab. Re-checked whenever a tab gains focus.
+    const [hasActiveWorkout, setHasActiveWorkout] = useState(false)
+    const refreshActiveWorkout = useCallback(() => {
+        workoutRepo
+            .getActiveWorkout()
+            .then((active) => setHasActiveWorkout(active !== null))
+            .catch(() => {})
+    }, [workoutRepo])
+    useEffect(() => onActiveWorkoutChanged(refreshActiveWorkout), [refreshActiveWorkout])
 
     // Declarative guard only — index.tsx is the primary gatekeeper; this is the
     // belt-and-braces redirect for direct/deep-linked navigation into a tab.
@@ -28,6 +42,7 @@ export default function TabLayout() {
 
     return (
         <Tabs
+            screenListeners={{ focus: refreshActiveWorkout }}
             screenOptions={{
                 tabBarActiveTintColor: theme.primary,
                 tabBarInactiveTintColor: theme.textSecondary,
@@ -52,6 +67,15 @@ export default function TabLayout() {
                 options={{
                     title: t('workout'),
                     tabBarIcon: ({ color }) => <TabBarIcon name="heartbeat" color={color} />,
+                    tabBarBadge: hasActiveWorkout ? '' : undefined,
+                    tabBarBadgeStyle: {
+                        backgroundColor: theme.primary,
+                        minWidth: 10,
+                        maxHeight: 10,
+                        borderRadius: 5,
+                        marginTop: 4,
+                    },
+                    tabBarAccessibilityLabel: hasActiveWorkout ? `${t('workout')}, ${t('workoutRunning')}` : undefined,
                 }}
             />
             <Tabs.Screen

@@ -1,51 +1,15 @@
 import { StyleSheet } from 'react-native'
-import { Theme } from './Colors'
-import { Radius } from './Radius'
 import { Spacing } from './Spacing'
-import { FontSize, FontWeight } from './Typography'
 
 export const GlobalStyles = StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: Spacing.md,
     },
-    title: {
-        fontSize: FontSize.xxl,
-        fontWeight: FontWeight.bold,
-    },
-    subtitle: {
-        fontSize: FontSize.lg,
-        fontWeight: FontWeight.semibold,
-    },
     card: {
         padding: Spacing.md,
         borderRadius: Spacing.md,
         marginBottom: Spacing.md,
         borderWidth: 1,
-    },
-    text: {
-        fontSize: FontSize.md,
-    },
-    input: {
-        padding: Spacing.md,
-        borderRadius: Radius.sm,
-        borderWidth: 1,
-        marginBottom: Spacing.md,
-    },
-    fab: {
-        position: 'absolute',
-        right: Spacing.lg,
-        bottom: Spacing.lg,
-        backgroundColor: Theme.primary,
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 6,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.27,
-        shadowRadius: 4.65,
     },
 })

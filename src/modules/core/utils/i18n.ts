@@ -6,6 +6,10 @@ import { initReactI18next } from 'react-i18next'
 import cs from '@/src/locales/cs.json'
 import en from '@/src/locales/en.json'
 import { log } from '@/src/modules/core/utils/logger'
+import { installPluralRules } from './pluralRules'
+
+// Before init: i18next reads Intl.PluralRules when it sets up a language.
+installPluralRules()
 
 const resources = {
     en: { translation: en },

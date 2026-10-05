@@ -12,6 +12,8 @@ export const FontSize = {
     lg: 18,
     xl: 20,
     xxl: 24,
+    // Hero numbers only (a running workout clock): one per screen at most.
+    display: 34,
 } as const
 
 /**

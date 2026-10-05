@@ -1,4 +1,5 @@
 import type { Exercise } from '@/src/db/exercises'
+import { foldText } from '@/src/utils/foldText'
 
 export type DuplicateGroup = {
     normalizedName: string
@@ -10,13 +11,7 @@ export type DuplicateGroup = {
 // Normalize an Exercise name into its match key: trim, collapse internal
 // whitespace, lowercase, and fold diacritics so Czech names with and without
 // accents match. Affects matching only — never the stored name.
-export const normalizeExerciseName = (name: string): string =>
-    name
-        .normalize('NFD')
-        .replace(/\p{Diacritic}/gu, '')
-        .trim()
-        .replace(/\s+/g, ' ')
-        .toLowerCase()
+export const normalizeExerciseName = (name: string): string => foldText(name)
 
 // Deterministic survivor pre-selection (ADR-0005), in priority order:
 // oldest created_at → most referencing Sets → synced over unsynced → lowest

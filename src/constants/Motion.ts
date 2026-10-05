@@ -22,13 +22,6 @@ export const Duration = {
     shimmer: 800,
 } as const
 
-// List/stagger tuning: each item is offset by STEP, capped at MAX so long
-// lists don't accumulate a visible lag at the tail.
-const STAGGER_STEP_MS = 45
-const STAGGER_MAX_INDEX = 8
-
-export const staggerDelay = (index: number) => Math.min(index, STAGGER_MAX_INDEX) * STAGGER_STEP_MS
-
 // Each helper returns a fresh builder so callers can chain (`.delay(...)`)
 // without mutating a shared instance. Hoist the result to a module-level
 // constant rather than calling these in a render body — entering/exiting/layout
@@ -49,6 +42,4 @@ export const Motion = {
     // --- presets ----------------------------------------------------------
     // Content sliding into a screen/section on mount.
     screenEnter: () => FadeInDown.duration(Duration.slow),
-    // Staggered list/grid item entrance.
-    listItem: (index: number) => FadeInDown.delay(staggerDelay(index)).duration(Duration.slow),
 }
