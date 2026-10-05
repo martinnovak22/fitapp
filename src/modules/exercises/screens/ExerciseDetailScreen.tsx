@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
 import { useExerciseRepo } from '@/src/data/RepositoryContext'
+import { deleteLocalPhoto } from '@/src/data/sync/photoStorage'
 import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Exercise } from '@/src/db/exercises'
 import { Button } from '@/src/modules/core/components/Button'
@@ -116,7 +117,7 @@ export default function ExerciseDetailScreen() {
     const handleDelete = useCallback(() => {
         showToast.confirm({
             title: t('deleteExerciseTitle'),
-            message: t('deleteExerciseConfirm'),
+            message: t('deleteExerciseWarning'),
             icon: 'trash',
             tone: 'danger',
             action: {
@@ -124,6 +125,7 @@ export default function ExerciseDetailScreen() {
                 onPress: async () => {
                     if (exercise) {
                         await exerciseRepo.delete(exercise.id)
+                        await deleteLocalPhoto(exercise.photo_uri ?? null)
                         router.replace('/(tabs)/exercises')
                         showToast.success({
                             title: t('exerciseDeleted'),

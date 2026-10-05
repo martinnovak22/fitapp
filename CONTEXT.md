@@ -29,7 +29,7 @@ Not distinct entities — both are simply a Set containing multiple SubSets. The
 _Avoid_: treating these as typed set variants
 
 **Exercise**:
-A named movement a user records Sets against (e.g. "Bench Press"), owned by a principal and carrying an ExerciseType.
+A named movement a user records Sets against (e.g. "Bench Press"), owned by a principal and carrying an ExerciseType. Deleting one is a soft delete: the row stays with `deleted_at` set, so its Sets stay in Workout history, but it leaves the Exercise list, pickers and Workout Templates. See [ADR-0008](docs/adr/0008-exercise-soft-delete.md).
 _Avoid_: movement, lift
 
 **ExerciseType**:
@@ -115,7 +115,7 @@ The queue of rows eligible to push — those whose Sync Status is `dirty` or `fa
 _Avoid_: queue, push list
 
 **Deletion Tombstone**:
-A record that an entity was deleted, kept so the deletion propagates to remote after the local row is gone.
+A record that an entity was deleted, kept so the deletion propagates to remote. Workouts, Sets and Workout Templates are removed locally; a deleted Exercise keeps its row (soft delete), and its Tombstone also stops a live-rows pull from bringing it back.
 _Avoid_: delete marker, gravestone
 
 **Sync State**:

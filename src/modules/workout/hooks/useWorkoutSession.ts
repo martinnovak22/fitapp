@@ -24,6 +24,9 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     const [workout, setWorkout] = useState<Workout | null>(null)
     const [sets, setSets] = useState<SetWithExercise[]>([])
     const [exercises, setExercises] = useState<Exercise[]>([])
+    // Deleted Exercises that still have Sets here. Their Sets stay editable,
+    // but the picker never offers them.
+    const [deletedSetExercises, setDeletedSetExercises] = useState<Exercise[]>([])
     const [template, setTemplate] = useState<WorkoutTemplate | null>(null)
     const [loading, setLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
@@ -48,10 +51,11 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         setLoadError(null)
 
         try {
-            const [w, s, ex] = await Promise.all([
+            const [w, s, ex, setEx] = await Promise.all([
                 workoutRepo.getById(workoutId),
                 workoutRepo.getSets(workoutId),
                 exerciseRepo.getAll(),
+                workoutRepo.getSetExercises(workoutId),
             ])
 
             if (!w) {
@@ -67,6 +71,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             setTemplate(nextTemplate)
             setSets(s as SetWithExercise[])
             setExercises(ex)
+            setDeletedSetExercises(setEx.filter((exercise) => exercise.deleted_at))
         } catch (e) {
             log('error', 'Failed to load workout session', e)
             setLoadError(t('failedToLoadWorkoutSession'))
@@ -217,6 +222,11 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
         [exercises, sets, template, workout?.template_uuid]
     )
 
+    const editableExercises = useMemo(
+        () => (deletedSetExercises.length > 0 ? [...exercises, ...deletedSetExercises] : exercises),
+        [exercises, deletedSetExercises]
+    )
+
     const exerciseNamesOrder = [...new Set(sets.map((s) => s.exercise_name))]
     const groupedSets = sets.reduce(
         (acc, set) => {
@@ -268,7 +278,7 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     return {
         workout,
         sets,
-        exercises,
+        exercises: editableExercises,
         pickerExercises: picker.exercises,
         pickerScope: picker.scope,
         loading,

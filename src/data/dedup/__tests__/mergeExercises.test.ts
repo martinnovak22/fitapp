@@ -111,7 +111,7 @@ describe('mergeDuplicateExercises', () => {
         expect((await setRow('s-1'))?.sync_status).toBe('dirty')
     })
 
-    it('deletes each duplicate with a tombstone while leaving the survivor and re-pointed Sets intact', async () => {
+    it('soft-deletes each duplicate with a tombstone while leaving the survivor and re-pointed Sets intact', async () => {
         const survivor = await insertExercise('ex-survivor', 'Bench Press')
         const duplicate = await insertExercise('ex-dup', 'Bench Press')
         const workout = await insertWorkout('w-1')
@@ -120,10 +120,15 @@ describe('mergeDuplicateExercises', () => {
         const result = await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [duplicate] })
 
         expect(result.exercisesDeleted).toBe(1)
-        // Duplicate row is gone; survivor remains.
-        const exRows = await db.getAllAsync<{ id: number }>(`SELECT id FROM exercises`)
-        expect(exRows.map((r) => r.id)).toEqual([survivor])
-        // The Set survived (re-point ran before delete, so the cascade did not fire).
+        // The duplicate stays as a soft-deleted row (so a Set another device
+        // logs against it still links on pull); only the survivor is live.
+        const exRows = await db.getAllAsync<{ id: number; deleted_at: string | null }>(
+            `SELECT id, deleted_at FROM exercises ORDER BY id`
+        )
+        expect(exRows).toEqual([
+            { id: survivor, deleted_at: null },
+            { id: duplicate, deleted_at: expect.any(String) },
+        ])
         expect((await setRow('s-1'))?.exercise_id).toBe(survivor)
         // A dirty tombstone records the duplicate's uuid for propagation.
         const tomb = await db.getFirstAsync<{ entity_uuid: string; sync_status: string }>(
@@ -131,6 +136,24 @@ describe('mergeDuplicateExercises', () => {
         )
         expect(tomb?.entity_uuid).toBe('ex-dup')
         expect(tomb?.sync_status).toBe('dirty')
+    })
+
+    it('is a no-op when the survivor was deleted meanwhile', async () => {
+        const survivor = await insertExercise('ex-survivor', 'Bench Press')
+        const duplicate = await insertExercise('ex-dup', 'Bench Press')
+        const workout = await insertWorkout('w-1')
+        await insertSet('s-1', workout, duplicate)
+        await db.runAsync(`UPDATE exercises SET deleted_at = '2026-02-01T00:00:00Z' WHERE id = ?`, survivor)
+
+        const result = await mergeDuplicateExercises({ survivorId: survivor, duplicateIds: [duplicate] })
+
+        expect(result).toEqual({ setsRepointed: 0, exercisesDeleted: 0, templatesRepointed: 0 })
+        expect((await setRow('s-1'))?.exercise_id).toBe(duplicate)
+        const dup = await db.getFirstAsync<{ deleted_at: string | null }>(
+            'SELECT deleted_at FROM exercises WHERE id = ?',
+            duplicate
+        )
+        expect(dup?.deleted_at).toBeNull()
     })
 
     it('is a no-op when no duplicate ids remain after excluding the survivor', async () => {

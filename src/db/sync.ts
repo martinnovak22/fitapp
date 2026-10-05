@@ -17,7 +17,8 @@ export const recordDeletionTombstone = async (
     db: SQLite.SQLiteDatabase,
     entityType: SyncEntityType,
     entityUuid: string,
-    userId?: string | null
+    userId?: string | null,
+    deletedAt: string = nowIso()
 ) => {
     await db.runAsync(
         `INSERT INTO deletion_tombstones (entity_type, entity_uuid, user_id, deleted_at, sync_status)
@@ -25,13 +26,14 @@ export const recordDeletionTombstone = async (
         entityType,
         entityUuid,
         userId ?? null,
-        nowIso()
+        deletedAt
     )
 }
 
 // Hard-delete a row by id within the current principal scope, first recording a
 // deletion tombstone so the removal propagates on the next sync. Shared by the
 // per-entity repositories whose delete logic differs only by table + type.
+// Exercises are soft-deleted instead (see softDeleteExercise).
 export const softDeleteById = async (table: string, entityType: SyncEntityType, id: number): Promise<void> => {
     await executeWriteTransaction(async (db) => {
         const scope = buildPrincipalWhereClause('user_id')
