@@ -6,6 +6,7 @@ import { initReactI18next } from 'react-i18next'
 import cs from '@/src/locales/cs.json'
 import en from '@/src/locales/en.json'
 import { log } from '@/src/modules/core/utils/logger'
+import { setDecimalSeparator } from '@/src/utils/decimal'
 import { installPluralRules } from './pluralRules'
 
 // Before init: i18next reads Intl.PluralRules when it sets up a language.
@@ -37,6 +38,10 @@ const languageDetector = {
         AsyncStorage.setItem(LANGUAGE_KEY, language).catch((error) => log('error', 'cacheUserLanguage', error))
     },
 }
+
+// Registered before init, so numbers already use the new separator when
+// react-i18next re-renders for the new language.
+i18n.on('languageChanged', setDecimalSeparator)
 
 // eslint-disable-next-line import/no-named-as-default-member
 i18n.use(languageDetector)

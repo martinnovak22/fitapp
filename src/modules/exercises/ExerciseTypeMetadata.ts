@@ -1,15 +1,13 @@
 import type { ExerciseType } from '@/src/db/exercises'
 // biome-ignore lint/suspicious/noShadowRestrictedNames: domain model, not JS Set
 import type { Set } from '@/src/db/workouts'
+import { formatDecimal, formatFixed } from '@/src/utils/decimal'
 import { formatDuration } from '@/src/utils/formatters'
 
 export type PrimaryMetric = 'weight' | 'reps' | 'distance' | 'duration'
 type MetricUnit = 'kg' | 'reps' | 'm' | ''
 
-const formatCompactWeight = (value: number): string => {
-    const rounded = Math.round(value * 100) / 100
-    return rounded.toString()
-}
+const formatCompactWeight = (value: number): string => formatDecimal(value)
 
 // Signed compact weight for the bodyweight context suffix: vest shows `+10`,
 // assistance shows `-20`. Caller drops this entirely when weight is zero.
@@ -19,7 +17,7 @@ const formatSignedWeight = (value: number): string => {
 }
 
 const formatCompactDistance = (meters: number): string =>
-    meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${Math.round(meters)}m`
+    meters >= 1000 ? `${formatFixed(meters / 1000, 1)}km` : `${Math.round(meters)}m`
 
 const metricUnit: Record<PrimaryMetric, MetricUnit> = {
     weight: 'kg',
@@ -77,7 +75,7 @@ const formatRawMetric = (metric: PrimaryMetric, value: number): string => {
         case 'reps':
             return Math.round(value).toString()
         case 'distance':
-            return value.toFixed(2)
+            return formatFixed(value, 2)
         case 'duration':
             return formatDuration(value)
     }

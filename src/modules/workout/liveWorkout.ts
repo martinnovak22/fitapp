@@ -11,6 +11,7 @@ import {
     formatCompactSetLabel,
     getSetMetricValue,
 } from '@/src/modules/exercises/ExerciseTypeMetadata'
+import { formatDecimal } from '@/src/utils/decimal'
 import { buildSetPayload, type SetFormValues } from './setPayload'
 import { parseSubSets } from './workoutUtils'
 
@@ -27,7 +28,7 @@ export const EMPTY_VALUES: SetFormValues = {
 export type SubSetValues = { weight: string; reps: string }
 
 const numberText = (value: number | null | undefined): string =>
-    value === null || value === undefined ? '' : String(Math.round(value * 100) / 100)
+    value === null || value === undefined ? '' : formatDecimal(value)
 
 // A stored Set as the strings its row's inputs show. Duration is stored in
 // minutes and shown as whole minutes plus seconds.
