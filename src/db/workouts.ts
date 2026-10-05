@@ -193,7 +193,9 @@ export const WorkoutRepository = {
         )
     },
 
-    async addSet(workoutId: number, exerciseId: number, data: SetData): Promise<void> {
+    // Returns the new Set's uuid, so the live workout can keep it in place.
+    async addSet(workoutId: number, exerciseId: number, data: SetData): Promise<string> {
+        const uuid = createEntityUuid()
         await executeWriteTransaction(async (db) => {
             const workoutScope = buildPrincipalWhereClause('w.user_id')
             const exerciseScope = buildPrincipalWhereClause('e.user_id')
@@ -233,7 +235,7 @@ export const WorkoutRepository = {
                 `INSERT INTO sets
                  (uuid, user_id, workout_id, exercise_id, weight, reps, distance, duration, position, sub_sets, created_at, updated_at, sync_status)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                createEntityUuid(),
+                uuid,
                 getScopedUserId(),
                 workoutId,
                 exerciseId,
@@ -247,6 +249,29 @@ export const WorkoutRepository = {
                 now,
                 'dirty'
             )
+        })
+        return uuid
+    },
+
+    // Stores the order Sets were shown in (a Set checked out of order keeps
+    // its row), so the next Workout's PREVIOUS lines up row by row.
+    async updateSetPositions(updates: readonly { id: number; position: number }[]): Promise<void> {
+        if (updates.length === 0) return
+        const scope = buildPrincipalWhereClause('user_id')
+        const now = nowIso()
+        await executeWriteTransaction(async (db) => {
+            for (const { id, position } of updates) {
+                await db.runAsync(
+                    `UPDATE sets
+                     SET position = ?, updated_at = ?, sync_status = ?
+                     WHERE id = ? AND ${scope.clause}`,
+                    position,
+                    now,
+                    'dirty',
+                    id,
+                    ...scope.params
+                )
+            }
         })
     },
 

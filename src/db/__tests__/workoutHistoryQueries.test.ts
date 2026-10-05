@@ -117,3 +117,25 @@ describe('WorkoutRepository.getAllSetRows', () => {
         ])
     })
 })
+
+describe('WorkoutRepository.addSet and updateSetPositions', () => {
+    it('returns the new uuid and stores a shown order', async () => {
+        const workout = await insertWorkout('w-live', 'in_progress')
+        const bench = await insertExercise('ex-bench')
+        const first = await WorkoutRepository.addSet(workout, bench, { weight: 60, reps: 8 })
+        const second = await WorkoutRepository.addSet(workout, bench, { weight: 70, reps: 6 })
+        expect(first).not.toBe(second)
+
+        const before = await WorkoutRepository.getSets(workout)
+        expect(before.map((s) => s.uuid)).toEqual([first, second])
+
+        const [a, b] = before
+        await WorkoutRepository.updateSetPositions([
+            { id: a.id, position: b.position },
+            { id: b.id, position: a.position },
+        ])
+        const after = await WorkoutRepository.getSets(workout)
+        expect(after.map((s) => s.uuid)).toEqual([second, first])
+        expect(after.every((s) => s.sync_status === 'dirty')).toBe(true)
+    })
+})

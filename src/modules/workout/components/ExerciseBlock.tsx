@@ -12,6 +12,7 @@ import { OverflowMenu, type OverflowMenuItem } from '@/src/modules/core/componen
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import {
+    type BlockRow,
     type DraftRow,
     formatPrevious,
     mergeLoggedEdit,
@@ -58,8 +59,9 @@ export type ExerciseBlockHandlers = {
 
 type ExerciseBlockProps = ExerciseBlockHandlers & {
     exercise: Exercise
-    logged: SetWithExerciseName[]
-    drafts: DraftRow[]
+    // Logged Sets and draft rows in the order they are shown; a Set checked
+    // out of order keeps its row.
+    rows: BlockRow<SetWithExerciseName>[]
     // The Sets of last time, by row.
     previous: readonly WorkoutSet[]
     readOnly: boolean
@@ -69,7 +71,8 @@ type ExerciseBlockProps = ExerciseBlockHandlers & {
 // Logged rows (Sets) and unchecked draft rows share the layout; ✓ turns a
 // draft into a Set, and unticking a Set turns it back into a draft.
 function ExerciseBlockInner(props: ExerciseBlockProps) {
-    const { exercise, logged, drafts, previous, readOnly } = props
+    const { exercise, rows, previous, readOnly } = props
+    const loggedCount = rows.filter((row) => row.kind === 'set').length
     const { t } = useTranslation()
     const { theme } = useTheme()
     const columns = resolveSetColumns(exercise.type)
@@ -80,7 +83,7 @@ function ExerciseBlockInner(props: ExerciseBlockProps) {
             label: t('removeExercise'),
             icon: 'trash',
             destructive: true,
-            onPress: () => props.onRemoveExercise(exercise, logged.length),
+            onPress: () => props.onRemoveExercise(exercise, loggedCount),
         },
     ]
 
@@ -106,86 +109,88 @@ function ExerciseBlockInner(props: ExerciseBlockProps) {
                 {!readOnly && <View style={styles.checkCell} />}
             </View>
 
-            {logged.map((set, index) => (
-                <LoggedSet
-                    key={set.id}
-                    exercise={exercise}
-                    set={set}
-                    index={index}
-                    columns={columns}
-                    previousLabel={formatPrevious(exercise.type, previous[index])}
-                    readOnly={readOnly}
-                    onEditLogged={props.onEditLogged}
-                    onUnlog={props.onUnlog}
-                    onDeleteLogged={props.onDeleteLogged}
-                    onRegisterFlush={props.onRegisterFlush}
-                />
-            ))}
-
-            {!readOnly &&
-                drafts.map((row, draftIndex) => {
-                    const index = logged.length + draftIndex
-                    const previousSet = previous[index]
+            {rows.map((blockRow, index) => {
+                if (blockRow.kind === 'set') {
+                    const { set } = blockRow
                     return (
-                        <View key={row.key}>
-                            <SetRow
-                                label={row.subSets ? t('dropSetMarker') : String(index + 1)}
-                                previousLabel={formatPrevious(exercise.type, previousSet)}
-                                onCopyPrevious={
-                                    previousSet
-                                        ? () => props.onDraftCopy(exercise.id, row.key, valuesFromSet(previousSet))
-                                        : undefined
-                                }
-                                columns={columns}
-                                values={row.values}
-                                logged={false}
-                                readOnly={false}
-                                onChange={(field, value) => props.onDraftValue(exercise.id, row.key, field, value)}
-                                onToggle={() => props.onLogDraft(exercise, row)}
-                                menuItems={[
-                                    {
-                                        key: 'drop',
-                                        label: row.subSets ? t('normalSet') : t('dropSet'),
-                                        icon: row.subSets ? 'minus' : 'level-down',
-                                        onPress: () => props.onDraftToggleDrop(exercise.id, row.key),
-                                    },
-                                    {
-                                        key: 'delete',
-                                        label: t('deleteSet'),
-                                        icon: 'trash',
-                                        destructive: true,
-                                        onPress: () => props.onDraftRemove(exercise.id, row.key),
-                                    },
-                                ]}
-                            />
-                            <Collapsible expanded={row.subSets !== null}>
-                                {row.subSets?.map((sub, subIndex) => (
-                                    <SubSetRow
-                                        // biome-ignore lint/suspicious/noArrayIndexKey: drop stages have no identity but their order
-                                        key={subIndex}
-                                        index={subIndex}
-                                        values={sub}
-                                        logged={false}
-                                        readOnly={false}
-                                        onChange={(field, value) =>
-                                            props.onDraftSubSet(exercise.id, row.key, subIndex, field, value)
-                                        }
-                                        onRemove={() => props.onDraftRemoveSubSet(exercise.id, row.key, subIndex)}
-                                    />
-                                ))}
-                                <View style={styles.addDropRow}>
-                                    <TouchableOpacity
-                                        onPress={() => props.onDraftAddSubSet(exercise.id, row.key)}
-                                        style={styles.addDrop}
-                                        accessibilityRole={'button'}
-                                    >
-                                        <Typography.Label color={'textSecondary'}>{t('addDrop')}</Typography.Label>
-                                    </TouchableOpacity>
-                                </View>
-                            </Collapsible>
-                        </View>
+                        <LoggedSet
+                            key={set.id}
+                            exercise={exercise}
+                            set={set}
+                            index={index}
+                            columns={columns}
+                            previousLabel={formatPrevious(exercise.type, previous[index])}
+                            readOnly={readOnly}
+                            onEditLogged={props.onEditLogged}
+                            onUnlog={props.onUnlog}
+                            onDeleteLogged={props.onDeleteLogged}
+                            onRegisterFlush={props.onRegisterFlush}
+                        />
                     )
-                })}
+                }
+                if (readOnly) return null
+                const { row } = blockRow
+                const previousSet = previous[index]
+                return (
+                    <View key={row.key}>
+                        <SetRow
+                            label={row.subSets ? t('dropSetMarker') : String(index + 1)}
+                            previousLabel={formatPrevious(exercise.type, previousSet)}
+                            onCopyPrevious={
+                                previousSet
+                                    ? () => props.onDraftCopy(exercise.id, row.key, valuesFromSet(previousSet))
+                                    : undefined
+                            }
+                            columns={columns}
+                            values={row.values}
+                            logged={false}
+                            readOnly={false}
+                            onChange={(field, value) => props.onDraftValue(exercise.id, row.key, field, value)}
+                            onToggle={() => props.onLogDraft(exercise, row)}
+                            menuItems={[
+                                {
+                                    key: 'drop',
+                                    label: row.subSets ? t('normalSet') : t('dropSet'),
+                                    icon: row.subSets ? 'minus' : 'level-down',
+                                    onPress: () => props.onDraftToggleDrop(exercise.id, row.key),
+                                },
+                                {
+                                    key: 'delete',
+                                    label: t('deleteSet'),
+                                    icon: 'trash',
+                                    destructive: true,
+                                    onPress: () => props.onDraftRemove(exercise.id, row.key),
+                                },
+                            ]}
+                        />
+                        <Collapsible expanded={row.subSets !== null}>
+                            {row.subSets?.map((sub, subIndex) => (
+                                <SubSetRow
+                                    // biome-ignore lint/suspicious/noArrayIndexKey: drop stages have no identity but their order
+                                    key={subIndex}
+                                    index={subIndex}
+                                    values={sub}
+                                    logged={false}
+                                    readOnly={false}
+                                    onChange={(field, value) =>
+                                        props.onDraftSubSet(exercise.id, row.key, subIndex, field, value)
+                                    }
+                                    onRemove={() => props.onDraftRemoveSubSet(exercise.id, row.key, subIndex)}
+                                />
+                            ))}
+                            <View style={styles.addDropRow}>
+                                <TouchableOpacity
+                                    onPress={() => props.onDraftAddSubSet(exercise.id, row.key)}
+                                    style={styles.addDrop}
+                                    accessibilityRole={'button'}
+                                >
+                                    <Typography.Label color={'textSecondary'}>{t('addDrop')}</Typography.Label>
+                                </TouchableOpacity>
+                            </View>
+                        </Collapsible>
+                    </View>
+                )
+            })}
 
             {!readOnly && (
                 <View style={styles.addSetRow}>
