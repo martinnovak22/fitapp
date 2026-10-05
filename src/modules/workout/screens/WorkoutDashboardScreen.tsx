@@ -12,6 +12,7 @@ import type { WorkoutTemplate } from '@/src/db/workoutTemplates'
 import type { MuscleGroup } from '@/src/domain/exerciseTaxonomy'
 import { Button } from '@/src/modules/core/components/Button'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
+import { InitialsAvatar } from '@/src/modules/core/components/InitialsAvatar'
 import { ListRow } from '@/src/modules/core/components/ListRow'
 import { ListSection } from '@/src/modules/core/components/ListSection'
 import { Appear } from '@/src/modules/core/components/motion'
@@ -25,7 +26,6 @@ import { nextHasLoadedOnce, shouldShowSkeleton } from '@/src/modules/core/utils/
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { muscleGroupLabel } from '@/src/modules/exercises/taxonomyLabels'
-import { PlanAvatar } from '@/src/modules/templates/components/PlanAvatar'
 import { summarizeTemplates, type TemplateSummary, templateSubtitle } from '@/src/modules/templates/templateSummary'
 import { formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
 import { notifyActiveWorkoutChanged } from '../activeWorkoutSignal'
@@ -305,7 +305,7 @@ export default function WorkoutDashboardScreen() {
                                 key={summary.template.id}
                                 label={summary.template.name}
                                 subtitle={templateSubtitle(t, summary)}
-                                leading={<PlanAvatar name={summary.template.name} />}
+                                leading={<InitialsAvatar name={summary.template.name} />}
                                 trailing={<FontAwesome name={'play'} size={12} color={theme.textSecondary} />}
                                 onPress={() => startWorkout(summary.template)}
                                 disabled={isStartingWorkout}
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
         alignItems: 'baseline',
         gap: Spacing.sm,
     },
-    // Same width as a PlanAvatar, so row text lines up under the plans.
+    // Same width as an InitialsAvatar, so row text lines up under the plans.
     leadingSlot: {
         width: 40,
         alignItems: 'center',

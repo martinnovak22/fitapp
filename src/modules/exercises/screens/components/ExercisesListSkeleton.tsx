@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
 import { SkeletonBlock, SkeletonPulse } from '@/src/modules/core/components/Skeleton'
@@ -7,52 +7,65 @@ import { useTheme } from '@/src/modules/core/hooks/useTheme'
 
 const SKELETON_ROW_COUNT = 8
 
+// The library's shape while it loads: search, filter chips, grouped rows.
 export function ExercisesListSkeleton() {
     const { theme } = useTheme()
     const { t } = useTranslation()
 
     return (
-        <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 80 }}
-            accessibilityRole="progressbar"
-            accessibilityLabel={t('loading')}
-            aria-busy
-        >
-            <SkeletonPulse>
-                {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
-                    <View
-                        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-                        key={i}
-                        style={[skeletonStyles.cardInner, { backgroundColor: theme.card, borderColor: theme.border }]}
-                    >
-                        <SkeletonBlock width={44} height={44} borderRadius={Radius.sm} />
-                        <View style={skeletonStyles.content}>
-                            <SkeletonBlock width="65%" height={16} borderRadius={2} />
-                            <SkeletonBlock width="45%" height={13} borderRadius={2} style={{ marginTop: Spacing.xs }} />
-                        </View>
-                        <SkeletonBlock width={20} height={20} borderRadius={4} />
+        <SkeletonPulse>
+            <View style={styles.root} accessibilityRole="progressbar" accessibilityLabel={t('loading')} aria-busy>
+                <View style={styles.controls}>
+                    <SkeletonBlock width="100%" height={44} borderRadius={Radius.sm} />
+                    <View style={styles.chips}>
+                        <SkeletonBlock width={88} height={36} borderRadius={Radius.pill} />
+                        <SkeletonBlock width={112} height={36} borderRadius={Radius.pill} />
                     </View>
-                ))}
-            </SkeletonPulse>
-        </ScrollView>
+                </View>
+                <View style={[styles.group, { backgroundColor: theme.surface }]}>
+                    {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
+                        <View
+                            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+                            key={i}
+                            style={styles.row}
+                        >
+                            <SkeletonBlock width={40} height={40} borderRadius={Radius.sm} />
+                            <View style={styles.text}>
+                                <SkeletonBlock width="60%" height={16} />
+                                <SkeletonBlock width="40%" height={12} borderRadius={2} />
+                            </View>
+                        </View>
+                    ))}
+                </View>
+            </View>
+        </SkeletonPulse>
     )
 }
 
-const skeletonStyles = StyleSheet.create({
-    cardInner: {
+const styles = StyleSheet.create({
+    root: {
+        gap: Spacing.md,
+    },
+    controls: {
+        gap: Spacing.sm + Spacing.xs,
+    },
+    chips: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+    },
+    group: {
+        borderRadius: Radius.md,
+        overflow: 'hidden',
+    },
+    row: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: Spacing.sm + Spacing.xs,
+        gap: Spacing.sm + Spacing.xs,
         paddingHorizontal: Spacing.md,
-        borderRadius: Spacing.md,
-        marginBottom: Spacing.md,
-        borderWidth: 1,
-        minHeight: 56,
+        minHeight: 64,
     },
-    content: {
+    text: {
         flex: 1,
-        marginLeft: Spacing.md,
-        marginRight: Spacing.md,
+        gap: Spacing.xs,
     },
 })

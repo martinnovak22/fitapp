@@ -29,3 +29,9 @@ export const formatLocalDateYYYYMMDD = (value: Date = new Date()): string => {
     const day = String(value.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
 }
+
+/** Parse a YYYY-MM-DD string as a local-time date (new Date(str) would parse it as UTC). */
+export const parseLocalDate = (dateStr: string): Date => {
+    const [year, month, day] = dateStr.split('-').map(Number)
+    return new Date(year, month - 1, day)
+}

@@ -1,13 +1,10 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native'
-import { Radius } from '@/src/constants/Radius'
+import { ScrollView, StyleSheet, View } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
-import { FontSize } from '@/src/constants/Typography'
-import { useTheme } from '../hooks/useTheme'
 import { Button } from './Button'
 import { ListRow } from './ListRow'
+import { SearchField } from './SearchField'
 import { Sheet } from './Sheet'
 import { filterOptions, groupOptions, type SelectOption, shouldShowSearch, toggleValue } from './selectOptions'
 import { Typography } from './Typography'
@@ -45,7 +42,6 @@ type SelectSheetProps<V extends string> = SingleProps<V> | MultiProps<V>
 export function SelectSheet<V extends string>(props: SelectSheetProps<V>) {
     const { visible, onClose, title, options } = props
     const { t } = useTranslation()
-    const { theme } = useTheme()
     const [query, setQuery] = useState('')
 
     // A fresh search every time the sheet opens.
@@ -76,22 +72,7 @@ export function SelectSheet<V extends string>(props: SelectSheetProps<V>) {
                 props.mode === 'multi' ? <Button label={t('done')} variant={'text'} onPress={onClose} /> : undefined
             }
         >
-            {searchable && (
-                <View style={[styles.search, { backgroundColor: theme.inputBackground }]}>
-                    <FontAwesome name={'search'} size={14} color={theme.textSecondary} />
-                    <TextInput
-                        value={query}
-                        onChangeText={setQuery}
-                        placeholder={t('search')}
-                        placeholderTextColor={theme.textSecondary}
-                        style={[styles.searchInput, { color: theme.text }]}
-                        autoCorrect={false}
-                        autoCapitalize={'none'}
-                        returnKeyType={'search'}
-                        accessibilityLabel={t('search')}
-                    />
-                </View>
-            )}
+            {searchable && <SearchField value={query} onChangeText={setQuery} />}
             <ScrollView
                 keyboardShouldPersistTaps={'handled'}
                 style={styles.listScroll}
@@ -131,19 +112,6 @@ export function SelectSheet<V extends string>(props: SelectSheetProps<V>) {
 }
 
 const styles = StyleSheet.create({
-    search: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
-        borderRadius: Radius.sm,
-        paddingHorizontal: Spacing.md,
-        minHeight: 44,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: FontSize.md,
-        paddingVertical: Spacing.sm,
-    },
     // Rows run edge to edge of the sheet, like the rest of its list.
     listScroll: {
         marginHorizontal: -Spacing.md,

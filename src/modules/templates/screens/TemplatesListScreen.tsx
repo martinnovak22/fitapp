@@ -6,13 +6,13 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
 import { useExerciseRepo, useWorkoutTemplateRepo } from '@/src/data/RepositoryContext'
 import { Button } from '@/src/modules/core/components/Button'
+import { InitialsAvatar } from '@/src/modules/core/components/InitialsAvatar'
 import { ListRow } from '@/src/modules/core/components/ListRow'
 import { ListSection } from '@/src/modules/core/components/ListSection'
 import { ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { log } from '@/src/modules/core/utils/logger'
-import { PlanAvatar } from '../components/PlanAvatar'
 import { summarizeTemplates, type TemplateSummary, templateSubtitle } from '../templateSummary'
 
 const goBack = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/workout'))
@@ -81,7 +81,7 @@ export default function TemplatesListScreen() {
                             key={summary.template.id}
                             label={summary.template.name}
                             subtitle={templateSubtitle(t, summary)}
-                            leading={<PlanAvatar name={summary.template.name} />}
+                            leading={<InitialsAvatar name={summary.template.name} />}
                             accessory={'chevron'}
                             onPress={() => router.push(`/(tabs)/workout/templates/${summary.template.id}`)}
                             accessibilityHint={t('editTemplate')}

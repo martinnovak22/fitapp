@@ -3,13 +3,7 @@
 // Weeks start on Monday (cs and en-GB convention).
 
 import type { Workout } from '@/src/db/workouts'
-import { formatLocalDateYYYYMMDD } from '@/src/utils/dateTime'
-
-/** Parse a YYYY-MM-DD string as a local-time date (new Date(str) would parse it as UTC). */
-export const parseLocalDate = (dateStr: string): Date => {
-    const [year, month, day] = dateStr.split('-').map(Number)
-    return new Date(year, month - 1, day)
-}
+import { formatLocalDateYYYYMMDD, parseLocalDate } from '@/src/utils/dateTime'
 
 /** Monday 00:00 of the week containing the given date. */
 export const getWeekStart = (value: Date): Date => {

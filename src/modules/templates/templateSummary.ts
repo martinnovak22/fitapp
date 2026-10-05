@@ -31,12 +31,3 @@ export const templateSubtitle = (t: TFunction, summary: TemplateSummary): string
             ? [summary.muscleGroups.map((group) => muscleGroupLabel(t, group)).join(', ')]
             : []),
     ].join(' · ')
-
-// Up to two initials for a plan's avatar: "Push A" → "PA", "Monday" → "M".
-export const planInitials = (name: string): string =>
-    name
-        .trim()
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((word) => word.charAt(0).toLocaleUpperCase())
-        .join('')

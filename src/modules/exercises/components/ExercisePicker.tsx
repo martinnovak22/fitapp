@@ -1,14 +1,14 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
-import { Radius } from '@/src/constants/Radius'
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
-import { FontSize } from '@/src/constants/Typography'
 import type { Exercise } from '@/src/db/exercises'
-import { EQUIPMENT, MUSCLE_GROUPS, resolveExerciseMuscles } from '@/src/domain/exerciseTaxonomy'
+import { EQUIPMENT, MUSCLE_GROUPS } from '@/src/domain/exerciseTaxonomy'
 import { Button } from '@/src/modules/core/components/Button'
+import { FilterChip } from '@/src/modules/core/components/FilterChip'
 import { ListRow } from '@/src/modules/core/components/ListRow'
+import { SearchField } from '@/src/modules/core/components/SearchField'
 import { Sheet } from '@/src/modules/core/components/Sheet'
 import { toggleValue } from '@/src/modules/core/components/selectOptions'
 import { Typography } from '@/src/modules/core/components/Typography'
@@ -20,7 +20,7 @@ import {
     filterExercises,
     NO_FACETS,
 } from '../exerciseFilters'
-import { equipmentLabel, exerciseSummaryLine, muscleGroupLabel, muscleLabel } from '../taxonomyLabels'
+import { equipmentLabel, exerciseMuscleLabels, exerciseSummaryLine, muscleGroupLabel } from '../taxonomyLabels'
 
 type ExercisePickerProps = {
     visible: boolean
@@ -50,7 +50,6 @@ export function ExercisePicker({
     onAdd,
 }: ExercisePickerProps) {
     const { t } = useTranslation()
-    const { theme } = useTheme()
     const [query, setQuery] = useState('')
     const [facets, setFacets] = useState<ExerciseFacets>(NO_FACETS)
     const [selected, setSelected] = useState<string[]>([])
@@ -66,12 +65,10 @@ export function ExercisePicker({
     }, [visible])
 
     const sections = useMemo(() => {
-        // Search also matches the localized Muscle labels, so "záda" finds a lats Exercise.
-        const muscleLabels = (exercise: Exercise) => {
-            const { primary, secondary } = resolveExerciseMuscles(exercise)
-            return [primary, ...secondary].flatMap((key) => (key ? [muscleLabel(t, key)] : []))
-        }
-        const matching = filterByFacets(filterExercises(exercises, query, muscleLabels), facets)
+        const matching = filterByFacets(
+            filterExercises(exercises, query, (exercise) => exerciseMuscleLabels(t, exercise)),
+            facets
+        )
         return buildPickerSections(matching, priorityUuids)
     }, [exercises, facets, priorityUuids, query, t])
 
@@ -98,30 +95,7 @@ export function ExercisePicker({
         <Sheet visible={visible} onClose={onClose} title={title} tall footer={footer}>
             {view === 'list' ? (
                 <>
-                    <View style={[styles.search, { backgroundColor: theme.inputBackground }]}>
-                        <FontAwesome name={'search'} size={14} color={theme.textSecondary} />
-                        <TextInput
-                            value={query}
-                            onChangeText={setQuery}
-                            placeholder={t('searchExercises')}
-                            placeholderTextColor={theme.textSecondary}
-                            style={[styles.searchInput, { color: theme.text }]}
-                            selectionColor={theme.primary}
-                            autoCorrect={false}
-                            returnKeyType={'search'}
-                            accessibilityLabel={t('searchExercises')}
-                        />
-                        {query.length > 0 && (
-                            <TouchableOpacity
-                                onPress={() => setQuery('')}
-                                accessibilityRole={'button'}
-                                accessibilityLabel={t('clearSearch')}
-                                hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
-                            >
-                                <FontAwesome name={'times-circle'} size={16} color={theme.textSecondary} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                    <SearchField value={query} onChangeText={setQuery} placeholder={t('searchExercises')} />
                     <View style={styles.filters}>
                         <FilterChip
                             label={facets.muscleGroup ? muscleGroupLabel(t, facets.muscleGroup) : t('muscle')}
@@ -194,31 +168,6 @@ export function ExercisePicker({
     )
 }
 
-type FilterChipProps = { label: string; active: boolean; onPress: () => void }
-
-function FilterChip({ label, active, onPress }: FilterChipProps) {
-    const { theme } = useTheme()
-    return (
-        <TouchableOpacity
-            onPress={onPress}
-            style={[
-                styles.chip,
-                active
-                    ? { backgroundColor: `${theme.primary}1F`, borderColor: theme.primary }
-                    : { borderColor: theme.border },
-            ]}
-            hitSlop={{ top: 6, bottom: 6 }}
-            accessibilityRole={'button'}
-            accessibilityState={{ selected: active }}
-        >
-            <Typography.Label color={active ? 'primary' : 'text'} numberOfLines={1}>
-                {label}
-            </Typography.Label>
-            <FontAwesome name={'caret-down'} size={12} color={active ? theme.primary : theme.textSecondary} />
-        </TouchableOpacity>
-    )
-}
-
 type FacetListProps = {
     title: string
     options: { value: string; label: string }[]
@@ -267,32 +216,9 @@ function FacetList({ title, options, value, onBack, onSelect }: FacetListProps) 
 }
 
 const styles = StyleSheet.create({
-    search: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
-        borderRadius: Radius.sm,
-        paddingHorizontal: Spacing.md,
-        minHeight: 44,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: FontSize.md,
-        paddingVertical: Spacing.sm,
-    },
     filters: {
         flexDirection: 'row',
         gap: Spacing.sm,
-    },
-    chip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.xs + Spacing.xs2,
-        minHeight: 36,
-        paddingHorizontal: Spacing.sm + Spacing.xs,
-        borderRadius: Radius.pill,
-        borderWidth: 1,
-        maxWidth: '50%',
     },
     // Rows run edge to edge of the sheet.
     listScroll: {
