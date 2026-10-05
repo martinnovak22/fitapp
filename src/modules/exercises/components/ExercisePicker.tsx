@@ -1,4 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
+import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
@@ -82,8 +83,9 @@ export function ExercisePicker({
         onClose()
     }
 
+    const isEmpty = exercises.length === 0
     const footer =
-        view === 'list' ? (
+        view === 'list' && !isEmpty ? (
             <Button
                 label={selected.length > 0 ? t('addCount', { count: selected.length }) : t('add')}
                 onPress={handleAdd}
@@ -92,29 +94,50 @@ export function ExercisePicker({
         ) : undefined
 
     return (
-        <Sheet visible={visible} onClose={onClose} title={title} tall flush footer={footer}>
+        <Sheet visible={visible} onClose={onClose} title={title} tall={!isEmpty} flush footer={footer}>
             {view === 'list' ? (
                 <>
-                    <View style={styles.controls}>
-                        <SearchField value={query} onChangeText={setQuery} placeholder={t('searchExercises')} />
-                        <View style={styles.filters}>
-                            <FilterChip
-                                label={facets.muscleGroup ? muscleGroupLabel(t, facets.muscleGroup) : t('muscle')}
-                                active={facets.muscleGroup !== null}
-                                onPress={() => setView('muscle')}
-                            />
-                            <FilterChip
-                                label={facets.equipment ? equipmentLabel(t, facets.equipment) : t('equipment')}
-                                active={facets.equipment !== null}
-                                onPress={() => setView('equipment')}
-                            />
+                    {!isEmpty && (
+                        <View style={styles.controls}>
+                            <SearchField value={query} onChangeText={setQuery} placeholder={t('searchExercises')} />
+                            <View style={styles.filters}>
+                                <FilterChip
+                                    label={facets.muscleGroup ? muscleGroupLabel(t, facets.muscleGroup) : t('muscle')}
+                                    active={facets.muscleGroup !== null}
+                                    onPress={() => setView('muscle')}
+                                />
+                                <FilterChip
+                                    label={facets.equipment ? equipmentLabel(t, facets.equipment) : t('equipment')}
+                                    active={facets.equipment !== null}
+                                    onPress={() => setView('equipment')}
+                                />
+                            </View>
                         </View>
-                    </View>
+                    )}
                     <ScrollView keyboardShouldPersistTaps={'handled'} contentContainerStyle={styles.list}>
-                        {sections.length === 0 && (
-                            <Typography.Body color={'textSecondary'} style={styles.empty}>
-                                {t('noResults')}
-                            </Typography.Body>
+                        {isEmpty ? (
+                            // Nothing to offer at all (a new library): say where Exercises come
+                            // from instead of a dead-end "No results".
+                            <View style={styles.emptyLibrary}>
+                                <Typography.Body color={'textSecondary'} style={styles.emptyText}>
+                                    {t('pickerNoExercises')}
+                                </Typography.Body>
+                                <Button
+                                    label={t('newExercise')}
+                                    leftIcon={'plus'}
+                                    variant={'secondary'}
+                                    onPress={() => {
+                                        onClose()
+                                        router.push('/(tabs)/exercises/add')
+                                    }}
+                                />
+                            </View>
+                        ) : (
+                            sections.length === 0 && (
+                                <Typography.Body color={'textSecondary'} style={styles.empty}>
+                                    {t('noResults')}
+                                </Typography.Body>
+                            )
                         )}
                         {sections.map((section) => (
                             <View key={section.key}>
@@ -237,6 +260,14 @@ const styles = StyleSheet.create({
     empty: {
         textAlign: 'center',
         paddingVertical: Spacing.lg,
+    },
+    emptyLibrary: {
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.lg,
+        gap: Spacing.md,
+    },
+    emptyText: {
+        textAlign: 'center',
     },
     facetBack: {
         flexDirection: 'row',

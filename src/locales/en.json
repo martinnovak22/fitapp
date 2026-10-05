@@ -334,6 +334,7 @@
     "noSetsLoggedYet": "No sets logged yet. Your best set and progress appear here after a workout.",
     "reorderExercise": "Move {{name}}",
     "reorderHint": "Hold ≡ and drag. Lists without a filter follow this order.",
+    "pickerNoExercises": "There are no exercises yet. Create one, then add it here.",
     "noExercisesYet": "No exercises yet.",
     "clearFilters": "Clear filters",
     "editOrder": "Edit order",

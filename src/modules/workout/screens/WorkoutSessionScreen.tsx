@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics'
 import { router, useFocusEffect, useNavigation } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Keyboard, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Keyboard, StyleSheet, TouchableOpacity, useWindowDimensions, View } from 'react-native'
 import { Spacing } from '@/src/constants/Spacing'
 import type { Exercise } from '@/src/db/exercises'
 import type { HistorySet } from '@/src/db/workouts'
@@ -454,6 +454,13 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
     // --- Header -----------------------------------------------------------------
 
     const title = templatePriority.templateName ?? t('workout')
+    // The title sits next to back, not centred: centred, the room the actions
+    // leave is too narrow and a long plan name or large system text would run
+    // under them. It takes what is left beside the actions and truncates.
+    const { width: windowWidth } = useWindowDimensions()
+    const [actionsWidth, setActionsWidth] = useState(0)
+    const titleMaxWidth =
+        actionsWidth > 0 ? windowWidth - actionsWidth - HEADER_BACK_WIDTH - HEADER_SIDE_INSETS : undefined
     useFocusEffect(
         useCallback(() => {
             const menuItems: OverflowMenuItem[] = isFinished
@@ -484,23 +491,31 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                   ]
 
             navigation.getParent()?.setOptions({
-                headerTitle: () => (
-                    <HeaderTitle title={title} startTime={isFinished ? undefined : workout?.start_time} />
-                ),
+                headerTitle: () => null,
                 headerLeft: () => (
-                    <TouchableOpacity
-                        onPress={() => (router.canGoBack() ? router.back() : router.replace(originTabRoot))}
-                        style={styles.headerBack}
-                        accessibilityRole={'button'}
-                        accessibilityLabel={t('back')}
-                        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                    >
-                        <FontAwesome name={'chevron-left'} size={20} color={theme.text} />
-                    </TouchableOpacity>
+                    <View style={styles.headerLeading}>
+                        <TouchableOpacity
+                            onPress={() => (router.canGoBack() ? router.back() : router.replace(originTabRoot))}
+                            style={styles.headerBack}
+                            accessibilityRole={'button'}
+                            accessibilityLabel={t('back')}
+                            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                        >
+                            <FontAwesome name={'chevron-left'} size={20} color={theme.text} />
+                        </TouchableOpacity>
+                        <HeaderTitle
+                            title={title}
+                            startTime={isFinished ? undefined : workout?.start_time}
+                            maxWidth={titleMaxWidth}
+                        />
+                    </View>
                 ),
                 headerRight: () =>
                     workout ? (
-                        <View style={styles.headerActions}>
+                        <View
+                            style={styles.headerActions}
+                            onLayout={(event) => setActionsWidth(Math.round(event.nativeEvent.layout.width))}
+                        >
                             {!isFinished && (
                                 <TouchableOpacity
                                     onPress={() => setTimerVisible(true)}
@@ -544,6 +559,7 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
             t,
             theme,
             title,
+            titleMaxWidth,
             workout,
         ])
     )
@@ -663,9 +679,9 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
 }
 
 // The header title, with the running clock under it while the Workout runs.
-function HeaderTitle({ title, startTime }: { title: string; startTime?: string }) {
+function HeaderTitle({ title, startTime, maxWidth }: { title: string; startTime?: string; maxWidth?: number }) {
     return (
-        <View style={styles.headerTitle}>
+        <View style={[styles.headerTitle, maxWidth !== undefined && { maxWidth }]}>
             <Typography.Body weight={'semibold'} numberOfLines={1}>
                 {title}
             </Typography.Body>
@@ -673,6 +689,11 @@ function HeaderTitle({ title, startTime }: { title: string; startTime?: string }
         </View>
     )
 }
+
+// headerBack's minimum width, and the gaps the native header keeps around
+// its leading and trailing groups.
+const HEADER_BACK_WIDTH = 44
+const HEADER_SIDE_INSETS = Spacing.md * 2
 
 const styles = StyleSheet.create({
     centered: {
@@ -694,8 +715,12 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingVertical: Spacing.lg,
     },
-    headerTitle: {
+    headerLeading: {
+        flexDirection: 'row',
         alignItems: 'center',
+    },
+    headerTitle: {
+        alignItems: 'flex-start',
     },
     headerBack: {
         paddingLeft: Spacing.md,

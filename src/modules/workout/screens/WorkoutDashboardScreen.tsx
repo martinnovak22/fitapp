@@ -281,12 +281,17 @@ export default function WorkoutDashboardScreen() {
                             >
                                 <WeekChart days={week.days} />
                             </TouchableOpacity>
-                            <Typography.Label color={'textSecondary'} numeric>
-                                {[
-                                    t('trainedTime', { time: formatDuration(week.totalMinutes) }),
-                                    ...(week.streakWeeks > 0 ? [t('weekStreak', { count: week.streakWeeks })] : []),
-                                ].join(' · ')}
-                            </Typography.Label>
+                            {/* Left out until there is something to say ("0 min trained" is noise). */}
+                            {(week.totalMinutes > 0 || week.streakWeeks > 0) && (
+                                <Typography.Label color={'textSecondary'} numeric>
+                                    {[
+                                        ...(week.totalMinutes > 0
+                                            ? [t('trainedTime', { time: formatDuration(week.totalMinutes) })]
+                                            : []),
+                                        ...(week.streakWeeks > 0 ? [t('weekStreak', { count: week.streakWeeks })] : []),
+                                    ].join(' · ')}
+                                </Typography.Label>
+                            )}
                         </View>
                     )}
 
