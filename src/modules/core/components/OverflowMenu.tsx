@@ -1,7 +1,19 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome'
+import type React from 'react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, Pressable, StyleSheet, TouchableOpacity, useWindowDimensions, View } from 'react-native'
+import {
+    Modal,
+    Platform,
+    Pressable,
+    StatusBar,
+    type StyleProp,
+    StyleSheet,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
+    type ViewStyle,
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
@@ -25,6 +37,9 @@ type OverflowMenuProps = {
     // 'topBar' for the ⋯ in a screen header; 'anchor' opens below the button.
     placement?: 'topBar' | 'anchor'
     accessibilityLabel?: string
+    // Replaces the ⋯ glyph, e.g. a set row's number opening that set's menu.
+    trigger?: React.ReactNode
+    triggerStyle?: StyleProp<ViewStyle>
 }
 
 const MENU_WIDTH = 220
@@ -34,7 +49,13 @@ const MENU_PADDING = Spacing.xs
 // The ⋯ button on the trailing edge of a top app bar, opening a popover menu
 // of the screen's secondary actions (delete, edit timing, import/export). The
 // primary action stays a visible button next to it.
-export function OverflowMenu({ items, placement = 'anchor', accessibilityLabel }: OverflowMenuProps) {
+export function OverflowMenu({
+    items,
+    placement = 'anchor',
+    accessibilityLabel,
+    trigger,
+    triggerStyle,
+}: OverflowMenuProps) {
     const { t } = useTranslation()
     const { theme, isDark } = useTheme()
     const window = useWindowDimensions()
@@ -50,7 +71,12 @@ export function OverflowMenu({ items, placement = 'anchor', accessibilityLabel }
             setAnchor({ x: window.width, y: insets.top, width: 0, height: 0 })
             return
         }
-        anchorRef.current?.measureInWindow((x, y, width, height) => setAnchor({ x, y, width, height }))
+        // measureInWindow is relative to the area below the Android status bar,
+        // while this modal draws from the top of the screen.
+        const statusBarOffset = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0
+        anchorRef.current?.measureInWindow((x, y, width, height) =>
+            setAnchor({ x, y: y + statusBarOffset, width, height })
+        )
     }
     const close = () => setAnchor(null)
 
@@ -71,11 +97,11 @@ export function OverflowMenu({ items, placement = 'anchor', accessibilityLabel }
             <View ref={anchorRef} collapsable={false}>
                 <TouchableOpacity
                     onPress={open}
-                    style={styles.button}
+                    style={triggerStyle ?? styles.button}
                     accessibilityRole={'button'}
                     accessibilityLabel={accessibilityLabel ?? t('moreActions')}
                 >
-                    <FontAwesome name={'ellipsis-v'} size={20} color={theme.text} />
+                    {trigger ?? <FontAwesome name={'ellipsis-v'} size={20} color={theme.text} />}
                 </TouchableOpacity>
             </View>
             <Modal

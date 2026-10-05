@@ -13,7 +13,7 @@ import { formatHourMinute, formatLocalDateYYYYMMDD, formatLocalizedDate } from '
 import { DateTimeField } from './DateTimeField'
 
 // Distance (px) the sheet slides up on entry and back down on exit, matching
-// LogSetModal so both sheets share one motion language.
+// the shared Sheet so every sheet keeps one motion language.
 const SHEET_SLIDE_OFFSET = 32
 
 type Props = {

@@ -49,8 +49,8 @@ export const TimerSetupModal: React.FC<Props> = ({ visible, onClose }) => {
         setCustomSeconds('')
     }, [visible])
 
-    // Lift the sheet above the keyboard for the custom-duration inputs, matching
-    // the keyboard handling used by LogSetModal elsewhere in the app.
+    // Lift the sheet above the keyboard for the custom-duration inputs, as the
+    // shared Sheet does.
     const keyboardInset = useSharedValue(0)
     useEffect(() => {
         const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
