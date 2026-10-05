@@ -9,7 +9,7 @@ type GlyphName = keyof typeof FontAwesome.glyphMap
 
 // Trailing accessory: a disclosure indicator (chevron) for rows that open the
 // next level, a checkmark for the selected row of a choice list.
-export type ListRowAccessory = 'chevron' | 'check' | 'none'
+type ListRowAccessory = 'chevron' | 'check' | 'none'
 
 type ListRowProps = {
     label: string

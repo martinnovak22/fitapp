@@ -4,7 +4,7 @@ import { Spacing } from '@/src/constants/Spacing'
 import { useTheme } from '../hooks/useTheme'
 import { Typography } from './Typography'
 
-export type MiniBar = {
+type MiniBar = {
     key: string
     label: string
     value: number

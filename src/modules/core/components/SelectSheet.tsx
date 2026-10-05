@@ -9,8 +9,6 @@ import { Sheet } from './Sheet'
 import { filterOptions, groupOptions, type SelectOption, shouldShowSearch, toggleValue } from './selectOptions'
 import { Typography } from './Typography'
 
-export type { SelectOption }
-
 type BaseProps<V extends string> = {
     visible: boolean
     onClose: () => void

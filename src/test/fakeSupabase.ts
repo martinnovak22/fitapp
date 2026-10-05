@@ -15,14 +15,7 @@
  *   - 'success' (default)    — normal behavior
  */
 
-export type RemoteTable = 'exercises' | 'workouts' | 'sets' | 'workout_templates'
-
-export type RemoteRow = Record<string, unknown> & {
-    uuid: string
-    user_id: string | null
-    deleted_at?: string | null
-    updated_at?: string | null
-}
+import type { RemoteRow, RemoteTable } from '@/src/data/sync/RemoteAdapter'
 
 export type FailureMode = { kind: 'network-error'; message?: string } | { kind: 'empty-after-upsert' }
 
