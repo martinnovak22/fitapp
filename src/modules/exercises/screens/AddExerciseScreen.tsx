@@ -21,6 +21,7 @@ import {
     resolveExerciseMuscles,
 } from '@/src/domain/exerciseTaxonomy'
 import { Card } from '@/src/modules/core/components/Card'
+import { confirmDialog } from '@/src/modules/core/components/ConfirmDialog'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
 import { Appear } from '@/src/modules/core/components/motion'
 import { Typography } from '@/src/modules/core/components/Typography'
@@ -35,7 +36,6 @@ import {
     changedTaxonomyOnly,
     type LoadedTaxonomy,
     NO_SUGGESTIONS,
-    resolveExerciseSavedToast,
     resolveExerciseSavePlan,
     shouldPersistPhoto,
     suggestTaxonomyForType,
@@ -221,11 +221,6 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
             } else {
                 router.replace('/(tabs)/exercises')
             }
-            const toast = resolveExerciseSavedToast(isEditing, name)
-            showToast.success({
-                title: t(toast.titleKey),
-                message: `${toast.name} ${t(toast.messageNameKey)}`,
-            })
         } catch (error) {
             log('error', 'Failed to save exercise', error)
             showToast.danger({
@@ -279,30 +274,23 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     }, [])
 
     const handleDelete = useCallback(() => {
-        showToast.confirm({
+        confirmDialog({
             title: t('deleteExerciseTitle'),
             message: t('deleteExerciseWarning'),
-            icon: 'trash',
-            tone: 'danger',
-            action: {
-                label: t('delete'),
-                onPress: async () => {
-                    if (!resolvedExerciseId) return
-                    await exerciseRepo.delete(resolvedExerciseId)
-                    await deleteLocalPhoto(originalPhotoUriRef.current)
-                    // Pop the detail/edit stack back to the already-mounted list so
-                    // it reloads in place (the row disappears) instead of remounting
-                    // and re-flashing its skeleton. Mirrors the save path.
-                    if (router.canDismiss()) {
-                        router.dismissAll()
-                    } else {
-                        router.replace('/(tabs)/exercises')
-                    }
-                    showToast.success({
-                        title: t('exerciseDeleted'),
-                        message: t('exerciseRemoved'),
-                    })
-                },
+            confirmLabel: t('delete'),
+            destructive: true,
+            onConfirm: async () => {
+                if (!resolvedExerciseId) return
+                await exerciseRepo.delete(resolvedExerciseId)
+                await deleteLocalPhoto(originalPhotoUriRef.current)
+                // Pop the detail/edit stack back to the already-mounted list so
+                // it reloads in place (the row disappears) instead of remounting
+                // and re-flashing its skeleton. Mirrors the save path.
+                if (router.canDismiss()) {
+                    router.dismissAll()
+                } else {
+                    router.replace('/(tabs)/exercises')
+                }
             },
         })
     }, [resolvedExerciseId, exerciseRepo, t])

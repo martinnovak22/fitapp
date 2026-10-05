@@ -10,6 +10,7 @@ import { useReloadOnSyncSuccess } from '@/src/data/sync/useReloadOnSyncSuccess'
 import type { Exercise } from '@/src/db/exercises'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
+import { confirmDialog } from '@/src/modules/core/components/ConfirmDialog'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
 import { Appear } from '@/src/modules/core/components/motion'
@@ -18,7 +19,6 @@ import { Typography } from '@/src/modules/core/components/Typography'
 import { useStaleGuard } from '@/src/modules/core/hooks/useStaleGuard'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { log } from '@/src/modules/core/utils/logger'
-import { showToast } from '@/src/modules/core/utils/toast'
 import { type BestSetEntry, ExerciseStats, type SessionSummary } from '@/src/modules/exercises/ExerciseStats'
 import type { PrimaryMetric } from '@/src/modules/exercises/ExerciseTypeMetadata'
 import { ExerciseHistorySection } from './components/ExerciseHistorySection'
@@ -115,24 +115,17 @@ export default function ExerciseDetailScreen() {
     useReloadOnSyncSuccess(loadData)
 
     const handleDelete = useCallback(() => {
-        showToast.confirm({
+        confirmDialog({
             title: t('deleteExerciseTitle'),
             message: t('deleteExerciseWarning'),
-            icon: 'trash',
-            tone: 'danger',
-            action: {
-                label: t('delete'),
-                onPress: async () => {
-                    if (exercise) {
-                        await exerciseRepo.delete(exercise.id)
-                        await deleteLocalPhoto(exercise.photo_uri ?? null)
-                        router.replace('/(tabs)/exercises')
-                        showToast.success({
-                            title: t('exerciseDeleted'),
-                            message: t('exerciseRemoved'),
-                        })
-                    }
-                },
+            confirmLabel: t('delete'),
+            destructive: true,
+            onConfirm: async () => {
+                if (exercise) {
+                    await exerciseRepo.delete(exercise.id)
+                    await deleteLocalPhoto(exercise.photo_uri ?? null)
+                    router.replace('/(tabs)/exercises')
+                }
             },
         })
     }, [exercise, exerciseRepo, t])

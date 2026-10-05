@@ -10,7 +10,6 @@ describe('resolveToastVisual', () => {
             iconColor: '#1',
             actionColor: undefined,
             supportsAction: false,
-            supportsCancel: false,
         })
     })
 
@@ -20,7 +19,6 @@ describe('resolveToastVisual', () => {
             iconColor: '#e',
             actionColor: undefined,
             supportsAction: false,
-            supportsCancel: false,
         })
     })
 
@@ -30,32 +28,11 @@ describe('resolveToastVisual', () => {
             iconColor: '#i',
             actionColor: '#i',
             supportsAction: true,
-            supportsCancel: false,
-        })
-    })
-
-    it('maps a non-danger confirm to the info color and supports action plus cancel', () => {
-        expect(resolveToastVisual({ type: 'confirm' }, palette)).toEqual({
-            icon: 'info-circle',
-            iconColor: '#i',
-            actionColor: '#i',
-            supportsAction: true,
-            supportsCancel: true,
-        })
-    })
-
-    it('maps a danger confirm to a trash icon tinted with the error color', () => {
-        expect(resolveToastVisual({ type: 'confirm', tone: 'danger' }, palette)).toEqual({
-            icon: 'trash',
-            iconColor: '#e',
-            actionColor: '#e',
-            supportsAction: true,
-            supportsCancel: true,
         })
     })
 
     it('lets an explicit icon override the per-type default', () => {
         expect(resolveToastVisual({ type: 'success', icon: 'star' }, palette).icon).toBe('star')
-        expect(resolveToastVisual({ type: 'confirm', tone: 'danger', icon: 'star' }, palette).icon).toBe('star')
+        expect(resolveToastVisual({ type: 'info', icon: 'star' }, palette).icon).toBe('star')
     })
 })

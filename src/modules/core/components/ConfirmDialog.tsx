@@ -34,13 +34,13 @@ export function ConfirmDialogHost() {
             visible={request !== null}
             transparent
             animationType={'fade'}
-            onRequestClose={store.dismiss}
+            onRequestClose={() => store.dismiss(shown ?? undefined)}
             statusBarTranslucent
         >
             <View style={styles.root}>
                 <Pressable
                     style={[StyleSheet.absoluteFill, { backgroundColor: theme.overlayScrimLight }]}
-                    onPress={store.dismiss}
+                    onPress={() => store.dismiss(shown ?? undefined)}
                     accessibilityRole={'button'}
                     accessibilityLabel={t('cancel')}
                 />
@@ -60,14 +60,14 @@ export function ConfirmDialogHost() {
                             <Button
                                 label={shown.cancelLabel ?? t('cancel')}
                                 variant={'text'}
-                                onPress={store.dismiss}
+                                onPress={() => store.dismiss(shown)}
                                 style={styles.action}
                                 labelStyle={{ color: theme.textSecondary }}
                             />
                             <Button
                                 label={shown.confirmLabel}
                                 variant={'text'}
-                                onPress={store.confirm}
+                                onPress={() => store.confirm(shown)}
                                 style={styles.action}
                                 labelStyle={shown.destructive ? { color: theme.error } : undefined}
                             />

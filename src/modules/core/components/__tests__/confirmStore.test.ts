@@ -41,6 +41,27 @@ describe('createConfirmStore', () => {
         expect(seen).toEqual([null])
     })
 
+    it('ignores a second tap meant for the request that already closed', async () => {
+        const store = createConfirmStore()
+        const first = request('A')
+        const second = vi.fn()
+        store.show(first)
+        store.show(request('B', second))
+        await store.confirm(first)
+        await store.confirm(first)
+        store.dismiss(first)
+        expect(second).not.toHaveBeenCalled()
+        expect(store.current()?.title).toBe('B')
+    })
+
+    it('shows the same question once while it is open', () => {
+        const store = createConfirmStore()
+        store.show(request('A'))
+        store.show(request('A'))
+        store.dismiss()
+        expect(store.current()).toBeNull()
+    })
+
     it('dismiss does not run the action', () => {
         const store = createConfirmStore()
         const onConfirm = vi.fn()

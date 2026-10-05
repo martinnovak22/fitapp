@@ -11,11 +11,6 @@ type ActionToastOptions = ToastOptions & {
     action: ToastAction
 }
 
-type ConfirmToastOptions = ToastOptions & {
-    action: ToastAction
-    tone?: 'info' | 'danger'
-}
-
 export const showToast = {
     success: (options: ToastOptions) => {
         Toast.show({
@@ -52,25 +47,6 @@ export const showToast = {
                     : undefined,
             },
             autoHide: !hasAction,
-        })
-    },
-    confirm: (options: ConfirmToastOptions) => {
-        Toast.show({
-            type: 'confirm',
-            text1: options.title,
-            text2: options.message,
-            props: {
-                icon: options.icon,
-                tone: options.tone,
-                action: {
-                    label: options.action.label,
-                    onPress: () => {
-                        options.action.onPress()
-                        Toast.hide()
-                    },
-                },
-            },
-            autoHide: false,
         })
     },
     hide: () => Toast.hide(),

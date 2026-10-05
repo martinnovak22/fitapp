@@ -5,6 +5,7 @@ import { useExerciseRepo, useWorkoutRepo, useWorkoutTemplateRepo } from '@/src/d
 import type { Exercise } from '@/src/db/exercises'
 import type { SetData, Workout, Set as WorkoutSet } from '@/src/db/workouts'
 import type { WorkoutTemplate } from '@/src/db/workoutTemplates'
+import { confirmDialog } from '@/src/modules/core/components/ConfirmDialog'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { resolvePickerExercises } from '../plannedExercises'
@@ -87,12 +88,11 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     )
 
     const runSetMutation = useCallback(
-        async (mutation: () => Promise<void>, successMessage: string, refresh: () => Promise<void> = loadSets) => {
+        async (mutation: () => Promise<void>, refresh: () => Promise<void> = loadSets) => {
             setIsSavingSet(true)
             try {
                 await mutation()
                 await refresh()
-                showToast.success({ title: t('success'), message: successMessage })
                 return true
             } catch (e) {
                 log('error', 'Failed to persist set mutation', e)
@@ -107,86 +107,77 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
     )
 
     const addSet = async (exerciseId: number, data: SetData) => {
-        return runSetMutation(() => workoutRepo.addSet(workoutId, exerciseId, data), t('newSetAdded'))
+        return runSetMutation(() => workoutRepo.addSet(workoutId, exerciseId, data))
     }
 
     const updateSet = async (setId: number, data: SetData) => {
-        return runSetMutation(() => workoutRepo.updateSet(setId, data), t('changesSaved'))
+        return runSetMutation(() => workoutRepo.updateSet(setId, data))
     }
 
     const deleteSet = (setId: number) => {
-        showToast.confirm({
+        confirmDialog({
             title: t('deleteSetTitle'),
-            message: t('removeSetConfirm'),
-            icon: 'trash',
-            tone: 'danger',
-            action: {
-                label: t('delete'),
-                onPress: async () => {
-                    try {
-                        await workoutRepo.deleteSet(setId)
-                        await loadSets()
-                        showToast.success({ title: t('setDeleted'), message: t('setRemoved') })
-                    } catch (e) {
-                        log('error', 'Failed to delete set', e)
-                        await loadData()
-                        showToast.danger({ title: t('error'), message: t('failedToSaveSet') })
-                    }
-                },
+            message: t('deleteSetConfirm'),
+            confirmLabel: t('delete'),
+            destructive: true,
+            onConfirm: async () => {
+                try {
+                    await workoutRepo.deleteSet(setId)
+                    await loadSets()
+                } catch (e) {
+                    log('error', 'Failed to delete set', e)
+                    await loadData()
+                    showToast.danger({ title: t('error'), message: t('failedToSaveSet') })
+                }
             },
         })
     }
 
     const finishWorkout = () => {
-        showToast.confirm({
-            title: t('finishWorkout'),
-            message: t('finishSessionConfirm'),
-            action: {
-                label: t('finish'),
-                onPress: async () => {
-                    if (isFinishingWorkout) return
-                    setIsFinishingWorkout(true)
-                    try {
-                        await workoutRepo.finish(workoutId)
-                        router.dismissTo(originTabRoot)
-                        showToast.success({ title: t('workoutFinished'), message: t('greatJob') })
-                    } catch (e) {
-                        log('error', 'Failed to finish workout', e)
-                        showToast.danger({ title: t('error'), message: t('failedToFinishWorkout') })
-                    } finally {
-                        setIsFinishingWorkout(false)
-                    }
-                },
+        confirmDialog({
+            title: t('finishWorkoutTitle'),
+            message: t('finishWorkoutConfirm'),
+            confirmLabel: t('finish'),
+            onConfirm: async () => {
+                if (isFinishingWorkout) return
+                setIsFinishingWorkout(true)
+                try {
+                    await workoutRepo.finish(workoutId)
+                    router.dismissTo(originTabRoot)
+                    // Stays until the finish summary sheet replaces it (slice 3 of the UI plan).
+                    showToast.success({ title: t('workoutFinished'), message: t('greatJob') })
+                } catch (e) {
+                    log('error', 'Failed to finish workout', e)
+                    showToast.danger({ title: t('error'), message: t('failedToFinishWorkout') })
+                } finally {
+                    setIsFinishingWorkout(false)
+                }
             },
         })
     }
 
     const deleteWorkout = () => {
-        showToast.confirm({
+        confirmDialog({
             title: t('deleteWorkoutTitle'),
             message: t('deleteWorkoutConfirm'),
-            icon: 'trash',
-            tone: 'danger',
-            action: {
-                label: t('delete'),
-                onPress: async () => {
-                    if (isDeletingWorkout) return
-                    setIsDeletingWorkout(true)
-                    try {
-                        await workoutRepo.delete(workoutId)
-                        if (router.canGoBack()) {
-                            router.back()
-                        } else {
-                            router.replace(originTabRoot)
-                        }
-                        showToast.success({ title: t('workoutDeleted'), message: t('workoutRemoved') })
-                    } catch (e) {
-                        log('error', 'Failed to delete workout', e)
-                        showToast.danger({ title: t('error'), message: t('failedToDeleteWorkout') })
-                    } finally {
-                        setIsDeletingWorkout(false)
+            confirmLabel: t('delete'),
+            destructive: true,
+            onConfirm: async () => {
+                if (isDeletingWorkout) return
+                setIsDeletingWorkout(true)
+                try {
+                    await workoutRepo.delete(workoutId)
+                    if (router.canGoBack()) {
+                        router.back()
+                    } else {
+                        router.replace(originTabRoot)
                     }
-                },
+                } catch (e) {
+                    log('error', 'Failed to delete workout', e)
+                    showToast.danger({ title: t('error'), message: t('failedToDeleteWorkout') })
+                } finally {
+                    setIsDeletingWorkout(false)
+                }
             },
         })
     }
@@ -197,7 +188,6 @@ export function useWorkoutSession(origin: SessionOrigin = 'workout') {
             try {
                 await workoutRepo.updateTiming(workoutId, date, startTime, endTime)
                 await loadData()
-                showToast.success({ title: t('success'), message: t('changesSaved') })
                 return true
             } catch (e) {
                 log('error', 'Failed to update workout timing', e)

@@ -3,7 +3,6 @@ import {
     buildExerciseSavePayload,
     changedTaxonomyOnly,
     NO_SUGGESTIONS,
-    resolveExerciseSavedToast,
     resolveExerciseSavePlan,
     resolveExerciseTypeOptions,
     resolveTrackingModeToggle,
@@ -212,24 +211,6 @@ describe('resolveExerciseSavePlan', () => {
             })
         ).toEqual({
             kind: 'noop',
-        })
-    })
-})
-
-describe('resolveExerciseSavedToast', () => {
-    it('uses the created keys when not editing', () => {
-        expect(resolveExerciseSavedToast(false, 'Bench')).toEqual({
-            titleKey: 'exerciseCreated',
-            messageNameKey: 'ready',
-            name: 'Bench',
-        })
-    })
-
-    it('uses the updated keys when editing', () => {
-        expect(resolveExerciseSavedToast(true, 'Bench')).toEqual({
-            titleKey: 'exerciseUpdated',
-            messageNameKey: 'updated',
-            name: 'Bench',
         })
     })
 })

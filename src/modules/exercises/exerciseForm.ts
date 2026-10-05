@@ -159,23 +159,6 @@ export function resolveExerciseSavePlan(input: {
     return { kind: 'update', exerciseId: input.resolvedExerciseId }
 }
 
-/** Translation keys + interpolated name for the success toast after a save. */
-export type ExerciseSavedToast = {
-    titleKey: 'exerciseUpdated' | 'exerciseCreated'
-    messageNameKey: 'updated' | 'ready'
-    name: string
-}
-
-/**
- * The success-toast content for a saved exercise: editing reports an update,
- * otherwise a creation. The screen passes the keys through i18n.
- */
-export function resolveExerciseSavedToast(isEditing: boolean, name: string): ExerciseSavedToast {
-    return isEditing
-        ? { titleKey: 'exerciseUpdated', messageNameKey: 'updated', name }
-        : { titleKey: 'exerciseCreated', messageNameKey: 'ready', name }
-}
-
 /** A selectable exercise type chip with its active state for the current type. */
 export type ExerciseTypeOption = {
     value: ExerciseType

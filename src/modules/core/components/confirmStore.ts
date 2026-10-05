@@ -26,22 +26,29 @@ export const createConfirmStore = () => {
         for (const listener of listeners) listener(value)
     }
 
+    // The same question asked again while it is open or queued (Finish
+    // tapped twice) is shown once, so its action cannot run twice.
     const show = (request: ConfirmRequest) => {
+        if (queue.some((queued) => queued.title === request.title && queued.message === request.message)) return
         queue.push(request)
         if (queue.length === 1) emit()
     }
 
-    const dismiss = () => {
-        if (queue.length === 0) return
+    // Both take the request the dialog showed when tapped, so a second tap
+    // landing after the next queued request took its place does nothing.
+    const isCurrent = (expected?: ConfirmRequest) => queue.length > 0 && (!expected || expected === queue[0])
+
+    const dismiss = (expected?: ConfirmRequest) => {
+        if (!isCurrent(expected)) return
         queue.shift()
         emit()
     }
 
     // Closes the dialog first so the action's own UI (navigation, a follow-up
     // dialog) is never covered by this one.
-    const confirm = async () => {
+    const confirm = async (expected?: ConfirmRequest) => {
         const request = current()
-        if (!request) return
+        if (!request || !isCurrent(expected)) return
         dismiss()
         await request.onConfirm()
     }

@@ -11,6 +11,7 @@ import type { Exercise } from '@/src/db/exercises'
 import { resolveMembers } from '@/src/db/templateMembership'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
+import { confirmDialog } from '@/src/modules/core/components/ConfirmDialog'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
@@ -130,37 +131,29 @@ export default function TemplateFormScreen() {
                 await templateRepo.create({ name: result.name, exerciseUuids: result.exerciseUuids })
             }
             goBack()
-            showToast.success({
-                title: t(isEditing ? 'templateUpdated' : 'templateCreated'),
-                message: result.name,
-            })
         } catch (error) {
             log('error', 'Failed to save workout template', error)
             showToast.danger({ title: t('error'), message: t('failedToSaveTemplate') })
         } finally {
             setIsSaving(false)
         }
-    }, [isEditing, isSaving, name, selected, selectedCount, t, templateId, templateRepo])
+    }, [isSaving, name, selected, selectedCount, t, templateId, templateRepo])
 
     const handleDelete = useCallback(() => {
         if (templateId === undefined) return
-        showToast.confirm({
+        confirmDialog({
             title: t('deleteTemplateTitle'),
             message: t('deleteTemplateWarning', { name: name.trim() }),
-            icon: 'trash',
-            tone: 'danger',
-            action: {
-                label: t('delete'),
-                onPress: async () => {
-                    try {
-                        await templateRepo.delete(templateId)
-                        goBack()
-                        showToast.success({ title: t('templateDeleted'), message: name.trim() })
-                    } catch (error) {
-                        log('error', 'Failed to delete workout template', error)
-                        showToast.danger({ title: t('error'), message: t('failedToDeleteTemplate') })
-                    }
-                },
+            confirmLabel: t('delete'),
+            destructive: true,
+            onConfirm: async () => {
+                try {
+                    await templateRepo.delete(templateId)
+                    goBack()
+                } catch (error) {
+                    log('error', 'Failed to delete workout template', error)
+                    showToast.danger({ title: t('error'), message: t('failedToDeleteTemplate') })
+                }
             },
         })
     }, [name, t, templateId, templateRepo])
