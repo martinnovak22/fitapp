@@ -352,6 +352,7 @@
     "noSetsLoggedYet": "Zatím žádné zapsané série. Nejlepší série a pokrok se tu objeví po tréninku.",
     "reorderExercise": "Přesunout {{name}}",
     "reorderHint": "Podržte ≡ a táhněte. Seznamy bez filtru se řídí tímto pořadím.",
+    "pickerNoExercises": "Zatím tu nejsou žádné cviky. Vytvořte cvik a pak ho sem přidejte.",
     "noExercisesYet": "Zatím žádné cviky.",
     "clearFilters": "Zrušit filtry",
     "editOrder": "Upravit pořadí",
