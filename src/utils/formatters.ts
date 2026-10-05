@@ -4,6 +4,14 @@ export const formatDuration = (minutes: number): string => {
     return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+// A workout's length: "45 min", "1 h 16 min". The caller passes the localized
+// minute unit.
+export const formatWorkoutLength = (minutes: number, minuteUnit: string): string => {
+    const h = Math.floor(minutes / 60)
+    const m = Math.round(minutes % 60)
+    return h > 0 ? `${h} h ${m} ${minuteUnit}` : `${m} ${minuteUnit}`
+}
+
 export const formatExerciseType = (
     type?: string
 ): 'typeWeight' | 'typeCardio' | 'typeBodyweight' | 'typeBodyweightTimer' | 'typeUnknown' => {

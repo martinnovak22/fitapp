@@ -47,7 +47,23 @@ export function ListSection({ title, footer, children, style }: ListSectionProps
     )
 }
 
+// For lists too long for a ListSection (a FlatList or SectionList of rows):
+// the same inset group, built row by row. The first and last row of a group
+// round their outer corners.
+export const groupedRowCorners = (index: number, count: number) => [
+    index === 0 && styles.firstRow,
+    index === count - 1 && styles.lastRow,
+]
+
 const styles = StyleSheet.create({
+    firstRow: {
+        borderTopLeftRadius: Radius.md,
+        borderTopRightRadius: Radius.md,
+    },
+    lastRow: {
+        borderBottomLeftRadius: Radius.md,
+        borderBottomRightRadius: Radius.md,
+    },
     root: {
         gap: Spacing.sm,
     },

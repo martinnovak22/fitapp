@@ -69,6 +69,13 @@ export interface SetWithExerciseName extends Set {
 
 export type HistorySet = Set & { workout_date: string; workout_start: string }
 
+export type SetSummaryRow = Pick<Set, 'workout_id' | 'exercise_id' | 'weight' | 'reps' | 'sub_sets' | 'position'> & {
+    exercise_name: string
+    exercise_type: Exercise['type']
+    muscle_group: string | null
+    primary_muscle: string | null
+}
+
 export const WorkoutRepository = {
     async create(date: string, templateUuid?: string | null): Promise<number> {
         return executeWrite(async (db) => {
@@ -346,6 +353,30 @@ export const WorkoutRepository = {
                AND ${workoutScope.clause}`,
             ...exerciseIds,
             excludeWorkoutId,
+            ...setScope.params,
+            ...workoutScope.params
+        )
+    },
+
+    // One light row per live Set of every live Workout, with its Exercise's
+    // name, type and primary Muscle, so the history list and its stats are
+    // summarized in one read instead of one query per Workout.
+    async getAllSetRows(): Promise<SetSummaryRow[]> {
+        const db = await getDb()
+        const setScope = buildPrincipalWhereClause('s.user_id')
+        const workoutScope = buildPrincipalWhereClause('w.user_id')
+        return await db.getAllAsync<SetSummaryRow>(
+            `SELECT s.workout_id, s.exercise_id, s.weight, s.reps, s.sub_sets, s.position,
+                    e.name as exercise_name, e.type as exercise_type,
+                    e.muscle_group as muscle_group, e.primary_muscle as primary_muscle
+             FROM sets s
+             JOIN exercises e ON s.exercise_id = e.id
+             JOIN workouts w ON s.workout_id = w.id
+             WHERE s.deleted_at IS NULL
+               AND w.deleted_at IS NULL
+               AND ${setScope.clause}
+               AND ${workoutScope.clause}
+             ORDER BY s.workout_id, s.position ASC, s.id ASC`,
             ...setScope.params,
             ...workoutScope.params
         )

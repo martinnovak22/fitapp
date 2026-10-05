@@ -16,6 +16,7 @@ import { EmptyState } from '@/src/modules/core/components/EmptyState'
 import { FilterChip } from '@/src/modules/core/components/FilterChip'
 import { InitialsAvatar } from '@/src/modules/core/components/InitialsAvatar'
 import { ListRow } from '@/src/modules/core/components/ListRow'
+import { groupedRowCorners } from '@/src/modules/core/components/ListSection'
 import { OverflowMenu } from '@/src/modules/core/components/OverflowMenu'
 import { ScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { SearchField } from '@/src/modules/core/components/SearchField'
@@ -32,12 +33,6 @@ import { ExercisesListSkeleton } from './components/ExercisesListSkeleton'
 
 // SelectSheet values are strings; "" clears a filter.
 const ANY = '' as const
-
-// Rows of one inset grouped list: the first and last round their outer corners.
-const groupedCorners = (index: number, count: number) => [
-    index === 0 && styles.firstRow,
-    index === count - 1 && styles.lastRow,
-]
 
 type RowProps = { item: Exercise; index: number; count: number; theme: ThemeType; t: TFunction }
 
@@ -69,7 +64,7 @@ const LibraryRow = memo(({ item, index, count, theme, t }: RowProps) => (
     <TouchableOpacity
         onPress={() => router.push(`/(tabs)/exercises/${item.id}`)}
         activeOpacity={0.6}
-        style={[styles.row, { backgroundColor: theme.surface }, ...groupedCorners(index, count)]}
+        style={[styles.row, { backgroundColor: theme.surface }, ...groupedRowCorners(index, count)]}
         accessibilityRole={'button'}
         accessibilityLabel={`${item.name}, ${exerciseSummaryLine(t, item)}`}
     >
@@ -93,7 +88,7 @@ const ReorderRow = memo(({ item, index, count, theme, t }: RowProps) => {
             style={[
                 styles.row,
                 { backgroundColor: isActive ? theme.inputBackgroundActive : theme.surface },
-                ...groupedCorners(index, count),
+                ...groupedRowCorners(index, count),
             ]}
         >
             <ExerciseRowBody
@@ -389,14 +384,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.sm + Spacing.xs,
         paddingLeft: Spacing.md,
-    },
-    firstRow: {
-        borderTopLeftRadius: Radius.md,
-        borderTopRightRadius: Radius.md,
-    },
-    lastRow: {
-        borderBottomLeftRadius: Radius.md,
-        borderBottomRightRadius: Radius.md,
     },
     rowText: {
         flex: 1,

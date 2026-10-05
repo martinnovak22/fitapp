@@ -571,9 +571,12 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                       true
                   ),
                   workout.end_time
-                      ? `${formatHourMinute(workout.start_time)}–${formatHourMinute(workout.end_time)}`
-                      : formatHourMinute(workout.start_time),
+                      ? `${formatHourMinute(workout.start_time, i18n.language)}–${formatHourMinute(workout.end_time, i18n.language)}`
+                      : formatHourMinute(workout.start_time, i18n.language),
                   t('setsCount', { count: sets.length }),
+                  ...(workoutVolume(sets, typeOf) > 0
+                      ? [`${Math.round(workoutVolume(sets, typeOf)).toLocaleString(i18n.language)} ${t('kg')}`]
+                      : []),
               ].join(' · ')
             : null
 
@@ -680,8 +683,9 @@ const styles = StyleSheet.create({
     stack: {
         gap: Spacing.md,
     },
+    // Inset like section titles, so it lines up with the card content below.
     inset: {
-        paddingHorizontal: Spacing.xs,
+        paddingHorizontal: Spacing.md,
     },
     emptyLine: {
         textAlign: 'center',

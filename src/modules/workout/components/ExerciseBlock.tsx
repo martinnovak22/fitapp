@@ -452,7 +452,13 @@ function SetRow({
     const { theme } = useTheme()
 
     return (
-        <View style={[styles.row, styles.setRow, logged && !readOnly && { backgroundColor: `${theme.primary}14` }]}>
+        <View
+            style={[
+                styles.row,
+                readOnly ? styles.readOnlyRow : styles.setRow,
+                logged && !readOnly && { backgroundColor: `${theme.primary}14` },
+            ]}
+        >
             {readOnly ? (
                 <View style={styles.setCell}>
                     <Typography.Label color={'textSecondary'} weight={'semibold'} numeric>
@@ -537,7 +543,13 @@ function SubSetRow({ index, values, logged, readOnly, onChange, onEndEditing, on
     const { t } = useTranslation()
     const { theme } = useTheme()
     return (
-        <View style={[styles.row, styles.subRow, logged && !readOnly && { backgroundColor: `${theme.primary}14` }]}>
+        <View
+            style={[
+                styles.row,
+                readOnly ? styles.readOnlyRow : styles.subRow,
+                logged && !readOnly && { backgroundColor: `${theme.primary}14` },
+            ]}
+        >
             <View style={styles.setCell}>
                 <FontAwesome name={'level-up'} size={12} color={theme.textSecondary} style={styles.subMarker} />
             </View>
@@ -621,6 +633,10 @@ const styles = StyleSheet.create({
     setRow: {
         minHeight: 48,
         paddingVertical: Spacing.xs,
+    },
+    // A finished Workout has no inputs to hit, so its rows sit as tight as a table.
+    readOnlyRow: {
+        minHeight: 36,
     },
     subRow: {
         minHeight: 44,

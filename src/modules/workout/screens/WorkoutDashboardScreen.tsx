@@ -28,13 +28,13 @@ import { showToast } from '@/src/modules/core/utils/toast'
 import { muscleGroupLabel } from '@/src/modules/exercises/taxonomyLabels'
 import { summarizeTemplates, type TemplateSummary, templateSubtitle } from '@/src/modules/templates/templateSummary'
 import { formatLocalDateYYYYMMDD, formatLocalizedDate } from '@/src/utils/dateTime'
+import { formatWorkoutLength } from '@/src/utils/formatters'
 import { notifyActiveWorkoutChanged } from '../activeWorkoutSignal'
 import { ElapsedTime } from '../components/ElapsedTime'
-import { MuscleBalanceBars } from '../components/MuscleBalanceBars'
 import { PlateMotif } from '../components/PlateMotif'
 import { WeekChart } from '../components/WeekChart'
-import { computeMuscleBalance, type MuscleBalanceEntry, muscleGroupsTrained } from '../muscleBalance'
-import { getWeekStart, summarizeWeek, type WeekSummary, workoutMinutes } from '../weekSummary'
+import { muscleGroupsTrained } from '../muscleBalance'
+import { summarizeWeek, type WeekSummary, workoutMinutes } from '../weekSummary'
 import { WorkoutDashboardSkeleton } from './components/WorkoutDashboardSkeleton'
 
 // How many plans the start module lists before "All plans".
@@ -83,7 +83,6 @@ export default function WorkoutDashboardScreen() {
     const [loadError, setLoadError] = useState<string | null>(null)
     const [week, setWeek] = useState<WeekSummary | null>(null)
     const [lastWorkout, setLastWorkout] = useState<LastWorkoutSummary | null>(null)
-    const [muscleBalance, setMuscleBalance] = useState<MuscleBalanceEntry[]>([])
     const [templates, setTemplates] = useState<TemplateSummary[]>([])
     const startInFlightRef = useRef(false)
 
@@ -103,16 +102,13 @@ export default function WorkoutDashboardScreen() {
             const today = new Date()
             const nextWeek = summarizeWeek(finished, activeWorkout, today)
 
-            const weekStartStr = formatLocalDateYYYYMMDD(getWeekStart(today))
-            const weekWorkouts = finished.filter((w) => w.date >= weekStartStr)
             const lastFinished = finished[0] ?? null
 
-            const [allExercises, allTemplates, lastSets, activeSets, weekSets] = await Promise.all([
+            const [allExercises, allTemplates, lastSets, activeSets] = await Promise.all([
                 exerciseRepo.getAll(),
                 templateRepo.getAll(),
                 lastFinished ? workoutRepo.getSets(lastFinished.id) : Promise.resolve([]),
                 activeWorkout ? workoutRepo.getSets(activeWorkout.id) : Promise.resolve([]),
-                Promise.all(weekWorkouts.map((w) => workoutRepo.getSets(w.id))).then((lists) => lists.flat()),
             ])
 
             if (isStale()) return
@@ -134,7 +130,6 @@ export default function WorkoutDashboardScreen() {
                     ? { workout: lastFinished, setCount: lastSets.length, muscleGroups: muscleGroupsTrained(lastSets) }
                     : null
             )
-            setMuscleBalance(computeMuscleBalance(allExercises, weekSets))
             setTemplates(summarizeTemplates(allTemplates, allExercises))
         } catch (error) {
             if (isStale()) return
@@ -190,11 +185,7 @@ export default function WorkoutDashboardScreen() {
         }
     }
 
-    const formatDuration = (minutes: number): string => {
-        const h = Math.floor(minutes / 60)
-        const m = minutes % 60
-        return h > 0 ? `${h} h ${m} ${t('min')}` : `${m} ${t('min')}`
-    }
+    const formatDuration = (minutes: number): string => formatWorkoutLength(minutes, t('min'))
 
     if (showSkeleton) {
         return (
@@ -351,12 +342,6 @@ export default function WorkoutDashboardScreen() {
                             accessory={'chevron'}
                             onPress={() => router.push(`/(tabs)/workout/${lastWorkout.workout.id}`)}
                         />
-                    </ListSection>
-                )}
-
-                {muscleBalance.some((entry) => entry.count > 0) && (
-                    <ListSection title={t('muscleBalanceThisWeek')}>
-                        <MuscleBalanceBars entries={muscleBalance} />
                     </ListSection>
                 )}
             </Appear>

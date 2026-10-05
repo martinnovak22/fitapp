@@ -13,6 +13,8 @@ export const Colors = {
         errorSurface: '#B0382F',
         text: '#E1E1E1',
         textSecondary: '#A0A0A0',
+        // Readable but clearly not part of the current set (days outside the month).
+        textDisabled: '#6E6E6E',
         onPrimary: '#0B2915',
         border: '#404040',
         card: '#1E1E1E',
@@ -42,6 +44,7 @@ export const Colors = {
         errorSurface: '#B0382F',
         text: '#121212',
         textSecondary: '#666666',
+        textDisabled: '#A6A6A6',
         onPrimary: '#FFFFFF',
         border: '#E0E0E0',
         card: '#FFFFFF',

@@ -3,6 +3,7 @@ import { type Exercise, type ExerciseDetails, ExerciseRepository, type ExerciseU
 import {
     type HistorySet,
     type SetData,
+    type SetSummaryRow,
     type SetWithExerciseName,
     type Workout,
     WorkoutRepository,
@@ -34,6 +35,7 @@ export interface WorkoutRepositoryPort {
     getSets: (workoutId: number) => Promise<SetWithExerciseName[]>
     getSetExercises: (workoutId: number) => Promise<Exercise[]>
     getFinishedExerciseSets: (exerciseIds: readonly number[], excludeWorkoutId: number) => Promise<HistorySet[]>
+    getAllSetRows: () => Promise<SetSummaryRow[]>
     getWorkoutCountForMonth: (month: string) => Promise<number>
     getAvgWorkoutDuration: (month: string) => Promise<number>
     updateTiming: (id: number, date: string, startTime: string, endTime?: string) => Promise<void>

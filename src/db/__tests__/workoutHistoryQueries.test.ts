@@ -1,6 +1,5 @@
-// WorkoutRepository.getFinishedExerciseSets feeds previous performance and
-// personal records: only finished, live Workouts of the active principal count,
-// and the Workout being logged is left out.
+// The read-side queries behind previous performance, personal records and the
+// History tab: only live rows of the active principal count.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestDb, getTestDb, resetTestDb, type TestDb, useTestDb } from '@/src/test/setupTestDb'
@@ -95,5 +94,26 @@ describe('WorkoutRepository.getFinishedExerciseSets', () => {
 
         expect(await WorkoutRepository.getFinishedExerciseSets([bench], -1)).toEqual([])
         expect(await WorkoutRepository.getFinishedExerciseSets([], -1)).toEqual([])
+    })
+})
+
+describe('WorkoutRepository.getAllSetRows', () => {
+    it("returns live sets of live workouts with their exercise, leaving out deleted and other principals' rows", async () => {
+        const bench = await insertExercise('bench')
+        const mine = await insertWorkout('w-mine', 'finished')
+        const running = await insertWorkout('w-running', 'in_progress')
+        const deleted = await insertWorkout('w-deleted', 'finished', { deletedAt: STAMP })
+        const theirs = await insertWorkout('w-theirs', 'finished', { userId: 'user-B' })
+        await insertSet(mine, bench, 60)
+        await insertSet(running, bench, 65)
+        await insertSet(deleted, bench, 70)
+        await insertSet(theirs, bench, 75, 'user-B')
+
+        const rows = await WorkoutRepository.getAllSetRows()
+
+        expect(rows.map((r) => [r.workout_id, r.weight, r.exercise_name, r.exercise_type])).toEqual([
+            [mine, 60, 'bench', 'weight'],
+            [running, 65, 'bench', 'weight'],
+        ])
     })
 })

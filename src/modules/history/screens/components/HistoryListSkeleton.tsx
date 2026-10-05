@@ -1,66 +1,58 @@
 import { useTranslation } from 'react-i18next'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { Card } from '@/src/modules/core/components/Card'
 import { SkeletonBlock, SkeletonPulse } from '@/src/modules/core/components/Skeleton'
+import { useTheme } from '@/src/modules/core/hooks/useTheme'
 
-const SKELETON_ROW_COUNT = 8
+const SKELETON_ROW_COUNT = 6
 
-// Mirrors WorkoutHistoryCard's shape (date line, shorter time line, trailing
-// status icon) without the optional note line, since not every real row has
-// one and a skeleton should approximate the common case, not every case.
+// The history list's shape while it loads: view switcher, a month header and
+// grouped workout rows with their three lines.
 export function HistoryListSkeleton() {
     const { t } = useTranslation()
+    const { theme } = useTheme()
 
     return (
-        <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listPadding}
-            accessibilityRole="progressbar"
-            accessibilityLabel={t('loading')}
-            aria-busy
-        >
-            <SkeletonPulse>
-                {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
-                    <Card
-                        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
-                        key={i}
-                        style={styles.workoutCard}
-                    >
-                        <View style={styles.workoutItem}>
-                            <View style={styles.workoutInfo}>
-                                <SkeletonBlock width="70%" height={16} borderRadius={2} />
-                                <SkeletonBlock width="35%" height={13} borderRadius={2} style={styles.timeBlock} />
-                            </View>
-                            <SkeletonBlock width={20} height={20} borderRadius={Radius.sm} />
+        <SkeletonPulse>
+            <View style={styles.root} accessibilityRole="progressbar" accessibilityLabel={t('loading')} aria-busy>
+                <SkeletonBlock width="100%" height={48} borderRadius={Radius.sm} />
+                <View style={styles.header}>
+                    <SkeletonBlock width={140} height={14} borderRadius={2} />
+                </View>
+                <View style={[styles.group, { backgroundColor: theme.surface }]}>
+                    {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
+                        <View
+                            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
+                            key={i}
+                            style={styles.row}
+                        >
+                            <SkeletonBlock width="40%" height={16} />
+                            <SkeletonBlock width="70%" height={13} borderRadius={2} />
+                            <SkeletonBlock width="55%" height={12} borderRadius={2} />
                         </View>
-                    </Card>
-                ))}
-            </SkeletonPulse>
-        </ScrollView>
+                    ))}
+                </View>
+            </View>
+        </SkeletonPulse>
     )
 }
 
 const styles = StyleSheet.create({
-    listPadding: {
-        paddingBottom: Spacing.lg,
+    root: {
+        gap: Spacing.sm,
     },
-    workoutItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        minHeight: 56,
+    header: {
+        paddingLeft: Spacing.md,
+        paddingTop: Spacing.sm,
     },
-    workoutCard: {
-        paddingVertical: Spacing.sm - Spacing.xs2,
-        paddingHorizontal: Spacing.md,
+    group: {
+        borderRadius: Radius.md,
+        overflow: 'hidden',
     },
-    workoutInfo: {
-        flex: 1,
-        paddingRight: Spacing.md,
-    },
-    timeBlock: {
-        marginTop: Spacing.xs,
+    row: {
+        gap: Spacing.xs,
+        padding: Spacing.md,
+        minHeight: 64,
     },
 })
