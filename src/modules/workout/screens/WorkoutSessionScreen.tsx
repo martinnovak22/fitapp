@@ -13,6 +13,7 @@ import type { Set as WorkoutSet } from '@/src/db/workouts'
 import { Button } from '@/src/modules/core/components/Button'
 import { Card } from '@/src/modules/core/components/Card'
 import { EmptyState } from '@/src/modules/core/components/EmptyState'
+import { OverflowMenu } from '@/src/modules/core/components/OverflowMenu'
 import { ScreenLayout, ScrollScreenLayout } from '@/src/modules/core/components/ScreenLayout'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
@@ -269,16 +270,19 @@ export default function WorkoutSessionScreen({ origin = 'workout' }: WorkoutSess
                                     <FontAwesome name={rightAction.icon} size={20} color={theme.primary} />
                                 </TouchableOpacity>
                             )}
-                            {!isDeletingWorkout && (
-                                <TouchableOpacity
-                                    onPress={deleteWorkout}
-                                    accessibilityRole={'button'}
-                                    accessibilityLabel={t('delete')}
-                                    hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                                >
-                                    <FontAwesome name={'trash'} size={20} color={theme.error} />
-                                </TouchableOpacity>
-                            )}
+                            <OverflowMenu
+                                placement={'topBar'}
+                                items={[
+                                    {
+                                        key: 'delete',
+                                        label: t('deleteWorkout'),
+                                        icon: 'trash',
+                                        destructive: true,
+                                        disabled: isDeletingWorkout,
+                                        onPress: deleteWorkout,
+                                    },
+                                ]}
+                            />
                         </Animated.View>
                     ) : null,
             })
@@ -565,7 +569,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.md,
-        marginRight: Spacing.md,
+        marginRight: Spacing.xs,
     },
     headerButtonDisabled: {
         opacity: 0.4,
