@@ -49,6 +49,8 @@ type DeletedRow = {
     deleted_at: string | null
 }
 
+type RemoteWorkoutRef = { uuid: string; deleted_at?: string | null }
+
 type RemoteSetWithRefs = {
     uuid: string
     user_id: string
@@ -62,7 +64,7 @@ type RemoteSetWithRefs = {
     created_at: string | null
     updated_at: string | null
     deleted_at: string | null
-    workouts: { uuid: string } | { uuid: string }[] | null
+    workouts: RemoteWorkoutRef | RemoteWorkoutRef[] | null
     exercises: { uuid: string } | { uuid: string }[] | null
 }
 
@@ -719,6 +721,21 @@ const hasPendingTombstone = async (
         uuid
     ))
 
+// Whether a Workout or Set deletion made here has not reached the server yet
+// (dirty, failed or blocked). Once pushed, the server row carries deleted_at,
+// so a live copy coming back later is a newer remote edit and applies.
+const hasUnpushedTombstone = async (
+    db: Pick<SQLiteDatabase, 'getFirstAsync'>,
+    entityType: 'workout' | 'set',
+    uuid: string
+): Promise<boolean> =>
+    !!(await db.getFirstAsync<{ one: number }>(
+        `SELECT 1 AS one FROM deletion_tombstones
+         WHERE entity_type = ? AND entity_uuid = ? AND sync_status <> 'synced' LIMIT 1`,
+        entityType,
+        uuid
+    ))
+
 // Whether an Exercise deleted on this device stays deleted against a live
 // remote copy: always while its tombstone has not reached the server, and
 // afterwards against any copy the deletion is newer than (last-writer-wins,
@@ -827,7 +844,7 @@ const pullWorkoutTemplates = async (userId: string): Promise<number> => {
     return remote.length + deleted.length
 }
 
-const toSingleRef = (value: { uuid: string } | { uuid: string }[] | null | undefined) => {
+const toSingleRef = <R extends { uuid: string }>(value: R | R[] | null | undefined): R | null => {
     if (!value) return null
     if (Array.isArray(value)) return value[0] ?? null
     return value
@@ -837,7 +854,7 @@ const pullSets = async (userId: string): Promise<number> => {
     const cursors = getCursors(userId)
     const remote = await request<RemoteSetWithRefs[]>('sets', {
         query: {
-            select: 'uuid,user_id,weight,reps,distance,duration,rpe,position,sub_sets,created_at,updated_at,deleted_at,workouts(uuid),exercises(uuid)',
+            select: 'uuid,user_id,weight,reps,distance,duration,rpe,position,sub_sets,created_at,updated_at,deleted_at,workouts(uuid,deleted_at),exercises(uuid)',
             user_id: `eq.${userId}`,
             deleted_at: 'is.null',
             order: 'updated_at.asc',
@@ -859,7 +876,8 @@ const pullSets = async (userId: string): Promise<number> => {
         const parentMissingByUuid = new Set<string>()
         await executeWriteTransaction(async (db) => {
             for (const row of rows) {
-                const workoutUuid = toSingleRef(row.workouts)?.uuid
+                const workoutRef = toSingleRef(row.workouts)
+                const workoutUuid = workoutRef?.uuid
                 const exerciseUuid = toSingleRef(row.exercises)?.uuid
                 if (!workoutUuid || !exerciseUuid) continue
 
@@ -867,6 +885,16 @@ const pullSets = async (userId: string): Promise<number> => {
                     db.getFirstAsync<{ id: number }>('SELECT id FROM workouts WHERE uuid = ? LIMIT 1', workoutUuid),
                     db.getFirstAsync<{ id: number }>('SELECT id FROM exercises WHERE uuid = ? LIMIT 1', exerciseUuid),
                 ])
+                // Deleting a Workout drops its Sets locally but leaves them live
+                // on the server. Such a Set can never link here, so holding it
+                // back would freeze the cursor for good (e.g. on a fresh login).
+                // That holds whether the Workout was deleted remotely or here.
+                if (
+                    !workoutLocal?.id &&
+                    (workoutRef?.deleted_at || (await hasUnpushedTombstone(db, 'workout', workoutUuid)))
+                ) {
+                    continue
+                }
                 if (!workoutLocal?.id || !exerciseLocal?.id) {
                     parentMissingByUuid.add(row.uuid)
                     continue
@@ -877,6 +905,9 @@ const pullSets = async (userId: string): Promise<number> => {
                     row.uuid
                 )
                 if (shouldSkipRemoteRow(local, row.updated_at)) continue
+                // A Set deleted here must not come back before its tombstone
+                // lands remotely (a full re-pull would otherwise re-insert it).
+                if (!local && (await hasUnpushedTombstone(db, 'set', row.uuid))) continue
 
                 const cols = toSetColumns(row, userId, workoutLocal.id, exerciseLocal.id)
                 if (local) {

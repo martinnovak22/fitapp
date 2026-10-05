@@ -1246,6 +1246,68 @@ describe('runSync — Exercises are soft-deleted, their Sets kept (issue #85)', 
         expect(deleteLocalPhotoMock).not.toHaveBeenCalled()
     })
 
+    it('does not re-insert a Set deleted here whose tombstone has not pushed yet', async () => {
+        await seedHistory('ex-a')
+        await db.runAsync(`DELETE FROM sets WHERE uuid = 's-1'`)
+        await db.runAsync(
+            `INSERT INTO deletion_tombstones (entity_type, entity_uuid, user_id, deleted_at, sync_status)
+             VALUES ('set', 's-1', ?, '2026-03-01T00:00:00Z', 'blocked')`,
+            userId
+        )
+        mockFetchWithBodies((call) => (isFirstLivePull(call, 'sets') ? [remoteSet('s-1', 'w-1', 'ex-a')] : undefined))
+
+        await runSync()
+
+        expect(await db.getFirstAsync(`SELECT id FROM sets WHERE uuid = 's-1'`)).toBeNull()
+    })
+
+    it('lets a live remote Set back in once its local deletion has pushed (last-writer-wins)', async () => {
+        await seedHistory('ex-a')
+        await db.runAsync(`DELETE FROM sets WHERE uuid = 's-1'`)
+        await db.runAsync(
+            `INSERT INTO deletion_tombstones (entity_type, entity_uuid, user_id, deleted_at, sync_status)
+             VALUES ('set', 's-1', ?, '2026-03-01T00:00:00Z', 'synced')`,
+            userId
+        )
+        // A later edit from another device revived it on the server.
+        mockFetchWithBodies((call) =>
+            isFirstLivePull(call, 'sets')
+                ? [remoteSet('s-1', 'w-1', 'ex-a', { updated_at: '2026-03-02T00:00:00Z' })]
+                : undefined
+        )
+
+        await runSync()
+
+        expect((await linkedSet('s-1'))?.sync_status).toBe('synced')
+    })
+
+    it('skips a Set of a Workout deleted here without stalling the sets cursor', async () => {
+        await db.runAsync(
+            `INSERT INTO exercises (uuid, user_id, name, type, sync_status) VALUES ('ex-a', ?, 'Bench', 'weight', 'synced')`,
+            userId
+        )
+        // The Workout's tombstone is parked, so the server still has it live.
+        await db.runAsync(
+            `INSERT INTO deletion_tombstones (entity_type, entity_uuid, user_id, deleted_at, sync_status)
+             VALUES ('workout', 'w-gone', ?, '2026-03-01T00:00:00Z', 'blocked')`,
+            userId
+        )
+        mockFetchWithBodies((call) =>
+            isFirstLivePull(call, 'sets')
+                ? [
+                      remoteSet('s-orphan', 'w-gone', 'ex-a'),
+                      remoteSet('s-later', 'w-gone', 'ex-a', { updated_at: '2026-01-05T00:00:00Z' }),
+                  ]
+                : undefined
+        )
+
+        await runSync()
+        await runSync()
+
+        const setsPull = bodyCalls.filter((c) => c.method === 'GET' && isLivePull(c, 'sets')).at(-1)
+        expect(setsPull?.url).toContain('updated_at=gt.2026-01-05T00%3A00%3A00Z')
+    })
+
     it('inserts a remotely deleted Exercise this device lacks, so its held-back Set links and the cursor moves on', async () => {
         mockFetchWithBodies((call) => {
             if (isFirstLivePull(call, 'workouts')) return [remoteWorkout('w-a')]
@@ -1278,6 +1340,31 @@ describe('runSync — Exercises are soft-deleted, their Sets kept (issue #85)', 
         await runSync()
         const setsPull = bodyCalls.filter((c) => c.method === 'GET' && isLivePull(c, 'sets')).at(-1)
         expect(setsPull?.url).toContain('updated_at=gt.2026-01-02T00%3A00%3A00Z')
+    })
+
+    it('skips a Set of a remotely deleted Workout without stalling the sets cursor', async () => {
+        // Deleting a Workout cascades its Sets locally but leaves them live on
+        // the server, so a full sets pull (fresh login, or the v7 re-pull) sees
+        // Sets whose Workout will never arrive here.
+        mockFetchWithBodies((call) => {
+            if (isFirstLivePull(call, 'exercises')) return [remoteExercise('ex-a')]
+            if (isFirstLivePull(call, 'workouts')) return [remoteWorkout('w-a')]
+            if (isFirstLivePull(call, 'sets')) {
+                return [
+                    remoteSet('s-orphan', 'w-gone', 'ex-a', { workoutDeletedAt: '2026-01-03T00:00:00Z' }),
+                    remoteSet('s-a', 'w-a', 'ex-a', { updated_at: '2026-01-04T00:00:00Z' }),
+                ]
+            }
+            return undefined
+        })
+
+        await runSync()
+        await runSync()
+
+        expect(await db.getFirstAsync(`SELECT id FROM sets WHERE uuid = 's-orphan'`)).toBeNull()
+        expect((await linkedSet('s-a'))?.sync_status).toBe('synced')
+        const setsPull = bodyCalls.filter((c) => c.method === 'GET' && isLivePull(c, 'sets')).at(-1)
+        expect(setsPull?.url).toContain('updated_at=gt.2026-01-04T00%3A00%3A00Z')
     })
 
     it('does not resurrect a locally deleted Exercise from the live pull while its tombstone is pending', async () => {

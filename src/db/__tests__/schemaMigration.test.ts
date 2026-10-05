@@ -39,8 +39,10 @@ const createV4Db = async () => {
          VALUES ('w-1', 'user-A', '2026-09-01', 'finished', 'synced', '2026-09-01T10:00:00Z')`
     )
     await db.runAsync(
-        `INSERT INTO pull_cursors (user_id, workouts_updated, exercises_updated, sets_updated)
-         VALUES ('user-A', '2026-09-01T10:00:00Z', '2026-09-02T00:00:00Z', '2026-09-03T00:00:00Z')`
+        `INSERT INTO pull_cursors
+           (user_id, workouts_updated, exercises_updated, sets_updated, exercises_deleted, workouts_deleted, sets_deleted)
+         VALUES ('user-A', '2026-09-01T10:00:00Z', '2026-09-02T00:00:00Z', '2026-09-03T00:00:00Z',
+                 '2026-09-04T00:00:00Z', '2026-09-05T00:00:00Z', '2026-09-06T00:00:00Z')`
     )
     return db
 }
@@ -84,20 +86,25 @@ describe('initializeDb upgrade from schema v4 to the current schema', () => {
             updated_at: '2026-09-01T09:00:00Z',
         })
         // Rows pulled before the upgrade get their new columns backfilled on the
-        // next pull; unrelated cursors stay.
-        const cursor = await db.getFirstAsync<{ workouts_updated: string | null; exercises_updated: string | null }>(
-            `SELECT workouts_updated, exercises_updated FROM pull_cursors WHERE user_id = 'user-A'`
+        // next pull, and Sets lost to the old Exercise hard delete are re-pulled;
+        // unrelated cursors stay.
+        const cursor = await db.getFirstAsync<Record<string, string | null>>(
+            `SELECT workouts_updated, exercises_updated, sets_updated, exercises_deleted, workouts_deleted, sets_deleted
+             FROM pull_cursors WHERE user_id = 'user-A'`
         )
-        const sets = await db.getFirstAsync<{ sets_updated: string }>(
-            `SELECT sets_updated FROM pull_cursors WHERE user_id = 'user-A'`
-        )
-        expect(sets?.sets_updated).toBe('2026-09-03T00:00:00Z')
-        // Both watermarks reset once: Workouts for template_uuid (v5), Exercises
-        // for the taxonomy columns (v6).
-        expect(cursor).toEqual({ workouts_updated: null, exercises_updated: null })
+        // Workouts for template_uuid (v5), Exercises for the taxonomy columns
+        // (v6), Sets and Exercise deletions for the soft delete (v7).
+        expect(cursor).toEqual({
+            workouts_updated: null,
+            exercises_updated: null,
+            sets_updated: null,
+            exercises_deleted: null,
+            workouts_deleted: '2026-09-05T00:00:00Z',
+            sets_deleted: '2026-09-06T00:00:00Z',
+        })
 
         const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version')
-        expect(version?.user_version).toBe(6)
+        expect(version?.user_version).toBe(7)
     })
 
     it('is idempotent across repeated launches and resets the cursor only on the upgrade', async () => {
@@ -105,15 +112,73 @@ describe('initializeDb upgrade from schema v4 to the current schema', () => {
 
         await initializeDb(db as unknown as SQLite.SQLiteDatabase)
         await db.runAsync(
-            `UPDATE pull_cursors SET workouts_updated = '2026-10-01T00:00:00Z', exercises_updated = '2026-10-01T00:00:00Z'`
+            `UPDATE pull_cursors SET workouts_updated = '2026-10-01T00:00:00Z', exercises_updated = '2026-10-01T00:00:00Z',
+                    sets_updated = '2026-10-01T00:00:00Z', exercises_deleted = '2026-10-01T00:00:00Z'`
         )
         await initializeDb(db as unknown as SQLite.SQLiteDatabase)
 
         const count = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) c FROM workouts')
         expect(count?.c).toBe(1)
-        const cursor = await db.getFirstAsync<{ workouts_updated: string; exercises_updated: string }>(
-            'SELECT workouts_updated, exercises_updated FROM pull_cursors'
+        const cursor = await db.getFirstAsync<Record<string, string>>(
+            'SELECT workouts_updated, exercises_updated, sets_updated, exercises_deleted FROM pull_cursors'
         )
-        expect(cursor).toEqual({ workouts_updated: '2026-10-01T00:00:00Z', exercises_updated: '2026-10-01T00:00:00Z' })
+        expect(cursor).toEqual({
+            workouts_updated: '2026-10-01T00:00:00Z',
+            exercises_updated: '2026-10-01T00:00:00Z',
+            sets_updated: '2026-10-01T00:00:00Z',
+            exercises_deleted: '2026-10-01T00:00:00Z',
+        })
+    })
+})
+
+describe('initializeDb upgrade from schema v6 (issue #85)', () => {
+    // A current-shape database as a v6 app left it, with every cursor advanced.
+    const createV6Db = async () => {
+        const db = await createV4Db()
+        await initializeDb(db as unknown as SQLite.SQLiteDatabase)
+        await db.runAsync(
+            `UPDATE pull_cursors SET workouts_updated = '2026-10-01T00:00:00Z', exercises_updated = '2026-10-02T00:00:00Z',
+                    sets_updated = '2026-10-03T00:00:00Z', exercises_deleted = '2026-10-04T00:00:00Z'`
+        )
+        await db.execAsync('PRAGMA user_version = 6;')
+        return db
+    }
+
+    const cursorOf = (db: ReturnType<typeof createInMemorySqliteDb>) =>
+        db.getFirstAsync<Record<string, string | null>>(
+            `SELECT workouts_updated, exercises_updated, sets_updated, exercises_deleted, workouts_deleted, sets_deleted
+             FROM pull_cursors WHERE user_id = 'user-A'`
+        )
+
+    it('re-pulls Sets and Exercise deletions once, so Sets lost to the old hard delete come back', async () => {
+        const db = await createV6Db()
+
+        await initializeDb(db as unknown as SQLite.SQLiteDatabase)
+
+        expect(await cursorOf(db)).toEqual({
+            workouts_updated: '2026-10-01T00:00:00Z',
+            exercises_updated: '2026-10-02T00:00:00Z',
+            sets_updated: null,
+            exercises_deleted: null,
+            workouts_deleted: '2026-09-05T00:00:00Z',
+            sets_deleted: '2026-09-06T00:00:00Z',
+        })
+        const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version')
+        expect(version?.user_version).toBe(7)
+    })
+
+    it('resets them only on that upgrade, not on later launches', async () => {
+        const db = await createV6Db()
+        await initializeDb(db as unknown as SQLite.SQLiteDatabase)
+        await db.runAsync(
+            `UPDATE pull_cursors SET sets_updated = '2026-10-05T00:00:00Z', exercises_deleted = '2026-10-05T00:00:00Z'`
+        )
+
+        await initializeDb(db as unknown as SQLite.SQLiteDatabase)
+
+        expect(await cursorOf(db)).toMatchObject({
+            sets_updated: '2026-10-05T00:00:00Z',
+            exercises_deleted: '2026-10-05T00:00:00Z',
+        })
     })
 })
