@@ -10,9 +10,10 @@ vi.mock('@/src/data/remote/supabase/config', () => ({
     getSupabaseConfig: () => ({ url: 'https://example.test', publicKey: 'anon' }),
 }))
 
-const { refreshMock, tokenState } = vi.hoisted(() => ({
+const { refreshMock, tokenState, deleteLocalPhotoMock } = vi.hoisted(() => ({
     refreshMock: vi.fn(async () => null as string | null),
     tokenState: { current: 'token' },
+    deleteLocalPhotoMock: vi.fn(async (_uri: string | null) => {}),
 }))
 
 vi.mock('@/src/data/remote/supabase/session', () => ({
@@ -25,7 +26,7 @@ vi.mock('@/src/data/remote/supabase/session', () => ({
 vi.mock('../photoStorage', () => ({
     backfillLocalPhotoKeys: async () => {},
     createExercisePhotoStore: () => ({ upload: async () => null, cleanup: async () => {} }),
-    deleteLocalPhoto: async () => {},
+    deleteLocalPhoto: (uri: string | null) => deleteLocalPhotoMock(uri),
     hydrateExercisePhotos: async () => 0,
 }))
 
@@ -57,6 +58,28 @@ const mockFetch = (handler: (call: FetchCall) => { ok?: boolean; status?: number
     }) as typeof fetch
 }
 
+type BodyCall = FetchCall & { body: unknown }
+const bodyCalls: BodyCall[] = []
+
+// Like mockFetch, but records request bodies and echoes upserts back as
+// persisted so the Outbox acks them.
+const mockFetchWithBodies = (pull: (call: FetchCall) => unknown[] | undefined = () => undefined) => {
+    bodyCalls.length = 0
+    let nextId = 1
+    globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const u = typeof url === 'string' ? url : url.toString()
+        const method = init?.method ?? 'GET'
+        const body = init?.body ? JSON.parse(String(init.body)) : undefined
+        bodyCalls.push({ url: u, method, body })
+        if (method === 'POST') {
+            const rows = body as { uuid: string }[]
+            return new Response(JSON.stringify(rows.map((r) => ({ id: nextId++, uuid: r.uuid }))), { status: 201 })
+        }
+        if (method === 'PATCH') return new Response('', { status: 204 })
+        return new Response(JSON.stringify(pull({ url: u, method }) ?? []), { status: 200 })
+    }) as typeof fetch
+}
+
 beforeEach(async () => {
     await resetTestDb()
     db = await createTestDb()
@@ -66,6 +89,7 @@ beforeEach(async () => {
     syncStatusStore.set({ kind: 'idle' })
     refreshMock.mockReset()
     refreshMock.mockResolvedValue(null)
+    deleteLocalPhotoMock.mockClear()
     tokenState.current = 'token'
 })
 
@@ -738,28 +762,6 @@ describe('runSync — failure lifecycle (blocked / dead-letter)', () => {
 })
 
 describe('runSync — Workout Templates (ADR-0006)', () => {
-    type BodyCall = FetchCall & { body: unknown }
-    const bodyCalls: BodyCall[] = []
-
-    // Like mockFetch, but records request bodies and echoes upserts back as
-    // persisted so the Outbox acks them.
-    const mockFetchWithBodies = (pull: (call: FetchCall) => unknown[] | undefined = () => undefined) => {
-        bodyCalls.length = 0
-        let nextId = 1
-        globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-            const u = typeof url === 'string' ? url : url.toString()
-            const method = init?.method ?? 'GET'
-            const body = init?.body ? JSON.parse(String(init.body)) : undefined
-            bodyCalls.push({ url: u, method, body })
-            if (method === 'POST') {
-                const rows = body as { uuid: string }[]
-                return new Response(JSON.stringify(rows.map((r) => ({ id: nextId++, uuid: r.uuid }))), { status: 201 })
-            }
-            if (method === 'PATCH') return new Response('', { status: 204 })
-            return new Response(JSON.stringify(pull({ url: u, method }) ?? []), { status: 200 })
-        }) as typeof fetch
-    }
-
     const templateRow = (uuid: string) =>
         db.getFirstAsync<{ name: string; exercise_uuids: string; sync_status: string }>(
             'SELECT name, exercise_uuids, sync_status FROM workout_templates WHERE uuid = ?',
@@ -1055,5 +1057,380 @@ describe('runSync — Workout Templates (ADR-0006)', () => {
             userId
         )
         expect((await getSyncState()).outbox_size).toBe(1)
+    })
+})
+
+describe('runSync — Exercises are soft-deleted, their Sets kept (issue #85)', () => {
+    const remoteExercise = (uuid: string, overrides: Record<string, unknown> = {}) => ({
+        uuid,
+        user_id: userId,
+        name: 'Bench',
+        type: 'weight',
+        muscle_group: 'chest',
+        photo_key: null,
+        position: 0,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        deleted_at: null,
+        ...overrides,
+    })
+
+    const remoteWorkout = (uuid: string) => ({
+        uuid,
+        user_id: userId,
+        date: '2026-01-02',
+        status: 'finished',
+        created_at: '2026-01-02T00:00:00Z',
+        updated_at: '2026-01-02T00:00:00Z',
+        deleted_at: null,
+    })
+
+    const remoteSet = (
+        uuid: string,
+        workoutUuid: string,
+        exerciseUuid: string,
+        overrides: { updated_at?: string; workoutDeletedAt?: string } = {}
+    ) => ({
+        uuid,
+        user_id: userId,
+        weight: 80,
+        reps: 8,
+        distance: null,
+        duration: null,
+        rpe: null,
+        position: 0,
+        sub_sets: null,
+        created_at: '2026-01-02T00:00:00Z',
+        updated_at: overrides.updated_at ?? '2026-01-02T00:00:00Z',
+        deleted_at: null,
+        workouts: { uuid: workoutUuid, deleted_at: overrides.workoutDeletedAt ?? null },
+        exercises: { uuid: exerciseUuid },
+    })
+
+    const isLivePull = (call: FetchCall, table: string) =>
+        call.url.includes(`/${table}?`) && call.url.includes('deleted_at=is.null')
+    const isFirstLivePull = (call: FetchCall, table: string) =>
+        isLivePull(call, table) && !call.url.includes('updated_at=gt')
+    const isFirstDeletionPull = (call: FetchCall, table: string) =>
+        call.url.includes(`/${table}?`) && call.url.includes('deleted_at=not.is.null')
+
+    const exerciseRow = (uuid: string) =>
+        db.getFirstAsync<{
+            name: string
+            deleted_at: string | null
+            sync_status: string
+            photo_uri: string | null
+            photo_key: string | null
+        }>('SELECT name, deleted_at, sync_status, photo_uri, photo_key FROM exercises WHERE uuid = ?', uuid)
+
+    const linkedSet = (uuid: string) =>
+        db.getFirstAsync<{ exercise_uuid: string; workout_uuid: string; sync_status: string }>(
+            `SELECT e.uuid AS exercise_uuid, w.uuid AS workout_uuid, s.sync_status
+             FROM sets s JOIN exercises e ON e.id = s.exercise_id JOIN workouts w ON w.id = s.workout_id
+             WHERE s.uuid = ?`,
+            uuid
+        )
+
+    // A synced Exercise with one synced Set in a synced Workout.
+    const seedHistory = async (exerciseUuid: string, photoUri: string | null = null) => {
+        const exercise = await db.runAsync(
+            `INSERT INTO exercises (uuid, user_id, name, type, photo_uri, sync_status, created_at, updated_at)
+             VALUES (?, ?, 'Bench', 'weight', ?, 'synced', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`,
+            exerciseUuid,
+            userId,
+            photoUri
+        )
+        const workout = await db.runAsync(
+            `INSERT INTO workouts (uuid, user_id, date, status, sync_status, created_at, updated_at)
+             VALUES ('w-1', ?, '2026-01-02', 'finished', 'synced', '2026-01-02T00:00:00Z', '2026-01-02T00:00:00Z')`,
+            userId
+        )
+        await db.runAsync(
+            `INSERT INTO sets (uuid, user_id, workout_id, exercise_id, weight, reps, sync_status, created_at, updated_at)
+             VALUES ('s-1', ?, ?, ?, 80, 8, 'synced', '2026-01-02T00:00:00Z', '2026-01-02T00:00:00Z')`,
+            userId,
+            workout.lastInsertRowId,
+            exercise.lastInsertRowId
+        )
+    }
+
+    // An Exercise deleted on this device at `deletedAt`, with its tombstone.
+    const seedLocalDeletion = async (uuid: string, deletedAt: string, tombstoneStatus: 'dirty' | 'synced') => {
+        await db.runAsync(
+            `INSERT INTO exercises (uuid, user_id, name, type, sync_status, created_at, updated_at, deleted_at)
+             VALUES (?, ?, 'Bench', 'weight', 'synced', '2026-01-01T00:00:00Z', ?, ?)`,
+            uuid,
+            userId,
+            deletedAt,
+            deletedAt
+        )
+        await db.runAsync(
+            `INSERT INTO deletion_tombstones (entity_type, entity_uuid, user_id, deleted_at, sync_status)
+             VALUES ('exercise', ?, ?, ?, ?)`,
+            uuid,
+            userId,
+            deletedAt,
+            tombstoneStatus
+        )
+    }
+
+    it('applies a remote Exercise deletion as a soft delete and keeps its Sets', async () => {
+        await seedHistory('ex-gone', 'file:///doc/exercises/1.jpg')
+        mockFetchWithBodies((call) =>
+            isFirstDeletionPull(call, 'exercises')
+                ? [
+                      remoteExercise('ex-gone', {
+                          updated_at: '2026-02-01T00:00:00Z',
+                          deleted_at: '2026-02-01T00:00:00Z',
+                      }),
+                  ]
+                : undefined
+        )
+
+        await runSync()
+
+        expect(await exerciseRow('ex-gone')).toMatchObject({
+            deleted_at: '2026-02-01T00:00:00Z',
+            sync_status: 'synced',
+            photo_uri: null,
+        })
+        expect(await linkedSet('s-1')).toMatchObject({ exercise_uuid: 'ex-gone', sync_status: 'synced' })
+        // The local photo file still goes with the Exercise.
+        expect(deleteLocalPhotoMock).toHaveBeenCalledWith('file:///doc/exercises/1.jpg')
+    })
+
+    it('keeps an unsynced local edit newer than the remote deletion (last-writer-wins)', async () => {
+        await db.runAsync(
+            `INSERT INTO exercises (uuid, user_id, name, type, sync_status, created_at, updated_at)
+             VALUES ('ex-edited', ?, 'Edited', 'weight', 'dirty', '2026-01-01T00:00:00Z', '2026-03-01T00:00:00Z')`,
+            userId
+        )
+        // The push fails, so the edit is still unsynced when the deletion arrives.
+        mockFetch((call) => {
+            if (call.method !== 'GET') return { status: 500 }
+            if (isFirstDeletionPull(call, 'exercises')) {
+                return {
+                    body: [
+                        remoteExercise('ex-edited', {
+                            updated_at: '2026-02-01T00:00:00Z',
+                            deleted_at: '2026-02-01T00:00:00Z',
+                        }),
+                    ],
+                }
+            }
+            return { body: [] }
+        })
+
+        await runSync()
+
+        expect(await exerciseRow('ex-edited')).toMatchObject({ name: 'Edited', deleted_at: null })
+        expect(await localStatus('ex-edited')).toBe('failed')
+    })
+
+    it('leaves an Exercise already deleted here as it is when its deletion comes back', async () => {
+        await seedLocalDeletion('ex-mine', '2026-04-01T00:00:00Z', 'synced')
+        mockFetchWithBodies((call) =>
+            isFirstDeletionPull(call, 'exercises')
+                ? [
+                      remoteExercise('ex-mine', {
+                          updated_at: '2026-04-02T00:00:00Z',
+                          deleted_at: '2026-04-02T00:00:00Z',
+                      }),
+                  ]
+                : undefined
+        )
+
+        await runSync()
+
+        expect((await exerciseRow('ex-mine'))?.deleted_at).toBe('2026-04-01T00:00:00Z')
+        expect(deleteLocalPhotoMock).not.toHaveBeenCalled()
+    })
+
+    it('does not re-insert a Set deleted here whose tombstone has not pushed yet', async () => {
+        await seedHistory('ex-a')
+        await db.runAsync(`DELETE FROM sets WHERE uuid = 's-1'`)
+        await db.runAsync(
+            `INSERT INTO deletion_tombstones (entity_type, entity_uuid, user_id, deleted_at, sync_status)
+             VALUES ('set', 's-1', ?, '2026-03-01T00:00:00Z', 'blocked')`,
+            userId
+        )
+        mockFetchWithBodies((call) => (isFirstLivePull(call, 'sets') ? [remoteSet('s-1', 'w-1', 'ex-a')] : undefined))
+
+        await runSync()
+
+        expect(await db.getFirstAsync(`SELECT id FROM sets WHERE uuid = 's-1'`)).toBeNull()
+    })
+
+    it('lets a live remote Set back in once its local deletion has pushed (last-writer-wins)', async () => {
+        await seedHistory('ex-a')
+        await db.runAsync(`DELETE FROM sets WHERE uuid = 's-1'`)
+        await db.runAsync(
+            `INSERT INTO deletion_tombstones (entity_type, entity_uuid, user_id, deleted_at, sync_status)
+             VALUES ('set', 's-1', ?, '2026-03-01T00:00:00Z', 'synced')`,
+            userId
+        )
+        // A later edit from another device revived it on the server.
+        mockFetchWithBodies((call) =>
+            isFirstLivePull(call, 'sets')
+                ? [remoteSet('s-1', 'w-1', 'ex-a', { updated_at: '2026-03-02T00:00:00Z' })]
+                : undefined
+        )
+
+        await runSync()
+
+        expect((await linkedSet('s-1'))?.sync_status).toBe('synced')
+    })
+
+    it('skips a Set of a Workout deleted here without stalling the sets cursor', async () => {
+        await db.runAsync(
+            `INSERT INTO exercises (uuid, user_id, name, type, sync_status) VALUES ('ex-a', ?, 'Bench', 'weight', 'synced')`,
+            userId
+        )
+        // The Workout's tombstone is parked, so the server still has it live.
+        await db.runAsync(
+            `INSERT INTO deletion_tombstones (entity_type, entity_uuid, user_id, deleted_at, sync_status)
+             VALUES ('workout', 'w-gone', ?, '2026-03-01T00:00:00Z', 'blocked')`,
+            userId
+        )
+        mockFetchWithBodies((call) =>
+            isFirstLivePull(call, 'sets')
+                ? [
+                      remoteSet('s-orphan', 'w-gone', 'ex-a'),
+                      remoteSet('s-later', 'w-gone', 'ex-a', { updated_at: '2026-01-05T00:00:00Z' }),
+                  ]
+                : undefined
+        )
+
+        await runSync()
+        await runSync()
+
+        const setsPull = bodyCalls.filter((c) => c.method === 'GET' && isLivePull(c, 'sets')).at(-1)
+        expect(setsPull?.url).toContain('updated_at=gt.2026-01-05T00%3A00%3A00Z')
+    })
+
+    it('inserts a remotely deleted Exercise this device lacks, so its held-back Set links and the cursor moves on', async () => {
+        mockFetchWithBodies((call) => {
+            if (isFirstLivePull(call, 'workouts')) return [remoteWorkout('w-a')]
+            if (isFirstLivePull(call, 'sets')) return [remoteSet('s-a', 'w-a', 'ex-gone')]
+            if (isFirstDeletionPull(call, 'exercises')) {
+                return [
+                    remoteExercise('ex-gone', {
+                        name: 'Old Bench',
+                        photo_key: 'ex-gone-1.jpg',
+                        updated_at: '2026-02-01T00:00:00Z',
+                        deleted_at: '2026-02-01T00:00:00Z',
+                    }),
+                ]
+            }
+            return undefined
+        })
+
+        await runSync()
+
+        // A deleted row without a photo: its bytes are gone with the Exercise.
+        expect(await exerciseRow('ex-gone')).toEqual({
+            name: 'Old Bench',
+            deleted_at: '2026-02-01T00:00:00Z',
+            sync_status: 'synced',
+            photo_uri: null,
+            photo_key: null,
+        })
+        expect(await linkedSet('s-a')).toEqual({ exercise_uuid: 'ex-gone', workout_uuid: 'w-a', sync_status: 'synced' })
+
+        await runSync()
+        const setsPull = bodyCalls.filter((c) => c.method === 'GET' && isLivePull(c, 'sets')).at(-1)
+        expect(setsPull?.url).toContain('updated_at=gt.2026-01-02T00%3A00%3A00Z')
+    })
+
+    it('skips a Set of a remotely deleted Workout without stalling the sets cursor', async () => {
+        // Deleting a Workout cascades its Sets locally but leaves them live on
+        // the server, so a full sets pull (fresh login, or the v7 re-pull) sees
+        // Sets whose Workout will never arrive here.
+        mockFetchWithBodies((call) => {
+            if (isFirstLivePull(call, 'exercises')) return [remoteExercise('ex-a')]
+            if (isFirstLivePull(call, 'workouts')) return [remoteWorkout('w-a')]
+            if (isFirstLivePull(call, 'sets')) {
+                return [
+                    remoteSet('s-orphan', 'w-gone', 'ex-a', { workoutDeletedAt: '2026-01-03T00:00:00Z' }),
+                    remoteSet('s-a', 'w-a', 'ex-a', { updated_at: '2026-01-04T00:00:00Z' }),
+                ]
+            }
+            return undefined
+        })
+
+        await runSync()
+        await runSync()
+
+        expect(await db.getFirstAsync(`SELECT id FROM sets WHERE uuid = 's-orphan'`)).toBeNull()
+        expect((await linkedSet('s-a'))?.sync_status).toBe('synced')
+        const setsPull = bodyCalls.filter((c) => c.method === 'GET' && isLivePull(c, 'sets')).at(-1)
+        expect(setsPull?.url).toContain('updated_at=gt.2026-01-04T00%3A00%3A00Z')
+    })
+
+    it('does not resurrect a locally deleted Exercise from the live pull while its tombstone is pending', async () => {
+        await seedLocalDeletion('ex-del', '2026-04-01T00:00:00Z', 'dirty')
+        mockFetch((call) => {
+            // The tombstone push fails, so the server still has the row live.
+            if (call.method !== 'GET') return { status: 500 }
+            if (isLivePull(call, 'exercises')) {
+                return { body: [remoteExercise('ex-del', { updated_at: '2026-05-01T00:00:00Z' })] }
+            }
+            return { body: [] }
+        })
+
+        await runSync()
+
+        expect((await exerciseRow('ex-del'))?.deleted_at).toBe('2026-04-01T00:00:00Z')
+    })
+
+    it('keeps a pushed deletion against an older live copy, but lets a newer remote edit win', async () => {
+        await seedLocalDeletion('ex-older', '2026-04-01T00:00:00Z', 'synced')
+        await seedLocalDeletion('ex-newer', '2026-04-01T00:00:00Z', 'synced')
+        mockFetchWithBodies((call) =>
+            isLivePull(call, 'exercises')
+                ? [
+                      remoteExercise('ex-older', { updated_at: '2026-03-01T00:00:00Z' }),
+                      // e.g. an older app version un-deleted it with a later edit
+                      remoteExercise('ex-newer', { name: 'Edited', updated_at: '2026-05-01T00:00:00Z' }),
+                  ]
+                : undefined
+        )
+
+        await runSync()
+
+        expect((await exerciseRow('ex-older'))?.deleted_at).toBe('2026-04-01T00:00:00Z')
+        expect(await exerciseRow('ex-newer')).toMatchObject({ name: 'Edited', deleted_at: null })
+    })
+
+    it('pushes an unpushed deleted Exercise as deleted, so its Sets still get a remote parent', async () => {
+        await db.runAsync(
+            `INSERT INTO exercises (uuid, user_id, name, type, sync_status, created_at, updated_at, deleted_at)
+             VALUES ('ex-new', ?, 'Bench', 'weight', 'dirty', '2026-01-01T00:00:00Z', '2026-01-03T00:00:00Z', '2026-01-03T00:00:00Z')`,
+            userId
+        )
+        const exercise = await db.getFirstAsync<{ id: number }>(`SELECT id FROM exercises WHERE uuid = 'ex-new'`)
+        const workout = await db.runAsync(
+            `INSERT INTO workouts (uuid, user_id, date, status, sync_status, created_at, updated_at)
+             VALUES ('w-new', ?, '2026-01-02', 'finished', 'dirty', '2026-01-02T00:00:00Z', '2026-01-02T00:00:00Z')`,
+            userId
+        )
+        await db.runAsync(
+            `INSERT INTO sets (uuid, user_id, workout_id, exercise_id, reps, sync_status, created_at, updated_at)
+             VALUES ('s-new', ?, ?, ?, 5, 'dirty', '2026-01-02T00:00:00Z', '2026-01-02T00:00:00Z')`,
+            userId,
+            workout.lastInsertRowId,
+            exercise?.id
+        )
+        mockFetchWithBodies()
+
+        const result = await runSync()
+
+        expect(result).toMatchObject({ failed: 0, aborted: false })
+        const exerciseUpsert = bodyCalls.find((c) => c.method === 'POST' && c.url.includes('/exercises?'))
+        expect(exerciseUpsert?.body).toEqual([
+            expect.objectContaining({ uuid: 'ex-new', deleted_at: '2026-01-03T00:00:00Z' }),
+        ])
+        expect(bodyCalls.some((c) => c.method === 'POST' && c.url.includes('/sets?'))).toBe(true)
+        expect((await linkedSet('s-new'))?.sync_status).toBe('synced')
     })
 })

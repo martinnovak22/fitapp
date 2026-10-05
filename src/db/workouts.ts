@@ -1,5 +1,6 @@
 import { buildPrincipalWhereClause, getScopedUserId } from '@/src/data/principal'
 import { getDb } from './client'
+import type { Exercise } from './exercises'
 import { buildSetMetricColumns, resolveNextSetPosition } from './setWriteValues'
 import { createEntityUuid, nowIso, recordDeletionTombstone, type SyncStatus, softDeleteById } from './sync'
 import { executeWrite, executeWriteTransaction } from './writeQueue'
@@ -290,6 +291,8 @@ export const WorkoutRepository = {
         )
     },
 
+    // Sets of a deleted Exercise stay in the history: Exercises are only
+    // soft-deleted, so the join still finds the row and its name.
     async getSets(workoutId: number): Promise<SetWithExerciseName[]> {
         const db = await getDb()
         const setScope = buildPrincipalWhereClause('s.user_id')
@@ -302,7 +305,6 @@ export const WorkoutRepository = {
              JOIN workouts w ON s.workout_id = w.id
              WHERE s.workout_id = ?
                AND s.deleted_at IS NULL
-               AND e.deleted_at IS NULL
                AND w.deleted_at IS NULL
                AND ${setScope.clause}
                AND ${exerciseScope.clause}
@@ -312,6 +314,26 @@ export const WorkoutRepository = {
             ...setScope.params,
             ...exerciseScope.params,
             ...workoutScope.params
+        )
+    },
+
+    // The Exercises this Workout has Sets of, deleted ones included, so a Set
+    // of a since-deleted Exercise can still be edited.
+    async getSetExercises(workoutId: number): Promise<Exercise[]> {
+        const db = await getDb()
+        const setScope = buildPrincipalWhereClause('s.user_id')
+        const exerciseScope = buildPrincipalWhereClause('e.user_id')
+        return await db.getAllAsync<Exercise>(
+            `SELECT DISTINCT e.*
+             FROM exercises e
+             JOIN sets s ON s.exercise_id = e.id
+             WHERE s.workout_id = ?
+               AND s.deleted_at IS NULL
+               AND ${setScope.clause}
+               AND ${exerciseScope.clause}`,
+            workoutId,
+            ...setScope.params,
+            ...exerciseScope.params
         )
     },
 

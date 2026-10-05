@@ -1,8 +1,9 @@
+import type * as SQLite from 'expo-sqlite'
 import { buildPrincipalWhereClause, getScopedUserId } from '@/src/data/principal'
 import { buildPhotoKey, nextPhotoKey } from '@/src/data/sync/photoSync'
 import { type Equipment, type MuscleKey, muscleGroupOf, serializeSecondaryMuscles } from '@/src/domain/exerciseTaxonomy'
 import { getDb } from './client'
-import { createEntityUuid, nowIso, type SyncStatus, softDeleteById } from './sync'
+import { createEntityUuid, nowIso, recordDeletionTombstone, type SyncStatus } from './sync'
 import { executeWriteTransaction } from './writeQueue'
 
 export type ExerciseType = 'weight' | 'cardio' | 'bodyweight' | 'bodyweight_timer'
@@ -65,6 +66,32 @@ const mirroredMuscleGroup = (muscles: ExerciseMusclesInput): string | null =>
     muscles.primary ? muscleGroupOf(muscles.primary) : muscles.legacyText?.trim().toLowerCase() || null
 
 const NO_MUSCLES: ExerciseMusclesInput = { primary: null, secondary: [] }
+
+// Exercises are soft-deleted: the row stays with deleted_at set, so the Sets
+// that reference it keep their history (the sets → exercises foreign key
+// cascades on a hard DELETE). The tombstone carries the deletion to remote.
+// The photo goes with the Exercise, so the row stops pointing at it. The sync
+// status is left alone: a synced row needs only the tombstone, and an unpushed
+// one still pushes (as deleted) so its Sets have a remote parent. Runs inside
+// the caller's transaction; returns whether a live row in scope was deleted.
+export const softDeleteExercise = async (db: SQLite.SQLiteDatabase, id: number): Promise<boolean> => {
+    const scope = buildPrincipalWhereClause('user_id')
+    const entity = await db.getFirstAsync<{ uuid: string; user_id: string | null }>(
+        `SELECT uuid, user_id FROM exercises WHERE id = ? AND deleted_at IS NULL AND ${scope.clause}`,
+        id,
+        ...scope.params
+    )
+    if (!entity?.uuid) return false
+    const now = nowIso()
+    await recordDeletionTombstone(db, 'exercise', entity.uuid, entity.user_id, now)
+    await db.runAsync(
+        `UPDATE exercises SET deleted_at = ?, updated_at = ?, photo_uri = NULL, photo_key = NULL WHERE id = ?`,
+        now,
+        now,
+        id
+    )
+    return true
+}
 
 export const ExerciseRepository = {
     async getAll(): Promise<Exercise[]> {
@@ -200,7 +227,7 @@ export const ExerciseRepository = {
             values.push('dirty')
             values.push(id)
             await db.runAsync(
-                `UPDATE exercises SET ${fields.join(', ')} WHERE id = ? AND ${scope.clause}`,
+                `UPDATE exercises SET ${fields.join(', ')} WHERE id = ? AND deleted_at IS NULL AND ${scope.clause}`,
                 ...values,
                 ...scope.params
             )
@@ -214,7 +241,7 @@ export const ExerciseRepository = {
                 await db.runAsync(
                     `UPDATE exercises
                      SET position = ?, updated_at = ?, sync_status = ?
-                     WHERE id = ? AND ${scope.clause}`,
+                     WHERE id = ? AND deleted_at IS NULL AND ${scope.clause}`,
                     update.position,
                     nowIso(),
                     'dirty',
@@ -226,6 +253,6 @@ export const ExerciseRepository = {
     },
 
     async delete(id: number): Promise<void> {
-        await softDeleteById('exercises', 'exercise', id)
+        await executeWriteTransaction((db) => softDeleteExercise(db, id))
     },
 }

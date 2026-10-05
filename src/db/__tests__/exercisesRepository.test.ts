@@ -10,6 +10,7 @@ vi.mock('@/src/db/client', () => ({
 }))
 
 const { ExerciseRepository } = await import('../exercises')
+const { WorkoutRepository } = await import('../workouts')
 const { setActivePrincipal } = await import('@/src/data/principal')
 
 let db: TestDb
@@ -191,5 +192,124 @@ describe('ExerciseRepository taxonomy fields (ADR-0007)', () => {
         })
         await ExerciseRepository.update(id, { equipment: null })
         expect((await raw(id))?.equipment).toBeNull()
+    })
+})
+
+describe('ExerciseRepository.delete keeps history (issue #85)', () => {
+    // A Workout with one Set of `exerciseId`, owned by the active account.
+    const logSet = async (exerciseId: number) => {
+        const workoutId = await WorkoutRepository.create('2026-09-01')
+        await WorkoutRepository.addSet(workoutId, exerciseId, { weight: 100, reps: 5 })
+        return workoutId
+    }
+
+    const exerciseRow = (id: number) =>
+        db.getFirstAsync<{
+            deleted_at: string | null
+            updated_at: string
+            photo_uri: string | null
+            photo_key: string | null
+            sync_status: string
+        }>('SELECT deleted_at, updated_at, photo_uri, photo_key, sync_status FROM exercises WHERE id = ?', id)
+
+    it('soft-deletes the Exercise and records a tombstone with the same timestamp', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight')
+        const uuid = (await rowById(id))?.uuid
+
+        await ExerciseRepository.delete(id)
+
+        const row = await exerciseRow(id)
+        expect(row?.deleted_at).toEqual(expect.any(String))
+        expect(row?.updated_at).toBe(row?.deleted_at)
+        const tombstone = await db.getFirstAsync<{ entity_uuid: string; deleted_at: string; sync_status: string }>(
+            `SELECT entity_uuid, deleted_at, sync_status FROM deletion_tombstones WHERE entity_type = 'exercise'`
+        )
+        expect(tombstone).toEqual({ entity_uuid: uuid, deleted_at: row?.deleted_at, sync_status: 'dirty' })
+    })
+
+    it('keeps every Set of the Exercise, still listed by getSets with the Exercise name', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight')
+        const workoutId = await logSet(id)
+
+        await ExerciseRepository.delete(id)
+
+        const sets = await WorkoutRepository.getSets(workoutId)
+        expect(sets).toHaveLength(1)
+        expect(sets[0]).toMatchObject({ exercise_id: id, exercise_name: 'Bench', weight: 100, reps: 5 })
+    })
+
+    it('hides the deleted Exercise from getAll and getById', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight')
+        const kept = await ExerciseRepository.create('Squat', 'weight')
+
+        await ExerciseRepository.delete(id)
+
+        expect((await ExerciseRepository.getAll()).map((e) => e.id)).toEqual([kept])
+        expect(await ExerciseRepository.getById(id)).toBeNull()
+    })
+
+    it('still offers the deleted Exercise for editing the Workout’s existing Sets', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight')
+        const workoutId = await logSet(id)
+
+        await ExerciseRepository.delete(id)
+
+        const setExercises = await WorkoutRepository.getSetExercises(workoutId)
+        expect(setExercises.map((e) => ({ id: e.id, name: e.name, deleted: !!e.deleted_at }))).toEqual([
+            { id, name: 'Bench', deleted: true },
+        ])
+    })
+
+    it('ignores edits and reorders that target the deleted Exercise', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight')
+        await ExerciseRepository.delete(id)
+        const before = await exerciseRow(id)
+
+        await ExerciseRepository.update(id, { name: 'Stale edit' })
+        await ExerciseRepository.updatePositions([{ id, position: 5 }])
+
+        expect(await exerciseRow(id)).toEqual(before)
+        expect((await db.getFirstAsync<{ name: string }>('SELECT name FROM exercises WHERE id = ?', id))?.name).toBe(
+            'Bench'
+        )
+    })
+
+    it('rejects new Sets for the deleted Exercise', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight')
+        const workoutId = await WorkoutRepository.create('2026-09-02')
+
+        await ExerciseRepository.delete(id)
+
+        await expect(WorkoutRepository.addSet(workoutId, id, { reps: 5 })).rejects.toThrow()
+    })
+
+    it('drops the photo reference, since the photo file goes with the Exercise', async () => {
+        const id = await ExerciseRepository.create('Bench', 'weight', { photoUri: 'file:///doc/exercises/171.jpg' })
+
+        await ExerciseRepository.delete(id)
+
+        expect(await exerciseRow(id)).toMatchObject({ photo_uri: null, photo_key: null })
+    })
+
+    it('leaves the sync status alone, so only the tombstone pushes a synced Exercise', async () => {
+        await insertExercise('ex-synced', 'user-A', 0)
+        const row = await db.getFirstAsync<{ id: number }>(`SELECT id FROM exercises WHERE uuid = 'ex-synced'`)
+
+        await ExerciseRepository.delete(row?.id as number)
+
+        expect((await exerciseRow(row?.id as number))?.sync_status).toBe('synced')
+    })
+
+    it('is a no-op for another principal’s Exercise and for one already deleted', async () => {
+        await insertExercise('ex-b', 'user-B', 0)
+        await insertExercise('ex-gone', 'user-A', 1, '2026-01-02T00:00:00Z')
+        const ids = await db.getAllAsync<{ id: number }>(`SELECT id FROM exercises ORDER BY id`)
+
+        for (const { id } of ids) await ExerciseRepository.delete(id)
+
+        expect((await exerciseRow(ids[0].id))?.deleted_at).toBeNull()
+        expect((await exerciseRow(ids[1].id))?.deleted_at).toBe('2026-01-02T00:00:00Z')
+        const tombstones = await db.getFirstAsync<{ c: number }>('SELECT COUNT(*) c FROM deletion_tombstones')
+        expect(tombstones?.c).toBe(0)
     })
 })

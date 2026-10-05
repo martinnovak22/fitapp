@@ -2,8 +2,8 @@ import { invalidateExercisesCache } from '@/src/data/exercisesCache'
 import { buildPrincipalWhereClause } from '@/src/data/principal'
 import { buildPhotoKey } from '@/src/data/sync/photoSync'
 import { getDb } from '@/src/db/client'
-import { ExerciseRepository } from '@/src/db/exercises'
-import { nowIso, recordDeletionTombstone } from '@/src/db/sync'
+import { ExerciseRepository, softDeleteExercise } from '@/src/db/exercises'
+import { nowIso } from '@/src/db/sync'
 import { repointExerciseUuids } from '@/src/db/templateMembership'
 import { executeWriteTransaction } from '@/src/db/writeQueue'
 import { hasExplicitMuscles, resolveExerciseMuscles } from '@/src/domain/exerciseTaxonomy'
@@ -43,9 +43,9 @@ export const findDuplicateExercises = async (): Promise<DuplicateGroup[]> => {
 
 // Merge a confirmed Duplicate Group onto its survivor in one transaction:
 // re-point the duplicates' Sets onto the survivor (marked dirty), then
-// tombstone-and-delete the duplicate Exercises. Re-pointing precedes deletion
-// so the sets→exercises ON DELETE CASCADE never strands a Set. All
-// principal-scoped (ADR-0005).
+// soft-delete the duplicate Exercises with a tombstone (softDeleteExercise).
+// The duplicate's photo, if moved onto the survivor, is no longer referenced
+// by the deleted row. All principal-scoped (ADR-0005).
 export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promise<MergeExercisesResult> => {
     const duplicateIds = input.duplicateIds.filter((id) => id !== input.survivorId)
     if (duplicateIds.length === 0) return { setsRepointed: 0, exercisesDeleted: 0, templatesRepointed: 0 }
@@ -64,10 +64,13 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
             equipment: string | null
         }>(
             `SELECT uuid, photo_uri, muscle_group, primary_muscle, secondary_muscles, equipment
-             FROM exercises WHERE id = ? AND ${scope.clause}`,
+             FROM exercises WHERE id = ? AND deleted_at IS NULL AND ${scope.clause}`,
             input.survivorId,
             ...scope.params
         )
+        // A survivor deleted meanwhile (e.g. by a pull while the review was
+        // open) must not absorb the group: every member would end up deleted.
+        if (!survivor) return { setsRepointed: 0, exercisesDeleted: 0, templatesRepointed: 0 }
 
         const repoint = await db.runAsync(
             `UPDATE sets SET exercise_id = ?, updated_at = ?, sync_status = 'dirty'
@@ -92,15 +95,14 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
         for (const duplicateId of duplicateIds) {
             const row = await db.getFirstAsync<{
                 uuid: string
-                user_id: string | null
                 photo_uri: string | null
                 muscle_group: string | null
                 primary_muscle: string | null
                 secondary_muscles: string | null
                 equipment: string | null
             }>(
-                `SELECT uuid, user_id, photo_uri, muscle_group, primary_muscle, secondary_muscles, equipment
-                 FROM exercises WHERE id = ? AND ${scope.clause}`,
+                `SELECT uuid, photo_uri, muscle_group, primary_muscle, secondary_muscles, equipment
+                 FROM exercises WHERE id = ? AND deleted_at IS NULL AND ${scope.clause}`,
                 duplicateId,
                 ...scope.params
             )
@@ -125,13 +127,7 @@ export const mergeDuplicateExercises = async (input: MergeExercisesInput): Promi
                 }
             }
             if (!fillEquipment && row.equipment) fillEquipment = row.equipment
-            await recordDeletionTombstone(db, 'exercise', row.uuid, row.user_id)
-            const deleted = await db.runAsync(
-                `DELETE FROM exercises WHERE id = ? AND ${scope.clause}`,
-                duplicateId,
-                ...scope.params
-            )
-            exercisesDeleted += deleted.changes
+            if (await softDeleteExercise(db, duplicateId)) exercisesDeleted += 1
         }
 
         const gainsPhoto = !survivor?.photo_uri && !!fillPhotoUri

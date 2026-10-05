@@ -21,6 +21,7 @@ import { RemoteRequestError } from './RemoteAdapter'
 import { createRemoteIdResolver } from './RemoteIdResolver'
 import { createRemoteWriter } from './RemoteWriter'
 import {
+    type ExerciseColumns,
     parseIsoMillis,
     shouldSkipRemoteRow,
     toExerciseColumns,
@@ -48,6 +49,8 @@ type DeletedRow = {
     deleted_at: string | null
 }
 
+type RemoteWorkoutRef = { uuid: string; deleted_at?: string | null }
+
 type RemoteSetWithRefs = {
     uuid: string
     user_id: string
@@ -61,7 +64,7 @@ type RemoteSetWithRefs = {
     created_at: string | null
     updated_at: string | null
     deleted_at: string | null
-    workouts: { uuid: string } | { uuid: string }[] | null
+    workouts: RemoteWorkoutRef | RemoteWorkoutRef[] | null
     exercises: { uuid: string } | { uuid: string }[] | null
 }
 
@@ -413,31 +416,103 @@ const chunk = <T>(items: T[], size: number): T[][] => {
 
 // Apply remotely-deleted rows to the local table, skipping any row whose local
 // copy is dirty and newer (local wins). Returns the advanced deletion cursor.
-// Shared by the per-entity pulls, which differ only by table name.
+// Shared by the Workout, Set and Template pulls, which differ only by table
+// name. Exercises are soft-deleted instead (applyRemoteExerciseDeletions).
 const applyRemoteDeletions = async (
     table: string,
     deleted: DeletedRow[],
-    initialCursor: string | null,
-    // Lets a caller harvest one column off each row that gets deleted (e.g.
-    // exercises' local photo path) without this helper knowing about entity
-    // specifics. Values arrive while the transaction runs — act on them only
-    // after this function returns.
-    collectStale?: { column: string; sink: (value: string) => void }
+    initialCursor: string | null
 ): Promise<string | null> => {
     let nextDeleted: string | null = initialCursor
     for (const rows of chunk(deleted, PULL_CHUNK_SIZE)) {
-        const staleColumn = collectStale ? `, ${collectStale.column}` : ''
         await executeWriteTransaction(async (db) => {
             for (const row of rows) {
-                const local = await db.getFirstAsync<
-                    { updated_at: string | null; sync_status: string | null } & Record<string, string | null>
-                >(`SELECT updated_at, sync_status${staleColumn} FROM ${table} WHERE uuid = ? LIMIT 1`, row.uuid)
-                if (!local) continue
-                const localIsDirty = local.sync_status === 'dirty' || local.sync_status === 'failed'
-                if (localIsDirty && parseIsoMillis(local.updated_at) > parseIsoMillis(row.deleted_at)) continue
-                const staleValue = collectStale ? local[collectStale.column] : null
-                if (staleValue) collectStale?.sink(staleValue)
+                const local = await db.getFirstAsync<{ updated_at: string | null; sync_status: string | null }>(
+                    `SELECT updated_at, sync_status FROM ${table} WHERE uuid = ? LIMIT 1`,
+                    row.uuid
+                )
+                if (!local || shouldSkipRemoteRow(local, row.deleted_at)) continue
                 await db.runAsync(`DELETE FROM ${table} WHERE uuid = ?`, row.uuid)
+            }
+        })
+        for (const row of rows) nextDeleted = maxIso(nextDeleted, row.deleted_at)
+    }
+    return nextDeleted
+}
+
+// Inserts a pulled Exercise this device doesn't have yet: live, or deleted when
+// `deletedAt` is set. A deleted row carries no photo key, since its bytes go
+// with the Exercise.
+const insertPulledExercise = (
+    db: Pick<SQLiteDatabase, 'runAsync'>,
+    uuid: string,
+    cols: ExerciseColumns,
+    deletedAt: string | null
+) =>
+    db.runAsync(
+        `INSERT INTO exercises
+           (uuid, user_id, name, type, muscle_group, primary_muscle, secondary_muscles, equipment,
+            photo_key, photo_uri, position, created_at, updated_at, deleted_at, sync_status, last_synced_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 'synced', ?)`,
+        uuid,
+        cols.user_id,
+        cols.name,
+        cols.type,
+        cols.muscle_group,
+        cols.primary_muscle,
+        cols.secondary_muscles,
+        cols.equipment,
+        deletedAt ? null : cols.photo_key,
+        cols.position,
+        cols.created_at,
+        cols.updated_at,
+        deletedAt,
+        nowIso()
+    )
+
+// Exercises are never removed locally, so their Sets keep a parent row (issue
+// #85). A remote deletion soft-deletes the local copy, unless that copy is
+// unsynced and newer (local wins) or already deleted here. A deleted Exercise
+// this device doesn't have (never pulled, or lost to the old hard delete) is
+// inserted as a deleted row, so the Sets that reference it can link instead of
+// stalling the sets cursor. Deleted rows carry no photo: the bytes go with the
+// Exercise. Local photo files of rows deleted here land in `stalePhotoUris`
+// for the caller to remove once the writes commit. Returns the advanced
+// deletion cursor.
+const applyRemoteExerciseDeletions = async (
+    userId: string,
+    deleted: RemoteSimpleRow[],
+    initialCursor: string | null,
+    stalePhotoUris: string[]
+): Promise<string | null> => {
+    let nextDeleted: string | null = initialCursor
+    for (const rows of chunk(deleted, PULL_CHUNK_SIZE)) {
+        await executeWriteTransaction(async (db) => {
+            for (const row of rows) {
+                const local = await db.getFirstAsync<{
+                    updated_at: string | null
+                    sync_status: string
+                    deleted_at: string | null
+                    photo_uri: string | null
+                }>(
+                    'SELECT updated_at, sync_status, deleted_at, photo_uri FROM exercises WHERE uuid = ? LIMIT 1',
+                    row.uuid
+                )
+                if (!local) {
+                    await insertPulledExercise(db, row.uuid, toExerciseColumns(row, userId), row.deleted_at)
+                    continue
+                }
+                if (local.deleted_at || shouldSkipRemoteRow(local, row.deleted_at)) continue
+                if (local.photo_uri) stalePhotoUris.push(local.photo_uri)
+                await db.runAsync(
+                    `UPDATE exercises
+           SET deleted_at = ?, updated_at = ?, photo_uri = NULL, photo_key = NULL, sync_status = 'synced', last_synced_at = ?
+           WHERE uuid = ?`,
+                    row.deleted_at,
+                    row.updated_at ?? row.deleted_at,
+                    nowIso(),
+                    row.uuid
+                )
             }
         })
         for (const row of rows) nextDeleted = maxIso(nextDeleted, row.deleted_at)
@@ -469,19 +544,21 @@ const pullExercises = async (userId: string): Promise<number> => {
                     id: number
                     updated_at: string | null
                     sync_status: string
+                    deleted_at: string | null
                     photo_key: string | null
                     photo_uri: string | null
                 }>(
-                    'SELECT id, updated_at, sync_status, photo_key, photo_uri FROM exercises WHERE uuid = ? LIMIT 1',
+                    'SELECT id, updated_at, sync_status, deleted_at, photo_key, photo_uri FROM exercises WHERE uuid = ? LIMIT 1',
                     row.uuid
                 )
                 if (shouldSkipRemoteRow(local, row.updated_at)) continue
 
-                // Don't resurrect a row we've locally deleted but not yet pushed
-                // the tombstone for (e.g. a merged-away duplicate). Without this
-                // the live-rows pull re-inserts it before the tombstone reaches
-                // the server, so the duplicate reappears after every sync.
-                if (!local && (await hasPendingTombstone(innerDb, 'exercise', row.uuid))) continue
+                // Don't resurrect an Exercise deleted here (e.g. a merged-away
+                // duplicate). Without this the live-rows pull brings it back
+                // before the tombstone reaches the server, so it reappears
+                // after every sync. After the push, the deletion still holds
+                // against an older live copy (localExerciseDeletionHolds).
+                if ((!local || local.deleted_at) && (await localExerciseDeletionHolds(innerDb, row))) continue
 
                 const cols = toExerciseColumns(row, userId)
                 if (local) {
@@ -509,25 +586,7 @@ const pullExercises = async (userId: string): Promise<number> => {
                         row.uuid
                     )
                 } else {
-                    await innerDb.runAsync(
-                        `INSERT INTO exercises
-           (uuid, user_id, name, type, muscle_group, primary_muscle, secondary_muscles, equipment,
-            photo_key, photo_uri, position, created_at, updated_at, deleted_at, sync_status, last_synced_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, 'synced', ?)`,
-                        row.uuid,
-                        cols.user_id,
-                        cols.name,
-                        cols.type,
-                        cols.muscle_group,
-                        cols.primary_muscle,
-                        cols.secondary_muscles,
-                        cols.equipment,
-                        cols.photo_key,
-                        cols.position,
-                        cols.created_at,
-                        cols.updated_at,
-                        nowIso()
-                    )
+                    await insertPulledExercise(innerDb, row.uuid, cols, null)
                 }
             }
         })
@@ -535,21 +594,21 @@ const pullExercises = async (userId: string): Promise<number> => {
         for (const row of rows) nextUpdated = maxIso(nextUpdated, row.updated_at)
     }
 
-    const deleted = await request<DeletedRow[]>('exercises', {
+    // Row fields, not just uuids: a deleted Exercise missing here is inserted
+    // as a deleted row so its Sets can link. Photo fields are left out, since
+    // a deleted row carries none.
+    const deleted = await request<RemoteSimpleRow[]>('exercises', {
         query: {
-            select: 'uuid,deleted_at',
+            select: 'uuid,user_id,name,type,muscle_group,primary_muscle,secondary_muscles,equipment,position,created_at,updated_at,deleted_at',
             user_id: `eq.${userId}`,
             deleted_at: cursors.exercisesDeleted ? `gt.${cursors.exercisesDeleted}` : 'not.is.null',
             order: 'deleted_at.asc',
         },
     })
     // Deleted exercise rows may hold a local photo file; the files are removed
-    // only after the row deletes commit.
+    // only after the row writes commit.
     const deletedPhotoUris: string[] = []
-    const nextDeleted = await applyRemoteDeletions('exercises', deleted, cursors.exercisesDeleted, {
-        column: 'photo_uri',
-        sink: (uri) => deletedPhotoUris.push(uri),
-    })
+    const nextDeleted = await applyRemoteExerciseDeletions(userId, deleted, cursors.exercisesDeleted, deletedPhotoUris)
     for (const uri of deletedPhotoUris) await deleteLocalPhoto(uri)
 
     await setCursors(userId, {
@@ -662,6 +721,42 @@ const hasPendingTombstone = async (
         uuid
     ))
 
+// Whether a Workout or Set deletion made here has not reached the server yet
+// (dirty, failed or blocked). Once pushed, the server row carries deleted_at,
+// so a live copy coming back later is a newer remote edit and applies.
+const hasUnpushedTombstone = async (
+    db: Pick<SQLiteDatabase, 'getFirstAsync'>,
+    entityType: 'workout' | 'set',
+    uuid: string
+): Promise<boolean> =>
+    !!(await db.getFirstAsync<{ one: number }>(
+        `SELECT 1 AS one FROM deletion_tombstones
+         WHERE entity_type = ? AND entity_uuid = ? AND sync_status <> 'synced' LIMIT 1`,
+        entityType,
+        uuid
+    ))
+
+// Whether an Exercise deleted on this device stays deleted against a live
+// remote copy: always while its tombstone has not reached the server, and
+// afterwards against any copy the deletion is newer than (last-writer-wins,
+// ADR-0001). A later remote edit, e.g. by an older app version that still had
+// the Exercise, brings it back.
+const localExerciseDeletionHolds = async (
+    db: Pick<SQLiteDatabase, 'getFirstAsync'>,
+    remote: { uuid: string; updated_at: string | null }
+): Promise<boolean> => {
+    const tombstone = await db.getFirstAsync<{ deleted_at: string; sync_status: string }>(
+        `SELECT deleted_at, sync_status FROM deletion_tombstones
+         WHERE entity_type = 'exercise' AND entity_uuid = ?
+         ORDER BY deleted_at DESC LIMIT 1`,
+        remote.uuid
+    )
+    if (!tombstone) return false
+    return (
+        tombstone.sync_status !== 'synced' || parseIsoMillis(tombstone.deleted_at) >= parseIsoMillis(remote.updated_at)
+    )
+}
+
 const pullWorkoutTemplates = async (userId: string): Promise<number> => {
     const cursors = getCursors(userId)
     let remote: RemoteSimpleRow[]
@@ -749,7 +844,7 @@ const pullWorkoutTemplates = async (userId: string): Promise<number> => {
     return remote.length + deleted.length
 }
 
-const toSingleRef = (value: { uuid: string } | { uuid: string }[] | null | undefined) => {
+const toSingleRef = <R extends { uuid: string }>(value: R | R[] | null | undefined): R | null => {
     if (!value) return null
     if (Array.isArray(value)) return value[0] ?? null
     return value
@@ -759,7 +854,7 @@ const pullSets = async (userId: string): Promise<number> => {
     const cursors = getCursors(userId)
     const remote = await request<RemoteSetWithRefs[]>('sets', {
         query: {
-            select: 'uuid,user_id,weight,reps,distance,duration,rpe,position,sub_sets,created_at,updated_at,deleted_at,workouts(uuid),exercises(uuid)',
+            select: 'uuid,user_id,weight,reps,distance,duration,rpe,position,sub_sets,created_at,updated_at,deleted_at,workouts(uuid,deleted_at),exercises(uuid)',
             user_id: `eq.${userId}`,
             deleted_at: 'is.null',
             order: 'updated_at.asc',
@@ -781,7 +876,8 @@ const pullSets = async (userId: string): Promise<number> => {
         const parentMissingByUuid = new Set<string>()
         await executeWriteTransaction(async (db) => {
             for (const row of rows) {
-                const workoutUuid = toSingleRef(row.workouts)?.uuid
+                const workoutRef = toSingleRef(row.workouts)
+                const workoutUuid = workoutRef?.uuid
                 const exerciseUuid = toSingleRef(row.exercises)?.uuid
                 if (!workoutUuid || !exerciseUuid) continue
 
@@ -789,6 +885,16 @@ const pullSets = async (userId: string): Promise<number> => {
                     db.getFirstAsync<{ id: number }>('SELECT id FROM workouts WHERE uuid = ? LIMIT 1', workoutUuid),
                     db.getFirstAsync<{ id: number }>('SELECT id FROM exercises WHERE uuid = ? LIMIT 1', exerciseUuid),
                 ])
+                // Deleting a Workout drops its Sets locally but leaves them live
+                // on the server. Such a Set can never link here, so holding it
+                // back would freeze the cursor for good (e.g. on a fresh login).
+                // That holds whether the Workout was deleted remotely or here.
+                if (
+                    !workoutLocal?.id &&
+                    (workoutRef?.deleted_at || (await hasUnpushedTombstone(db, 'workout', workoutUuid)))
+                ) {
+                    continue
+                }
                 if (!workoutLocal?.id || !exerciseLocal?.id) {
                     parentMissingByUuid.add(row.uuid)
                     continue
@@ -799,6 +905,9 @@ const pullSets = async (userId: string): Promise<number> => {
                     row.uuid
                 )
                 if (shouldSkipRemoteRow(local, row.updated_at)) continue
+                // A Set deleted here must not come back before its tombstone
+                // lands remotely (a full re-pull would otherwise re-insert it).
+                if (!local && (await hasUnpushedTombstone(db, 'set', row.uuid))) continue
 
                 const cols = toSetColumns(row, userId, workoutLocal.id, exerciseLocal.id)
                 if (local) {

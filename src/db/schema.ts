@@ -1,7 +1,7 @@
 import type * as SQLite from 'expo-sqlite'
 
 export const DATABASE_NAME = 'fitapp.db'
-const SCHEMA_VERSION = 6
+const SCHEMA_VERSION = 7
 
 type ColumnDef = {
     name: string
@@ -208,6 +208,7 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
     PRAGMA foreign_keys = ON;
     PRAGMA busy_timeout = 5000;
   `)
+    const previousVersion = (await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version ?? 0
 
     await createTables(db)
     await dropDeadTables(db)
@@ -237,6 +238,15 @@ export async function initializeDb(db: SQLite.SQLiteDatabase): Promise<void> {
         // dropped on the floor, and the incremental cursor is already past
         // them. Re-pull every Workout once so the links land locally.
         await db.execAsync(`UPDATE pull_cursors SET workouts_updated = NULL;`)
+    }
+    if (previousVersion < 7) {
+        // Before v7 deleting an Exercise hard-deleted it, and the sets →
+        // exercises cascade took its Sets along, here and on every device that
+        // pulled the deletion (issue #85). The server kept them. Re-pull the
+        // deleted Exercises (now inserted as soft-deleted rows) and every Set
+        // once, so the lost Sets link again. This upgrade adds no column whose
+        // arrival could key the reset (as in v5/v6), so it keys off user_version.
+        await db.execAsync(`UPDATE pull_cursors SET sets_updated = NULL, exercises_deleted = NULL;`)
     }
     await ensureColumn(db, 'pull_cursors', { name: 'templates_updated', sqlType: 'TEXT' })
     await ensureColumn(db, 'pull_cursors', { name: 'templates_deleted', sqlType: 'TEXT' })
