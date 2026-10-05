@@ -22,8 +22,8 @@
         "@expo/vector-icons": "^15.0.3",
         "@react-native-async-storage/async-storage": "^2.2.0",
         "@react-native-community/datetimepicker": "8.4.4",
-        "@react-navigation/native": "^7.3.3",
-        "@sentry/react-native": "~7.2.0",
+        "@react-navigation/native": "^7.5.0",
+        "@sentry/react-native": "~7.13.0",
         "expo": "~54.0.37",
         "expo-constants": "~18.0.14",
         "expo-document-picker": "^14.0.8",
@@ -57,22 +57,22 @@
         "react-native-worklets": "0.5.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.5.0",
+        "@biomejs/biome": "^2.5.15",
         "@types/better-sqlite3": "^7.6.13",
         "@types/react": "~19.1.0",
-        "@vitest/coverage-v8": "4.1.9",
+        "@vitest/coverage-v8": "4.1.11",
         "better-sqlite3": "^12.11.1",
         "eslint": "^9.0.0",
         "eslint-config-expo": "~10.0.0",
         "expo-doctor": "1.20.4",
-        "fallow": "2.103.0",
+        "fallow": "2.104.0",
         "typescript": "~5.9.2",
-        "vitest": "^4.1.9"
+        "vitest": "^4.1.11"
     },
     "private": true,
     "packageManager": "yarn@4.14.1",
     "resolutions": {
-        "@react-navigation/native": "^7.3.3",
+        "@react-navigation/native": "^7.5.0",
         "@react-navigation/core": "^7.21.1",
         "@react-navigation/bottom-tabs": "^7.18.2"
     },
