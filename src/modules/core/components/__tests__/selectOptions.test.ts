@@ -5,6 +5,7 @@ import {
     groupOptions,
     type SelectOption,
     shouldShowSearch,
+    summarizeSelection,
     toggleValue,
 } from '../selectOptions'
 
@@ -65,6 +66,15 @@ describe('toggleValue', () => {
     it('adds a missing value at the end and removes a present one', () => {
         expect(toggleValue(['a'], 'b')).toEqual(['a', 'b'])
         expect(toggleValue(['a', 'b'], 'a')).toEqual(['b'])
+    })
+})
+
+describe('summarizeSelection', () => {
+    it('lists up to two labels and counts the rest', () => {
+        expect(summarizeSelection([])).toBe('')
+        expect(summarizeSelection(['Triceps'])).toBe('Triceps')
+        expect(summarizeSelection(['Triceps', 'Front delts'])).toBe('Triceps, Front delts')
+        expect(summarizeSelection(['Triceps', 'Front delts', 'Abs', 'Calves'])).toBe('Triceps, Front delts +2')
     })
 })
 

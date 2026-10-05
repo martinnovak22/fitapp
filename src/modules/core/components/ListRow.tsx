@@ -23,6 +23,8 @@ type ListRowProps = {
     // Custom trailing element (e.g. a switch); replaces value and accessory.
     trailing?: React.ReactNode
     accessory?: ListRowAccessory
+    // Validation message under the label, in the error colour.
+    error?: string
     destructive?: boolean
     disabled?: boolean
     onPress?: () => void
@@ -42,6 +44,7 @@ export function ListRow({
     leading,
     trailing,
     accessory = 'none',
+    error,
     destructive = false,
     disabled = false,
     onPress,
@@ -73,6 +76,7 @@ export function ListRow({
                         {subtitle}
                     </Typography.Meta>
                 )}
+                {error && <Typography.Meta color={'error'}>{error}</Typography.Meta>}
             </View>
             {trailing ?? (
                 <>

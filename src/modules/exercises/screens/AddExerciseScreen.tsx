@@ -2,13 +2,14 @@ import FontAwesome from '@expo/vector-icons/FontAwesome'
 import * as FileSystem from 'expo-file-system/legacy'
 import * as ImagePicker from 'expo-image-picker'
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { Motion } from '@/src/constants/Motion'
+import { Radius } from '@/src/constants/Radius'
 import { Spacing } from '@/src/constants/Spacing'
-import { GlobalStyles } from '@/src/constants/Styles'
+import { FontSize, FontWeight } from '@/src/constants/Typography'
 import { useExerciseRepo } from '@/src/data/RepositoryContext'
 import { deleteLocalPhoto } from '@/src/data/sync/photoStorage'
 import type { ExerciseType } from '@/src/db/exercises'
@@ -20,17 +21,19 @@ import {
     type MuscleKey,
     resolveExerciseMuscles,
 } from '@/src/domain/exerciseTaxonomy'
-import { Card } from '@/src/modules/core/components/Card'
+import { Button } from '@/src/modules/core/components/Button'
 import { confirmDialog } from '@/src/modules/core/components/ConfirmDialog'
 import { FullScreenImageModal } from '@/src/modules/core/components/FullScreenImageModal'
-import { Appear } from '@/src/modules/core/components/motion'
+import { ListRow } from '@/src/modules/core/components/ListRow'
+import { ListSection } from '@/src/modules/core/components/ListSection'
+import { SelectSheet } from '@/src/modules/core/components/SelectSheet'
+import { Sheet } from '@/src/modules/core/components/Sheet'
+import { summarizeSelection } from '@/src/modules/core/components/selectOptions'
 import { Typography } from '@/src/modules/core/components/Typography'
 import { useTheme } from '@/src/modules/core/hooks/useTheme'
 import { log } from '@/src/modules/core/utils/logger'
 import { showToast } from '@/src/modules/core/utils/toast'
 import { ScrollScreenLayout } from '../../core/components/ScreenLayout'
-import { EquipmentPicker } from '../components/EquipmentPicker'
-import { MusclePicker } from '../components/MusclePicker'
 import {
     buildExerciseSavePayload,
     changedTaxonomyOnly,
@@ -40,7 +43,9 @@ import {
     shouldPersistPhoto,
     suggestTaxonomyForType,
 } from '../exerciseForm'
-import { ExercisePhotoField, ExerciseTypeSelector, TrackingModeToggle } from './components/ExerciseFormSections'
+import { equipmentLabel, muscleLabel } from '../taxonomyLabels'
+import { equipmentFromOption, equipmentOptions, muscleOptions, NO_EQUIPMENT } from '../taxonomyOptions'
+import { ExercisePhotoThumb, ExerciseTypeField, PHOTO_THUMB_SIZE } from './components/ExerciseFormSections'
 
 async function savePhotoPermanently(uri: string): Promise<string> {
     const docDir = FileSystem.documentDirectory
@@ -85,7 +90,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     const [name, setName] = useState('')
     const [primaryMuscle, setPrimaryMuscle] = useState<MuscleKey | null>(null)
     const [secondaryMuscles, setSecondaryMuscles] = useState<MuscleKey[]>([])
-    const [showSecondary, setShowSecondary] = useState(false)
+    const [openSheet, setOpenSheet] = useState<'primary' | 'secondary' | 'equipment' | 'photo' | null>(null)
     const [equipment, setEquipment] = useState<Equipment | null>(null)
     const [type, setType] = useState<ExerciseType>('weight')
     const [photoUri, setPhotoUri] = useState<string | null>(null)
@@ -110,7 +115,6 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
             const muscles = resolveExerciseMuscles(exercise)
             setPrimaryMuscle(muscles.primary)
             setSecondaryMuscles(muscles.secondary)
-            setShowSecondary(muscles.secondary.length > 0)
             const loadedEquipment = isEquipment(exercise.equipment) ? exercise.equipment : null
             setEquipment(loadedEquipment)
             // Only keys written by a newer client need protecting from a no-op
@@ -177,9 +181,6 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
             setPrimaryMuscleError(plan.primaryMuscleError ? t(plan.primaryMuscleError) : '')
             if (plan.nameError) {
                 nameInputRef.current?.focus()
-            } else if (plan.primaryMuscleError) {
-                // The inline error may be scrolled out of view; say it where it's seen.
-                showToast.info({ title: t('primaryMuscle'), message: t(plan.primaryMuscleError) })
             }
             return
         }
@@ -267,12 +268,6 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
         setSecondaryMuscles((current) => current.filter((muscle) => muscle !== key))
     }, [])
 
-    const toggleSecondaryMuscle = useCallback((key: MuscleKey) => {
-        setSecondaryMuscles((current) =>
-            current.includes(key) ? current.filter((muscle) => muscle !== key) : [...current, key]
-        )
-    }, [])
-
     const handleDelete = useCallback(() => {
         confirmDialog({
             title: t('deleteExerciseTitle'),
@@ -299,7 +294,7 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
     useFocusEffect(
         useCallback(() => {
             navigation.getParent()?.setOptions({
-                headerTitle: t('exerciseTitle'),
+                headerTitle: isEditing ? t('editExercise') : t('newExercise'),
                 headerLeft: () => (
                     <TouchableOpacity
                         onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/exercises'))}
@@ -312,53 +307,47 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                     </TouchableOpacity>
                 ),
                 headerRight: () => (
-                    <View style={styles.headerActions}>
-                        <TouchableOpacity
-                            onPress={handleSave}
-                            disabled={!canSave}
-                            style={!canSave && styles.headerButtonDisabled}
-                            accessibilityRole={'button'}
-                            accessibilityLabel={isLoading ? t('saving') : t('save')}
-                            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                        >
-                            <FontAwesome name={'check'} size={20} color={theme.primary} />
-                        </TouchableOpacity>
-                        {isEditing && (
-                            <TouchableOpacity
-                                onPress={handleDelete}
-                                accessibilityRole={'button'}
-                                accessibilityLabel={t('delete')}
-                                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                            >
-                                <FontAwesome name={'trash'} size={20} color={theme.error} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                    <Button
+                        label={t('save')}
+                        variant={'text'}
+                        onPress={handleSave}
+                        disabled={!canSave}
+                        isLoading={isLoading}
+                        style={styles.headerSave}
+                    />
                 ),
             })
-        }, [navigation, isEditing, theme, t, handleDelete, handleSave, canSave, isLoading])
+        }, [navigation, isEditing, theme, t, handleSave, canSave, isLoading])
     )
 
-    return (
-        <ScrollScreenLayout>
-            <Card style={{ padding: 0, overflow: 'hidden' }}>
-                <Animated.View layout={CARD_LAYOUT} style={{ padding: Spacing.md }}>
-                    <Typography.Subtitle style={{ marginBottom: Spacing.md }}>
-                        {t('exerciseDetails')}
-                    </Typography.Subtitle>
+    const primaryOptions = useMemo(() => muscleOptions(t), [t])
+    const secondaryOptions = useMemo(() => muscleOptions(t, primaryMuscle ? [primaryMuscle] : []), [t, primaryMuscle])
+    const equipmentChoices = useMemo(() => equipmentOptions(t), [t])
+    const closeSheet = () => setOpenSheet(null)
 
-                    <View style={{ gap: Spacing.sm }}>
-                        <Typography.Label>{t('name')}</Typography.Label>
+    // The sheet closes before the camera or gallery opens, so only one modal
+    // is ever on screen.
+    const pickFromSheet = (source: 'camera' | 'gallery') => {
+        closeSheet()
+        pickImage(source)
+    }
+
+    return (
+        <ScrollScreenLayout keyboardShouldPersistTaps={'handled'}>
+            <Animated.View layout={FORM_LAYOUT} style={styles.form}>
+                <View style={styles.nameRow}>
+                    <ExercisePhotoThumb photoUri={photoUri} onPress={() => setOpenSheet('photo')} />
+                    <View style={styles.nameField}>
                         <TextInput
                             ref={nameInputRef}
                             placeholder={t('placeholderName')}
                             placeholderTextColor={theme.textSecondary}
                             style={[
-                                GlobalStyles.input,
+                                styles.nameInput,
                                 {
                                     color: theme.text,
                                     backgroundColor: theme.inputBackground,
-                                    borderColor: nameError ? theme.error : theme.border,
+                                    borderColor: nameError ? theme.error : 'transparent',
                                 },
                             ]}
                             value={name}
@@ -372,99 +361,114 @@ export function ExerciseFormScreen({ mode = 'create', exerciseId }: ExerciseForm
                             accessibilityLabel={t('name')}
                             accessibilityHint={t('required')}
                         />
+                        {nameError ? <Typography.Meta color={'error'}>{nameError}</Typography.Meta> : null}
                     </View>
-                    <View style={styles.helperTextSlot}>
-                        <Typography.Meta style={{ color: nameError ? theme.error : 'transparent' }} numberOfLines={1}>
-                            {nameError || ' '}
-                        </Typography.Meta>
-                    </View>
+                </View>
 
-                    <View style={styles.typeSection}>
-                        <Typography.Subtitle>{t('exerciseType')}</Typography.Subtitle>
-                        <ExerciseTypeSelector type={type} onSelect={handleTypeChange} />
-                    </View>
+                <ExerciseTypeField type={type} onTypeChange={handleTypeChange} onTrackingModeChange={setType} />
 
-                    <TrackingModeToggle type={type} onSelect={setType} />
+                <ListSection footer={t('primaryMuscleHint')}>
+                    <ListRow
+                        label={t('primaryMuscle')}
+                        value={primaryMuscle ? muscleLabel(t, primaryMuscle) : t('choose')}
+                        error={primaryMuscleError || undefined}
+                        accessory={'chevron'}
+                        onPress={() => setOpenSheet('primary')}
+                    />
+                    <ListRow
+                        label={t('secondaryMuscles')}
+                        value={
+                            secondaryMuscles.length > 0
+                                ? summarizeSelection(secondaryMuscles.map((key) => muscleLabel(t, key)))
+                                : t('none')
+                        }
+                        accessory={'chevron'}
+                        onPress={() => setOpenSheet('secondary')}
+                    />
+                    <ListRow
+                        label={t('equipment')}
+                        value={equipment ? equipmentLabel(t, equipment) : t('none')}
+                        accessory={'chevron'}
+                        onPress={() => setOpenSheet('equipment')}
+                    />
+                </ListSection>
 
-                    <View style={styles.taxonomySection}>
-                        <View style={styles.sectionHeading}>
-                            <Typography.Subtitle>{t('primaryMuscle')}</Typography.Subtitle>
-                            <Typography.Meta color={'textSecondary'}>{t('primaryMuscleHint')}</Typography.Meta>
-                            {primaryMuscleError ? (
-                                <Typography.Meta style={{ color: theme.error }}>{primaryMuscleError}</Typography.Meta>
-                            ) : null}
-                        </View>
-                        <MusclePicker
-                            mode={'single'}
-                            selected={primaryMuscle ? [primaryMuscle] : []}
-                            onToggle={selectPrimaryMuscle}
-                        />
-                    </View>
+                {isEditing && (
+                    <ListSection>
+                        <ListRow label={t('deleteExercise')} leadingIcon={'trash'} destructive onPress={handleDelete} />
+                    </ListSection>
+                )}
+            </Animated.View>
 
-                    <View style={styles.taxonomySection}>
-                        <TouchableOpacity
-                            onPress={() => setShowSecondary((current) => !current)}
-                            style={styles.disclosure}
-                            accessibilityRole={'button'}
-                            accessibilityState={{ expanded: showSecondary }}
-                        >
-                            <View style={styles.sectionHeading}>
-                                <Typography.Subtitle>
-                                    {t('secondaryMuscles')}
-                                    {secondaryMuscles.length > 0 ? ` (${secondaryMuscles.length})` : ''}
-                                </Typography.Subtitle>
-                                <Typography.Meta color={'textSecondary'}>{t('secondaryMusclesHint')}</Typography.Meta>
-                            </View>
-                            <FontAwesome
-                                name={showSecondary ? 'chevron-up' : 'chevron-down'}
-                                size={12}
-                                color={theme.textSecondary}
-                            />
-                        </TouchableOpacity>
-                        {/* The card's own layout transition owns the height change; a
-                            Collapsible here would add a second layout clock. */}
-                        {showSecondary && (
-                            <Appear style={styles.collapsibleBody}>
-                                <MusclePicker
-                                    mode={'multi'}
-                                    selected={secondaryMuscles}
-                                    onToggle={toggleSecondaryMuscle}
-                                    disabledKeys={primaryMuscle ? [primaryMuscle] : []}
-                                />
-                            </Appear>
-                        )}
-                    </View>
-
-                    <View style={styles.taxonomySection}>
-                        <View style={styles.sectionHeading}>
-                            <Typography.Subtitle>{t('equipment')}</Typography.Subtitle>
-                            <Typography.Meta color={'textSecondary'}>{t('equipmentHint')}</Typography.Meta>
-                        </View>
-                        <EquipmentPicker
-                            value={equipment}
-                            onChange={(value) => {
-                                suggestedRef.current = { ...suggestedRef.current, equipment: false }
-                                setEquipment(value)
+            <SelectSheet
+                visible={openSheet === 'primary'}
+                onClose={closeSheet}
+                title={t('primaryMuscle')}
+                mode={'single'}
+                options={primaryOptions}
+                value={primaryMuscle}
+                onSelect={selectPrimaryMuscle}
+            />
+            <SelectSheet
+                visible={openSheet === 'secondary'}
+                onClose={closeSheet}
+                title={t('secondaryMuscles')}
+                mode={'multi'}
+                options={secondaryOptions}
+                values={secondaryMuscles}
+                onChange={setSecondaryMuscles}
+            />
+            <SelectSheet
+                visible={openSheet === 'equipment'}
+                onClose={closeSheet}
+                title={t('equipment')}
+                mode={'single'}
+                searchable={false}
+                options={equipmentChoices}
+                value={equipment ?? NO_EQUIPMENT}
+                onSelect={(value) => {
+                    suggestedRef.current = { ...suggestedRef.current, equipment: false }
+                    setEquipment(equipmentFromOption(value))
+                }}
+            />
+            <Sheet visible={openSheet === 'photo'} onClose={closeSheet} title={t('photo')}>
+                <View style={styles.sheetRows}>
+                    <ListRow label={t('takePhoto')} leadingIcon={'camera'} onPress={() => pickFromSheet('camera')} />
+                    <ListRow
+                        label={t('pickFromGallery')}
+                        leadingIcon={'image'}
+                        onPress={() => pickFromSheet('gallery')}
+                    />
+                    {photoUri && (
+                        <ListRow
+                            label={t('viewPhoto')}
+                            leadingIcon={'expand'}
+                            onPress={() => {
+                                closeSheet()
+                                setShowImageFullScreen(true)
                             }}
                         />
-                    </View>
-
-                    <ExercisePhotoField
-                        photoUri={photoUri}
-                        onOpenFullScreen={() => setShowImageFullScreen(true)}
-                        onRemove={() => setPhotoUri(null)}
-                        onPick={() => pickImage('camera')}
-                        onPickFromGallery={() => pickImage('gallery')}
-                    />
-                </Animated.View>
-                {photoUri && (
-                    <FullScreenImageModal
-                        visible={showImageFullScreen}
-                        onClose={() => setShowImageFullScreen(false)}
-                        imageUri={photoUri}
-                    />
-                )}
-            </Card>
+                    )}
+                    {photoUri && (
+                        <ListRow
+                            label={t('removePhoto')}
+                            leadingIcon={'trash'}
+                            destructive
+                            onPress={() => {
+                                closeSheet()
+                                setPhotoUri(null)
+                            }}
+                        />
+                    )}
+                </View>
+            </Sheet>
+            {photoUri && (
+                <FullScreenImageModal
+                    visible={showImageFullScreen}
+                    onClose={() => setShowImageFullScreen(false)}
+                    imageUri={photoUri}
+                />
+            )}
         </ScrollScreenLayout>
     )
 }
@@ -473,34 +477,34 @@ export default function AddExerciseScreen() {
     return <ExerciseFormScreen mode="create" />
 }
 
-// The card is the single layout owner for every toggled block inside it, on
-// the shared motion clock so the reflow matches their fades.
-const CARD_LAYOUT = Motion.layout()
+// The form is the single layout owner for the Tracking Mode control toggling
+// inside it, on the shared motion clock so the reflow matches its fade.
+const FORM_LAYOUT = Motion.layout()
 
 const styles = StyleSheet.create({
-    typeSection: {
+    form: {
+        gap: Spacing.lg,
+        paddingBottom: Spacing.lg,
+    },
+    nameRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
         gap: Spacing.sm + Spacing.xs,
     },
-    taxonomySection: {
-        marginTop: Spacing.lg,
-        gap: Spacing.md,
-    },
-    sectionHeading: {
+    nameField: {
         flex: 1,
         gap: Spacing.xs,
     },
-    disclosure: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
+    nameInput: {
+        minHeight: PHOTO_THUMB_SIZE,
+        borderRadius: Radius.sm,
+        borderWidth: 1,
+        paddingHorizontal: Spacing.md,
+        fontSize: FontSize.lg,
+        fontWeight: FontWeight.semibold,
     },
-    collapsibleBody: {
-        paddingTop: Spacing.xs,
-    },
-    helperTextSlot: {
-        minHeight: 18,
-        marginTop: -Spacing.sm,
-        marginBottom: Spacing.sm,
+    sheetRows: {
+        marginHorizontal: -Spacing.md,
     },
     headerBack: {
         paddingLeft: Spacing.md,
@@ -509,13 +513,8 @@ const styles = StyleSheet.create({
         minHeight: 44,
         justifyContent: 'center',
     },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
-        marginRight: Spacing.md,
-    },
-    headerButtonDisabled: {
-        opacity: 0.4,
+    headerSave: {
+        minHeight: 44,
+        paddingHorizontal: Spacing.md,
     },
 })

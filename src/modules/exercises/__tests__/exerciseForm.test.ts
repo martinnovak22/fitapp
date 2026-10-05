@@ -218,7 +218,7 @@ describe('resolveExerciseSavePlan', () => {
 describe('resolveExerciseTypeOptions', () => {
     it('marks the matching type active', () => {
         const options = resolveExerciseTypeOptions('cardio')
-        expect(options.map((o) => o.value)).toEqual(['weight', 'cardio', 'bodyweight'])
+        expect(options.map((o) => o.value)).toEqual(['weight', 'bodyweight', 'cardio'])
         expect(options.find((o) => o.value === 'cardio')?.isActive).toBe(true)
         expect(options.find((o) => o.value === 'weight')?.isActive).toBe(false)
     })

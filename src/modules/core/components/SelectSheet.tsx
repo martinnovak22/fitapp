@@ -14,33 +14,35 @@ import { Typography } from './Typography'
 
 export type { SelectOption }
 
-type BaseProps = {
+type BaseProps<V extends string> = {
     visible: boolean
     onClose: () => void
     title: string
-    options: readonly SelectOption[]
+    options: readonly SelectOption<V>[]
+    // Defaults to showing search only for lists longer than SEARCH_THRESHOLD.
+    searchable?: boolean
 }
 
-type SingleProps = BaseProps & {
+type SingleProps<V extends string> = BaseProps<V> & {
     mode: 'single'
-    value: string | null
+    value: V | null
     // Called with the tapped option; the sheet then closes.
-    onSelect: (value: string) => void
+    onSelect: (value: V) => void
 }
 
-type MultiProps = BaseProps & {
+type MultiProps<V extends string> = BaseProps<V> & {
     mode: 'multi'
-    values: readonly string[]
+    values: readonly V[]
     // Applied on every toggle; Done only closes the sheet.
-    onChange: (values: string[]) => void
+    onChange: (values: V[]) => void
 }
 
-type SelectSheetProps = SingleProps | MultiProps
+type SelectSheetProps<V extends string> = SingleProps<V> | MultiProps<V>
 
 // Picks one or several options from a list that is too long for a segmented
 // control: search (for longer lists), section headers, checkmarks. Single
 // select closes on tap; multi select applies each toggle and closes on Done.
-export function SelectSheet(props: SelectSheetProps) {
+export function SelectSheet<V extends string>(props: SelectSheetProps<V>) {
     const { visible, onClose, title, options } = props
     const { t } = useTranslation()
     const { theme } = useTheme()
@@ -51,11 +53,11 @@ export function SelectSheet(props: SelectSheetProps) {
         if (visible) setQuery('')
     }, [visible])
 
-    const searchable = shouldShowSearch(options.length)
+    const searchable = props.searchable ?? shouldShowSearch(options.length)
     const sections = useMemo(() => groupOptions(filterOptions(options, query)), [options, query])
-    const selected = props.mode === 'single' ? (props.value === null ? [] : [props.value]) : props.values
+    const selected: readonly V[] = props.mode === 'single' ? (props.value === null ? [] : [props.value]) : props.values
 
-    const handlePress = (value: string) => {
+    const handlePress = (value: V) => {
         if (props.mode === 'single') {
             props.onSelect(value)
             onClose()
