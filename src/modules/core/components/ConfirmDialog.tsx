@@ -61,6 +61,7 @@ export function ConfirmDialogHost() {
                                 label={shown.cancelLabel ?? t('cancel')}
                                 variant={'text'}
                                 onPress={() => store.dismiss(shown)}
+                                testID={'confirm-dialog-cancel'}
                                 style={styles.action}
                                 labelStyle={{ color: theme.textSecondary }}
                             />
@@ -68,6 +69,7 @@ export function ConfirmDialogHost() {
                                 label={shown.confirmLabel}
                                 variant={'text'}
                                 onPress={() => store.confirm(shown)}
+                                testID={'confirm-dialog-confirm'}
                                 style={styles.action}
                                 labelStyle={shown.destructive ? { color: theme.error } : undefined}
                             />

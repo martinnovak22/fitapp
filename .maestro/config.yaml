@@ -1,0 +1,3 @@
+# Maestro suite for the main flow. Run with `yarn e2e` (see README.md here).
+flows:
+  - flows/*

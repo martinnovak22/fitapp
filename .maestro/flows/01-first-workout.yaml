@@ -1,0 +1,60 @@
+# A new guest logs a first workout: creates an exercise from the empty picker,
+# logs two sets and a drop set, finishes, and finds it on the dashboard and in History.
+appId: com.martinnovak22.fitapp
+name: First workout
+---
+- runFlow: ../subflows/start-as-guest.yaml
+- runFlow:
+    file: ../subflows/start-with-exercise.yaml
+    env:
+      NAME: E2E Bench Press
+
+- runFlow:
+    file: ../subflows/fill-set.yaml
+    env: { SET: "1", KG: "60", REPS: "8" }
+- tapOn: "Complete set 1"
+- tapOn: "Add a set to E2E Bench Press"
+- runFlow:
+    file: ../subflows/fill-set.yaml
+    env: { SET: "2", KG: "62.5", REPS: "6" }
+- tapOn: "Complete set 2"
+
+# Set 3 becomes a drop set with one drop stage.
+- tapOn: "Add a set to E2E Bench Press"
+- tapOn: "Set 3 actions"
+- tapOn: "Drop set"
+- runFlow:
+    file: ../subflows/fill-set.yaml
+    env: { SET: "3, drop set", KG: "50", REPS: "10" }
+- tapOn: "kg, Drop 1"
+- inputText: "40"
+- tapOn: "Reps, Drop 1"
+- inputText: "8"
+- hideKeyboard
+- tapOn: "Complete set 3, drop set"
+
+# Every row is checked, so Finish goes straight to the summary.
+- tapOn: "Finish"
+- extendedWaitUntil:
+    visible: "Workout finished"
+    timeout: 10000
+# 60×8 + 62.5×6 + 50×10 + 40×8
+- assertVisible: "1,675 kg"
+- tapOn: "Done"
+
+- extendedWaitUntil:
+    visible: "Last workout"
+    timeout: 10000
+- assertVisible: ".*3 sets · Chest"
+# The tab no longer announces a running workout.
+- assertVisible: "Workout"
+- assertNotVisible: "Workout, workout running"
+
+- tapOn: "History"
+- tapOn: ".*3 sets · 1,675 kg.*E2E Bench Press.*"
+- extendedWaitUntil:
+    visible: ".*3 sets · 1,675 kg"
+    timeout: 10000
+- assertVisible: "62.5"
+- assertVisible: "D"
+- assertVisible: "40"

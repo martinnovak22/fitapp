@@ -1,0 +1,16 @@
+# Fresh install, guest mode, onboarding skipped: lands on the Workout dashboard.
+appId: com.martinnovak22.fitapp
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Continue as guest"
+    timeout: 30000
+- tapOn: "Continue as guest"
+- extendedWaitUntil:
+    visible: "Skip"
+    timeout: 15000
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "Start workout"
+    timeout: 15000

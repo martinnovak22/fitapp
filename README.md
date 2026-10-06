@@ -4,4 +4,4 @@ Local-first fitness tracker built with Expo, React Native, and SQLite — with o
 
 - [Contributing](./CONTRIBUTING.md)
 - [Architecture docs](./docs/adr/)
-- [Testing guide](./docs/testing/)
+- [Testing guide](./docs/testing/) — including the [Maestro e2e suite](./docs/testing/e2e-maestro.md)

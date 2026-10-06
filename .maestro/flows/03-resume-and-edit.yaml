@@ -1,0 +1,49 @@
+# A workout survives an app restart, unchecked rows included, and an edit to a
+# logged set made right before Finish is in the saved workout.
+appId: com.martinnovak22.fitapp
+name: Resume and edit
+---
+- runFlow: ../subflows/start-as-guest.yaml
+- runFlow:
+    file: ../subflows/start-with-exercise.yaml
+    env:
+      NAME: E2E Squat
+
+- runFlow:
+    file: ../subflows/fill-set.yaml
+    env: { SET: "1", KG: "100", REPS: "5" }
+- tapOn: "Complete set 1"
+- tapOn: "Add a set to E2E Squat"
+- runFlow:
+    file: ../subflows/fill-set.yaml
+    env: { SET: "2", KG: "80", REPS: "3" }
+
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: "Resume workout"
+    timeout: 30000
+- assertVisible: "Workout in progress"
+- tapOn: "Resume workout"
+- extendedWaitUntil:
+    visible: "E2E Squat"
+    timeout: 10000
+- assertVisible: "100"
+- assertVisible: "80"
+
+# Edit the logged set and finish at once, without waiting for the save.
+- tapOn: "kg, set 1"
+- eraseText: 5
+- inputText: "105"
+- tapOn: "Finish"
+- extendedWaitUntil:
+    visible: "Finish workout?"
+    timeout: 5000
+- tapOn:
+    id: "confirm-dialog-confirm"
+- extendedWaitUntil:
+    visible: "Workout finished"
+    timeout: 10000
+# 105×5; the unchecked 80×3 row is dropped.
+- assertVisible: "525 kg"
+- tapOn: "Done"

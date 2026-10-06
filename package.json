@@ -16,6 +16,7 @@
         "deadcode": "fallow dead-code",
         "doctor": "expo-doctor",
         "bundle:android": "expo export --platform android --output-dir dist/android-check",
+        "e2e": "bash scripts/e2e.sh",
         "check": "yarn biome:check && yarn lint && yarn test && yarn typecheck && yarn deadcode"
     },
     "dependencies": {
