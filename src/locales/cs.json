@@ -278,6 +278,7 @@
     "removeExercise": "Odebrat cvik",
     "exerciseActions": "Akce cviku",
     "dropSetMarker": "D",
+    "dropSetNumber": "{{n}}, drop série",
     "deleteSet": "Smazat sérii",
     "normalSet": "Běžná série",
     "dropSet": "Drop série",

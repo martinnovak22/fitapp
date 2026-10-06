@@ -274,6 +274,7 @@
     "removeExercise": "Remove exercise",
     "exerciseActions": "Exercise actions",
     "dropSetMarker": "D",
+    "dropSetNumber": "{{n}}, drop set",
     "deleteSet": "Delete set",
     "normalSet": "Normal set",
     "dropSet": "Drop set",
