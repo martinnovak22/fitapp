@@ -1,0 +1,8 @@
+# Types ${KG} and ${REPS} into the row named ${SET} ("1", "2", "3, drop set").
+appId: com.martinnovak22.fitapp
+---
+- tapOn: "kg, set ${SET}"
+- inputText: ${KG}
+- tapOn: "Reps, set ${SET}"
+- inputText: ${REPS}
+- hideKeyboard

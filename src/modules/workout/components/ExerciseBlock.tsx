@@ -134,7 +134,8 @@ function ExerciseBlockInner(props: ExerciseBlockProps) {
                 return (
                     <View key={row.key}>
                         <SetRow
-                            label={row.subSets ? t('dropSetMarker') : String(index + 1)}
+                            number={index + 1}
+                            isDrop={row.subSets !== null}
                             previousLabel={formatPrevious(exercise.type, previousSet)}
                             onCopyPrevious={
                                 previousSet
@@ -363,11 +364,11 @@ function LoggedSet({
     }
     useEffect(() => () => saveOnLeave.current(), [])
 
-    const label = storedSubs ? t('dropSetMarker') : String(index + 1)
     return (
         <View>
             <SetRow
-                label={label}
+                number={index + 1}
+                isDrop={Boolean(storedSubs)}
                 previousLabel={previousLabel}
                 columns={columns}
                 values={values}
@@ -426,7 +427,9 @@ function ColumnLabel({ children, style }: { children: string; style: StyleProp<V
 }
 
 type SetRowProps = {
-    label: string
+    number: number
+    // A drop set shows a marker in place of its number; screen readers still hear the number.
+    isDrop: boolean
     previousLabel: string
     onCopyPrevious?: () => void
     columns: SetColumn[]
@@ -441,7 +444,8 @@ type SetRowProps = {
 }
 
 function SetRow({
-    label,
+    number,
+    isDrop,
     previousLabel,
     onCopyPrevious,
     columns,
@@ -455,6 +459,8 @@ function SetRow({
 }: SetRowProps) {
     const { t } = useTranslation()
     const { theme } = useTheme()
+    const label = isDrop ? t('dropSetMarker') : String(number)
+    const spokenLabel = isDrop ? t('dropSetNumber', { n: number }) : String(number)
 
     return (
         <View
@@ -473,7 +479,7 @@ function SetRow({
             ) : (
                 <OverflowMenu
                     items={menuItems}
-                    accessibilityLabel={t('setActions', { set: label })}
+                    accessibilityLabel={t('setActions', { set: spokenLabel })}
                     triggerStyle={styles.setCell}
                     trigger={
                         <Typography.Label color={'textSecondary'} weight={'semibold'} numeric>
@@ -512,7 +518,7 @@ function SetRow({
                             placeholderTextColor={theme.textSecondary}
                             selectionColor={theme.primary}
                             style={[styles.input, { color: theme.text, backgroundColor: theme.inputBackground }]}
-                            accessibilityLabel={`${t(column.labelKey)}, ${t('set')} ${label}`}
+                            accessibilityLabel={`${t(column.labelKey)}, ${t('set')} ${spokenLabel}`}
                         />
                     )}
                 </View>
@@ -523,7 +529,7 @@ function SetRow({
                     style={[styles.check, { backgroundColor: logged ? theme.primary : theme.inputBackground }]}
                     accessibilityRole={'checkbox'}
                     accessibilityState={{ checked: logged }}
-                    accessibilityLabel={t('completeSet', { set: label })}
+                    accessibilityLabel={t('completeSet', { set: spokenLabel })}
                     hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                 >
                     <FontAwesome name={'check'} size={16} color={logged ? theme.onPrimary : theme.textSecondary} />

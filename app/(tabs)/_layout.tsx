@@ -80,7 +80,10 @@ export default function TabLayout() {
                         borderRadius: 5,
                         marginTop: 4,
                     },
-                    tabBarAccessibilityLabel: hasActiveWorkout ? `${t('workout')}, ${t('workoutRunning')}` : undefined,
+                    // Always a string: Android keeps the old label when it turns undefined.
+                    tabBarAccessibilityLabel: hasActiveWorkout
+                        ? `${t('workout')}, ${t('workoutRunning')}`
+                        : t('workout'),
                 }}
             />
             <Tabs.Screen

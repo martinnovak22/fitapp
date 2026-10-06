@@ -1,0 +1,25 @@
+# From the dashboard: starts a free workout, creates ${NAME} from the empty
+# picker and adds it, leaving one empty row for set 1.
+appId: com.martinnovak22.fitapp
+---
+- tapOn: "Start workout"
+- extendedWaitUntil:
+    visible: "Add your first exercise."
+    timeout: 10000
+- tapOn: "Add exercise"
+- tapOn: "New exercise"
+- tapOn: "e.g. Bench Press"
+- inputText: ${NAME}
+- hideKeyboard
+- tapOn: "Primary muscle, Choose"
+- tapOn: "Chest"
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: "Add your first exercise."
+    timeout: 10000
+- tapOn: "Add exercise"
+- tapOn: ${NAME}
+- tapOn: 'Add \(1\)'
+- extendedWaitUntil:
+    visible: "Complete set 1"
+    timeout: 10000

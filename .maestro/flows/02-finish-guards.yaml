@@ -1,0 +1,60 @@
+# Finishing never silently loses work: an empty workout asks to be discarded,
+# and unchecked rows are named before they are dropped.
+appId: com.martinnovak22.fitapp
+name: Finish guards
+---
+- runFlow: ../subflows/start-as-guest.yaml
+- runFlow:
+    file: ../subflows/start-with-exercise.yaml
+    env:
+      NAME: E2E Row
+
+# Nothing logged yet: Finish offers to discard, Cancel keeps the workout.
+- tapOn: "Finish"
+- extendedWaitUntil:
+    visible: "Discard workout?"
+    timeout: 5000
+- tapOn:
+    id: "confirm-dialog-cancel"
+- assertVisible: "Complete set 1"
+
+# One checked set, one filled but unchecked.
+- runFlow:
+    file: ../subflows/fill-set.yaml
+    env: { SET: "1", KG: "70", REPS: "5" }
+- tapOn: "Complete set 1"
+- tapOn: "Add a set to E2E Row"
+- runFlow:
+    file: ../subflows/fill-set.yaml
+    env: { SET: "2", KG: "72.5", REPS: "5" }
+- tapOn: "Finish"
+- extendedWaitUntil:
+    visible: "Finish workout?"
+    timeout: 5000
+- assertVisible: "1 set isn't checked and will be discarded."
+- tapOn:
+    id: "confirm-dialog-confirm"
+- extendedWaitUntil:
+    visible: "Workout finished"
+    timeout: 10000
+# Only the checked 70×5 counts.
+- assertVisible: "350 kg"
+- tapOn: "Done"
+
+# A second, empty workout is discarded and leaves no trace.
+- extendedWaitUntil:
+    visible: "Start workout"
+    timeout: 10000
+- tapOn: "Start workout"
+- tapOn: "Finish"
+- extendedWaitUntil:
+    visible: "Discard workout?"
+    timeout: 5000
+- tapOn:
+    id: "confirm-dialog-confirm"
+- extendedWaitUntil:
+    visible: "Last workout"
+    timeout: 10000
+- assertVisible: ".*1 set · Chest"
+- tapOn: "History"
+- assertVisible: ".*1 workout"
