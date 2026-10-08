@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
     buildPhotoKey,
+    isMissingPhotoObject,
     localPhotoPath,
     nextPhotoKey,
     resolvePulledPhotoUri,
@@ -95,5 +96,38 @@ describe('shouldUploadPhoto', () => {
     it('skips rows without a key or without local bytes', () => {
         expect(shouldUploadPhoto({ photo_key: null, photo_uri: 'file:///doc/exercises/1.jpg' })).toBe(false)
         expect(shouldUploadPhoto({ photo_key: 'ab12-1.jpg', photo_uri: null })).toBe(false)
+    })
+})
+
+describe('isMissingPhotoObject', () => {
+    it('recognises a missing object, whether Storage answers 404 or 400', () => {
+        const body = JSON.stringify({
+            statusCode: '404',
+            code: 'NoSuchKey',
+            error: 'not_found',
+            message: 'Object not found',
+        })
+        expect(isMissingPhotoObject(404, body)).toBe(true)
+        expect(isMissingPhotoObject(400, body)).toBe(true)
+        expect(isMissingPhotoObject(400, JSON.stringify({ error: 'not_found', message: 'Object not found' }))).toBe(
+            true
+        )
+    })
+
+    it('does not treat a missing bucket, an auth error or a server error as a missing photo', () => {
+        expect(
+            isMissingPhotoObject(
+                404,
+                JSON.stringify({ statusCode: '404', code: 'NoSuchBucket', error: 'Bucket not found' })
+            )
+        ).toBe(false)
+        expect(
+            isMissingPhotoObject(
+                400,
+                JSON.stringify({ statusCode: '403', error: 'Unauthorized', message: 'jwt expired' })
+            )
+        ).toBe(false)
+        expect(isMissingPhotoObject(500, '')).toBe(false)
+        expect(isMissingPhotoObject(404, 'not json')).toBe(false)
     })
 })

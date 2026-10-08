@@ -44,6 +44,20 @@ export const resolvePulledPhotoUri = (
     return { photoUri: null, staleUri: localUri }
 }
 
+// Whether a failed photo download means the object is gone for good, e.g. its
+// Exercise was deleted (bytes removed) and later revived by a newer edit
+// elsewhere (issue #88). Storage answers 400 or 404 with a JSON body; only a
+// missing object counts, never a missing bucket or an auth error.
+export const isMissingPhotoObject = (status: number, body: string): boolean => {
+    if (status !== 400 && status !== 404) return false
+    try {
+        const error = JSON.parse(body) as { code?: string; message?: string }
+        return error.code === 'NoSuchKey' || error.message === 'Object not found'
+    } catch {
+        return false
+    }
+}
+
 // Push-side: upload only when the local bytes originated on this device. A
 // hydrated copy is named by the key itself — its bytes came from the bucket,
 // so re-uploading them is pure waste.
