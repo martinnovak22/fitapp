@@ -11,7 +11,7 @@ import { getDb } from '@/src/db/client'
 import { nowIso } from '@/src/db/sync'
 import { executeWriteTransaction } from '@/src/db/writeQueue'
 import type { SyncFailureReason } from './Outbox'
-import { buildPhotoKey, localPhotoPath, shouldUploadPhoto, storageObjectPath } from './photoSync'
+import { buildPhotoKey, isMissingPhotoObject, localPhotoPath, shouldUploadPhoto, storageObjectPath } from './photoSync'
 import { isPermanentRejectionStatus } from './RemoteAdapter'
 
 const BUCKET = 'exercise-photos'
@@ -87,23 +87,28 @@ const uploadObject = async (objectPath: string, fileUri: string): Promise<SyncFa
     }
 }
 
-// Downloads a storage object to dest; false on any failure. downloadAsync
-// writes the error body to disk on non-200, so the partial file is removed.
-const downloadObject = async (objectPath: string, dest: string): Promise<boolean> => {
+// Downloads a storage object to dest. 'missing' means the object is gone for
+// good; 'failed' covers anything worth retrying. downloadAsync writes the
+// error body to disk on non-200, so it is read for the reason, then removed.
+const downloadObject = async (objectPath: string, dest: string): Promise<'ok' | 'missing' | 'failed'> => {
     const auth = getStorageAuth()
-    if (!auth) return false
+    if (!auth) return 'failed'
     try {
         const result = await withAuthRetry(auth, (token) =>
             FileSystem.downloadAsync(objectUrl(auth, objectPath, true), dest, {
                 headers: authHeaders(auth, token),
             })
         )
-        if (result.status === 200) return true
+        if (result.status === 200) return 'ok'
+        const body =
+            result.status === 400 || result.status === 404
+                ? await FileSystem.readAsStringAsync(dest).catch(() => '')
+                : ''
         await FileSystem.deleteAsync(dest, { idempotent: true })
-        return false
+        return isMissingPhotoObject(result.status, body) ? 'missing' : 'failed'
     } catch {
         await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {})
-        return false
+        return 'failed'
     }
 }
 
@@ -219,7 +224,11 @@ export const backfillLocalPhotoKeys = async (userId: string): Promise<void> => {
 
 // Fire-and-forget after a pull: downloads bytes for rows whose photo_key has
 // no local file yet (fresh pull, key change, reinstall). Never marks rows
-// dirty — photo_uri is device-local state. Returns how many photos landed so
+// dirty — photo_uri is device-local state. One exception touches the synced
+// photo_key: when Storage says the object is gone (an Exercise revived after
+// its deletion removed the bytes, issue #88), the key is cleared here only, so
+// the row shows no photo and stops retrying; this device's next edit clears
+// it remotely too (ADR-0008). Returns how many photos landed so
 // the caller can invalidate read caches. Single-flighted per user: a cycle
 // that fires while that user's previous hydration still runs joins it instead
 // of racing it, and a principal change never joins another user's run.
@@ -249,7 +258,23 @@ export const hydrateExercisePhotos = async (userId: string): Promise<number> => 
             if (row.photo_uri && (await localFileExists(row.photo_uri))) continue
 
             const dest = localPhotoPath(docDir, row.photo_key)
-            if (!(await downloadObject(storageObjectPath(userId, row.photo_key), dest))) continue
+            const download = await downloadObject(storageObjectPath(userId, row.photo_key), dest)
+            if (download !== 'ok') {
+                if (download === 'missing') {
+                    // The bytes are gone: clear the key (and any dead file path)
+                    // so the row shows no photo and stops retrying. Only while the
+                    // key is still the one that failed, since a pull or an edit
+                    // may have replaced it meanwhile.
+                    await executeWriteTransaction((writeDb) =>
+                        writeDb.runAsync(
+                            `UPDATE exercises SET photo_key = NULL, photo_uri = NULL WHERE id = ? AND photo_key = ?`,
+                            row.id,
+                            row.photo_key
+                        )
+                    )
+                }
+                continue
+            }
 
             await executeWriteTransaction((writeDb) =>
                 writeDb.runAsync(`UPDATE exercises SET photo_uri = ? WHERE id = ?`, dest, row.id)

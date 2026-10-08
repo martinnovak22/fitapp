@@ -27,6 +27,7 @@ The server never lost anything, because the tombstone push only sets `exercises.
 ## Consequences
 
 - Soft-deleted Exercise rows stay on the device indefinitely. That is a small cost for four users.
+- A revived Exercise comes back without its photo. Pushing the deletion removes the photo bytes from storage, so its `photo_key` points at nothing. Hydration then clears the key on each device (the row is not marked dirty), so it stops retrying the download, and the next edit of the Exercise clears the key on the server too (issue #88).
 - Exercises delete through `softDeleteExercise`. The older `softDeleteById` still hard-deletes the other entities despite its name, which predates this ADR.
 - Sets that were never pushed before the old cascade removed them can't be recovered, because the server never had them.
 - [ADR-0005](0005-exercise-deduplication.md)'s merged-away duplicates now go through the same soft delete.
