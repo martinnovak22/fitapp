@@ -1433,4 +1433,125 @@ describe('runSync — Exercises are soft-deleted, their Sets kept (issue #85)', 
         expect(bodyCalls.some((c) => c.method === 'POST' && c.url.includes('/sets?'))).toBe(true)
         expect((await linkedSet('s-new'))?.sync_status).toBe('synced')
     })
+
+    describe('a Workout revived on the server brings back its Sets (issue #87)', () => {
+        const revivedSetsPull = (call: FetchCall, workoutUuid: string) =>
+            call.url.includes('/sets?') && decodeURIComponent(call.url).includes(`workouts.uuid=in.(${workoutUuid})`)
+
+        // First cycle: one Workout with a Set, so the sets cursor sits at 2026-01-05.
+        const firstCycle = (call: FetchCall) => {
+            if (isFirstLivePull(call, 'exercises')) return [remoteExercise('ex-a')]
+            if (isFirstLivePull(call, 'workouts'))
+                return [{ ...remoteWorkout('w-b'), created_at: '2026-01-04T00:00:00Z' }]
+            if (isFirstLivePull(call, 'sets'))
+                return [remoteSet('s-b', 'w-b', 'ex-a', { updated_at: '2026-01-05T00:00:00Z' })]
+            return undefined
+        }
+
+        it('re-fetches the Sets of an older Workout that arrives after the sets cursor passed them', async () => {
+            let cycle = 1
+            mockFetchWithBodies((call) => {
+                if (cycle === 1) return firstCycle(call)
+                // Deleted here earlier (Sets dropped), now revived by a newer edit elsewhere.
+                if (isLivePull(call, 'workouts'))
+                    return [{ ...remoteWorkout('w-a'), updated_at: '2026-03-01T00:00:00Z' }]
+                if (revivedSetsPull(call, 'w-a')) return [remoteSet('s-a', 'w-a', 'ex-a')]
+                return undefined
+            })
+            await runSync()
+            cycle = 2
+
+            await runSync()
+
+            expect(await linkedSet('s-a')).toEqual({
+                exercise_uuid: 'ex-a',
+                workout_uuid: 'w-a',
+                sync_status: 'synced',
+            })
+            // The re-fetch leaves the sets cursor where it was.
+            await runSync()
+            const setsPull = bodyCalls.filter((c) => c.method === 'GET' && isLivePull(c, 'sets')).at(-1)
+            expect(setsPull?.url).toContain('updated_at=gt.2026-01-05T00%3A00%3A00Z')
+        })
+
+        it('retries the re-fetch on the next cycle when it fails', async () => {
+            let cycle = 1
+            let refetchFails = true
+            mockFetch((call) => {
+                if (cycle === 1) return { body: firstCycle(call) ?? [] }
+                if (isLivePull(call, 'workouts')) {
+                    return { body: [{ ...remoteWorkout('w-a'), updated_at: '2026-03-01T00:00:00Z' }] }
+                }
+                if (revivedSetsPull(call, 'w-a')) {
+                    if (refetchFails) return { status: 503 }
+                    return { body: [remoteSet('s-a', 'w-a', 'ex-a')] }
+                }
+                return { body: [] }
+            })
+            await runSync()
+            cycle = 2
+
+            await runSync()
+            expect(syncStatusStore.get().kind).toBe('failed')
+            expect(await linkedSet('s-a')).toBeNull()
+
+            // The Workout is local now, but it has no Sets and its pull cursor
+            // did not move, so the next cycle pulls it again and re-fetches.
+            refetchFails = false
+            await runSync()
+
+            expect(await linkedSet('s-a')).toEqual({
+                exercise_uuid: 'ex-a',
+                workout_uuid: 'w-a',
+                sync_status: 'synced',
+            })
+            const workoutsPull = fetchCalls.filter((c) => c.method === 'GET' && isLivePull(c, 'workouts')).at(-1)
+            expect(workoutsPull?.url).toContain('updated_at=gt.2026-01-02T00%3A00%3A00Z')
+        })
+
+        it('re-fetches a Workout created exactly at the sets cursor', async () => {
+            let cycle = 1
+            mockFetchWithBodies((call) => {
+                if (cycle === 1) return firstCycle(call)
+                if (isLivePull(call, 'workouts')) {
+                    return [
+                        {
+                            ...remoteWorkout('w-a'),
+                            created_at: '2026-01-05T00:00:00Z',
+                            updated_at: '2026-03-01T00:00:00Z',
+                        },
+                    ]
+                }
+                if (revivedSetsPull(call, 'w-a')) return [remoteSet('s-a', 'w-a', 'ex-a')]
+                return undefined
+            })
+            await runSync()
+            cycle = 2
+            await runSync()
+
+            expect(await linkedSet('s-a')).not.toBeNull()
+        })
+
+        it('does not re-fetch Sets of a Workout created after the sets cursor, or on a first pull', async () => {
+            let cycle = 1
+            mockFetchWithBodies((call) => {
+                if (cycle === 1) return firstCycle(call)
+                if (isLivePull(call, 'workouts')) {
+                    return [
+                        {
+                            ...remoteWorkout('w-c'),
+                            created_at: '2026-01-06T00:00:00Z',
+                            updated_at: '2026-01-06T00:00:00Z',
+                        },
+                    ]
+                }
+                return undefined
+            })
+            await runSync()
+            cycle = 2
+            await runSync()
+
+            expect(bodyCalls.some((c) => c.url.includes('workouts.uuid'))).toBe(false)
+        })
+    })
 })

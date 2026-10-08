@@ -620,8 +620,15 @@ const pullExercises = async (userId: string): Promise<number> => {
     return remote.length + deleted.length
 }
 
+// A Workout deleted on this device drops its Sets here. If a newer edit on
+// another device revives it, the Workout comes back alone: its Sets are behind
+// the sets cursor (issue #87). So a pulled Workout created before that cursor
+// that has no Sets here gets its Sets re-fetched, before the workouts cursor
+// is saved: if the re-fetch fails, the next cycle pulls the Workout again and
+// retries, unless the Workout gains a Set or an unpushed edit here meanwhile.
 const pullWorkouts = async (userId: string): Promise<number> => {
     const cursors = getCursors(userId)
+    const missingSets: string[] = []
     const remote = await request<RemoteSimpleRow[]>('workouts', {
         query: {
             select: '*',
@@ -679,6 +686,16 @@ const pullWorkouts = async (userId: string): Promise<number> => {
                         nowIso()
                     )
                 }
+                if (
+                    cursors.setsUpdated &&
+                    parseIsoMillis(cols.created_at) <= parseIsoMillis(cursors.setsUpdated) &&
+                    !(await db.getFirstAsync(
+                        'SELECT 1 FROM sets s JOIN workouts w ON w.id = s.workout_id WHERE w.uuid = ? LIMIT 1',
+                        row.uuid
+                    ))
+                ) {
+                    missingSets.push(row.uuid)
+                }
             }
         })
         for (const row of rows) nextUpdated = maxIso(nextUpdated, row.updated_at)
@@ -693,6 +710,7 @@ const pullWorkouts = async (userId: string): Promise<number> => {
         },
     })
     const nextDeleted = await applyRemoteDeletions('workouts', deleted, cursors.workoutsDeleted)
+    const refetched = await pullSetsOfWorkouts(userId, missingSets)
 
     await setCursors(userId, {
         ...cursors,
@@ -700,7 +718,7 @@ const pullWorkouts = async (userId: string): Promise<number> => {
         workoutsDeleted: nextDeleted,
     })
 
-    return remote.length + deleted.length
+    return remote.length + deleted.length + refetched
 }
 
 // PostgREST answers 404 for a table it does not know. A backend that has not
@@ -850,11 +868,103 @@ const toSingleRef = <R extends { uuid: string }>(value: R | R[] | null | undefin
     return value
 }
 
+// Writes pulled Sets whose Workout and Exercise are local. Returns the uuids
+// of Sets held back because a parent isn't local yet, so the sets pull can
+// freeze its cursor in row order.
+const applyPulledSets = async (userId: string, rows: RemoteSetWithRefs[]): Promise<Set<string>> => {
+    const parentMissingByUuid = new Set<string>()
+    await executeWriteTransaction(async (db) => {
+        for (const row of rows) {
+            const workoutRef = toSingleRef(row.workouts)
+            const workoutUuid = workoutRef?.uuid
+            const exerciseUuid = toSingleRef(row.exercises)?.uuid
+            if (!workoutUuid || !exerciseUuid) continue
+
+            const [workoutLocal, exerciseLocal] = await Promise.all([
+                db.getFirstAsync<{ id: number }>('SELECT id FROM workouts WHERE uuid = ? LIMIT 1', workoutUuid),
+                db.getFirstAsync<{ id: number }>('SELECT id FROM exercises WHERE uuid = ? LIMIT 1', exerciseUuid),
+            ])
+            // Deleting a Workout drops its Sets locally but leaves them live
+            // on the server. Such a Set can never link here, so holding it
+            // back would freeze the cursor for good (e.g. on a fresh login).
+            // That holds whether the Workout was deleted remotely or here.
+            if (
+                !workoutLocal?.id &&
+                (workoutRef?.deleted_at || (await hasUnpushedTombstone(db, 'workout', workoutUuid)))
+            ) {
+                continue
+            }
+            if (!workoutLocal?.id || !exerciseLocal?.id) {
+                parentMissingByUuid.add(row.uuid)
+                continue
+            }
+
+            const local = await db.getFirstAsync<{ id: number; updated_at: string | null; sync_status: string }>(
+                'SELECT id, updated_at, sync_status FROM sets WHERE uuid = ? LIMIT 1',
+                row.uuid
+            )
+            if (shouldSkipRemoteRow(local, row.updated_at)) continue
+            // A Set deleted here must not come back before its tombstone
+            // lands remotely (a full re-pull would otherwise re-insert it).
+            if (!local && (await hasUnpushedTombstone(db, 'set', row.uuid))) continue
+
+            const cols = toSetColumns(row, userId, workoutLocal.id, exerciseLocal.id)
+            if (local) {
+                await db.runAsync(
+                    `UPDATE sets
+       SET user_id = ?, workout_id = ?, exercise_id = ?, weight = ?, reps = ?, distance = ?, duration = ?, rpe = ?, position = ?, sub_sets = ?,
+           created_at = ?, updated_at = ?, deleted_at = NULL, sync_status = 'synced', last_synced_at = ?
+       WHERE uuid = ?`,
+                    cols.user_id,
+                    cols.workout_id,
+                    cols.exercise_id,
+                    cols.weight,
+                    cols.reps,
+                    cols.distance,
+                    cols.duration,
+                    cols.rpe,
+                    cols.position,
+                    cols.sub_sets,
+                    cols.created_at,
+                    cols.updated_at,
+                    nowIso(),
+                    row.uuid
+                )
+            } else {
+                await db.runAsync(
+                    `INSERT INTO sets
+       (uuid, user_id, workout_id, exercise_id, weight, reps, distance, duration, rpe, position, sub_sets, created_at, updated_at, deleted_at, sync_status, last_synced_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced', ?)`,
+                    row.uuid,
+                    cols.user_id,
+                    cols.workout_id,
+                    cols.exercise_id,
+                    cols.weight,
+                    cols.reps,
+                    cols.distance,
+                    cols.duration,
+                    cols.rpe,
+                    cols.position,
+                    cols.sub_sets,
+                    cols.created_at,
+                    cols.updated_at,
+                    nowIso()
+                )
+            }
+        }
+    })
+    return parentMissingByUuid
+}
+
+// Set columns with their Exercise; each pull adds its own Workout embed.
+const SET_SELECT =
+    'uuid,user_id,weight,reps,distance,duration,rpe,position,sub_sets,created_at,updated_at,deleted_at,exercises(uuid)'
+
 const pullSets = async (userId: string): Promise<number> => {
     const cursors = getCursors(userId)
     const remote = await request<RemoteSetWithRefs[]>('sets', {
         query: {
-            select: 'uuid,user_id,weight,reps,distance,duration,rpe,position,sub_sets,created_at,updated_at,deleted_at,workouts(uuid,deleted_at),exercises(uuid)',
+            select: `${SET_SELECT},workouts(uuid,deleted_at)`,
             user_id: `eq.${userId}`,
             deleted_at: 'is.null',
             order: 'updated_at.asc',
@@ -871,89 +981,7 @@ const pullSets = async (userId: string): Promise<number> => {
     // follow.
     let cursorStalled = false
     for (const rows of chunk(remote, PULL_CHUNK_SIZE)) {
-        // Rows whose parent was missing this cycle, recorded inside the
-        // transaction so the cursor decision below can mirror the per-row order.
-        const parentMissingByUuid = new Set<string>()
-        await executeWriteTransaction(async (db) => {
-            for (const row of rows) {
-                const workoutRef = toSingleRef(row.workouts)
-                const workoutUuid = workoutRef?.uuid
-                const exerciseUuid = toSingleRef(row.exercises)?.uuid
-                if (!workoutUuid || !exerciseUuid) continue
-
-                const [workoutLocal, exerciseLocal] = await Promise.all([
-                    db.getFirstAsync<{ id: number }>('SELECT id FROM workouts WHERE uuid = ? LIMIT 1', workoutUuid),
-                    db.getFirstAsync<{ id: number }>('SELECT id FROM exercises WHERE uuid = ? LIMIT 1', exerciseUuid),
-                ])
-                // Deleting a Workout drops its Sets locally but leaves them live
-                // on the server. Such a Set can never link here, so holding it
-                // back would freeze the cursor for good (e.g. on a fresh login).
-                // That holds whether the Workout was deleted remotely or here.
-                if (
-                    !workoutLocal?.id &&
-                    (workoutRef?.deleted_at || (await hasUnpushedTombstone(db, 'workout', workoutUuid)))
-                ) {
-                    continue
-                }
-                if (!workoutLocal?.id || !exerciseLocal?.id) {
-                    parentMissingByUuid.add(row.uuid)
-                    continue
-                }
-
-                const local = await db.getFirstAsync<{ id: number; updated_at: string | null; sync_status: string }>(
-                    'SELECT id, updated_at, sync_status FROM sets WHERE uuid = ? LIMIT 1',
-                    row.uuid
-                )
-                if (shouldSkipRemoteRow(local, row.updated_at)) continue
-                // A Set deleted here must not come back before its tombstone
-                // lands remotely (a full re-pull would otherwise re-insert it).
-                if (!local && (await hasUnpushedTombstone(db, 'set', row.uuid))) continue
-
-                const cols = toSetColumns(row, userId, workoutLocal.id, exerciseLocal.id)
-                if (local) {
-                    await db.runAsync(
-                        `UPDATE sets
-           SET user_id = ?, workout_id = ?, exercise_id = ?, weight = ?, reps = ?, distance = ?, duration = ?, rpe = ?, position = ?, sub_sets = ?,
-               created_at = ?, updated_at = ?, deleted_at = NULL, sync_status = 'synced', last_synced_at = ?
-           WHERE uuid = ?`,
-                        cols.user_id,
-                        cols.workout_id,
-                        cols.exercise_id,
-                        cols.weight,
-                        cols.reps,
-                        cols.distance,
-                        cols.duration,
-                        cols.rpe,
-                        cols.position,
-                        cols.sub_sets,
-                        cols.created_at,
-                        cols.updated_at,
-                        nowIso(),
-                        row.uuid
-                    )
-                } else {
-                    await db.runAsync(
-                        `INSERT INTO sets
-           (uuid, user_id, workout_id, exercise_id, weight, reps, distance, duration, rpe, position, sub_sets, created_at, updated_at, deleted_at, sync_status, last_synced_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced', ?)`,
-                        row.uuid,
-                        cols.user_id,
-                        cols.workout_id,
-                        cols.exercise_id,
-                        cols.weight,
-                        cols.reps,
-                        cols.distance,
-                        cols.duration,
-                        cols.rpe,
-                        cols.position,
-                        cols.sub_sets,
-                        cols.created_at,
-                        cols.updated_at,
-                        nowIso()
-                    )
-                }
-            }
-        })
+        const parentMissingByUuid = await applyPulledSets(userId, rows)
 
         // Advance the cursor in row order, freezing it the moment a parent was
         // missing — identical to the per-row semantics, just deferred past the
@@ -985,6 +1013,32 @@ const pullSets = async (userId: string): Promise<number> => {
     })
 
     return remote.length + deleted.length
+}
+
+// Workouts per re-fetch request: keeps the in.(...) filter URL short and the
+// response well under PostgREST's max_rows (1000), which would silently cut it.
+const SETS_REFETCH_WORKOUT_CHUNK = 10
+
+// Live Sets of the given Workouts, whatever their updated_at, for Workouts
+// whose Sets sit behind the sets cursor (see pullWorkouts). Leaves the sets
+// cursor alone. Sets held back for a missing Exercise are not retried: the
+// Exercises pull runs first and never removes a row, so it doesn't happen.
+const pullSetsOfWorkouts = async (userId: string, workoutUuids: string[]): Promise<number> => {
+    let pulled = 0
+    for (const uuids of chunk(workoutUuids, SETS_REFETCH_WORKOUT_CHUNK)) {
+        const rows = await request<RemoteSetWithRefs[]>('sets', {
+            query: {
+                // An inner embed, so the filter on the Workout's uuid limits the Sets.
+                select: `${SET_SELECT},workouts!inner(uuid,deleted_at)`,
+                user_id: `eq.${userId}`,
+                deleted_at: 'is.null',
+                'workouts.uuid': `in.(${uuids.join(',')})`,
+            },
+        })
+        await applyPulledSets(userId, rows)
+        pulled += rows.length
+    }
+    return pulled
 }
 
 const livePrincipalFromSession = (): LivePrincipal => {
