@@ -6,12 +6,6 @@
             "sourceType": "github",
             "skillPath": "fallow/skills/fallow/SKILL.md",
             "computedHash": "9d50546232688db1440806dbebf66a02e2175d5314fe16fa6d10020fdc9dbfd3"
-        },
-        "vocabulary": {
-            "source": "index-how/vocabulary",
-            "sourceType": "github",
-            "skillPath": "skills/vocabulary/SKILL.md",
-            "computedHash": "c309c9c62165f03584967b2588abe1e37ea085a90064f794c11ac4b6bc90b4d8"
         }
     }
 }
