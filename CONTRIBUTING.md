@@ -13,7 +13,7 @@ fitapp is an Expo (React Native) fitness-tracker that works **local-first** with
 
 ## Prerequisites
 
-- Node.js >= 18
+- Node.js 22 (matches CI; `better-sqlite3` ships prebuilt binaries for it)
 - Yarn 4 (see `packageManager` in `package.json`)
 - Expo CLI (`npx expo`)
 - iOS: Xcode 16+ (macOS only)
@@ -30,7 +30,7 @@ yarn ios            # iOS simulator
 yarn android        # Android emulator
 ```
 
-Copy `.env.example` if present, or create `.env` with Supabase credentials for remote sync.
+Copy `.env.example` to `.env` and fill in the Supabase values to enable remote sync. Without them the app runs in guest mode only.
 
 ## Project structure
 
@@ -109,14 +109,14 @@ yarn typecheck       # tsc --noEmit
 ## Full check
 
 ```sh
-yarn check           # lint + test + typecheck
+yarn check           # Biome + lint + test + typecheck + dead code
 ```
 
 Run this before pushing to catch regressions.
 
 ## How to contribute
 
-1. Create a feature branch from `main`.
+1. Create a feature branch from `master`.
 2. Implement changes with tests where applicable.
 3. Run `yarn check` to verify.
 4. Open a pull request.
