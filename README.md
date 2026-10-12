@@ -1,5 +1,12 @@
 # fitapp
 
+[![CI](https://github.com/martinnovak22/fitapp/actions/workflows/ci.yml/badge.svg)](https://github.com/martinnovak22/fitapp/actions/workflows/ci.yml)
+![Expo SDK 54](https://img.shields.io/badge/Expo-SDK%2054-000020?logo=expo&logoColor=white)
+![React Native 0.81](https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react&logoColor=black)
+![TypeScript 5.9](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-local--first-003B57?logo=sqlite&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-sync-3FCF8E?logo=supabase&logoColor=white)
+
 A local-first fitness tracker built with Expo and React Native. It stores everything in SQLite on the device and can optionally sync to Supabase.
 
 ## What it does
